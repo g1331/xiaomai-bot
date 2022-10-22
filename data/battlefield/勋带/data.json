@@ -1,0 +1,1728 @@
+{
+    "jsonrpc": "2.0",
+    "id": "25303f4f-83e5-4ca9-8fda-2ad938309acc",
+    "result": [
+        {
+            "name": "載具",
+            "awards": [
+                {
+                    "code": "r05",
+                    "name": "奧古斯都勳帶",
+                    "description": "使用任何坦克，在同一回合中擊殺 7 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/42/58/r05-d63ad8b7.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 36.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r05_ta__ki_r",
+                            "name": "",
+                            "awardName": "奧古斯都勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/42/58/r05-d63ad8b7.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/42/58/r05-d63ad8b7.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r06",
+                    "name": "伊卡洛斯勳帶",
+                    "description": "使用任何飛機，在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/85/42/r06-55d68786.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 215.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r06_pl__ki_r",
+                            "name": "",
+                            "awardName": "伊卡洛斯勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/85/42/r06-55d68786.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/85/42/r06-55d68786.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r19",
+                    "name": "公牛勳帶",
+                    "description": "在同一回合中進行 3 次機械巨獸擊殺",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/26/81/r19-1a5188bb.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 64.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r19_abeh__ki_r",
+                            "name": "",
+                            "awardName": "公牛勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/26/81/r19-1a5188bb.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/26/81/r19-1a5188bb.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r21",
+                    "name": "牛頓力學軍功勳帶",
+                    "description": "在同一回合中摧毀 3 個載具",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/103/36/r21-99dc2a10.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 99.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r21_av__de_r",
+                            "name": "",
+                            "awardName": "牛頓力學軍功勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/103/36/r21-99dc2a10.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/103/36/r21-99dc2a10.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r45",
+                    "name": "波塞頓勳帶",
+                    "description": "使用任何海上載具，在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/17/14/r45-110ecf5c.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 11.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r45_asv__ki_r",
+                            "name": "",
+                            "awardName": "波塞頓勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/17/14/r45-110ecf5c.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/17/14/r45-110ecf5c.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r47",
+                    "name": "王牌飛行員勳帶",
+                    "description": "使用任何戰鬥機，在同一回合中取得 5 次戰鬥機擊殺數",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/113/47/r47-712f775c.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 5.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r47_plSc_plSc_di_r",
+                            "name": "",
+                            "awardName": "王牌飛行員勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/113/47/r47-712f775c.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/113/47/r47-712f775c.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        },
+        {
+            "name": "兵種",
+            "awards": [
+                {
+                    "code": "r01",
+                    "name": "鋼鐵之星勳帶",
+                    "description": "以突擊兵身分，在同一回合中擊殺 7 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/27/127/r01-1b7fd412.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 3234.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r01_as__ks_r",
+                            "name": "",
+                            "awardName": "鋼鐵之星勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/27/127/r01-1b7fd412.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/27/127/r01-1b7fd412.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r02",
+                    "name": "希波克拉底勳帶",
+                    "description": "以醫護兵身分，在同一回合中擊殺 7 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/91/89/r02-a5a7ee44.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1806.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r02_md__ks_r",
+                            "name": "",
+                            "awardName": "希波克拉底勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/91/89/r02-a5a7ee44.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/91/89/r02-a5a7ee44.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r03",
+                    "name": "獵隼勳帶",
+                    "description": "以偵察兵身分，在同一回合中擊殺 7 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/37/33/r03-25df3fba.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1393.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r03_sc__ks_r",
+                            "name": "",
+                            "awardName": "獵隼勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/37/33/r03-25df3fba.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/37/33/r03-25df3fba.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r04",
+                    "name": "聖克里斯多福勳帶",
+                    "description": "以支援兵身分，在同一回合中擊殺 7 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/54/82/r04-caae0781.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 860.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r04_sp__ks_r",
+                            "name": "",
+                            "awardName": "聖克里斯多福勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/54/82/r04-caae0781.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/54/82/r04-caae0781.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r20",
+                    "name": "可汗勳帶",
+                    "description": "在同一回合中從馬背上擊殺 3 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/108/114/r20-6c8ece5d.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 19.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r20_horse__ki_r",
+                            "name": "",
+                            "awardName": "可汗勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/108/114/r20-6c8ece5d.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/108/114/r20-6c8ece5d.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r34",
+                    "name": "修復勳帶",
+                    "description": "在同一回合中使用扳手修復友軍載具 5 次",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/34/86/r34-2256b37e.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 88.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r34___r_r",
+                            "name": "",
+                            "awardName": "修復勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/34/86/r34-2256b37e.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/34/86/r34-2256b37e.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r35",
+                    "name": "治愈勳帶",
+                    "description": "在同一回合中完成 300 治療",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/58/26/r35-3ae648b6.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 816.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r35___h_r",
+                            "name": "",
+                            "awardName": "治愈勳帶",
+                            "progression": {
+                                "valueNeeded": 300.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/58/26/r35-3ae648b6.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/58/26/r35-3ae648b6.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r36",
+                    "name": "補給勳帶",
+                    "description": "在同一回合中完成 10 次重新補給",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/61/74/r36-3d4ade59.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 4359.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r36___rs_r",
+                            "name": "",
+                            "awardName": "補給勳帶",
+                            "progression": {
+                                "valueNeeded": 10.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/61/74/r36-3d4ade59.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/61/74/r36-3d4ade59.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r38",
+                    "name": "新生勳帶",
+                    "description": "在同一回合中完成 5 次急救",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/13/73/r38-f34962e7.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 867.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r38___re_r",
+                            "name": "",
+                            "awardName": "新生勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/13/73/r38-f34962e7.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/13/73/r38-f34962e7.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r40",
+                    "name": "信號彈勳帶",
+                    "description": "在同一回合中完成 5 次索敵信號彈助攻",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/48/8/r40-d008b91b.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1390.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r40___raa_r",
+                            "name": "",
+                            "awardName": "信號彈勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/48/8/r40-d008b91b.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/48/8/r40-d008b91b.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r44",
+                    "name": "反擊勳帶",
+                    "description": "在同一回合中完成 5 次反狙擊",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/84/102/r44-ac9a4b50.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 335.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r44_sc_sc_ko_r",
+                            "name": "",
+                            "awardName": "反擊勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/84/102/r44-ac9a4b50.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/84/102/r44-ac9a4b50.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        },
+        {
+            "name": "武器",
+            "awards": [
+                {
+                    "code": "r08",
+                    "name": "突擊兵英勇勳帶",
+                    "description": "用衝鋒槍在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/58/113/r08-3a715db9.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1425.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r08_wSMG__kw_r",
+                            "name": "",
+                            "awardName": "突擊兵英勇勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/58/113/r08-3a715db9.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/58/113/r08-3a715db9.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r09",
+                    "name": "突擊兵 LeFever 勳帶",
+                    "description": "用霰彈槍在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/50/61/r09-323d302b.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 2298.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r09_wShot__kw_r",
+                            "name": "",
+                            "awardName": "突擊兵 LeFever 勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/50/61/r09-323d302b.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/50/61/r09-323d302b.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r10",
+                    "name": "醫護兵英勇勳帶",
+                    "description": "用半自動步槍在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/114/29/r10-8ee366da.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 2361.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r10_wRSem__kw_r",
+                            "name": "",
+                            "awardName": "醫護兵英勇勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/114/29/r10-8ee366da.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/114/29/r10-8ee366da.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r11",
+                    "name": "支援兵英勇勳帶",
+                    "description": "用輕機槍在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/25/85/r11-19ab8f97.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1069.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r11_wLMG__kw_r",
+                            "name": "",
+                            "awardName": "支援兵英勇勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/25/85/r11-19ab8f97.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/25/85/r11-19ab8f97.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r12",
+                    "name": "偵察兵英勇勳帶",
+                    "description": "用單動式步槍在同一回合中擊殺 5 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/62/98/r12-3e62ac42.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1601.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r12_wRSing__kw_r",
+                            "name": "",
+                            "awardName": "偵察兵英勇勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/62/98/r12-3e62ac42.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/62/98/r12-3e62ac42.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r22",
+                    "name": "閃電十字勳帶",
+                    "description": "用半自動手槍在同一回合中擊殺 4 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/110/124/r22-6e847936.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 141.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r22_wHS__kw_r",
+                            "name": "",
+                            "awardName": "閃電十字勳帶",
+                            "progression": {
+                                "valueNeeded": 4.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/110/124/r22-6e847936.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/110/124/r22-6e847936.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r23",
+                    "name": "聖巴斯弟盎勳帶",
+                    "description": "用左輪手槍在同一回合中擊殺 4 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/21/40/r23-15d8533e.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 81.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r23_wHR__kw_r",
+                            "name": "",
+                            "awardName": "聖巴斯弟盎勳帶",
+                            "progression": {
+                                "valueNeeded": 4.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/21/40/r23-15d8533e.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/21/40/r23-15d8533e.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r24",
+                    "name": "紅龍勳帶",
+                    "description": "用爆炸物在同一回合中擊殺 4 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/29/99/r24-e39d46d6.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1105.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r24_wX__kw_r",
+                            "name": "",
+                            "awardName": "紅龍勳帶",
+                            "progression": {
+                                "valueNeeded": 4.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/29/99/r24-e39d46d6.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/29/99/r24-e39d46d6.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r25",
+                    "name": "勇氣勳帶",
+                    "description": "用定點武器在同一回合中擊殺 4 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/31/31/r25-1f1f2ea2.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 3.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r25_sw__ki_r",
+                            "name": "",
+                            "awardName": "勇氣勳帶",
+                            "progression": {
+                                "valueNeeded": 4.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/31/31/r25-1f1f2ea2.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/31/31/r25-1f1f2ea2.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        },
+        {
+            "name": "遊戲模式",
+            "awards": [
+                {
+                    "code": "r26",
+                    "name": "腓特烈二世勳帶",
+                    "description": "贏得一回合行動模式",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/123/60/r26-7b3c9e8a.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 560.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r26_mwin_mgb_roo_r",
+                            "name": "",
+                            "awardName": "腓特烈二世勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/123/60/r26-7b3c9e8a.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/123/60/r26-7b3c9e8a.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r27",
+                    "name": "亞歷山大勳帶",
+                    "description": "贏得一回合征服",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/21/62/r27-eb3eb6b5.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 785.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r27_mwin_mgc_roo_r",
+                            "name": "",
+                            "awardName": "亞歷山大勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/21/62/r27-eb3eb6b5.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/21/62/r27-eb3eb6b5.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r28",
+                    "name": "查理曼勳帶",
+                    "description": "贏得一回合突襲",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/76/50/r28-4cce9fc8.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r28_mwin_mgr_roo_r",
+                            "name": "",
+                            "awardName": "查理曼勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/76/50/r28-4cce9fc8.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/76/50/r28-4cce9fc8.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r29",
+                    "name": "搶攻勳帶",
+                    "description": "贏得一回合搶攻",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/41/76/r29-d7b49f46.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 12.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r29_mwin_mgdo_roo_r",
+                            "name": "",
+                            "awardName": "搶攻勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/41/76/r29-d7b49f46.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/41/76/r29-d7b49f46.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r30",
+                    "name": "頭骨勳帶",
+                    "description": "贏得一回合團隊死鬥",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/115/46/r30-73d2cd55.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 26.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r30_mwin_mgtd_roo_r",
+                            "name": "",
+                            "awardName": "頭骨勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/115/46/r30-73d2cd55.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/115/46/r30-73d2cd55.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r31",
+                    "name": "飛鳥勳帶",
+                    "description": "贏得一回合戰爭信鴿",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/128/123/r31-807b4bed.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 3.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r31_mwin_Poss_roo_r",
+                            "name": "",
+                            "awardName": "飛鳥勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/128/123/r31-807b4bed.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/128/123/r31-807b4bed.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r32",
+                    "name": "維欽托利勳帶",
+                    "description": "贏得一回合前線",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/6/70/r32-fa464269.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 13.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r32_mwin_mgf_roo_r",
+                            "name": "",
+                            "awardName": "維欽托利勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/6/70/r32-fa464269.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/6/70/r32-fa464269.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r46",
+                    "name": "航空大師勳帶",
+                    "description": "贏得一回合的空中突襲",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/111/74/r46-914a4350.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 12.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r46_mwin_mgaas_roo_r",
+                            "name": "",
+                            "awardName": "航空大師勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/111/74/r46-914a4350.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/111/74/r46-914a4350.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        },
+        {
+            "name": "戰鬥",
+            "awards": [
+                {
+                    "code": "r07",
+                    "name": "黃金之心勳帶",
+                    "description": "用近戰武器在同一回合中擊殺 3 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/11/11/r07-f50b44f9.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 200.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r07_wM__kw_r",
+                            "name": "",
+                            "awardName": "黃金之心勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/11/11/r07-f50b44f9.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/11/11/r07-f50b44f9.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r13",
+                    "name": "皇家雄鹿勳帶",
+                    "description": "在同一回合中擊殺 10 人",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/65/39/r13-412762b9.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 5244.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r13___ks_r",
+                            "name": "",
+                            "awardName": "皇家雄鹿勳帶",
+                            "progression": {
+                                "valueNeeded": 10.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/65/39/r13-412762b9.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/65/39/r13-412762b9.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r14",
+                    "name": "狙擊手護衛勳帶",
+                    "description": "在同一回合中進行 5 次爆頭",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/55/104/r14-3768a1d8.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 453.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r14___hsh_r",
+                            "name": "",
+                            "awardName": "狙擊手護衛勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/55/104/r14-3768a1d8.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/55/104/r14-3768a1d8.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r15",
+                    "name": "深紅之心勳帶",
+                    "description": "在同一回合中進行 5 次隊伍支援",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/25/124/r15-197ca76e.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 1983.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r15___ka_r",
+                            "name": "",
+                            "awardName": "深紅之心勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/25/124/r15-197ca76e.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/25/124/r15-197ca76e.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r33",
+                    "name": "皇冠皇家勳帶",
+                    "description": "成為最有價值玩家",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/61/4/r33-c304b33c.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 76.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r33_fip__psx_r",
+                            "name": "",
+                            "awardName": "皇冠皇家勳帶",
+                            "progression": {
+                                "valueNeeded": 1.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/61/4/r33-c304b33c.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/61/4/r33-c304b33c.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r37",
+                    "name": "洞察勳帶",
+                    "description": "在同一回合中完成 5 次索敵助攻",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/63/33/r37-c121790d.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 796.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r37___sp_r",
+                            "name": "",
+                            "awardName": "洞察勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/63/33/r37-c121790d.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/63/33/r37-c121790d.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r41",
+                    "name": "火力壓制勳帶",
+                    "description": "在同一回合中完成 5 次火力壓制助攻",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/96/34/r41-a022bc99.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 169.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r41___sua_r",
+                            "name": "",
+                            "awardName": "火力壓制勳帶",
+                            "progression": {
+                                "valueNeeded": 5.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/96/34/r41-a022bc99.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/96/34/r41-a022bc99.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r42",
+                    "name": "地獄殺手勳帶",
+                    "description": "在同一回合中完成 3 次多重擊殺",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/61/115/r42-3d8d142e.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 226.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r42___mk_r",
+                            "name": "",
+                            "awardName": "地獄殺手勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/61/115/r42-3d8d142e.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/61/115/r42-3d8d142e.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        },
+        {
+            "name": "小隊",
+            "awards": [
+                {
+                    "code": "r16",
+                    "name": "神聖合一勳帶",
+                    "description": "在同一回合中進行 2 次小隊火力壓制助攻",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/65/62/r16-bfc21f48.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 86.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r16___ssua_r",
+                            "name": "",
+                            "awardName": "神聖合一勳帶",
+                            "progression": {
+                                "valueNeeded": 2.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/65/62/r16-bfc21f48.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/65/62/r16-bfc21f48.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r17",
+                    "name": "鮮血勳帶",
+                    "description": "在同一回合中進行 2 次小隊救星擊殺",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/28/121/r17-e4878cc7.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 511.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r17___ssk_r",
+                            "name": "",
+                            "awardName": "鮮血勳帶",
+                            "progression": {
+                                "valueNeeded": 2.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/28/121/r17-e4878cc7.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/28/121/r17-e4878cc7.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r18",
+                    "name": "野狼勳帶",
+                    "description": "在同一回合中進行 3 次小隊索敵",
+                    "imageUrl": "[BB_PREFIX]/gamedata/tunguska/114/105/r18-8e69af6c.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 137.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r18___ssp_r",
+                            "name": "",
+                            "awardName": "野狼勳帶",
+                            "progression": {
+                                "valueNeeded": 3.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/tunguska/114/105/r18-8e69af6c.png",
+                        "Small": "[BB_PREFIX]/gamedata/tunguska/114/105/r18-8e69af6c.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r39",
+                    "name": "後勤勳帶",
+                    "description": "在同一回合中完成 7 次小隊重生",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/110/5/r39-92fba97f.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 2141.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r39___ss_r",
+                            "name": "",
+                            "awardName": "後勤勳帶",
+                            "progression": {
+                                "valueNeeded": 7.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/110/5/r39-92fba97f.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/110/5/r39-92fba97f.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                },
+                {
+                    "code": "r43",
+                    "name": "正義勳帶",
+                    "description": "在同一回合中完成 2 次小隊復仇擊殺",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/36/108/r43-dc94b65a.png",
+                    "progression": {
+                        "valueNeeded": 1.0,
+                        "valueAcquired": 458.0,
+                        "unlocked": true
+                    },
+                    "unlocks": [],
+                    "dependencies": [],
+                    "stages": null,
+                    "criterias": [
+                        {
+                            "code": "c_r43___sak_r",
+                            "name": "",
+                            "awardName": "正義勳帶",
+                            "progression": {
+                                "valueNeeded": 2.0,
+                                "valueAcquired": 0.0,
+                                "unlocked": false
+                            },
+                            "criteriaType": "IAR_IN_A_ROUND"
+                        }
+                    ],
+                    "codexEntry": null,
+                    "images": {
+                        "Png256xANY": "[BB_PREFIX]/gamedata/Tunguska/36/108/r43-dc94b65a.png",
+                        "Small": "[BB_PREFIX]/gamedata/Tunguska/36/108/r43-dc94b65a.png"
+                    },
+                    "expansions": [],
+                    "score": 500,
+                    "dependencyRequired": null,
+                    "criteriaRequired": null
+                }
+            ]
+        }
+    ]
+}

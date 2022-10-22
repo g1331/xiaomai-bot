@@ -267,7 +267,9 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
             f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]'
             f'({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
             f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
-            f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
+            f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血",
+                                                                                                            "流\u200b血").replace(
+                "战争", "战\u200b争"),
             f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n']
     if result["serverInfo"]["description"] != '':
         temp.append(f'简介:{result["serverInfo"]["description"]}\n')
@@ -4580,7 +4582,8 @@ async def akbw_check_global_whitelist():
                                     ]
                                 )
                             ]))
-async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult, clear_num: RegexResult):
+async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult,
+                    clear_num: RegexResult):
     # 检查清理ban位的数量
     if clear_num.matched:
         try:
@@ -4693,7 +4696,7 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, message: Message
                                 )
                             ]))
 async def add_vban(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult,
-                   reason: RegexResult,vban_rank: RegexResult):
+                   reason: RegexResult, vban_rank: RegexResult):
     if not reason.matched:
         reason = "违反规则"
     else:
@@ -5542,7 +5545,8 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
             return False
         elif type(result) == dict:
             await app.send_message(group, MessageChain(
-                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}".replace("\n", "").replace('流血', '流\u200b血')
+                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}".replace(
+                    "\n", "").replace('流血', '流\u200b血')
             ), quote=message[Source][0])
             rsp_log.map_logger(sender.id, group.id,
                                map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:].replace('-',

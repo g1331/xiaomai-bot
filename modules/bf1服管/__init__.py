@@ -267,8 +267,7 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
             f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]'
             f'({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
             f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
-            f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'
-                .replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
+            f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
             f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n']
     if result["serverInfo"]["description"] != '':
         temp.append(f'简介:{result["serverInfo"]["description"]}\n')
@@ -2924,6 +2923,9 @@ async def get_bfgroup_session(app: Ariadne, group: Group, message: MessageChain,
     """
     bf群组绑定服务器所绑定的服管账号session,该函数会触发bot回复
     失败返回False，成功返回str->session
+    :app: Ariadne实例
+    :group: 群
+    :message: 消息
     :param server_rank: 请传入-1后的序号
     :return: session字符串
     """
@@ -4578,8 +4580,7 @@ async def akbw_check_global_whitelist():
                                     ]
                                 )
                             ]))
-async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                    server_rank: RegexResult, clear_num: RegexResult):
+async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult, clear_num: RegexResult):
     # 检查清理ban位的数量
     if clear_num.matched:
         try:
@@ -4614,7 +4615,7 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, message: Message
     else:
         server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 获取服务器信息-fullInfo
     try:
@@ -4687,22 +4688,16 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, message: Message
                                         "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
                                         "player_name" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
                                         "reason" @ ParamMatch(optional=True).space(SpacePolicy.PRESERVE),
-                                        "time" @ ParamMatch(optional=True).space(SpacePolicy.PRESERVE),
-                                        # 示例: -vban xiaoxiao test 1
+                                        # 示例: -vban xiaoxiao test
                                     ]
                                 )
                             ]))
-async def add_vban(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult, reason: RegexResult,
-                   time_re: RegexResult, vban_rank: RegexResult):
+async def add_vban(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult,
+                   reason: RegexResult,vban_rank: RegexResult):
     if not reason.matched:
         reason = "违反规则"
     else:
         reason = str(reason.result)
-    if time_re.matched:
-        try:
-            time_re = int(str(time_re.result))
-        except:
-            return False
     # 寻找vban配置
     try:
         vban_rank = int(str(vban_rank.result))
@@ -5547,8 +5542,7 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
             return False
         elif type(result) == dict:
             await app.send_message(group, MessageChain(
-                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}"
-                    .replace("\n", "").replace('流血', '流\u200b血')
+                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}".replace("\n", "").replace('流血', '流\u200b血')
             ), quote=message[Source][0])
             rsp_log.map_logger(sender.id, group.id,
                                map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:].replace('-',
@@ -6110,8 +6104,8 @@ async def auto_del_vip_timedOut():
     group_list = os.listdir(groups_path)
     for group_item in group_list:
         # 如果有服管账号就去获取session
-        with open(f'./data/battlefield/binds/bfgroups/{group_item}/servers.yaml', 'r', encoding="utf-8") as file1:
-            data = yaml.load(file1, yaml.Loader)
+        with open(f'./data/battlefield/binds/bfgroups/{group_item}/servers.yaml', 'r', encoding="utf-8") as file0:
+            data = yaml.load(file0, yaml.Loader)
             if data is None:
                 continue
             else:

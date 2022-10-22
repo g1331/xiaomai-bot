@@ -1,15 +1,14 @@
 import asyncio
 import json
+import os
 import random
 import string
 import time
-import uuid
 
-import psutil
 import requests
 import zhconv
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage, MessageEvent, ActiveMessage
+from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import MemberHonorChangeEvent, NudgeEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source, Image
@@ -19,14 +18,13 @@ from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-import os
 # 权限判断
 from loguru import logger
 
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
+
 # 开启判断
-from modules.Switch import Switch
 
 # 获取属于这个模组的实例
 
@@ -221,72 +219,3 @@ async def kai_bai(app: Ariadne, group: Group, sender: Member, message: MessageCh
         await app.send_message(group, MessageChain(
             f"寄摆!"
         ))
-
-
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Perm.require(16),
-                                DuoQ.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        "-爱发电" @ UnionMatch("-爱发电").space(SpacePolicy.PRESERVE),
-                                    ]
-                                )
-                            ]))
-async def get_afd_zz(app: Ariadne, sender: Member, group: Group, message: MessageChain, ):
-    import hashlib
-    token = "AEQ9vCNp85jaB6FysDbVUqhg4dk7cJ3P"
-    user_id = "e663a0b0bc0511eca84452540025c377"
-    ts = "%.0f" % time.time()
-    params = json.dumps({"page": 1})
-    sign = hashlib.md5(f"{token}params{params}ts{ts}user_id{user_id}".encode(encoding="utf-8")).hexdigest()
-    url = "https://afdian.net/api/open/query-sponsor"
-    """
-    :param url: 请传入要获取的网页
-    :return: 返回的是html源代码-请确认html的数据类型
-    """
-    head = {  # 模拟头部信息
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0",
-        "content-type": "application / json",
-    }  # 用户代理
-    body = {
-        "user_id": user_id,
-        "ts": ts,
-        "params": params,
-        "sign": sign
-    }
-    # request = urllib.request.Request(url, headers=head)
-    html = {}
-    try:
-        response = requests.get(url, headers=head, timeout=10, data=json.dumps(body))
-        html = response.text.encode("utf-8")
-    except requests.exceptions.ReadTimeout as e:
-        if hasattr(e, "code"):  # 捕获若失败，返回的代码
-            print(e.code)
-            return e.code
-        if hasattr(e, "reason"):  # 捕获若失败，返回的原因
-            print(e.reason)
-            if e.reason == "timed out":
-                return "timed out"
-        return "timed out"
-    # json loads 解码unicode中文
-    # print(str(json.loads(html)).replace("'", '"'))
-    response = eval(str(json.loads(html)))
-    # print(response)
-    sum_amount = 0
-    user_dict = {}
-    for item in response["data"]["list"]:
-        user_dict[item["user"]["name"]] = float(item["all_sum_amount"])
-        sum_amount += float(item["all_sum_amount"])
-    # user_list_temp = sorted(user_dict.items(), key=lambda x: x[1], reverse=True)[0:]  # 得到元组列表
-    user_list = ""
-    # for item in user_list_temp:
-    #     user_list += (item[0] + ":" + str(item[1]) + "元" + "\n")
-    for key in user_dict:
-        user_list += f'{key}:{user_dict[key]}元\n'
-    await app.send_message(group, MessageChain(
-        f'感谢大家的赞助qwq\n小埋收到赞助共:{sum_amount}元\n赞助名单:\n{user_list}爱发电地址:https://afdian.net/@ss1333'
-    ), quote=message[Source][0])
-    return

@@ -1,0 +1,3960 @@
+{
+    "jsonrpc": "2.0",
+    "id": "031bc9e5-df67-44a5-bd2c-e964c416b902",
+    "result": [
+        {
+            "name": "對敵方戰壕的夜襲通常都在月光之下進行。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "戰鬥口號『Ils ne passeront pas!』的意思是『他們休想過去』（誓死堅守），由法國上將羅伯特·尼維勒（Robert Nivelle）提出。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "1918 年，德軍春季攻勢的強度震驚了英軍，直接突破了英軍在城市外圍的阻擋，迫使英軍撤退至亞眠。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "對付刺刀衝鋒，其中一個有效且危險的反擊方式便是用刺刀衝鋒還以顏色！當兩個衝鋒者相撞時，較晚發動衝鋒的玩家會獲勝。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "於 1918 年 10 月 17 日早上 5:20，賽勒河之役的序幕由連串的砲擊彈幕揭起，步兵和 48 輛坦克隨伺其後。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "英國少將 J·F·C·富勒在一次大戰期間發明了「人造月光」的概念，使用探照燈來照亮雲層底端，加強夜襲的可見度。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "一次大戰中共有 68,000,000 位男女投入戰爭。當中有 57.6% 在戰爭中傷亡、被俘或是失蹤。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "1918 年的蘇瓦松戰鬥特徵是逾 470 輛坦克和攻擊飛機組成的聯合攻擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "你必須按下動作鍵來放出信鴿！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Possession"
+            ]
+        },
+        {
+            "name": "一次大戰時的電影技術已經夠成熟，讓其成為首場能夠讓民眾在影廳中了解戰事動態的戰爭。  ",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "F2B，又被稱作「BRISFIT」，是當時英國皇家飛行隊的主要雙人座偵察機。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德國高級指揮官的雄心是將凡爾登的戰役作為這次世界大戰的決定性戰役。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "勳章由數個階段組成，必須照順序完成。每個階段都會獎勵大量積分。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英國的 Vickers 機槍自 1912 年開始服役至 1968 年，並被超過 20 個國家的國軍所採用。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在 1916 年，將近半數的英國人去電影院觀看《索姆河之戰》– 這部電影仍然是英國電影史上觀看人數最多的電影之一。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "索姆河之戰給交戰各方造成了超過一百萬人的傷亡。讓我們永誌不忘。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "在猛烈砲擊下，法歐堡的城牆終於被擊破。但印英聯軍才是一馬當先衝入堡壘中，並靠著肉搏戰奪下堡壘的人。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "即使到了一百年後的今天，「Disfatta di Caporetto」（翻譯為「卡波雷托災難」）在義大利還是被用來當作形容完全挫敗的用語和說法。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "德國在 1917 年發出的齊默爾曼電報試圖將墨西哥拖入與美國的戰爭。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你的下一記近戰攻擊能殺掉你的對手，你便會自動執行擊殺，而非一般近戰武器揮舞。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "由於年紀太輕無法被判處死刑，暗殺斐迪南大公的兇手因此逃過一死。加夫里洛·普林西普在監獄中度過了一次大戰。他在 1918 年因肺結核死於監獄中。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在一次大戰的多數期間，其戰線都橫跨於爾呂（Hurlus）\n、佩爾泰斯-萊於爾呂（Perthe-les-Hurlus）、萊-梅斯尼爾-萊於爾呂（le Mesnil-les-Hurlus）、里彭（Ripont）以及托爾（Tahure）等香檳-阿登地區的「失落的城鎮」，這些小鎮遭到摧毀後便從未重建過。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "在 1918 年的維托里奧維內托戰役中的義大利戰線，700 架義大利、法國與英國的飛機在空中對上了 500 架奧德聯軍飛機。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "飛行員在飛行時應該考量砲手的視線，使其發揮出最大實力",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "你拿著裝有刺刀的武器衝刺時，可以輕碰近戰按鍵來進入強大的刺刀衝鋒狀態。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "為了籌備索姆河戰役，英軍與法軍徵召了超過 1300 門火砲，並向德軍陣地發射了 200 萬顆砲彈。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一旦越過第一線的戰壕後，德國步兵陣列可以在繼續保護側翼的狀況下深入敵人後方。此舉切斷了義大利的通訊線，這也是災難的開端。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "所有步兵裝備都適合用於與其他步兵戰鬥，差別在於戰鬥的距離。如何找出最適合對付步兵的方式，全取決於你和敵方的裝備。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "蘇伊士運河的控制權對於大英帝國而言至關重要。這條運河負責輸送數百萬的兵員到歐洲，以及將英國的石油運出波斯。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "著名的脫衣舞孃瑪塔·哈里（Mata Hari）在一次大戰時還有一重間諜的身分。她在 1917 年被法國處決。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "配備加農砲的飛機的最持久使用者是法軍。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "百日攻勢中如水銀瀉地般的「半機動」交戰，都仰賴著現場的師級或旅級指揮官代理指揮與控制職能。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "士兵很少會在前線待超過五天。但這五天仍有如人間煉獄。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "此時已成為義大利軍隊堅守象徵的格拉巴山，也在之後義軍於維托里奧維內托的最終攻勢裡扮演重要角色。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "記得要防守你的旗幟！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination"
+            ]
+        },
+        {
+            "name": "義大利與奧匈帝國之間的砲擊對決迴盪著整個山嶺，雙方的堡壘相互交換著紛飛的砲彈。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "波蘭、立陶宛、拉脫維亞、芬蘭、南斯拉夫王國、捷克斯洛伐克、匈牙利以及愛沙尼亞都在戰後脫離歐洲成為獨立國家。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "使用近戰武器擊殺敵人來蒐集其狗牌。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在攻陷法國大碉堡杜奧蒙後，德國以學校假日進行慶祝。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "透過升階來賺取戰爭債券。戰爭債券能用來解鎖新武器、配備、載具圖樣以及更多道具。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "坦克幾乎對所有小型武器火力免疫，但卻可能被野戰砲、迫擊砲、K 彈、反坦克步槍、火焰噴射器以及「Geballte Ladung」（集束榴彈，也就是將數個德軍柄式手榴彈綁在一起）所損毀。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "據資料顯示，在謬斯-阿爾貢攻勢中，地雷對抗坦克的效果十分出色，有 15% 的美軍坦克是被反坦克地雷所炸毀。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍在百日攻勢期間的士氣十分高昂，為交戰雙方都帶來了極高死傷。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "為攻下色當的鐵路樞紐，並且破壞德軍往法國與比利時的補給網路，阿爾貢森林成為協約國途中必須攻下的目標。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Forest"
+            ]
+        },
+        {
+            "name": "義大利加入戰局後，義大利與奧匈帝國的海軍就在亞得里亞海上陷入對峙。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "索姆河對英軍來說就是一大挫敗。但這場戰役對法國、南非、澳大利亞、紐西蘭和加拿大人民也是一個重要時刻。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "在戰時有許多法國莊園失陷於德軍手中，並用來接待將軍或高階軍官，讓他們能過著豪奢的生活。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "輕機槍在射出第一發後便會變得很不準確，要射擊一段時間後才會回復準度，這表示它們非常適合用於提供持續火力。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一次大戰中，各交戰國均廣泛使用各類不同大小的迫擊砲。其大小從小型的可攜式迫擊砲，到射程超過 2000 公尺的巨型攻城迫擊砲應有盡有。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你的隊伍處於劣勢，機械巨獸便會加入你們這方。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest"
+            ]
+        },
+        {
+            "name": "「拉法葉中隊」是美國正式參戰前由美國志願者組成的飛行中隊。他們為法國空軍作戰。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍的戈塔（Gotha） 轟炸機原本是設計來取代脆弱的飛船。能夠攜帶多至 300 公斤的炸彈，並且裝有兩挺機槍，這款雙引擎的飛機能夠以 128 公里的時速衝上 4600 公尺的高空。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "弗里茨·哈伯負責在一次大戰中開發毒氣武器，他的作品也成為了二次大戰所使用的齊克隆 B 消毒劑。在 1919 年，他因為發明出能大量產出氮肥的哈伯-博施法，獲得了諾貝爾化學獎。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「血腥四月」指的是在 1917 年間，英國損失了三分之一的戰鬥機，這個數量是德國空軍的 3 倍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "因為彈丸所造成的體內傷害實在太過殘忍，德軍曾抗議美軍在西線戰場中使用霰彈槍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "完成回合後會獲得對戰獎勵積分。在特定遊戲模式中，就算隊伍落敗也能獲得小額獎勵。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "戰爭結束時，有四個帝國再也不復存在：德意志帝國、奧匈帝國、鄂圖曼帝國，以及俄羅斯帝國。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "許多戰時在義大利山中的堡壘至今依然存在，並且被改建為博物館。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "展開索姆河攻勢的主要目的很簡單，就是要減輕法軍在凡爾登的壓力。這個目的成功了。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "一次世界大戰仍是以馬匹作戰的戰爭，戰馬的死亡數量跟人員死亡數量相差無幾。舉例而言，在戰時有法國有超過 50 萬匹馬死亡。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一次大戰中最為成功的狙擊手便是法蘭斯·皮克漢格頓，是 Shawanaga 第一民族軍的成員。他一共擊殺了 378 名德軍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德國將領馮·萊托-福爾貝克曾率領一小股德軍在德屬東非與協約國進行游擊戰。這股軍隊一直堅守至戰爭結束仍不鬆懈。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "1918 年後期，十三台德軍 AV7 坦克突破了英軍的防線，直接威脅到亞眠。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "你可以從馬鞍袋中丟下彈藥與繃帶，用以協助你的隊友。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "日德蘭海戰是一次大戰中規模最大的海戰。250 艘英軍與德軍的戰艦在北海捉對廝殺。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "原先大部分的陸軍都是穿戴著軟帽參戰，鋼盔在隨後才使用在戰爭中。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一些數據表明在凡爾登每天都有超過 7000 匹馬死亡。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "撰寫訊息時記得找個良好的防禦位置！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Possession"
+            ]
+        },
+        {
+            "name": "凡爾登周圍的護欄無法防衛城堡 – 建造它們的目的是為了防止敵人透過公路和鐵路進入法國內部。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "裏海艦隊中央委員會獨裁政權是 1918 年中期從戰亂與俄國革命中崛起的臨時政權。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍找來了被稱作「破陣穆勒」的砲兵參謀官，負責規劃米迦勒行動一開始所使用的 10,000 門火砲。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "德國先遣部隊成功對法烏克斯要塞進行了協同攻擊，使用手榴彈成功爆破進入了要塞。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "法烏克斯要塞內部的法國守衛部隊繳獲了德軍的火焰噴射器，用它們來對付攻擊方。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "卡多爾納將軍指責他的軍隊來掩飾自己的錯誤，他根本不明白為什麼敵人可以輕易取得突破。在他看來，軍隊犯錯是唯一合乎邏輯的解釋。他並沒有贏得士兵的青睞。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "先飛高，再向下俯衝攻擊敵人",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Alps"
+            ]
+        },
+        {
+            "name": "在哈梅爾戰役與亞眠戰役中，288 台坦克與英軍並肩作戰。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "堅守佔領的旗幟，是攻擊方取得勝利的關鍵！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "在 1918 年的春季攻勢中，德軍已跨過埃納河，佔領了重要的橋樑，並向蘇瓦松挺進。在這裡，現在雜草叢生的廢棄舊戰壕依然講述著 1914 年的戰鬥。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "一次大戰是專業迷彩的誕生之處。各國軍隊不僅偽裝其武器，甚至製造了木製火砲以及假坦克來欺騙敵方的空中偵察。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "利用武器冷卻時間來修好飛機，隨時保持最大生命值狀態",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Alps"
+            ]
+        },
+        {
+            "name": "印度有超過一百萬軍隊在一次大戰中服役。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「照明彈」包含明亮的燃燒化學劑，以及不可燃的降落傘，是用來在夜間照亮戰場用的特殊砲彈，還能以不同的顏色傳遞訊息。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "從信號槍中射往空中的信號彈能在夜間照亮戰場，或者用來傳遞訊息。信號彈同時也被空軍用來點燃裝滿氫氣的偵察熱氣球。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "為了替馬爾梅松之役做好準備，法軍的超重型火砲以絕佳的準確度轟炸著貴婦小徑。10 月 21 日，一位觀測員回報那一門火砲連續五發砲彈都擊中相同的彈坑。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "「帕斯尚爾只有一點令人寬心，也僅此一點，那就是德國佬討厭帕斯尚爾的程度和我們一樣」– 拉爾夫·弗雷德里克·拉蒂·謝爾頓-威廉姆斯。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "1918 年的春季期間，近 4 萬名義大利士兵被派駐至西線戰場支援，義大利軍在那裡的表現十分優異。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "我們在 100 年前就許下了承諾，我們永遠不會忘記這場世界大戰裡面犧牲的每一個生命。但新的調查顯示我們忘記了承諾。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "在索姆河攻勢開始之前，勝利是毫無疑問的，這是因為德國人被困在凡爾登。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "其中一位協約國飛行員後來還在信中寫道：「我得向沃斯脫帽致敬，他真的是我所遇過最勇敢的傢伙，也是我遇過最出色的鬥士。」",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "手動槍機步槍是一次大戰中最常見的武器，但在衝突中，火砲才是最大的殺器。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "相比近距離戰鬥來說，多數偵察兵種的武器能在遠距離造成更多傷害。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法烏克斯要塞的重型火砲摧毀了巨大的水泥外殼，暴露出內部走道。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "蘇瓦松數量龐大的法國坦克部隊使德軍砲火難以應對，從而得以在寬闊的前線取得突破。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "一次大戰期間，人口動員比例最高的國家是保加利亞。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英軍曾成功運輸兩艘艦艇穿越叢林，在坦干依喀湖與德軍決一死戰。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法軍是整個盟軍力量的關鍵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "利用馬匹的高速來攻敵不備，並將敵方士兵踩踏至死。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "刀具是速度最快的近戰武器，有著最廣的擊殺範圍，但每次揮舞時所造成的傷害也最小。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一次大戰產生了許多傷患，而當時沒有任何醫生懂得如何處理破片和子彈、毒氣、火焰噴射器以及高爆炸藥造成的傷患。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "凡爾登是軍事歷史上最罕見的戰役之一，其中防衛者傷亡人數多於攻擊方。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "J.R.R. 托爾金曾參與索姆河戰役。至今仍有人爭論他在無人區以及戰亂中的經驗是否影響了他之後魔戒系列的著作。  ",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "史上第一場坦克大戰就在 1918 年 4 月 24 日在亞眠附近展開。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "在索姆河之戰的前八天，大約有 170 萬顆的火砲射擊在德國前線上，一年之後在梅森擊發了 320 萬顆砲彈，拉開了這場浩劫的序幕。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "衝鋒兵這個詞源自於德文的「Sturmtruppen」，也就是專門突破敵方戰壕的突擊兵種。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "賽勒河之役於 10 月 26 日結束的隔天，德軍副參謀長埃里希·魯登道夫在德皇威廉二世的施壓下辭職。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "徐進彈幕便是向前移動的砲擊，用來掩護在砲火後方進軍的士兵。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "士兵們有時候會在夜襲之前於其步槍上纏上小型的「電池手電筒」，用來在敵方戰壕中輔助尋找戰俘、地圖或其他珍貴物品。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "一次大戰爆發時，大英帝國控制著地球上四分之一的土地。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "身為防守方，你可以使用電報來呼叫砲擊轟炸發現的敵方士兵！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Rush"
+            ]
+        },
+        {
+            "name": "同盟國於 1915 年入侵塞爾維亞後，塞爾維亞軍隊變從阿爾巴尼亞阿爾卑斯山區撤退。他們之後在科孚島重新集結，並於 1916 年重返戰場。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "索姆河之戰是英國軍事史上的一場災難，也是人類的災難。法國人的勝利並不值得慶賀。在最初的 10 天裡，他們完成了大部分的目標，推進了數英里，並俘虜了 12000 名德國士兵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "但攻擊凡爾登的戰鬥在寒冷的 1916 年 2 月打響時，法軍毫無準備。殘留的雪跡很快就成了回憶。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "野戰砲對敵方載具與敵方所在的建築有摧枯拉朽的奇效。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination",
+                "Rush"
+            ]
+        },
+        {
+            "name": "臥倒、從掩體後探頭以及站在掩體後時會自動啟用腳架。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "隨著戰爭的繼續，更大的大砲 （75 mm） 被安裝到飛機上，其配置方式有許多不同，有的配置可以支援地面部隊，有的配置還可以執行特別的任務，如獵殺潛水艇。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "1917 年，義大利軍隊便在這個山峰上擋下了奧匈帝國的夏季攻勢，並在 12 月將奧匈帝國的軍隊驅離山中。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "儘管在凡爾登付出了巨大的生命損失，這對於法國而言仍是一場勝利，許多法國城市都有一條名為凡爾登路的街道。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "奧匈帝國受到了德軍、火砲和創新戰術的協助，讓義大利人在卡波雷托大吃一驚。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "手動槍機步槍是一次大戰中最常見的武器，但火砲才是最大的殺器。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "愛爾蘭軍隊不僅在西線戰場服役，同時也曾在巴爾幹戰場與保加利亞軍戰鬥。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "洛塔爾·馮·阿爾諾德拉·德·拉·佩里耶爾（Lothar von Arnauld de la Perrière）最著名的事蹟便是曾駕駛德國 U-35 潛艇出航 14 趟，並擊沉 189 艘商用船艦、2 艘砲艇，以及運兵船 SS Gallia，他不但贏得了第一級鐵十字勳章，還獲得了象徵德意志最高榮譽的功勳勳章。他是史上最為成功的潛艇王牌。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "許多在義大利山中的堡壘至今依然存在，有些還被改建為博物館。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "蘇瓦松戰役的目的是摧毀德軍試圖進攻巴黎的凸出陣地。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "法軍在戰爭開始時還在使用一百年前拿破崙戰爭時期的 Coehorn 迫擊砲。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "算好前置量，而非直接瞄準敵人",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Alps",
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "在馬匹上衝刺會讓你自動前傾，讓可以射擊的目標變小。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "隨著天氣變化，你也必須改變你的遊戲風格。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "王牌飛行員就是戰時的搖滾巨星。他們每天會收到成千上萬的粉絲信件，並且還會把他們的簽名照送給其仰慕者。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "鄂圖曼帝國加入戰局後不到幾天，英國海軍艦隊便已經就位，和印度的遠征軍一起發動了聯合海陸攻勢。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "一次世界大戰持續了 4 年 3 個月又 2 週。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "手斧能造成巨量傷害，然而其揮舞速度緩慢，擊殺範圍也很小。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在夜間的無人區中，佈線隊會前往戰壕前方，設立或修復帶刺鐵絲網。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "儘管坦克也在第二次加薩戰爭中露過面，沙漠戰仍與歐洲的戰場非常不同。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "法軍和美軍攻擊了蒂埃利堡南部，目標是在德軍防守中插入一個契子，並迫使他們退回到河對岸。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "隨著西線戰場的戰事陷入膠著，騎兵也必須下馬並且跟著同僚進入戰壕之中。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "每週都會發放新的勳章，記得在勳章到期前留意其所剩時間。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "據估計，英國總共有 275000 人傷亡，德國傷亡總人數為 220000 人，這使得這場戰役成為第一次世界大戰中代價最高的消耗戰之一。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "雙方海軍在亞得里亞海域有來有往，互相對對方實施岸邊突襲，直到協約國海軍實施海域封鎖，加劇了奧匈帝國內部隨著戰事延長所經歷的食物與補給短缺危機，才為協約國的戰情帶來極大助益。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "皮卡第鄉間被選為協約國 1918 秋季攻勢的發起之處，部分原因是因為其堅硬的地面適合坦克行駛，這一點和法蘭德斯截然不同。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "隨著電話技術的崛起，英國的音標字母也隨之誕生。為了更準確地傳遞訊息並且避免通訊間的誤會，通訊員採用更容易辨識的單字來取代字母。A 成了「Apples」，而 B 成了「Butter」。  ",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "戰時許多國家都有單車軍團。他們的職責包括偵察、傳令以及救護護送。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "啟用中：載具乘客控制 – 分離瞄準與轉向能賦予砲手更好的瞄準模式效果",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "為了對付坦克，德軍不僅開發出反坦克的火砲零件與步槍，還實驗了多種反坦克地雷、火焰噴射器以及稱為「Geballte Ladung」的集束手榴彈。  ",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英國將領艾倫比下令在蘇伊士運河處建立新的空軍，被稱為「巴勒斯坦旅」的皇家飛行隊第 5 與第 40 大隊於焉誕生。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "賺取到的狗牌可在狗牌選單中裝備。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德意志的主婦將純金的結婚戒指換成鐵製戒指，以協助德意志的戰時經濟。鐵製的戒指上刻印著「我拿真金換鐵血」。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法國的聖沙蒙坦克配備著名的『75 毫米加農砲』– 世界首款採用液壓後座力裝置的野戰砲。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "梅辛山脈上遺留的坑洞現在依然可見，而在比利時鄉間也有類似的巨大坑洞。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "精英兵種可在地圖上找到並拾取。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination",
+                "Rush",
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "凡爾登戰役是一次大戰中最漫長的戰役，從 1916 年 2 月持續到 12 月。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "遇敵信號彈會在你和隊友的地圖上標記出附近的敵軍單位。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "身為攻擊方，你必須佔領並守住所有區域內的旗幟，才能讓該區域失陷。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "隨著法軍繼續將德軍逼退蘇瓦松，埃納河上的橋樑對於防禦變得至關重要。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "義大利軍隊，特別是他們的軍官，完全沒有料到敵人在卡波雷托所使用的戰術。在深謀遠慮的滲透行動之後，就是突襲和毒氣攻擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "「我死在名為帕斯尚爾的地獄裡」– 這一句名言來自西格里夫·薩松著名的詩歌中。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "在卡波雷托戰役之後，德國飛機對撤退的義大利軍隊拋灑傳單，告訴他們：「你們的敵人無法否認你們曾經英勇奮戰。是你們的將軍讓你們蒙羞。他羞辱了你們來拯救他自己」。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "所有子彈都能對飛機造成損傷。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德國的 MP18 是一次大戰中首款廣泛使用的衝鋒槍，儘管先前各國便採用過少量的義製維拉·佩羅薩衝鋒槍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在戰時最常使用的摩托車為英國的 Douglas 2。協約國共使用了超過 7 萬台。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "JRR 托爾金、威爾弗雷德·歐文和希特勒都參與過索姆河之戰。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "當時的反德風潮迫使英國皇室將名稱從「薩克森-科堡-哥達」 改為溫莎。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "對於在帕斯尚爾戰鬥的士兵來說，這場戰役被稱為「泥濘血戰」。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "德國參謀長法金漢將攻擊凡爾登的計劃命名為『Unternehmen Gericht』– 審判行動。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "伊珀爾和帕斯尚爾在第一次世界大戰期間是一個具有戰略意義的位置，這個地方位處德國推進至比利時其他地區的要道上。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "英國同意支援阿拉伯人，是因為阿拉伯人能讓鄂圖曼軍後院失火，引開他們對蘇伊士運河英軍防線的注意力。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "一位參與過卡波雷托之役的義大利軍官在信件上這樣描述：「就連空氣都聞起來都很悲慘。Dreczenca 燃燒了起來，冒出火花和紅色煙霧；火焰反射的亮光照亮了山壁的兩側」。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "奧匈帝國發行了 15 種不同語言的募兵海報。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "刺刀衝鋒期間，你的衝刺速度會變快，並且能承受更多傷害，然而你的轉向靈敏度也會相應降低。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英國同時也以金援與物資協助阿拉伯對抗鄂圖曼的起義活動，這讓阿拉伯人在該區域的影響力越來越大，大馬士革失陷後，起義也隨之完結。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "砲擊彈幕時常過於集中，讓分辨單獨爆炸變得難上加難。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "儘管有很多操作上的問題，英軍一開始仍將法國的 Le Prieur 火箭視為擊落飛船的理想武器。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "1916 年的索姆河戰役總共持續了四個月，並造成了 120 萬的傷亡。同樣在 1916 年發動的勃魯西洛夫攻勢則僅持續了 3 個月，並造成 180 萬人傷亡。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "砲塔中的 FT 坦克指揮官想停止時，會踢駕駛員的頭，或想前進時，會踢駕駛員的後背。重複踢頭意味著要駕駛員後退。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "紹沙輕機槍在網路上被稱為有史以來最差的槍械。但願意深入瞭解的人會發現這並不是事實。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "持續了約九個月的凡爾登戰役，是有史以來歷時最長的戰役。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "1917 年，俄國隨著十月革命以及共產政府的建立，不得不撤出大戰。1918 年 3 月 3 日所簽訂的布列斯特-立陶夫斯克條約正式承認新的蘇俄政府。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "凡爾登戰役的初期階段是一場運動戰，至少在法國決定不惜一切代價進行抵抗前是如此。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "德軍 T-Gewehr 的子彈大小為 13.2 x 92mm、重 51.5 克，這款子彈原本是要用於反坦克與防空機槍上。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "許多近戰武器在戰場上都有其他功用，例如剪除鐵絲網、摧毀路障，甚至是損傷輕型載具。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "加拿大軍隊於 1917 年 10 月抵達了帕斯尚爾，他們的目的是要來接手遭到猛烈攻擊的澳紐聯軍，澳紐聯軍已經在此處戰鬥了將近三個月。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "阿爾貢森林的濃密樹蔭是謬斯 - 阿爾貢攻勢的主要戰場，也是協約國的最後攻勢。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Forest"
+            ]
+        },
+        {
+            "name": "王牌飛行員時常有特殊待遇，有時還被安置在莊園中。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "作為第一次世界大戰中盟軍背後的推動力量，法國願意肩負最沉重的負擔。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "亞眠作為後勤中心與鐵路樞紐，是英軍在戰事中的命脈，堅守此處才是關鍵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "一次世界大戰中的多數傷亡都是由砲擊所造成，而非機槍或毒氣。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "隨時保護好我方的信鴿傳遞員！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Possession"
+            ]
+        },
+        {
+            "name": "帕斯尚爾戰役實際上是一系列同一目標的行動，那就是攻下帕斯尚爾村落以及帕斯尚爾山脊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "在 1917 年的康布雷戰役中，英軍的 370 台坦克便在 300 架戰機的轟鳴聲掩護下緩緩行進。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "他們在事前派出了突襲部隊，向後方報告初始砲擊是否攻破了索姆河德軍的有刺鐵網。但報告總是含糊不清。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "在索姆河戰役中為法國捐軀的官兵都被安葬在朗庫爾的大軍人公墓中，以供後世緬懷 – 這是法國紀念戰爭的重要地點。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "借助聖康坦周遭區域的濃霧，德軍衝鋒軍團能夠有效進攻並佔領所有目標。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "「大柏莎 （Big Bertha）」是德軍一款著名的 42 公分口徑榴彈砲，能輕易擊毀任何堡壘。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "賽勒河之役的目的，是打算通過賽勒河並接近到可以砲擊轟炸歐努瓦鐵路中心的範圍，藉此切斷德軍的重要補給線。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "所有兵種裝備都有某種反坦克武器，但突擊兵種具備最出色的反坦克能力。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你以近戰武器攻擊，且位於擊殺範圍中，你便會自動執行擊殺。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "貴婦小徑的山嶺之下，是佔地將近一平方公里，稱為「龍之巢穴」的巨型山洞網絡，而在一次大戰期間，交戰雙方皆利用這些山洞作為地下掩體。現在在其山壁上還能看見砲火留下的裂痕。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "百科條目中包含關於《Battlefield 1》的資訊。這些資訊將助你佔據上風。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "佔領特定旗幟能為你的隊伍帶來額外載具。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest"
+            ]
+        },
+        {
+            "name": "在 1917 年，信天翁戰鬥機（Albatros）成功大殺四方。這款戰機也被許多王牌飛行員駕駛過，包括恩斯特·烏德特（Ernst Udet）、曼弗雷德·馮·里希特霍芬（Manfred von Richthofen）以及庫爾特·沃爾夫（Kurt Wolff）。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "Sylvain-Eugene Raynal 少校於 1916 年 5 月 24 日接管法烏克斯要塞。他的守衛部隊在碉堡內搭建了臨時防禦工事，英勇守衛了碉堡內部。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "哈萊姆地獄戰士在前線服役了近 200 天，並且是首個獲頒法國英勇十字勳章的美國單位。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Forest"
+            ]
+        },
+        {
+            "name": "即使今天 – 在凡爾登戰役一百年後 – 戰場周圍的土地依然受到不銹鋼彈片的污染，有 20 萬戰士的屍骨一直未找到。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "煙幕彈被發射用來掩蓋緩慢前進的 478 輛坦克和步兵，但當他們的嘈雜聲被德國駐軍聽到後，他們依然遭受了德軍砲火的猛烈攻擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "在一次世界大戰期間，美軍所使用的多數裝備、坦克與飛機都是法國所有。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "德軍的 U-35 是一次大戰時期最成功的潛艇，總共擊沉了 224 艘船隻，累計噸數達到 539,741 噸。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一次大戰期間因阿爾卑斯山雪崩而死的士兵，比戰爭期間因毒氣而死的士兵還要多",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "法軍在戰爭後期建造出整座仿造的巴黎城來愚弄德國轟炸機，裡面有電燈、凱旋門以及歌劇院。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "304 號高地和「死人山（Mort Homme）」等小山丘已成為這裡令人難以置信的大屠殺的永久同義詞。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "用每款武器、載具等方式擊殺 100 人便能獲得勤務之星。每款勤務之星可獲得 100 次。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "到了 1917 年秋季，馬爾梅松之役展開前，法軍與德軍仍在互相爭奪托爾丘，每晚都向對方發起無盡的戰壕突襲。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "火焰噴射器在大戰前期就已經使用在戰場上，士兵聞之色變。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "裝在 Mark V 坦克兩側的主砲經過精心設計，讓坦克能在跨越戰壕時攻擊當中的目標。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你擊殺了敵方騎士，你可以偷取其馬匹，只要待在馬上，你可以使用所有騎兵武器。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「親愛的朋友（Cher Ami）」是一隻信鴿，曾在一次大戰時穿過各方砲火寄送訊息給深入敵陣的美國軍隊。這隻鳥儘管胸口中了槍、缺了一條腿，但仍成功傳遞了訊息，拯救了這支迷失軍團 （Lost Battalion）。「親愛的朋友」之後被授予法國英勇十字勳章。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "團體行動一起攻下目標。支援其他的小隊隊員。我行我素可無法協助你的隊伍贏下回合。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在馬背上使用騎兵軍刀攻擊來立刻擊殺敵方士兵。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "榴彈有多種形狀與形式：有馬鈴薯狀的、有裝在木棍上的，甚至有些能使用步槍發射，但手榴彈還是最為熱門的版本。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "日光節約時間是在一次大戰時發明的，用意是為了節省煤炭。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在凡爾登戰役初期，德軍成功向前挺進幾英里。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "在一次世界大戰中，共有 4,121,090 名協約國士兵成為戰俘，而同盟國則有 3,629,829 名士兵被俘。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "到了 1918 年時，許多莊園都成了斷垣殘壁，就跟過去的封建制度一樣。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "希特勒曾在戰時成為傳令兵，而他優異的表現讓猶太裔軍官雨果·古特曼特地授予他鐵十字勳章。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "每年在法國北部的土地中都能找出超過 150 噸的未爆彈。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "從 1917 年開始，德軍的夜間轟炸機就漆上了不規則的方形迷彩圖樣，而此迷彩設計原本是打算用來創造和背景顏色融合之假象。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "百日攻勢是一次大戰的最後階段，開始於 1918 年 8 月 8 日的亞眠之戰，而在 11 月 11 日的停戰協議畫下句號。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Giant"
+            ]
+        },
+        {
+            "name": "義大利發展出了 MAS 反潛快艇。儘管以木板製成，並且儘適合在平靜的海域航行，但這些反潛快艇不但速度比其他戰艦快，還能攜帶深水炸彈、魚雷以及水雷。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "利用全新的可毀滅地形功能，以彈坑作為掩護。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法國的藍魔鬼、義大利敢死隊以及德國衝鋒兵團都使用激進的「Hutier（胡蒂爾） 」滲透策略，一種在一次大戰中嶄露頭角的侵略性戰鬥方式。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "砲彈恐懼症是用來形容無法承受戰爭經歷的士兵因壓力而產生的精神官能症。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "12 公尺深的「和平之池」是 1917 年 6 月在梅辛山脈上造成的彈坑，當時的爆炸當量達到 45 噸的黃色炸藥。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一位塞爾維亞的砲兵在 1915 用大砲擊落了一架敵軍的飛機，這是史上首次地對空擊殺。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "義大利軍比當時其他多數參戰國家開發出更多款護盾與盔甲。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在準備攻擊凡爾登時，法金漢的士兵用了七週時間修建新鐵路線，為駐守部隊修建了堅固的水泥堡壘，並貯存了超過 1200 發砲彈",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "阿爾卑斯上的冰川到現在還時常化出一戰士兵的遺體。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "一次大戰中最為成功的王牌飛行員便是「紅男爵」馮·里希特霍芬（Manfred von Richthofen）。他擊落了 80 架敵軍飛機。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "透過索敵來協助自己和隊友辨明目標",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Alps",
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "「寧願與堡壘的廢墟一起消失，也絕不投降」– 凡爾登杜奧蒙碉堡內部牆壁上的留筆",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "1914 年英軍進軍佔領了鄂圖曼帝國所控制的法奧半島，古老的法歐堡是鄂圖曼帝國在那裡的主要要塞。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "你以信鴿送出訊息後，被發現的敵人便會受到砲擊轟炸。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Possession"
+            ]
+        },
+        {
+            "name": "在戰時的歐洲，有 14 萬中國勞工軍團加入戰局，主要負責支援前線軍隊的粗重工作。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "格拉巴山佔據著阿夏戈高地的戰略要衝，能俯瞰維內托平原。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "在 1918 年的春季攻勢中，德軍進軍到 1914 年來的最西側。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "菲利普·貝當在一次大戰期間成為凡爾登英勇的防守者，被稱為法國的救星。但在二次大戰時卻被當成出賣法國給納粹的叛國者。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "戰壕是以狹長的鋸齒樣式建造而成，這能避免爆炸拓展至戰壕的另一側。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "毛瑟 C96 手槍是星際大戰中韓蘇洛爆能槍的原型。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "63 輛施耐德 CA1 坦克及聖沙蒙坦克參與了馬爾梅松之役。當中的多數都陷入泥濘或故障，只有 21 輛坦克依照原訂計畫成功到達德軍的第二陣地。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "具有諷刺意味的是，當戰鬥於 1918 年從壕溝轉移至開闊地面時，其慘烈程度遠低於此前的戰壕戰。現在已證明壕溝挽救了許多生命。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "在中東，阿拉伯起義的反抗軍跟鄂圖曼帝國均都仰賴戰馬與駱駝的速度與耐力。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "法國軍隊在索姆河推進了數公里，甚至佔領了許多德國戰壕 – 但他們的傷亡也超過了 200000 人。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "佔領區中有越多隊友，佔領旗幟的速度就越快。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination"
+            ]
+        },
+        {
+            "name": "法軍在加里波利的死傷與澳紐軍團一樣慘烈，約莫有 28000 人傷亡。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "東面戰線有 1600 公里長，從北方的聖彼得堡一路延伸至南方的黑海。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "聖沙蒙坦克的汽油發動機連接一台發電機，這台發電機又連接兩個獨立電動馬達用於驅動履帶。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "西面戰線共有 750 公里長，從比利時海畔延伸到瑞士國界。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "運輸載具能在你的總部與所佔領旗幟附近找到。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "「我們戰敗了！他們把我們扔進了一個熔爐」– 在凡爾登的法國戰士",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "米迦勒行動將成為這波新攻勢的第一場戰役，德軍不但要突破英軍第 5 軍團，還要進攻英軍的第 3 軍團側翼。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "與大眾所認知的不同，東西兩線戰場很多時候都只是雙方劃清界線佔地為王，許多戰鬥其實都發生在森林中。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Forest"
+            ]
+        },
+        {
+            "name": "這場戰爭是之後所有戰役的起源，攻勢一開始德軍就在 5 個小時內向英軍傾瀉了 100 萬顆砲彈。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "使用刺刀會延長衝刺後使用武器射擊所需的時間。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你在刺刀衝鋒期間未擊殺任何人，在冷卻狀態下你的跑動與衝刺速度會降低。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍在菲姆市附近奪取了巨大的法國 370mm 列車砲。它的砲彈尺寸比一個人還要大，重量超過一噸。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "所有參戰國家皆實驗過作戰用的盔甲，從全金屬板甲到鏈甲面罩，甚至是防彈護盾應有盡有。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "鄂圖曼帝國於 1914 年加入同盟國時，大英帝國擔心其位於波灣阿巴丹的油井、輸油管及精煉廠的安全。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "在義大利戰線的伊松佐河谷中共進行了 12 場大戰。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "坦克在帕斯尚爾和第三次伊珀爾戰役發揮的作用很有限。由於雨水和泥濘，人們不得不捨棄 77 型坦克，只有 19 型坦克參與了這場消耗戰。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "1915 年初，鄂圖曼帝國越過西奈沙漠攻擊運河，這在當時被認為是不可能的壯舉。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "貴婦小徑之名源自 18 世紀，當時路易十五的兩位女兒：阿黛萊德和維多莉，曾從此處走過。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "1917 年 4 月 17 日，法英聯軍發起了輔助攻勢，這場戰役稱為香檳丘陵之役，在這場尼維爾攻勢的插曲中，托爾不幸又捲入戰火之中。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "義大利軍甚至組織起由 120 架飛機組成的大型戰鬥機陣型，作為空中的移動屏障。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "在協約國聯軍於 1917 年 11 月最終奪下帕斯尚爾鎮之前，許多士兵都被困甚至死在泥濘中，槍支、坦克和馬匹也都陷入泥濘。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "了解如何使用每種武器：玩家/載具中彈積分活動能讓你知道你的子彈造成多少傷害。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英軍的 Mk.1 自走砲使用與 Mark 1 坦克相同的機械部件，同時也是世界首款自走砲。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "所謂的「齊格飛防線」，是德國在 1916 年修建的防禦系統。有著 3 到 9 公尺深的碉堡、密集的機槍陣地，以及 2 到 3 公里寬的主要戰鬥區域，原本是設計來抵擋任何所有突破手段。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "索姆河之戰第一次將坦克帶入戰爭。在坦克的協助下，英國佔領了德國在德維爾森林邊緣的據點。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "若你身在防守方，並且在區域淪陷時成功撤退，您將會獲得全滿的彈藥與生命值。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "一次大戰中的俄軍時常被描繪為既落後又沒有效率，儘管俄軍的確在 1914 與 1915 年吞了很大的幾場敗仗，但到了 1916 年俄軍差點就在戰場上全殲奧匈帝國的軍隊，並結束整場戰爭。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法國的將軍和士兵學會了適應和制定策略，最終藉此取得勝利。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "對隊友提供急救將能恢復失去的增援數量。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "TeamDeathMatch"
+            ]
+        },
+        {
+            "name": "美軍在謬斯-阿爾貢攻勢以及第二次馬恩河戰役中與法軍一同並肩作戰。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "協約國的目標是避免同盟國建立從柏林通往巴格達的鐵路，這條鐵路當時已經從柏林建到君士坦丁堡了。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "騎乘馬匹時，你能使用無盡的彈藥與手榴彈，然而馬匹補充的時間很慢。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "美軍將一群可說雙語的女性接線生併入美軍的通訊兵團中。這些女子被稱為「哈囉女孩」。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "煙霧、毒氣、各種氣味使人無法入睡，迫使戰士門在完全漆黑和充滿屍體的狹窄走道內殊死戰鬥。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "杜奧蒙是凡爾登最大的碉堡，但也是一個被徹底摧毀的小鎮。杜奧蒙（Douaumont）源自拉丁文，意指神聖山脈。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "載具受到傷害時，自我修復便會中斷。這代表小小的損傷也能立下大功。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "鄂圖曼帝國在 1915 年初試圖拿下蘇伊士運河未果後，英軍便追擊他們深入沙漠，建立起持續到戰爭最後一刻的戰線。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "二次大戰後成為德國總理的康拉德·艾德諾，在一次大戰時發明了豆製香腸，以作為當時食物與肉料短缺的替代品。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "對凡爾登開展的彈幕射擊是當時人類見過的規模最大的射擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "當你使用近戰攻擊打中對手時，你將能在短時間內追蹤該玩家，協助你接近擊殺。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德國飛行員丕律紹曾用他的魯格手槍擊落一架日軍飛機，這也是史上首次有飛行員擊落其他飛機的案例。他同時也是唯一一位曾逃出英國並回到德國的德國戰俘。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "L30 被普遍認為是其中一款「超級飛船」，有著 96 公里（60 英哩）的最高時速、裝有十挺機槍，還能攜帶最多 9.000 磅的炸彈。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法國司令部已經掌握了在索姆河之戰中各個不同的作戰模式 – 他們協調砲兵、空軍和步兵之間的調動。英國人就沒有這麼成功了。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "法國部隊將凡爾登稱為『la fournaise』– 熔爐，而德國戰士則將它稱為『die blutmühle』– 絞肉機",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "轟炸機的速度較其他飛機緩慢，然而若成功飛到機械巨獸處，便能造成毀滅性的傷害",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "你可以重生在你所擁有的旗幟處。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "在戰鬥爆發前夕，義大利軍隊針對敵人陣形進行了一次極為薄弱的的行動部署，而他們敵人的戰術卻是十分有針對性，他們甚至準備好要對最深處的防禦系統進行突破。這場災難的劇本就這麼寫好了。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "多國軍方都曾在步槍及其他武器上實驗過「夜視瞄具」，在瞄具上塗上少量的螢光劑和具輻射性的鐳，用以提升夜晚尋找目標的速度。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "1917 年的「血腥四月」中，英國與法國飛行員的壽命能夠以小時計算。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "攻打法歐堡成為美索不達米亞戰役的開端，一直到 1917 年英軍佔領巴格達後，英國對於石油安全的疑慮才完全消除。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_FaoFortress"
+            ]
+        },
+        {
+            "name": "在多數國家面臨手槍短缺的情況下，人類史上最為原始的殺戮工具：棍棒與刀械，就這樣強勢回歸了。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍在 1915 年的伊珀爾戰役中首次使用毒氣，儘管法軍跟德軍在戰爭前期便在戰場中使用催淚瓦斯。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若射擊太過急促，半自動步槍會變得不準確。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "衝鋒槍最好使用短促的點射。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "若你在啟用後立刻停止衝刺，你只會進行簡短的刺刀衝鋒。持續衝刺來進行更長的刺刀衝鋒。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "當時進攻蘇伊士運河的鄂圖曼軍隊遭到了飛機以及英軍停泊於運河的戰艦無情反擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "連番惡戰終於迫使奧匈帝國軍崩潰，並在 1918 年 10 月撤退。其中每場攻勢中有三分之二的傷亡都是在格拉巴山區造成。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "飛行時，試著讓敵人面向太陽。太陽的強光會阻擋敵人視線，讓敵人很難發現你，也不可能準確地射擊到你。– 波爾克戰術守則",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "喀爾巴阡山脈的雪山區域成了許多裝備不足的士兵埋骨之處，這些士兵不是被凍死，便是被針對散兵或傷兵下手的惡狼所突襲。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英軍的斯托克斯式戰壕迫擊砲是因應德式迫擊砲所製造出的武器。使用簡便且準頭驚人，這款迫擊砲不但是從戰壕中砲擊的不二選擇，極輕的重量也讓其能快速部署於攻勢當中。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "近戰武器依攻擊速度、傷害以及擊殺範圍大小不同，而分為不同類別。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "不得其門而入嗎？在可毀滅環境中，自己開出一個門就好了！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德軍 1918 年春季攻勢的目標便是拿下亞眠的鐵路中樞。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Amiens"
+            ]
+        },
+        {
+            "name": "砲彈的種類不但多樣，還能用於多種不同目的。有破片彈、毒氣彈、燃燒彈、高爆彈、穿甲彈，以及震撼彈等。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "雖然正式名稱是第三次伊珀爾戰役，但歷史對這一段恐怖的回憶只記得一個字：帕斯尚爾。這個字已經成為許多人心中對這場世界大戰的象徵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "德軍在凡爾登戰役開始前，雇用了德國表現主義畫家法蘭茲·馬克為其火砲繪製迷彩。他在 1916 年 3 月 4 日死於凡爾登戰場。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "隨著戰線的遷移與戰爭的爆發，許多莊園很快就成為連番惡戰的戰場。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Chateau"
+            ]
+        },
+        {
+            "name": "英軍將德軍的 A7V 坦克暱稱為「移動堡壘」。它的內部可乘載 20 個操作人員。但因為必須手工製作，所以最後僅建造了 20 台左右。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "比利時的裝甲車軍團曾在東線戰場作戰，他們使用改裝過的寶獅（Peugeots）與 Mors Minervas。十月革命後這支軍隊被困在俄羅斯內，使得他們不得不向東進軍，並透過西伯利亞鐵路返回家園。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "你需要啟用勳章才能開始追蹤完成進度。一次僅能啟用一個勳章。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "神路 – 法語為 Voie Sacrée – 是向凡爾登前線運送士兵和補給的至關重要的通道",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "儘管戰壕對於士兵而言是人間地獄，卻成功保護了 9 成的參戰士兵，讓他們能成功活過這場戰爭。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "多數武器都能讓你自訂其後座力偏差。這對武器的效能並沒有任何影響，只會影響你對它的操控。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "英軍將德軍的 A7V 坦克暱稱為「移動堡壘」。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "大角度轉向時記得減速",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Alps",
+                "MP_Blitz",
+                "MP_London"
+            ]
+        },
+        {
+            "name": "刺刀衝鋒後會有一小段冷卻時間，在這當中你無法再次進行刺刀衝鋒。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "無線電通訊尚未裝配至飛機上以前，飛行員時常必須沿著鐵路飛行，試圖透過車站名稱來辨別自己身在何處。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "就連在 1916 年的紐約，都發生了「黑湯姆」大爆炸，不但碎裂了整個曼哈頓下城區的窗戶，還損毀了自由女神像。當局將本次事件怪罪於德軍間諜身上。此次爆炸約等於 5.5 級地震。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "特定武器與配備除了需要戰爭債券外，還需要兵種階級才能解鎖。透過以不同兵種遊玩來升級兵種階級。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "近戰擊殺範圍以扇形延伸而出，並且位於敵方所瞄準的相反方向。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "托爾丘是 1915 年協約國秋季攻勢的主要目標，無論是在托爾鎮、還是附近的「牙刷」森林與納瓦林農場，都有過激烈的戰鬥。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "只要佔領了格拉巴山，便等同佔領了該區域，也因此這裡在戰時經歷了不少戰火摧殘。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_MountainFort"
+            ]
+        },
+        {
+            "name": "裝備有機槍的特殊夜間戰鬥機、探照燈和火箭都是專門為夜間攻擊偵察熱氣球或飛船所開發。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "空氣阻力會減緩子彈的速度，讓超遠距狙擊變得沒有效率。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "戰爭爆發時，美國多數人民都支持美國加入同盟國，而非協約國。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "德奧聯軍的步兵攻擊得利於濃霧為他們提供的掩護，他們幾乎都到達了義大利戰壕的上方才被發現。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "德國在戰時提供愛爾蘭民族主義者 20,000 把步槍以及上百萬顆彈藥，試圖說服愛爾蘭一同對抗英國。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "Momčilo Gavrić 在八歲時成為了一次大戰中最年輕的士兵。他的家人在 1914 遭到殺害後，他便加入了塞爾維亞的砲兵師。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「我特別記得有一位來自我們軍團的小夥子，這段記憶在我這一生中一直揮之不去。他倒臥在血泊中，被彈片劃破的傷口，從他的肩膀一直延伸至他的腰際」- 參與過帕斯尚爾戰役的老兵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "德國工兵先行一步在西奈沙漠當中掘井，讓鄂圖曼帝國的軍隊可以穿過沙漠強行突襲蘇伊士運河。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "古代凡爾登市周圍環繞著地下堡壘，用於保護這片區域內的高地。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "米迦勒行動初始砲擊之猛烈，就算在倫敦的街頭都能聽見。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "義大利海軍有數量與武器上的優勢，然而阿爾巴尼亞及達爾馬提亞海岸港口的防禦工事也不遑多讓。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ItalianCoast"
+            ]
+        },
+        {
+            "name": "紅男爵是「第 1 戰鬥機聯隊」的隊長，這個戰鬥機中隊因鮮明的戰機塗裝以及時常必須在用帳篷搭成的簡易機場整備而被稱作「飛行馬戲團」。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「世界大戰」這個詞彙在戰爭初期便被創造出來。當時每個人都清楚這些世界強國之間的戰爭會對全球帶來哪些巨大影響。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "阿爾貢森林就像是座迷宮，裡頭滿布德軍的機槍防禦陣地、地堡以及碉堡。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Forest"
+            ]
+        },
+        {
+            "name": "守衛者們躲避在沙袋後頑強抵抗，法國擲彈手和機槍手在慘烈的近距離戰鬥中堅守了將近 5 天。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "跟醫護兵一同組隊來提升存活率。獲得急救能賺取分數。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "在盟軍於 1918 年夏季的反攻中，聖沙蒙和 FT 坦克找到了適宜的開闊地面。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "10 月 23 日至 27 日的馬爾梅松之役，是法軍於 1917 年的最後一波攻勢。這個成功的軍事行動，也為 1918 年各個大型聯合作戰攻勢奠定了基調。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Trench"
+            ]
+        },
+        {
+            "name": "若你或你的小隊在指令區域擊殺敵人，將會獲得指令遵循積分。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "當時是由朱利安·賓爵士中將號令加拿大軍隊，這些加拿大軍隊稱自己為「賓男孩」。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "區域淪陷後，殺掉區域中剩下的敵人會將失去的兵力值退還給攻擊方。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "守住多數旗幟來贏得這場對戰。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination"
+            ]
+        },
+        {
+            "name": "俄國因為革命而在 1917 年退出戰爭後，德國便將數十萬身經百戰的士兵從東線戰場轉移到西線戰場。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Scar"
+            ]
+        },
+        {
+            "name": "在法烏克斯要塞的最初戰鬥中，法軍傷亡約 100 人，德軍損失 2600 名戰士。但當法軍失守碉堡後，他們付出了同樣慘重的反攻代價。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "英國聲稱其參戰原因是因為德國觸犯了比利時的中立性，但一年之後英軍也在塞薩洛尼基駐紮了數萬軍隊，觸犯了希臘的中立性。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "蘇瓦松於 1918 年 8 月 2 日被攻破，德軍被迫撤退到埃納河後方。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "法烏克斯要塞在凡爾登戰役中數次易手。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Underworld"
+            ]
+        },
+        {
+            "name": "艾迪絲·卡維爾是一位英國護士，在她被俘虜且處決以前，她曾在德軍佔領的比利時中協助 200 位協約國軍人逃亡。她因此成為了英國的殉道者，並且成為英國參戰的象徵。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "法國向他們的所有殖民地召集戰士，包括摩洛哥、阿爾及利亞、突尼西亞及約 18 萬塞內加爾步兵。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "若你以騎兵兵種重生在馬背上，你將能獲得騎士的裝甲增益。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "原廠與步兵武器在後座力與偏移回復等未顯示於武器比較的數值上有間接加成。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "奧匈帝國的步兵在卡波雷托戰役中並沒有以一波接著一波的方式進行攻擊，而是以靈活的陣列進行攻擊，這種方式讓德軍可以在他們想要突破的據點上獲得人數上的優勢。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_River"
+            ]
+        },
+        {
+            "name": "在沙漠中，被稱為平徹、阿奇博爾德先生和戰爭寶貝的坦克車有足夠多的空間來回穿梭，用引擎將速度推到極限。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Desert"
+            ]
+        },
+        {
+            "name": "在撰寫訊息時站住不動能讓撰寫速度加快！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Possession"
+            ]
+        },
+        {
+            "name": "「後方沒有砲火準備，只有突然的攻擊彈幕，以大量低空飛行的飛機和令人難以置信的坦克群為支援，敵人步兵聯合發起了攻擊。」– 德國王儲於蘇瓦松。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Fields"
+            ]
+        },
+        {
+            "name": "法國和英國軍隊在索姆河有超過 330 架飛機和將近 3000 門火砲的支援。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "華特迪士尼與海明威都在一次大戰期間當過救護車的駕駛。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "利用毒氣手榴彈在突襲中獲得優勢，或者將其當作區域阻絕武器使用。使用它們來獲得對付防守方的優勢。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Breakthrough",
+                "Rush"
+            ]
+        },
+        {
+            "name": "戰時的各方軍隊都採用突襲部隊以及戰鬥巡邏隊在夜間對敵方戰壕實施突擊，並在造成混亂與傷害之後帶著戰俘與情報揚長而去。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "蘇伊士運河是一條非常重要的補給線，如果鄂圖曼帝國攻下運河，會重挫英國的軍隊與補給線，以至於將整個東地中海控制權拱手相讓給鄂圖曼帝國。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Suez"
+            ]
+        },
+        {
+            "name": "英軍於 1915 年發明了首款曳光彈，當中含有會留下磷光痕跡的可燃材料，因此在夜晚也能看見彈著軌跡。燃燒彈藥在對付飛船時也特別有效。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_ShovelTown"
+            ]
+        },
+        {
+            "name": "由於多數男性都投入戰爭，女性在一次大戰時取代了許多傳統男性的工作。這直接導致了世界上許多國家的女性取得參政權。舉例而言，在 1921 年，英國、德國、俄國、波蘭、奧地利及美國都賦予其女性投票權。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "棍棒擁有中等的攻擊速度、能造成中等傷害，並且還有中等大小的擊殺範圍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "接近凡爾登前線的戰士發現天空變色，以及有關橙色火焰在空中流動的逼真傳言。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "在整個凡爾登戰役期間，總計發射了約 4000 萬發砲彈。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Verdun"
+            ]
+        },
+        {
+            "name": "在加里波利，澳紐軍團曾使用能在戰壕當中瞄準的「潛望鏡步槍」。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "使用定點防空砲來與飛機及強大的飛船戰鬥。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Domination"
+            ]
+        },
+        {
+            "name": "戰爭開始時，大英帝國 （而不是德意志帝國） 擁有最多的潛水艇，當時共有 74 艘服役中以及 34 艘建構中的潛水艇。事實上，在大戰前期，法國與俄國的現役潛水艇還比德意志帝國多上許多。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "K 彈能對所有載具造成傷害。距離夠近時還能對坦克造成傷害。但不建議用來對付步兵。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "「巴黎砲」的砲彈是有史以來第一個能將人造物品射上平流層的大砲。這款能從德國發射砲彈至巴黎的大砲，砲手在瞄準時還必須考慮地球的轉動速度。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "為了安全起見，你將不會重生於有敵人接近的旗幟附近。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "Conquest",
+                "Breakthrough"
+            ]
+        },
+        {
+            "name": "菲姆和韋勒河附近的戰鬥十分獨特，因為發生了巷戰。在一個月內，它們會易手五次。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Graveyard"
+            ]
+        },
+        {
+            "name": "在第一次世界大戰爆發時，加拿大有 8 百萬的人口。其中就有大約 3600 名官兵在維米山脊送命。另有 4000 名官兵魂斷帕斯尚爾。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Hell"
+            ]
+        },
+        {
+            "name": "找出敵人、殺掉敵人，然後重複以上過程。團隊死鬥中殺戮就是一切！",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": [
+                "TeamDeathMatch"
+            ]
+        },
+        {
+            "name": "一次大戰早期的一些手榴彈不過是在木板上裝上炸藥而已。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "史上首封航空郵件是由奧匈帝國軍隊寄送至普熱梅希爾堡壘內的奧軍高層，當時該堡壘正被俄軍團團包圍。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        },
+        {
+            "name": "索姆河之戰爆發前進行了七天的砲擊，發射了無數 1.7m 砲彈，但收效甚微。德國前線十分深入，而且防禦工事十分紮實，保護他們不受砲火的攻擊。",
+            "tipType": {
+                "value": 0,
+                "name": "Level",
+                "originalName": "LEVEL"
+            },
+            "tags": [
+                "MP_Offensive"
+            ]
+        },
+        {
+            "name": "荷蘭皇家古柯鹼工廠在戰時曾向交戰雙方銷售古柯鹼。",
+            "tipType": {
+                "value": 1,
+                "name": "Gamemode",
+                "originalName": "GAMEMODE"
+            },
+            "tags": []
+        }
+    ]
+}

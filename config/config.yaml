@@ -1,17 +1,27 @@
 botinfo:
+  # bot超管号
   Admin:
   - 000
+  # bot主人号
   Master: 000
+  # bot的qq号
   bot:
-  - 2417999374
+  - 000
+  # 未在线bot
   offbot:
   - 000
+  # 风控的bot
   bot_blocked:
     - 000
+  # mah地址
   mah: http://localhost:8080
+  # mah的kkey
   verifyKey: SBXMMX
+  # 测试群
   testgroup: 000
+# vip群
 vipgroup:
   - 000
+# bf1战绩默认查询账户的pid
 bf1:
   default_account: 000

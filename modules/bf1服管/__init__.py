@@ -2925,11 +2925,6 @@ async def get_bfgroup_session(app: Ariadne, group: Group, message: MessageChain,
     """
     bf群组绑定服务器所绑定的服管账号session,该函数会触发bot回复
     失败返回False，成功返回str->session
-    :app: Ariadne实例
-    :group: 群
-    :message: 消息
-    :param server_rank: 请传入-1后的序号
-    :return: session字符串
     """
     # 先检查绑定群组没
     group_path = f'./data/battlefield/binds/groups/{group.id}'

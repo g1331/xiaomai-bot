@@ -41,11 +41,8 @@ from modules.bf1服管.map_team_info import MapData
 from util.internal_utils import MessageChainUtils
 
 saya = Saya.current()
-# 获取属于这个模组的实例
 channel = Channel.current()
-# channel.module
 channel.name("bf1服管")
-# channel.meta
 channel.description("战地1服务器管理插件")
 channel.author("13")
 
@@ -80,9 +77,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
     elif server_name.startswith("#"):
         return
     try:
-        # await app.send_message(group, MessageChain(
-        #     f'搜索ing'
-        # ), quote=message[Source][0])
         result = await api_gateway.search_server_by_name(server_name)
     except Exception as e:
         logger.error(e)
@@ -108,13 +102,11 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
         for item in result:
             temp.append(f'{item["name"]}\n')
             temp.append(f'GameId:{item["gameId"]}\n')
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
             temp.append(
-                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]}) ')
-            # 地图:行动模式-苏伊士
-            temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争",
-                                                                                                               "战\u200b争"))
+                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}'
+                f'[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]}) ')
+            temp.append(f'{item["mapModePretty"]}-'
+                        f'{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"))
             if item["description"] != '':
                 temp.append(f'简介:{item["description"]}\n')
             temp.append("=" * 20 + "\n")
@@ -129,8 +121,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
         for item in result:
             temp.append(f'{item["name"][:30]}\n')
             temp.append(f'GameId:{item["gameId"]}\n')
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
             temp.append(
                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})  ')
             # 地图:行动模式-苏伊士
@@ -138,15 +128,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                                                                                                                "战\u200b争"))
             temp.append("=" * 20 + "\n")
         temp[-1] = temp[-1].replace("\n", '')
-
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
 
         await app.send_message(group, MessageChain(
             temp
@@ -156,7 +137,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
         fwd_nodeList = []
         bot_member = await app.get_member(group, app.account)
         servers = []
-        # temp = []
         for item in result:
             temp = [
                 f'{item["name"]}\n',
@@ -164,12 +144,8 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                 f'GameId:{item["gameId"]}\n',
                 f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
             ]
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            # 地图:行动模式-苏伊士
             if item["description"] != '':
                 temp.append(f'\n简介:{item["description"]}')
-            # temp.append("=" * 20 + "\n")
             fwd_nodeList.append(
                 ForwardNode(
                     target=bot_member,
@@ -178,17 +154,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                 )
             )
             servers.append(temp)
-
-        # temp[-1] = temp[-1].replace("\n", '')
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
-
         message_send = MessageChain(Forward(nodeList=fwd_nodeList))
         try:
             await app.send_message(group, MessageChain(
@@ -219,7 +184,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
         bot_member = await app.get_member(group, app.account)
         fwd_nodeList = []
         servers = []
-        # temp = []
         for item in result:
             temp = [
                 f'{item["name"]}\n',
@@ -227,12 +191,8 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                 f'GameId:{item["gameId"]}\n',
                 f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
             ]
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            # 地图:行动模式-苏伊士
             if item["description"] != '':
                 temp.append(f'\n简介:{item["description"]}')
-            # temp.append("=" * 20 + "\n")
             fwd_nodeList.append(
                 ForwardNode(
                     target=bot_member,
@@ -241,22 +201,8 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                 )
             )
             servers.append(temp)
-
-        # temp[-1] = temp[-1].replace("\n", '')
-        # await app.send_message(group, MessageChain(
-        #             f"共搜到{length}个服务器,已保留前20个结果,请点击图片查看!"
-        #         ), quote=message[Source][0])
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
-
-        message_send = MessageChain(Forward(nodeList=fwd_nodeList))
         try:
+            message_send = MessageChain(Forward(nodeList=fwd_nodeList))
             await app.send_message(group, MessageChain(
                 message_send
             ), quote=message[Source][0])
@@ -279,30 +225,6 @@ async def search_server(app: Ariadne, group: Group, message: MessageChain, serve
                     f"发送消息失败,请增加关键词!"
                 ), quote=message[Source][0])
         return
-        # result_list = cut_list(result, int(len(result)/4) + 1)
-        # for item_temp in result_list:
-        #     fwd_nodeList = []
-        #     for item in item_temp:
-        #         temp = []
-        #         temp.append(f'{item["name"][:30]}\n')
-        #         temp.append(f'GameId:{item["gameId"]}\n')
-        #         temp.append(f'Guid:{item["guid"]}\n')
-        #         # 人数:62/64[1](0)
-        #         temp.append(
-        #             f'人数:{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n')
-        #         # 地图:行动模式-苏伊士
-        #         temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", ""))
-        #         # temp.append(f'简介:{item["description"]}')
-        #         fwd_nodeList.append(
-        #             ForwardNode(
-        #                 target=bot_member,
-        #                 time=datetime.now(),
-        #                 message=MessageChain(temp),
-        #             )
-        #         )
-        #     await app.send_message(group, MessageChain(
-        #         Forward(nodeList=fwd_nodeList)
-        #     ), quote=message[Source][0])
 
 
 # TODO: 详细服务器
@@ -327,9 +249,6 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
         ))
         return False
     try:
-        # await app.send_message(group, MessageChain(
-        #     f'搜索ing'
-        # ), quote=message[Source][0])
         result = await api_gateway.get_server_fulldetails(server_gameid)
         if result == "":
             raise Exception
@@ -338,21 +257,19 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
             f'可能网络接口出错/输入gameid有误，请稍后再试'
         ), quote=message[Source][0])
         return False
-    temp = []
-    temp.append(f'{result["serverInfo"]["name"]}\n')
-    temp.append("=" * 20 + "\n")
-    temp.append(f'Gameid:{result["serverInfo"]["gameId"]}\n')
-    temp.append(f'Guid:{result["serverInfo"]["guid"]}\n')
-    temp.append(f'Serverid:{result["rspInfo"]["server"]["serverId"]}\n')
-    temp.append("=" * 20 + "\n")
-    temp.append(
-        f'人数:{result["serverInfo"]["slots"]["Soldier"]["current"]}/{result["serverInfo"]["slots"]["Soldier"]["max"]}[{result["serverInfo"]["slots"]["Queue"]["current"]}]({result["serverInfo"]["slots"]["Spectator"]["current"]}) ')
-    temp.append(f"收藏:{result['serverInfo']['serverBookmarkCount']}\n")
-    temp.append(
-        f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血",
-                                                                                                        "流\u200b血").replace(
-            "战争", "战\u200b争"))
-    temp.append(f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n')
+    temp = [f'{result["serverInfo"]["name"]}\n', "=" * 20 + "\n",
+            f'Gameid:{result["serverInfo"]["gameId"]}\n',
+            f'Guid:{result["serverInfo"]["guid"]}\n',
+            f'Serverid:{result["rspInfo"]["server"]["serverId"]}\n',
+            "=" * 20 + "\n",
+            f'人数:{result["serverInfo"]["slots"]["Soldier"]["current"]}/'
+            f'{result["serverInfo"]["slots"]["Soldier"]["max"]}'
+            f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]'
+            f'({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
+            f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
+            f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'
+                .replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
+            f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n']
     if result["serverInfo"]["description"] != '':
         temp.append(f'简介:{result["serverInfo"]["description"]}\n')
     temp.append("=" * 20 + "\n")
@@ -389,7 +306,7 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
                                     ]
                                 )
                             ]))
-async def bfgroup_create(app: Ariadne, sender: Member, group: Group, message: MessageChain, group_name: RegexResult):
+async def bfgroup_create(app: Ariadne, group: Group, message: MessageChain, group_name: RegexResult):
     if group_name.result is None:
         await app.send_message(group, MessageChain(
             "请输入bf群组名称"
@@ -425,7 +342,7 @@ async def bfgroup_create(app: Ariadne, sender: Member, group: Group, message: Me
                                     ]
                                 )
                             ]))
-async def bfgroup_del(app: Ariadne, sender: Member, group: Group, message: MessageChain, group_name: RegexResult):
+async def bfgroup_del(app: Ariadne, group: Group, message: MessageChain, group_name: RegexResult):
     if group_name.result is None:
         await app.send_message(group, MessageChain(
             "请输入bf群组名称"
@@ -460,7 +377,7 @@ async def bfgroup_del(app: Ariadne, sender: Member, group: Group, message: Messa
                                     ]
                                 )
                             ]))
-async def bfgroup_rename(app: Ariadne, sender: Member, group: Group, message: MessageChain, group_old_name: RegexResult,
+async def bfgroup_rename(app: Ariadne, group: Group, message: MessageChain, group_old_name: RegexResult,
                          group_new_name: RegexResult):
     group_old_name = group_old_name.result.display
     group_new_name = group_new_name.result.display
@@ -506,16 +423,9 @@ with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
                                     ]
                                 )
                             ]))
-async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, message: MessageChain):
+async def bfgroup_list_info(app: Ariadne, resv_group: Group, message: MessageChain):
     global bfgroup_list_info_send_temp, bot_list, bot_list_temp, joined_group, group_bot_dict
     bf_group_list_send_temp = []
-    # group_path = f"./data/battlefield/binds/bfgroups"
-    # group_list = os.listdir(group_path)
-    # for item in group_list:
-    #     send_temp.append(item + "\n")
-    # await app.send_message(group, MessageChain(
-    #     f"当前共{len(send_temp)}个群组:\n", send_temp
-    # ), quote=message[Source][0])
 
     # 1.获取bot群列表 2.如果群有绑定的群组就加到send
     bfgroup_path = f"./data/battlefield/binds/bfgroups"
@@ -524,13 +434,7 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
     for item in bfgroup_list:
         bfgroups.append(item)
     group_path = f"./data/battlefield/binds/groups"
-    group_list = os.listdir(group_path)
-
     bot_group_list_temp = await app.get_group_list()
-    # bot_group_list = []
-    # for group in bot_group_list_temp:
-    #     bot_group_list.append(group.id)
-
     for group in bot_group_list_temp:
         if group.id != 749094683:
             if os.path.exists(f"{group_path}/{group.id}/bfgroups.yaml"):
@@ -559,7 +463,6 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
         "\n" + "=" * 18 + "\n"
     ]
     bfgroup_list_info_send_temp.append(bot_send_temp)
-
     if resv_group.id == 749094683:
         bot_list_temp.append(app.account)
         if len(bot_list_temp) != len(bot_list):
@@ -576,7 +479,6 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
             bfgroup_list_info_send_temp.append(
                 unjoided_group
             )
-
         if group_bot_dict != {}:
             for key in group_bot_dict:
                 group_bot_dict[key] = list(set(group_bot_dict[key]))
@@ -584,7 +486,6 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
                     bfgroup_list_info_send_temp.append(
                         f"\n群{key}包含重复bot:\n{group_bot_dict[key]}"
                     )
-
     else:
         bot_list_temp2 = []
         member_list = await app.get_member_list(resv_group)
@@ -599,15 +500,6 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
     await app.send_message(resv_group, MessageChain(
         bfgroup_list_info_send_temp
     ), quote=message[Source][0])
-    # await app.send_message(
-    #     resv_group,
-    #     await MessageChainUtils.messagechain_to_img(
-    #         MessageChain(
-    #             bfgroup_list_info_send_temp
-    #         )
-    #     ),
-    #     quote=message[Source][0]
-    # )
     bfgroup_list_info_send_temp = []
     bot_list_temp = []
     joined_group = []
@@ -632,7 +524,7 @@ async def bfgroup_list_info(app: Ariadne, sender: Member, resv_group: Group, mes
                                     ]
                                 )
                             ]))
-async def bfgroup_bind_server(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_bind_server(app: Ariadne, group: Group, message: MessageChain,
                               group_name: RegexResult, server_rank: RegexResult, server_gameid: RegexResult):
     group_name = str(group_name.result)
     server_gameid = str(server_gameid.result)
@@ -670,7 +562,7 @@ async def bfgroup_bind_server(app: Ariadne, sender: Member, group: Group, messag
         data = yaml.load(file1, yaml.Loader)
         # print(data)
         if data is None:
-            data = {"servers": ["" for i in range(30)]}
+            data = {"servers": ["" for _ in range(30)]}
             data["servers"][server_rank - 1] = {"gameid": server_gameid, "guid": result["serverInfo"]["guid"],
                                                 "serverid": result["rspInfo"]["server"]["serverId"],
                                                 "managerAccount": None}
@@ -701,7 +593,7 @@ async def bfgroup_bind_server(app: Ariadne, sender: Member, group: Group, messag
                                     ]
                                 )
                             ]))
-async def bfgroup_del_server(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_del_server(app: Ariadne, group: Group, message: MessageChain,
                              group_name: RegexResult, server_rank: RegexResult):
     group_name = str(group_name.result)
     server_rank = int(str(server_rank.result))
@@ -724,9 +616,8 @@ async def bfgroup_del_server(app: Ariadne, sender: Member, group: Group, message
     # 解绑服务器gameid
     with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)
-        # print(data)
         if data is None:
-            data = {"servers": ["" for i in range(30)]}
+            data = {"servers": ["" for _ in range(30)]}
             data["servers"][server_rank - 1] = ""
         else:
             data["servers"][server_rank - 1] = ""
@@ -752,7 +643,7 @@ async def bfgroup_del_server(app: Ariadne, sender: Member, group: Group, message
                                     ]
                                 )
                             ]))
-async def bfgroup_del_server(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_del_server(app: Ariadne, group: Group, message: MessageChain,
                              group_name: RegexResult):
     group_name = str(group_name.result)
     # 检查是否有bf群组
@@ -813,7 +704,7 @@ async def bfgroup_del_server(app: Ariadne, sender: Member, group: Group, message
                                     ]
                                 )
                             ]))
-async def bfgroup_create_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_create_vban(app: Ariadne, group: Group, message: MessageChain,
                               group_name: RegexResult, vban_rank: RegexResult):
     group_name = str(group_name.result)
     # 检查是否有bf群组
@@ -863,7 +754,7 @@ async def bfgroup_create_vban(app: Ariadne, sender: Member, group: Group, messag
                                     ]
                                 )
                             ]))
-async def bfgroup_get_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_get_vban(app: Ariadne, group: Group, message: MessageChain,
                            group_name: RegexResult):
     group_name = str(group_name.result)
     # 检查是否有bf群组
@@ -915,7 +806,7 @@ async def bfgroup_get_vban(app: Ariadne, sender: Member, group: Group, message: 
                                     ]
                                 )
                             ]))
-async def bfgroup_del_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_del_vban(app: Ariadne, group: Group, message: MessageChain,
                            group_name: RegexResult, vban_rank: RegexResult):
     group_name = str(group_name.result)
     # 检查是否有bf群组
@@ -970,7 +861,7 @@ async def bfgroup_del_vban(app: Ariadne, sender: Member, group: Group, message: 
                                     ]
                                 )
                             ]))
-async def bfgroup_config_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_config_vban(app: Ariadne, group: Group, message: MessageChain,
                               group_name: RegexResult, group_id: RegexResult,
                               token: RegexResult, vban_rank: RegexResult):
     group_name = str(group_name.result)
@@ -1028,7 +919,7 @@ async def bfgroup_config_vban(app: Ariadne, sender: Member, group: Group, messag
                                     ]
                                 )
                             ]))
-async def bfgroup_bind_qqgroup(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_bind_qqgroup(app: Ariadne, group: Group, message: MessageChain,
                                group_name: RegexResult, qqgroup_id: RegexResult):
     group_name = str(group_name.result)
     qqgroup_id = str(qqgroup_id.result)
@@ -1077,7 +968,7 @@ async def bfgroup_bind_qqgroup(app: Ariadne, sender: Member, group: Group, messa
                                     ]
                                 )
                             ]))
-async def check_server(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def check_server(app: Ariadne, group: Group, message: MessageChain):
     # 先检查绑定群组没
     # 检查qq群文件是否存在
     group_path = f'./data/battlefield/binds/groups/{group.id}'
@@ -1197,7 +1088,7 @@ async def check_server(app: Ariadne, sender: Member, group: Group, message: Mess
                                     ]
                                 )
                             ]))
-async def check_server_by_index(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def check_server_by_index(app: Ariadne, group: Group, message: MessageChain,
                                 server_index: RegexResult):
     try:
         server_index = int(str(server_index.result))
@@ -1259,8 +1150,8 @@ async def check_server_by_index(app: Ariadne, sender: Member, group: Group, mess
         return False
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18 + "\n", f'{server_index}:{server_info["serverInfo"]["name"]}\n',
               "=" * 18 + "\n",
-              f'地图:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}\n'
-                  .replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
+              f'地图:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}\n'.replace(
+                  "流血", "流\u200b血").replace("战争", "战\u200b争"),
               f'人数:{server_info["serverInfo"]["slots"]["Soldier"]["current"]}/{server_info["serverInfo"]["slots"]["Soldier"]["max"]}'
               f'[{server_info["serverInfo"]["slots"]["Queue"]["current"]}]({server_info["serverInfo"]["slots"]["Spectator"]["current"]}) ',
               f"收藏:{server_info['serverInfo']['serverBookmarkCount']}\n",
@@ -1324,7 +1215,7 @@ async def get_group_bindList(app: Ariadne, group) -> list:
                                     ]
                                 )
                             ]))
-async def who_are_playing(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult):
+async def who_are_playing(app: Ariadne, group: Group, message: MessageChain, server_rank: RegexResult):
     try:
         server_rank = int(str(server_rank.result))
         if server_rank > 30 or server_rank < 1:
@@ -1569,7 +1460,7 @@ async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union
                                     ]
                                 )
                             ]))
-async def get_server_playerList(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def get_server_playerList(app: Ariadne, group: Group, message: MessageChain,
                                 server_rank: RegexResult):
     # 服务器序号检测
     try:
@@ -1586,9 +1477,9 @@ async def get_server_playerList(app: Ariadne, sender: Member, group: Group, mess
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
     data = await get_playerList_byGameid(server_gameid)
     if type(data) == str:
         if data == '':
@@ -1610,8 +1501,6 @@ async def get_server_playerList(app: Ariadne, sender: Member, group: Group, mess
         message=MessageChain(message_servername),
     )]
     players = data["players"]
-    team0 = []
-    team1 = []
     message0 = f"队伍1信息:\n"
     message1 = f"队伍2信息:\n"
     for item in players:
@@ -1766,9 +1655,9 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     await app.send_message(group, MessageChain(
         f"查询ing"
@@ -1857,10 +1746,6 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     # MP_xxx
     server_mapName = response_data["serverinfo"]["level"]
     # 模式名
-    server_modeName = response_data["serverinfo"]["mode"].replace("BreakthroughLarge0", "行动模式") \
-        .replace("Frontlines", "前线").replace("Domination", "抢攻").replace("Team Deathmatch", "团队死斗") \
-        .replace("War Pigeons", "战争信鸽").replace("Conquest", "征服").replace("AirAssault0", "空中突袭") \
-        .replace("Rush", "突袭").replace("Breakthrough", "闪击行动")
 
     team1_name = MapData.Map_Team_dict[response_data["serverinfo"]["level"]]["Team1"]
     team1_pic = get_team_pic(team1_name)
@@ -1985,7 +1870,8 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         try:
             player_stat_data = scrape_index_tasks_t1[i].result()["result"]
             # 胜率
-            win_p = int(player_stat_data['basicStats']['wins']/(player_stat_data['basicStats']['losses']+player_stat_data['basicStats']['wins']) * 100)
+            win_p = int(player_stat_data['basicStats']['wins'] / (
+                    player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
             WIN_counter1 += win_p
             draw.text((565, 155 + i * 23), f'{win_p}%', anchor="ra", fill=max_level_color if win_p >= 70 else 'white',
                       font=player_font)
@@ -2078,7 +1964,8 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         try:
             player_stat_data = scrape_index_tasks_t2[i].result()["result"]
             # 胜率
-            win_p = int(player_stat_data['basicStats']['wins']/(player_stat_data['basicStats']['losses']+player_stat_data['basicStats']['wins']) * 100)
+            win_p = int(player_stat_data['basicStats']['wins'] / (
+                    player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
             WIN_counter2 += win_p
             draw.text((1425, 155 + i * 23), f'{win_p}%', anchor="ra", fill=max_level_color if win_p >= 70 else 'white',
                       font=player_font)
@@ -2246,13 +2133,14 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     await app.send_message(group, message_send, quote=message[Source][0])
     os.remove(SavePic)
 
-    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if waiter_member.id == sender.id and waiter_group.id == group.id:
             saying = waiter_message.display
             return saying
 
+    # TODO 回复序号踢出
     try:
-        result = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
+        _ = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
             timeout=30)
     except asyncio.exceptions.TimeoutError:
         return
@@ -2269,7 +2157,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
                                     ]
                                 )
                             ]))
-async def managerAccount_list(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def managerAccount_list(app: Ariadne, group: Group, message: MessageChain):
     file_path = f'./data/battlefield/managerAccount'
     if not (os.path.exists(file_path) or os.path.isfile(file_path)):
         os.makedirs(file_path)
@@ -2313,7 +2201,7 @@ async def managerAccount_list(app: Ariadne, sender: Member, group: Group, messag
                                     ]
                                 )
                             ]))
-async def managerAccount_create(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def managerAccount_create(app: Ariadne, group: Group, message: MessageChain,
                                 account_name: RegexResult):
     account_name = str(account_name.result)
     # 根据名字获取到pid
@@ -2360,7 +2248,7 @@ async def managerAccount_create(app: Ariadne, sender: Member, group: Group, mess
                                     ]
                                 )
                             ]))
-async def managerAccount_del(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def managerAccount_del(app: Ariadne, group: Group, message: MessageChain,
                              account_pid: RegexResult):
     account_pid = str(account_pid.result)
     file_path = f'./data/battlefield/managerAccount'
@@ -2464,7 +2352,7 @@ async def managerAccount_login(app: Ariadne, group: Union[Group, Friend], messag
                                     ]
                                 )
                             ]))
-async def managerAccount_info(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def managerAccount_info(app: Ariadne, group: Group, message: MessageChain,
                               account_pid: RegexResult):
     # 先查找有无对应服管帐号，然后写入remid和sid，然后自动写入session
     account_pid = account_pid.result.display.replace("_", "")
@@ -2535,7 +2423,7 @@ async def managerAccount_info(app: Ariadne, sender: Member, group: Group, messag
                                     ]
                                 )
                             ]))
-async def bfgroup_bind_managerAccount(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_bind_managerAccount(app: Ariadne, group: Group, message: MessageChain,
                                       server_rank: RegexResult, account_pid: RegexResult, group_name: RegexResult):
     server_rank = int(str(server_rank.result))
     if server_rank < 1:
@@ -2591,7 +2479,7 @@ async def bfgroup_bind_managerAccount(app: Ariadne, sender: Member, group: Group
                                     ]
                                 )
                             ]))
-async def bfgroup_bind_managerAccount_all(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_bind_managerAccount_all(app: Ariadne, group: Group, message: MessageChain,
                                           account_pid: RegexResult, group_name: RegexResult):
     if "#" in group_name.result.display:
         return
@@ -2650,7 +2538,7 @@ async def bfgroup_bind_managerAccount_all(app: Ariadne, sender: Member, group: G
                                     ]
                                 )
                             ]))
-async def bfgroup_del_managerAccount(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_del_managerAccount(app: Ariadne, group: Group, message: MessageChain,
                                      server_rank: RegexResult, group_name: RegexResult):
     server_rank = int(str(server_rank.result))
     if server_rank < 1:
@@ -2704,7 +2592,7 @@ async def bfgroup_del_managerAccount(app: Ariadne, sender: Member, group: Group,
                                     ]
                                 )
                             ]))
-async def bfgroup_del_managerAccount_all(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def bfgroup_del_managerAccount_all(app: Ariadne, group: Group, message: MessageChain,
                                          group_name: RegexResult):
     group_name = str(group_name.result)
     # 先检查有无群组
@@ -2907,6 +2795,7 @@ async def bfgroup_search_log(app: Ariadne, sender: Member, group: Group, message
                 try:
                     log_member = await app.get_member(group, member_id)
                 except Exception as e:
+                    logger.warning(e)
                     log_member = await app.get_member(group, app.account)
                 fwd_nodeList = [ForwardNode(
                     target=log_member,
@@ -2924,6 +2813,7 @@ async def bfgroup_search_log(app: Ariadne, sender: Member, group: Group, message
                 bot_member = await app.get_member(group,
                                                   item[item.find("\n") + 1:item.find("\n", item.find("\n") + 1)])
             except Exception as e:
+                logger.warning(e)
                 bot_member = await app.get_member(group, app.account)
             if member_id:
                 temp_member = log_member
@@ -2951,7 +2841,7 @@ async def bfgroup_search_log(app: Ariadne, sender: Member, group: Group, message
                                     ]
                                 )
                             ]))
-async def bfgroup_refresh(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def bfgroup_refresh(app: Ariadne, group: Group, message: MessageChain):
     # 先检查绑定群组没
     # 检查qq群文件是否存在
     group_path = f'./data/battlefield/binds/groups/{group.id}'
@@ -3194,7 +3084,6 @@ async def get_bfgroup_ids(app: Ariadne, group: Group, message: MessageChain, ser
         ), quote=message[Source][0])
         return False
     # 获取对应序号上的服务器的服管账号
-    managerAccount = None
     with open(f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml', 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)
         if data is None:
@@ -3203,7 +3092,8 @@ async def get_bfgroup_ids(app: Ariadne, group: Group, message: MessageChain, ser
             ), quote=message[Source][0])
             return False
         else:
-            managerAccount = data["servers"][server_rank]["managerAccount"]
+            ...
+            # managerAccount = data["servers"][server_rank]["managerAccount"]
             # if managerAccount == '' or managerAccount is None:
             #     await app.send_message(group, MessageChain(
             #         f"群组{bfgroups_name}服务器{server_rank+1}未绑定服管账号，请先绑定服管账号!"
@@ -3273,7 +3163,7 @@ async def kick(app: Ariadne, sender: Member, group: Group, message: MessageChain
     else:
         server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 查验玩家存不存在
     try:
@@ -3399,7 +3289,6 @@ async def kick_no_need_rank(
         ), quote=message[Source][0])
         return False
     # 获取对应序号上的服务器的服管账号
-    managerAccount = None
     with open(f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml', 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)
         if data is None:
@@ -3698,8 +3587,8 @@ async def add_ban(app: Ariadne, sender: Member, group: Group, message: MessageCh
         return False
     else:
         server_id = id_dict["serverid"]
-        server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_gameid = id_dict["gameid"]
+        # server_guid = id_dict["guid"]
 
     # 调用ban人的接口
     result = await api_gateway.rsp_addServerBan(server_id, session, player_name)
@@ -3779,8 +3668,8 @@ async def del_ban(app: Ariadne, sender: Member, group: Group, message: MessageCh
         return False
     else:
         server_id = id_dict["serverid"]
-        server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_gameid = id_dict["gameid"]
+        # server_guid = id_dict["guid"]
 
     # 调用解ban的接口
     result = await api_gateway.rsp_removeServerBan(server_id, session, player_pid)
@@ -3818,7 +3707,7 @@ async def del_ban(app: Ariadne, sender: Member, group: Group, message: MessageCh
                                 )
                             ]))
 async def add_banall(app: Ariadne, sender: Member, group: Group, message: MessageChain,
-                     action: RegexResult, player_name: RegexResult, reason: RegexResult):
+                     player_name: RegexResult, reason: RegexResult):
     # TODO 循环 -> task = ban(session,id) ->并发 -> 循环 result -> 输出
     player_name = player_name.result.display
     try:
@@ -3834,7 +3723,7 @@ async def add_banall(app: Ariadne, sender: Member, group: Group, message: Messag
         ), quote=message[Source][0])
         return False
     else:
-        player_pid = player_info['personas']['persona'][0]['personaId']
+        # player_pid = player_info['personas']['persona'][0]['personaId']
         player_name = player_info['personas']['persona'][0]['displayName']
 
     # 原因检测
@@ -3949,7 +3838,7 @@ async def add_banall(app: Ariadne, sender: Member, group: Group, message: Messag
                                 )
                             ]))
 async def del_banall(app: Ariadne, sender: Member, group: Group, message: MessageChain,
-                     action: RegexResult, player_name: RegexResult):
+                     player_name: RegexResult):
     # TODO 循环 -> task = ban(session,id) ->并发 -> 循环 result -> 输出
     player_name = player_name.result.display
     try:
@@ -4084,8 +3973,8 @@ async def check_vban(player_pid) -> dict or str:
                                     ]
                                 )
                             ]))
-async def check_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain,
-                    action: RegexResult, player_name: RegexResult):
+async def check_ban(app: Ariadne, group: Group, message: MessageChain,
+                    player_name: RegexResult):
     # 检查qq群文件是否存在
     group_path = f'./data/battlefield/binds/groups/{group.id}'
     file_path = group_path + "/bfgroups.yaml"
@@ -4178,13 +4067,12 @@ async def check_ban(app: Ariadne, sender: Member, group: Group, message: Message
             return False
         else:
             player_pid = player_info['personas']['persona'][0]['personaId']
-            player_name = player_info['personas']['persona'][0]['displayName']
+            # player_name = player_info['personas']['persona'][0]['displayName']
         # ban位检查
         ban_list_all = []
         for i, result in enumerate(scrape_index_tasks):
             server_fullInfo = result.result()
             if server_fullInfo == '':
-                # send.append(f"{i + 1}服:获取信息失败\n")
                 continue
             else:
                 ban_list = []
@@ -4228,8 +4116,8 @@ async def check_ban(app: Ariadne, sender: Member, group: Group, message: Message
                                     ]
                                 )
                             ]))
-async def add_groupBan(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                       player_name: RegexResult, reason: RegexResult):
+async def add_groupBan(app: Ariadne, sender: Member, group: Group, message: MessageChain, player_name: RegexResult,
+                       reason: RegexResult):
     player_name = player_name.result.display
     try:
         player_info = await getPid_byName(player_name)
@@ -4368,8 +4256,7 @@ async def add_groupBan(app: Ariadne, sender: Member, group: Group, message: Mess
                                     ]
                                 )
                             ]))
-async def del_groupBan(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                       player_name: RegexResult):
+async def del_groupBan(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult):
     player_name = player_name.result.display
     try:
         player_info = await getPid_byName(player_name)
@@ -4454,7 +4341,6 @@ async def del_groupBan(app: Ariadne, sender: Member, group: Group, message: Mess
                              server_serverids]
                     tasks = asyncio.gather(*tasks)
                     await tasks
-                    i2 = 0
                     for item in tasks:
                         if type(item.result) == dict:
                             rsp_log.unban_logger("群组ban解ban", player_name, server_serverids[i],
@@ -4496,7 +4382,6 @@ async def del_groupBan(app: Ariadne, sender: Member, group: Group, message: Mess
 
 # 群组ban自动封禁
 async def auto_ban_byGroupBan(group_item):
-    start_time = time.time()
     logger.info(f"开始处理[{group_item}]群组ban")
     group_ban_file_path = f"./data/battlefield/binds/bfgroups/{group_item}/groupban.json"
     # TODO:
@@ -4807,15 +4692,15 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, message: Message
                                     ]
                                 )
                             ]))
-async def add_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                   player_name: RegexResult, reason: RegexResult, time: RegexResult, vban_rank: RegexResult):
+async def add_vban(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult, reason: RegexResult,
+                   time_re: RegexResult, vban_rank: RegexResult):
     if not reason.matched:
         reason = "违反规则"
     else:
         reason = str(reason.result)
-    if time.matched:
+    if time_re.matched:
         try:
-            time = int(str(time.result))
+            time_re = int(str(time_re.result))
         except:
             return False
     # 寻找vban配置
@@ -4894,12 +4779,13 @@ async def add_vban(app: Ariadne, sender: Member, group: Group, message: MessageC
         ), quote=message[Source][0])
         return False
     try:
-        result = eval(response.text)["message"]
+        _ = eval(response.text)["message"]
         await app.send_message(group, MessageChain(
             f"vban封禁成功!原因:{reason}"
         ), quote=message[Source][0])
         return True
     except KeyError as e:
+        logger.warning(e)
         try:
             result = eval(response.text)["error"]["code"]
             if result == -9960:
@@ -4961,8 +4847,8 @@ async def add_vban(app: Ariadne, sender: Member, group: Group, message: MessageC
                                     ]
                                 )
                             ]))
-async def del_vban(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                   player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult):
+async def del_vban(app: Ariadne, group: Group, message: MessageChain, player_name: RegexResult, reason: RegexResult,
+                   vban_rank: RegexResult):
     if not reason.matched:
         reason = "解封"
     else:
@@ -5043,12 +4929,13 @@ async def del_vban(app: Ariadne, sender: Member, group: Group, message: MessageC
         ), quote=message[Source][0])
         return False
     try:
-        result = eval(response.text)["message"]
+        _ = eval(response.text)["message"]
         await app.send_message(group, MessageChain(
             f"vban解封成功!解封原因:{reason}"
         ), quote=message[Source][0])
         return True
     except KeyError as e:
+        logger.warning(e)
         try:
             result = eval(response.content.decode())["error"]["code"]
             if result == -9960:
@@ -5099,8 +4986,7 @@ async def del_vban(app: Ariadne, sender: Member, group: Group, message: MessageC
                                     ]
                                 )
                             ]))
-async def get_vban_list(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                        vban_rank: RegexResult):
+async def get_vban_list(app: Ariadne, group: Group, message: MessageChain, vban_rank: RegexResult):
     # 寻找vban配置
     try:
         vban_rank = int(str(vban_rank.result))
@@ -5200,6 +5086,7 @@ async def get_vban_list(app: Ariadne, sender: Member, group: Group, message: Mes
         try:
             temp.append(f"原因:{item['reason'].encode().decode()}\n")
         except Exception as e:
+            logger.warning(e)
             pass
         temp.append(f"封禁来源:{item['admin']}\n")
         temp.append(f"封禁时间:{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(item['unixTimeStamp'])))}")
@@ -5289,7 +5176,7 @@ async def move_player(app: Ariadne, sender: Member, group: Group, message: Messa
     else:
         server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 查验玩家存不存在
     try:
@@ -5438,7 +5325,7 @@ async def change_map(app: Ariadne, sender: Member, group: Group, message: Messag
                 f"匹配到多个选项,30秒内发送'#'前的序号进行换图,发送其他消息可退出,匹配结果如下:\n", map_index_list
             ), quote=message[Source][0])
 
-            async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group,
+            async def waiter(waiter_member: Member, waiter_group: Group,
                              waiter_message: MessageChain):
                 # 之所以把这个 waiter 放在 new_friend 里面，是因为我们需要用到 app
                 # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
@@ -5471,8 +5358,8 @@ async def change_map(app: Ariadne, sender: Member, group: Group, message: Messag
                     return False
                 elif type(result) == dict:
                     await app.send_message(group, MessageChain(
-                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}"
-                            .replace("\n", "").replace('流血', '流\u200b血')
+                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}".replace(
+                            "\n", "").replace('流血', '流\u200b血')
                     ), quote=message[Source][0])
                     rsp_log.map_logger(sender.id, group.id,
                                        map_list[int(map_index)].replace("-", " "), server_id)
@@ -5626,11 +5513,7 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
             ), quote=message[Source][0]
         )
 
-    # await app.send_message(group, MessageChain(
-    #     "获取到图池:\n", map_list, "发送消息的人45秒内发送'#'前面的序号可更换地图,发送其他消息可退出"
-    # ), quote=message[Source][0])
-
-    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         # 之所以把这个 waiter 放在 new_friend 里面，是因为我们需要用到 app
         # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
         if waiter_member.id == sender.id and waiter_group.id == group.id:
@@ -5668,8 +5551,9 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
                     .replace("\n", "").replace('流血', '流\u200b血')
             ), quote=message[Source][0])
             rsp_log.map_logger(sender.id, group.id,
-                               map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]
-                               .replace('-', ' ').replace('\n', ''), server_id)
+                               map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:].replace('-',
+                                                                                                         ' ').replace(
+                                   '\n', ''), server_id)
             return True
         else:
             await app.send_message(group, MessageChain(
@@ -5793,8 +5677,8 @@ async def add_vip(app: Ariadne, sender: Member, group: Group, message: MessageCh
             json.dump(data1, file2, indent=4)
 
     # 如果为行动模式且人数为0，则添加失败
-    if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式" and server_fullInfo["serverInfo"]["slots"]["Soldier"][
-        "current"] == 0:
+    if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式" and \
+            server_fullInfo["serverInfo"]["slots"]["Soldier"]["current"] == 0:
         await app.send_message(group, MessageChain(
             "当前服务器为行动模式且人数为0,操作失败!"
         ), quote=message[Source][0])
@@ -6018,7 +5902,7 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, message: MessageCh
     else:
         server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 获取服务器信息-fullInfo
     try:
@@ -6075,8 +5959,7 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, message: MessageCh
                                     ]
                                 )
                             ]))
-async def del_vip_timedOut(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                           server_rank: RegexResult):
+async def del_vip_timedOut(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult):
     # 服务器序号检测
     try:
         server_rank = int(str(server_rank.result)) - 1
@@ -6222,7 +6105,7 @@ async def del_vip_timedOut(app: Ariadne, sender: Member, group: Group, message: 
 
 # 自动清理征服vip
 @channel.use(SchedulerSchema(timers.every_custom_hours(1)))  # 每小时执行一次
-async def auto_del_vip_timedOut(app: Ariadne):
+async def auto_del_vip_timedOut():
     groups_path = f"./data/battlefield/binds/bfgroups"
     group_list = os.listdir(groups_path)
     for group_item in group_list:
@@ -6361,8 +6244,7 @@ async def auto_del_vip_timedOut(app: Ariadne):
                                     ]
                                 )
                             ]))
-async def get_vipList(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                      server_rank: RegexResult):
+async def get_vipList(app: Ariadne, group: Group, message: MessageChain, server_rank: RegexResult):
     # 服务器序号检测
     try:
         server_rank = int(str(server_rank.result)) - 1
@@ -6378,7 +6260,7 @@ async def get_vipList(app: Ariadne, sender: Member, group: Group, message: Messa
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
         server_guid = id_dict["guid"]
 
@@ -6516,8 +6398,7 @@ async def get_vipList(app: Ariadne, sender: Member, group: Group, message: Messa
                                     ]
                                 )
                             ]))
-async def get_banList(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                      server_rank: RegexResult):
+async def get_banList(app: Ariadne, group: Group, message: MessageChain, server_rank: RegexResult):
     # 服务器序号检测
     try:
         server_rank = int(str(server_rank.result)) - 1
@@ -6533,9 +6414,9 @@ async def get_banList(app: Ariadne, sender: Member, group: Group, message: Messa
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 获取服务器信息-fullInfo
     try:
@@ -6605,8 +6486,7 @@ async def get_banList(app: Ariadne, sender: Member, group: Group, message: Messa
                                     ]
                                 )
                             ]))
-async def get_adminList(app: Ariadne, sender: Member, group: Group, message: MessageChain, action: RegexResult,
-                        server_rank: RegexResult):
+async def get_adminList(app: Ariadne, group: Group, message: MessageChain, server_rank: RegexResult):
     # 服务器序号检测
     try:
         server_rank = int(str(server_rank.result)) - 1
@@ -6622,9 +6502,9 @@ async def get_adminList(app: Ariadne, sender: Member, group: Group, message: Mes
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # 获取服务器信息-fullInfo
     try:
@@ -6712,7 +6592,7 @@ def deal_duration(duration: int) -> str:
                                     ]
                                 )
                             ]))
-async def get_best_player(app: Ariadne, sender: Member, group: Group, message: MessageChain,
+async def get_best_player(app: Ariadne, group: Group, message: MessageChain,
                           server_rank: RegexResult, sort: RegexResult):
     sort = sort.result.display
     sort_dict = {
@@ -6743,9 +6623,9 @@ async def get_best_player(app: Ariadne, sender: Member, group: Group, message: M
     if type(id_dict) != dict:
         return False
     else:
-        server_id = id_dict["serverid"]
+        # server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
-        server_guid = id_dict["guid"]
+        # server_guid = id_dict["guid"]
 
     # gtapi查询
     api_url = f"https://api.gametools.network/manager/leaderboard/?sort={sort_dict[sort]}&amount=2&gameid={server_gameid}"
@@ -6825,7 +6705,7 @@ async def get_days_diff(time_temp: str):
                             inline_dispatchers=[
                                 Twilight.from_command("-help bf1服管")
                             ]))
-async def bf1_help(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def bf1_help(app: Ariadne, group: Group, message: MessageChain):
     # await app.send_message(group, MessageChain(
     #     f"'n'为服务器序号,注意指令空格\n",
     #     f"'#'现在已经改为选填\n",
@@ -6881,7 +6761,7 @@ async def bf1_help(app: Ariadne, sender: Member, group: Group, message: MessageC
                             inline_dispatchers=[
                                 Twilight.from_command("-help bf群组")
                             ]))
-async def bfgroup_help(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def bfgroup_help(app: Ariadne, group: Group, message: MessageChain):
     await app.send_message(group, MessageChain(
         f"bf群组操作:\n"
         f"-bf群组 新建/删除 组名\n"

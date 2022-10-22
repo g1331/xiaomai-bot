@@ -1,6 +1,5 @@
 import asyncio
 import os
-
 import httpx
 import yaml
 from creart import create
@@ -27,8 +26,8 @@ false = False
 null = ''
 
 log_related: dict = {
-    "error_retention": 14,
     # 保留时长
+    "error_retention": 14,
     "common_retention": 7
 }
 
@@ -61,9 +60,7 @@ def set_log(log_str: str):
 
 
 logger.add(set_log)
-
 logger.info("bot开始加载咯")
-
 
 # 读取账号信息
 with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:

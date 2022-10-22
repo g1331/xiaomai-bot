@@ -1,0 +1,13 @@
+{
+  "name": "bf1ServerManaer",
+  "version": "0.1",
+  "display_name": "战地一服务器管理",
+  "authors": [
+    "13"
+  ],
+  "description": "用来查询战地一个人战绩、服务器信息的插件",
+  "usage": "'n'为服务器序号,注意指令空格\n\n查询服务器状态:\n-服务器\n\n查询在线群友:\n-谁在玩#n\n\n查询管理名单:\n-adminlist#n\nadnminlist=al=管理列表\n\n查询群组日志:\n-bf群组日志(qq)\nqq号可选\n\n刷新session:\n-refresh\n\n踢出操作:\n-k#n 玩家名字 原因(可省)(序号可选)\nk=kick=踢\n\n换边操作:\n-换边#n 玩家名字\n换边=挪=move\n\nVIP操作:\n-v#n 玩家名字 天数    (天数可选,不填为永久,可为负数)\n-uv#n 玩家名字\n-清v#n\n-viplist#n\nv=上v=vip=加v\nuv=unvip=下v=删v=减v\n清v=清vip=清vip\nviplist=vl=vip列表\n\n封禁操作:\n-b#n 玩家名字 原因(可省)\n-ub#n 玩家名字\n-清ban#n (0~200,不填默认200)\n-banlist#n\nb=ban=封禁\nub=unban=解封\nbanlist=bl=ban列表\n清ban=清理ban位\n\n换图操作:\n-换图#n <地图序号/地图名>\n-图池#n\n换图=切图=map\n地图池=图池=maplist\n\nVBAN相关:\n-vban#n 玩家名字 原因(可省)\n-unvban#n 玩家名字 原因(可省)\n-vbanlist#n\nvban=vb=加vban\nunvban=uvb=减vban\nvbanlist=vban列表",
+  "icon": "",
+  "prefix": [],
+  "triggers": []
+}

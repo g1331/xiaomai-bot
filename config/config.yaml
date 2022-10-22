@@ -9,8 +9,8 @@ botinfo:
   bot_blocked:
     - 000
   mah: http://localhost:8080
-  verifyKey: SBXMMX
-  testgroup: 749094683
+  verifyKey: 你的配置
+  testgroup: 000
 vipgroup:
   - 000
 bf1:

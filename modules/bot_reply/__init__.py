@@ -3,9 +3,6 @@ import json
 import os
 import random
 import string
-import time
-
-import requests
 import zhconv
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
@@ -13,7 +10,7 @@ from graia.ariadne.event.mirai import MemberHonorChangeEvent, NudgeEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source, Image
 from graia.ariadne.message.parser.twilight import Twilight, SpacePolicy, RegexResult, \
-    ElementMatch, UnionMatch, FullMatch
+    ElementMatch, FullMatch
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel, Saya
@@ -47,7 +44,7 @@ channel.author("13")
                                     ],
                                 )
                             ]))
-async def at_reply(app: Ariadne, sender: Member, group: Group, message: MessageChain, at: RegexResult):
+async def at_reply(app: Ariadne, sender: Member, group: Group, at: RegexResult):
     try:
         if at.result.target == app.account:
             gl = random.randint(0, 99)
@@ -82,7 +79,6 @@ async def at_reply(app: Ariadne, sender: Member, group: Group, message: MessageC
 # TODO 被戳回复小标语
 @channel.use(ListenerSchema(listening_events=[NudgeEvent],
                             decorators=[
-                                # Switch.require("bf1战绩")
                             ]))
 async def getup(app: Ariadne, event: NudgeEvent):
     if event.group_id is not None:
@@ -121,7 +117,7 @@ async def getup(app: Ariadne, event: NudgeEvent):
                                     ],
                                 )
                             ]))
-async def fengkong_bqb(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def fengkong_bqb(app: Ariadne, group: Group):
     try:
         bqb_path = './data/bqb'
         bqb_pic_list = os.listdir(bqb_path)
@@ -161,9 +157,6 @@ def random_string_generator(str_size, allowed_chars):
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[
                                 Perm.require(128),
-                                # Distribute.distribute()
-                                # Switch.require("test"),
-                                # DuoQ.require()
                             ],
                             inline_dispatchers=[
                                 Twilight(
@@ -172,7 +165,7 @@ def random_string_generator(str_size, allowed_chars):
                                     ],
                                 )
                             ]))
-async def check_bot(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def check_bot(app: Ariadne, group: Group):
     chars = string.ascii_letters + string.punctuation
     a = random_string_generator(10, chars)
     await app.send_message(group, MessageChain(

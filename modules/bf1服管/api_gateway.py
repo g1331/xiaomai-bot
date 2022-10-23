@@ -1,10 +1,21 @@
-import os
 import json
 import uuid
 from typing import Union
 
 import httpx
+import yaml
 from loguru import logger
+import json
+import uuid
+from typing import Union
+
+import httpx
+import yaml
+from loguru import logger
+
+file = open(f"config/config.yaml", "r", encoding="utf-8")
+data = yaml.load(file, Loader=yaml.Loader)
+default_account = data["bf1"]["default_account"]
 
 bf_aip_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'
 bf_aip_header = {
@@ -81,8 +92,7 @@ async def get_main_session():
     获取主session
     :return: session
     """
-    file_path = os.getcwd().replace("\\modules\\bf1服管",
-                                    "") + f'\\data\\battlefield\\managerAccount\\1003517866915\\session.json'
+    file_path = f"data/battlefield/managerAccount/{default_account}/session.json"
     with open(file_path, 'r', encoding="utf-8") as file_temp2:
         session = json.load(file_temp2)["session"]
         return session

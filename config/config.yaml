@@ -15,7 +15,7 @@ botinfo:
     - 000
   # mah地址
   mah: http://localhost:8080
-  # mah的kkey
+  # mah的key
   verifyKey: SBXMMX
   # 测试群
   testgroup: 000

@@ -164,7 +164,6 @@ async def search_server_by_name(server_name: str) -> list:
     except:
         return "timed out"
     response = response.text
-    # print(response)
     return eval(response)["result"]["gameservers"]
 
 
@@ -175,7 +174,6 @@ async def get_server_details(server_gameid: str) -> dict or str:
     :param server_gameid: 服务器gameid
     :return: 如果gameid正确，返回字典，错误则返回''
     """
-    # global bf_aip_header, bf_aip_url
     session = await get_main_session()
     bf_aip_header["X-Gatewaysession"] = session
     body = {
@@ -193,7 +191,6 @@ async def get_server_details(server_gameid: str) -> dict or str:
         response = response.text
     except:
         return ""
-    # print(response)
     try:
         return eval(response)["result"]
     except:
@@ -207,7 +204,6 @@ async def get_server_fulldetails(server_gameid: str) -> dict or str:
     :param server_gameid: 服务器gameid
     :return: 字典,如果gameid错误返回''
     """
-    # global bf_aip_header, bf_aip_url
     session = await get_main_session()
     bf_aip_header["X-Gatewaysession"] = session
     body = {
@@ -239,7 +235,6 @@ async def rsp_getServerDetails(server_id: int, session: str) -> dict or str:
     :param server_id: 服务器serverid
     :return: 正常返回字dict，错误返回str
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -253,7 +248,6 @@ async def rsp_getServerDetails(server_id: int, session: str) -> dict or str:
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=3)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -272,7 +266,6 @@ async def rsp_addServerAdmin(server_id: int, session: str, player_name: str) -> 
     :param player_name: 玩家名字
     :return: 成功返回dict,失败返回信息str
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -288,7 +281,6 @@ async def rsp_addServerAdmin(server_id: int, session: str, player_name: str) -> 
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=3)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -315,7 +307,6 @@ async def rsp_removeServerAdmin(server_id: int, session: str, player_pid: int) -
     :param player_pid: 玩家pid
     :return:
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -331,7 +322,6 @@ async def rsp_removeServerAdmin(server_id: int, session: str, player_pid: int) -
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=10)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -359,7 +349,6 @@ async def rsp_kickPlayer(server_gameid: str, session: str, player_pid: int, reas
     :param player_pid: 玩家pid
     :return: 踢出成功返回dict，失败返回信息
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -376,7 +365,6 @@ async def rsp_kickPlayer(server_gameid: str, session: str, player_pid: int, reas
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=10)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -405,7 +393,6 @@ async def rsp_addServerBan(server_id: int, session: str, player_name: str = None
     :param player_name: 玩家名字
     :return:
     """
-    # global bf_aip_header, bf_aip_url
     if not check_uuid4(session):
         return session
     bf_aip_header["X-Gatewaysession"] = session
@@ -417,7 +404,6 @@ async def rsp_addServerBan(server_id: int, session: str, player_name: str = None
                 "game": "tunguska",
                 "serverId": server_id,
                 "personaName": player_name,
-                # "personaName": player_name
             },
             "id": await get_a_uuid()
         }
@@ -439,7 +425,6 @@ async def rsp_addServerBan(server_id: int, session: str, player_name: str = None
     except:
         return "网络出错!"
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -466,7 +451,6 @@ async def rsp_removeServerBan(server_id: int, session: str, player_pid: str) -> 
     :param session: session
     :return: 成功返回dict,失败返回str
     """
-    # global bf_aip_header, bf_aip_url
     if not check_uuid4(session):
         return session
     bf_aip_header["X-Gatewaysession"] = session
@@ -486,7 +470,6 @@ async def rsp_removeServerBan(server_id: int, session: str, player_pid: str) -> 
     except:
         return "网络错误!"
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -513,7 +496,6 @@ async def rsp_addServerVip(server_id: int, session: str, player_name: str) -> di
     :param player_name: 玩家名字
     :return: 成功返回dict,失败返回str
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -528,7 +510,6 @@ async def rsp_addServerVip(server_id: int, session: str, player_name: str) -> di
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=10)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -555,7 +536,6 @@ async def rsp_removeServerVip(server_id: int, session: str, player_pid: str) -> 
     :param player_pid: 玩家pid
     :return: 成功返回dict,失败返回str
     """
-    # global bf_aip_header, bf_aip_url
     bf_aip_header["X-Gatewaysession"] = session
     body = {
         "jsonrpc": "2.0",
@@ -570,7 +550,6 @@ async def rsp_removeServerVip(server_id: int, session: str, player_pid: str) -> 
     # async with httpx.AsyncClient() as client:
     response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=10)
     response = response.text
-    # print(response)
     try:
         return eval(response)["result"]
     except KeyError:
@@ -713,127 +692,3 @@ async def rsp_changeMap(server_guid: str, session: str, index: Union[int, str]):
             return f"未知错误:{code},可能服务器未开启!\n错误信息:{error_message}"
     except:
         return "未知错误"
-
-
-# start_time = time.time()
-# asyncio.run(rsp_getServerDetails("11190904", "6a6cc222-f812-4b28-95e7-810ed9f516ea"))
-# print(asyncio.run(rsp_addServerAdmin("11190904", "6a6cc222-f812-4b28-95e7-810ed9f516ea", "shlsan13")))
-# print(asyncio.run(rsp_removeServerAdmin("11190904", "6a6cc222-f812-4b28-95e7-810ed9f516ea", "shlsan13")))
-# print(asyncio.run(rsp_kickPlayer("7248715130157", "6a6cc222-f812-4b28-95e7-810ed9f516ea", 1004007489701, "测试")))
-# print(asyncio.run(rsp_addServerBan(11190904, "6a6cc222-f812-4b28-95e7-810ed9f516ea", "xiao7xiao")))
-# print(asyncio.run(rsp_removeServerBan(11190904, "6a6cc222-f812-4b28-95e7-810ed9f516ea", "1004007489701")))
-# print(asyncio.run(rsp_addServerVip(11190904, "6a6cc222-f812-4b28-95e7-810ed9f516ea", "xiao7xiao")))
-# print(asyncio.run(rsp_removeServerVip(11190904, "6a6cc222-f812-4b28-95e7-810ed9f516ea", "1004007489701")))
-# print(asyncio.run(rsp_move_player("7436817130422", "6a6cc222-f812-4b28-95e7-810ed9f516ea", 1004198901469))
-# end_time = time.time()
-# print(f"耗时{end_time - start_time}")
-
-
-async def fun_test():
-    """
-    遍历搜索获得"所有"服务器/私服
-    :return:
-    """
-    temp = []
-    tasks = []
-    # temp2 = ["a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          "a", "b", "c", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v",
-    #          "w", "x", "y", "z",
-    #          ]
-    # for item1 in temp2:
-    #     tasks.append(asyncio.ensure_future(search_server_by_name("")))
-    for i in range(200):
-        tasks.append(asyncio.ensure_future(search_server_by_name("")))
-    logger.info(f"开始获取服务器~")
-    time1 = time.time()
-    await asyncio.gather(*tasks)
-    time2 = time.time()
-    logger.info("获取耗时:%.2f秒" % (time2 - time1))
-    guid_temp = []
-    region_counter = []
-    for result_item in tasks:
-        item = result_item.result()
-        if item:
-            for item2 in item:
-                # if item2 not in temp and item2["serverType"] == "RANKED":
-                type_all = ["OFFICIAL", "RANKED", "PRIVATE", "UNRANKED"]
-                type_temp = ["RANKED", "PRIVATE", "UNRANKED"]
-                # if item2["serverType"] == "OFFICIAL":
-                #     logger.info(f"识别到官服:{item2['name']}")
-                # if item2["serverType"] == "RANKED":
-                #     logger.info(f"识别到排名服务器:{item2['name']}")
-                # if item2["serverType"] == "PRIVATE":
-                #     logger.warning(f"识别到私人服务器:{item2['name']}")
-                if type(item2) == dict:
-                    if item2["serverType"] not in type_all:
-                        logger.warning(f"未识别到的服务器类型:{item2['serverType']}")
-                    if item2 not in temp and item2["serverType"] in type_temp:
-                        region_counter.append(item2["region"])
-                        # if item2["region"] == "Asia":
-                        #     logger.info(f"获取到亚服:{item2['name']}")
-                        if item2["guid"] not in guid_temp:
-                            guid_temp.append(item2["guid"])
-                            temp.append(item2)
-    counter = 0
-    update_counter = 0
-    for item in temp:
-        server_path = f'./servers/{item["guid"]}'
-        if os.path.exists(server_path):
-            counter += 1
-        if not os.path.exists(server_path):
-            logger.info(f"增加新服:{item['name']}")
-            os.makedirs(server_path)
-            with open(server_path + '/searched.json', 'w', encoding="utf-8") as file:
-                json.dump(item, file, indent=4, ensure_ascii=False)
-        else:
-            update_counter += 1
-            with open(server_path + '/searched.json', 'w', encoding="utf-8") as file:
-                json.dump(item, file, indent=4, ensure_ascii=False)
-    # print(len(guid_temp))
-    # print(len(temp))
-    logger.info(f"获取guid共:{len(guid_temp)}个")
-    logger.info(f"获取服务器共:{len(temp)}个")
-    logger.info(f"更新服务器共:{update_counter}个")
-    logger.info(f"已创建服务器共:{counter}个")
-    logger.info(f"Asia:{region_counter.count('Asia')}个")
-
-# asyncio.run(fun_test())
-
-# start_time = time.time()
-# print(asyncio.run(get_server_fulldetails("7522660180804")))
-# print(asyncio.run(get_server_fulldetails('')))
-# asyncio.run(get_server_fulldetails('7422436410699'))
-# print(asyncio.run(rsp_addServerVip('11190904', "6a6cc222-f812-4b28-95e7-810ed9f516ea", "xiao7xiao")))
-# print(asyncio.run(rsp_removeServerVip('11190904', "6a6cc222-f812-4b28-95e7-810ed9f516ea", "1004007489701")))
-# asyncio.run(fun_test())
-# temp = 0
-# i = 1
-# while i <= 20:
-#     start_time = time.time()
-#     asyncio.run(get_server_details('7248715130123'))
-#     asyncio.run(get_server_fulldetails('7248715130123'))
-#     end_time = time.time()
-#     temp += (end_time-start_time)
-#     print(f"耗时:{end_time-start_time}s")
-#     i += 1
-# print(f"平均耗时:{temp/(i-1)}")
-# print(i)
-# end_time = time.time()
-# print(f"耗时{end_time-start_time}")

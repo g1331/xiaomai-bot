@@ -5,13 +5,6 @@ from typing import Union
 import httpx
 import yaml
 from loguru import logger
-import json
-import uuid
-from typing import Union
-
-import httpx
-import yaml
-from loguru import logger
 
 file = open(f"config/config.yaml", "r", encoding="utf-8")
 data = yaml.load(file, Loader=yaml.Loader)

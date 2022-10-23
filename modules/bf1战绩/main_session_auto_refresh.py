@@ -1,26 +1,25 @@
 # 用于公共查询的账号信息
-import asyncio
 import json
-import os
 
 import httpx
 import requests
+import yaml
 from loguru import logger
 
 true = True
 false = False
 null = ''
 client = httpx.AsyncClient()
+file = open(f"config/config.yaml", "r", encoding="utf-8")
+data = yaml.load(file, Loader=yaml.Loader)
+default_account = data["bf1"]["default_account"]
+
 
 # 这里的1003517866915是一个用来支持战绩查询的账号pid
-async def auto_refresh_account(player_pid: str = "1003517866915"):
+async def auto_refresh_account(player_pid: str = f"{default_account}"):
     global client
-    # with open(os.getcwd().replace(f"modules\Battlefield",
-    #                               fr"\data\battlefield\managerAccount\{player_pid}\account.json"), 'r'
-    #         , encoding='utf-8') as file_temp1:
     logger.warning(f"刷新[{player_pid}]session中")
-    with open(fr".\data\battlefield\managerAccount\{player_pid}\account.json", 'r'
-            , encoding='utf-8') as file_temp1:
+    with open(fr".\data\battlefield\managerAccount\{player_pid}\account.json", 'r', encoding='utf-8') as file_temp1:
         data_temp = json.load(file_temp1)
         remid = data_temp["remid"]
         sid = data_temp["sid"]
@@ -53,7 +52,6 @@ async def auto_refresh_account(player_pid: str = "1003517866915"):
     logger.warning(response2.text)
     authcode = response2.headers['location']
     authcode = authcode[authcode.rfind('=') + 1:]
-    # print(authcode)
 
     # 获取session
     url3 = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api?Authentication.getEnvIdViaAuthCode'
@@ -69,7 +67,6 @@ async def auto_refresh_account(player_pid: str = "1003517866915"):
     header3 = {
         "Host": "sparta-gw.battlelog.com",
         "Content-Length": "291",
-        # "Content-Length": str(len(body)),
         "Connection": "close",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
         "X-Guest": "no-session-id",
@@ -82,14 +79,8 @@ async def auto_refresh_account(player_pid: str = "1003517866915"):
         "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
     }
     response3 = requests.post(url3, headers=header3, data=json.dumps(body))
-    # print(response3.text)
-    true = True
-    null = ''
     session = eval(response3.text)["result"]["sessionId"]
-    with open(fr".\data\battlefield\managerAccount\{player_pid}\session.json", 'w'
-            , encoding="utf-8") as file_temp2:
+    with open(fr".\data\battlefield\managerAccount\{player_pid}\session.json", 'w', encoding="utf-8") as file_temp2:
         dict_temp = {"session": session}
         json.dump(dict_temp, file_temp2, indent=4)
         return "刷新成功"
-
-# asyncio.run(auto_refresh_account())

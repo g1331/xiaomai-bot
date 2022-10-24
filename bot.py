@@ -131,7 +131,7 @@ async def friend_message_speaker(event: ActiveFriendMessage, _app: Ariadne):
             f"【{bot_member.nickname}({bot_member.id})】成功向好友【{event.subject.nickname.strip()}({event.subject.id})】发送消息：{message_text_log}")
     else:
         logger.info(
-            f"【{_app.account}】成功向好友【{event.subject.name.strip()}({event.subject.id})】发送消息：{message_text_log}")
+            f"【{_app.account}】成功向好友【{event.subject.nickname.strip()}({event.subject.id})】发送消息：{message_text_log}")
 
 
 @bcc.receiver(NudgeEvent)

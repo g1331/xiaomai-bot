@@ -1,11 +1,3 @@
-ariadne==0.16.1
-  graphql-core==3.2.3
-  starlette==0.20.4
-    anyio==3.6.1
-      idna==3.4
-      sniffio==1.3.0
-    typing-extensions==4.4.0
-  typing-extensions==4.4.0
 beautifulsoup4==4.11.1
   soupsieve==2.3.2.post1
 graia-ariadne==0.9.6

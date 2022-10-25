@@ -1,0 +1,11 @@
+# Python binary files
+*/__pycache__
+*.pyc
+
+# 虚拟环境、idea
+/.idea/
+/venv
+
+# 配置文件、日志
+/config/config.yaml
+/logs

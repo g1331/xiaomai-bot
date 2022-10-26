@@ -2129,20 +2129,22 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     logger.info(f"玩家列表pic耗时:{time.time() - time_start}")
     message_send = MessageChain(
         graia_Image(path=SavePic),
-        "\n回复'-k 序号 原因'可踢出玩家(30秒内有效)"
+        "\n回复'-k 序号 原因'可踢出玩家(60秒内有效)"
     )
     await app.send_message(group, message_send, quote=message[Source][0])
     os.remove(SavePic)
 
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
-        if waiter_member.id == sender.id and waiter_group.id == group.id:
+        if (Perm.get(waiter_member, waiter_group) >= 32) and waiter_group.id == group.id:
             if eval(event.json())['message_chain'][1]['type'] == "Quote":
                 saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
+                if saying.startswith("-pl"):
+                    return
                 return saying
 
     try:
         result = await FunctionWaiter(waiter, [GroupMessage]).wait(
-            timeout=30)
+            timeout=60)
     except asyncio.exceptions.TimeoutError:
         return
     if not result:

@@ -21,7 +21,7 @@ class MapData:
         "MP_Amiens": {"Chinese": "亚眠", "Team1": GER, "Team2": UK},
         "MP_Suez": {"Chinese": "苏伊士", "Team1": UK, "Team2": OTM},
         "MP_FaoFortress": {"Chinese": "法欧堡", "Team1": UK, "Team2": OTM},
-        "MP_Giant": {"Chinese": "庞然暗影", "Team1": UK, "Team2": GER},
+        "MP_Giant": {"Chinese": "庞然暗影", "Team1": GER, "Team2": UK},
         "MP_Fields": {"Chinese": "苏瓦松", "Team1": FRA, "Team2": GER},
         "MP_Graveyard": {"Chinese": "决裂", "Team1": FRA, "Team2": GER},
         "MP_Underworld": {"Chinese": "法乌克斯要塞", "Team1": GER, "Team2": FRA},

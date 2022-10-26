@@ -1656,7 +1656,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     if type(id_dict) != dict:
         return False
     else:
-        # server_id = id_dict["serverid"]
+        server_id = id_dict["serverid"]
         server_gameid = id_dict["gameid"]
         # server_guid = id_dict["guid"]
 
@@ -2129,22 +2129,123 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     logger.info(f"玩家列表pic耗时:{time.time() - time_start}")
     message_send = MessageChain(
         graia_Image(path=SavePic),
-        # "\n回复'-踢 序号|[rank|kd|kpm|platoon] [<|>|=] [num] [原因]'可踢出玩家(30秒内有效)"
+        "\n回复'-k 序号 原因'可踢出玩家(30秒内有效)"
     )
     await app.send_message(group, message_send, quote=message[Source][0])
     os.remove(SavePic)
 
-    async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if waiter_member.id == sender.id and waiter_group.id == group.id:
-            saying = waiter_message.display
-            return saying
+            if eval(event.json())['message_chain'][1]['type'] == "Quote":
+                saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
+                return saying
 
-    # TODO 回复序号踢出
     try:
-        _ = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
+        result = await FunctionWaiter(waiter, [GroupMessage]).wait(
             timeout=30)
     except asyncio.exceptions.TimeoutError:
         return
+    if not result:
+        return
+
+    kick_action = result.split(' ')
+
+    kick_action = list(filter(lambda x: x != '', kick_action))
+    if kick_action[0] != "-k":
+        return
+    ending = None
+    for i, item in enumerate(kick_action):
+        if i == 0:
+            continue
+        if item.isnumeric():
+            pass
+        else:
+            ending = i
+    if ending is not None:
+        index_list = kick_action[1:ending]
+        reason = ''
+        for r in kick_action[ending:]:
+            reason += r
+    else:
+        index_list = kick_action[1:]
+        reason = "违反规则"
+    reason = reason.replace("ADMINPRIORITY", "违反规则")
+    # 获取session
+    session = await get_bfgroup_session(app, group, message, server_rank)
+    if type(session) != str:
+        return False
+    # 并发踢出
+    scrape_index_tasks = []
+    name_temp = []
+    for index in index_list:
+        index = int(index)
+        try:
+            if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                index = index - 1
+                scrape_index_tasks.append(asyncio.ensure_future(
+                    api_gateway.rsp_kickPlayer(server_gameid, session,
+                                               response_data["teams"][0]["players"][index]["player_id"], reason)
+                ))
+                name_temp.append(response_data["teams"][0]["players"][index]["name"])
+            else:
+                index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                scrape_index_tasks.append(asyncio.ensure_future(
+                    api_gateway.rsp_kickPlayer(server_gameid, session,
+                                               response_data["teams"][1]["players"][index]["player_id"], reason)
+                ))
+                name_temp.append(response_data["teams"][1]["players"][index]["name"])
+        except:
+            await app.send_message(group, MessageChain(
+                f"无效序号:{index}"
+            ), quote=message[Source][0])
+            return False
+    tasks = asyncio.gather(*scrape_index_tasks)
+    try:
+        await tasks
+    except Exception as e:
+        await app.send_message(group, MessageChain(
+            f"执行中出现了一个错误!{e}"
+        ), quote=message[Source][0])
+        return False
+    kick_result = []
+    suc = 0
+    suc_list = []
+    fal = 0
+    fal_list = []
+    for i, result in enumerate(scrape_index_tasks):
+        result = result.result()
+        if type(result) == dict:
+            suc += 1
+            suc_list.append(
+                f"{name_temp[i]},"
+            )
+            rsp_log.kick_logger(sender.id, group_id=group.id, action_object=name_temp[i],
+                                server_id=server_id,
+                                reason=reason)
+        else:
+            fal += 1
+            fal_list.append(
+                f"踢出玩家{name_temp[i]}失败\n原因:{result}\n"
+            )
+    if 0 < suc <= 5:
+        kick_result = [f"{name}" for name in suc_list]
+        kick_result.insert(0, "成功踢出:")
+        kick_result.append(f"\n原因:{reason}")
+    elif suc != 0:
+        kick_result.append(f"成功踢出{suc}位玩家\n原因:{reason}\n")
+    if fal != 0:
+        try:
+            fal_list[-1] = fal_list[-1].replace("\n", "")
+        except:
+            pass
+        kick_result.append(fal_list)
+    try:
+        kick_result[-1] = kick_result[-1].replace("\n", "")
+    except:
+        pass
+    await app.send_message(group, MessageChain(
+        kick_result
+    ), quote=message[Source][0])
 
 
 # TODO 3.服管账号相关-查增改、删、绑定到bfgroups-servers里的managerAccount

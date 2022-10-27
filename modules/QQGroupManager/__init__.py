@@ -1,6 +1,6 @@
-import asyncio
 import json
 import httpx
+import asyncio
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event import MiraiEvent
 from graia.ariadne.event.message import GroupMessage
@@ -12,7 +12,9 @@ from graia.ariadne.model import Group, Member, MemberInfo
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+# 权限判断
 from loguru import logger
+
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 from modules.Switch import Switch
@@ -33,7 +35,8 @@ null = ''
 @channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent], ))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """
-    被邀请加入群的事件
+    :param event: 被邀请加入群的事件
+    :return:
     """
     if event.supplicant == 1257661006:
         await event.accept()
@@ -52,6 +55,8 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
         ))
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain):
+        # 之所以把这个 waiter 放在 new_friend 里面，是因为我们需要用到 app
+        # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
         if Perm.get(waiter_member, group) >= 32:
             saying = waiter_message.display
             if saying == 'y':
@@ -144,10 +149,10 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         logger.warning(player_info)
         player_info = "(查询信息失败)"
     if player_info != "(有效id)":
-        await app.send_message(group, MessageChain(
+        bot_message = await app.send_message(group, MessageChain(
             f'收到{event.nickname}({event.supplicant})入群申请\n'
             f'{event.message}{player_info}\n' if event.message else f'无申请信息\n',
-            f'请在5分钟内发送"y"来同意或"n"来拒绝\n拒绝可发送(n+拒绝理由)'
+            f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复送 n+拒绝理由'
         ))
     else:
         player_pid = player_data['personas']['persona'][0]['personaId']
@@ -157,10 +162,10 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
             player_pid_bind = record.get_bind_pid(event.supplicant)
             player_name_bind = record.get_bind_name(event.supplicant)
             if player_pid_bind != player_pid:
-                await app.send_message(group, MessageChain(
+                bot_message = await app.send_message(group, MessageChain(
                     f'收到{event.nickname}({event.supplicant})入群申请\n'
                     f'{event.message}\n注意:他的入群id有效,但是和其绑定id不一致!绑定id:{player_name_bind}\n',
-                    f'请在5分钟内发送"y"来同意或"n"来拒绝\n拒绝可发送(n+拒绝理由)'
+                    f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理)'
                 ))
             else:
                 if Switch.get('自动过审', group):
@@ -195,10 +200,10 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     await app.modify_member_info(member, MemberInfo(name=player_name))
                     return True
                 else:
-                    await app.send_message(group, MessageChain(
+                    bot_message = await app.send_message(group, MessageChain(
                         f'收到{event.nickname}({event.supplicant})入群申请\n'
                         f'{event.message}{player_info}\n' if event.message else f'无申请信息\n',
-                        f'请在5分钟内发送"y"来同意或"n"来拒绝\n拒绝可发送(n+拒绝理由)'
+                        f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理由'
                     ))
         else:
             if Switch.get('自动过审', group):
@@ -233,10 +238,10 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 await app.modify_member_info(member, MemberInfo(name=player_name))
                 return True
             else:
-                await app.send_message(group, MessageChain(
+                bot_message = await app.send_message(group, MessageChain(
                     f'收到{event.nickname}({event.supplicant})入群申请\n'
                     f'{event.message}{player_info}\n' if event.message else f'无申请信息\n',
-                    f'请在5分钟内发送"y"来同意或"n"来拒绝\n拒绝可发送(n+拒绝理由)'
+                    f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理由'
                 ))
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group):
@@ -247,7 +252,9 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
             if_join = False
         if if_join is False:
             # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
-            if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id:
+            if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \
+                    and eval(event.json())['message_chain'][1]['type'] == "Quote" and \
+                    eval(event.json())['message_chain'][1]['id'] == bot_message.messageId:
                 saying = waiter_message.display.replace(f"@{app.account}", '').replace(" ", '')
                 if saying == 'y':
                     return True, waiter_member.id, None
@@ -282,9 +289,6 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         ))
     elif result is None:
         pass
-        # await app.send_message(group, MessageChain(
-        #     f'该审核已被处理!'
-        # ))
     else:
         pass
 
@@ -315,7 +319,7 @@ async def join_handle_help(app: Ariadne, group: Group, message: MessageChain):
                                     ]
                                 )
                             ]))
-async def join_handle_help(app: Ariadne, group: Group, message: MessageChain):
+async def join_handle_help(app: Ariadne, sender: Member, group: Group, message: MessageChain):
     await app.send_message(group, MessageChain(
         f"1.此功能打开后,如果橘子id有效将自动通过审核(请先开启入群审核)"
     ), quote=message[Source][0])

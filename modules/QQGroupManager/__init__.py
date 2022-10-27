@@ -35,6 +35,7 @@ null = ''
 @channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent], ))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """
+    :app:
     :param event: 被邀请加入群的事件
     :return:
     """
@@ -244,7 +245,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理由'
                 ))
 
-    async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group):
+    async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
+                     event_waiter: GroupMessage):
         try:
             await app.get_member(waiter_group, event.supplicant)
             if_join = True
@@ -253,8 +255,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         if if_join is False:
             # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
             if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \
-                    and eval(event.json())['message_chain'][1]['type'] == "Quote" and \
-                    eval(event.json())['message_chain'][1]['id'] == bot_message.messageId:
+                    and eval(event_waiter.json())['message_chain'][1]['type'] == "Quote" and \
+                    eval(event_waiter.json())['message_chain'][1]['id'] == bot_message.id:
                 saying = waiter_message.display.replace(f"@{app.account}", '').replace(" ", '')
                 if saying == 'y':
                     return True, waiter_member.id, None
@@ -383,7 +385,8 @@ async def JinYan(app: Ariadne, group: Group, event: MiraiEvent, src: Source):
                 f"bot权限不足!"
             ), quote=src)
             return
-        if (message_src.sender.permission.name == ("Administrator" or "Owner")) and bot_member.permission.name != "Owner":
+        if (message_src.sender.permission.name == (
+                "Administrator" or "Owner")) and bot_member.permission.name != "Owner":
             await app.send_message(group, MessageChain(
                 f"bot权限不足!"
             ), quote=src)

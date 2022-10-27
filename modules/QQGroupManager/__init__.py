@@ -319,7 +319,7 @@ async def join_handle_help(app: Ariadne, group: Group, message: MessageChain):
                                     ]
                                 )
                             ]))
-async def join_handle_help(app: Ariadne, sender: Member, group: Group, message: MessageChain):
+async def join_handle_help(app: Ariadne, group: Group, message: MessageChain):
     await app.send_message(group, MessageChain(
         f"1.此功能打开后,如果橘子id有效将自动通过审核(请先开启入群审核)"
     ), quote=message[Source][0])

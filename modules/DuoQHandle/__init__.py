@@ -1,15 +1,15 @@
 import yaml
+from typing import Union
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, SpacePolicy, RegexResult
-from graia.ariadne.model import Group
-
+from graia.ariadne.model import Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
-from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
+from graia.saya import Channel
 
 channel = Channel.current()
 channel.name("多q适配")
@@ -31,8 +31,10 @@ class DuoQ(object):
         :return: Depend
         """
 
-        async def wrapper(group: Group, app: Ariadne):
+        async def wrapper(group: Union[Group, Friend], app: Ariadne):
             global temp, temp_list, temp_dict, bot_list
+            if type(group) == Friend:
+                return Depend(wrapper)
             if group.id not in temp_dict:
                 temp_dict[group.id] = app.account
             if app.account != temp_dict[group.id]:

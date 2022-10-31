@@ -1,6 +1,7 @@
 import json
 import httpx
 import asyncio
+from loguru import logger
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event import MiraiEvent
 from graia.ariadne.event.message import GroupMessage
@@ -12,8 +13,6 @@ from graia.ariadne.model import Group, Member, MemberInfo
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-# 权限判断
-from loguru import logger
 
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
@@ -35,7 +34,7 @@ null = ''
 @channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent], ))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """
-    :app:
+    :param app:
     :param event: 被邀请加入群的事件
     :return:
     """
@@ -45,20 +44,21 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     group = await app.get_group(749094683)
     if group is None:
         member = await app.get_friend(1257661006)
-        await app.send_message(member, MessageChain(
+        bot_message = await app.send_message(member, MessageChain(
             f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
-            f'是否同意该申请，请在5分钟内回复“y”或“n”'
+            f'是否同意该申请，请在1小时内回复“y”或“n”'
         ))
     else:
-        await app.send_message(group, MessageChain(
+        bot_message = await app.send_message(group, MessageChain(
             f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
-            f'是否同意该申请，请在5分钟内回复“y”或“n”'
+            f'是否同意该申请，请在1小时内回复“y”或“n”'
         ))
 
-    async def waiter(waiter_member: Member, waiter_message: MessageChain):
-        # 之所以把这个 waiter 放在 new_friend 里面，是因为我们需要用到 app
-        # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
-        if Perm.get(waiter_member, group) >= 32:
+    async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
+                     event_waiter: GroupMessage):
+        if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \
+                and eval(event_waiter.json())['message_chain'][1]['type'] == "Quote" and \
+                eval(event_waiter.json())['message_chain'][1]['id'] == bot_message.id:
             saying = waiter_message.display
             if saying == 'y':
                 return True, waiter_member.id
@@ -71,11 +71,11 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
                 pass
 
     try:
-        result, admin = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=300)
+        result, admin = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=3600)
     except asyncio.exceptions.TimeoutError:
-        # await app.send_message(group, MessageChain(
-        #     f'由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群邀请已失效'),
-        #                        )
+        await app.send_message(group, MessageChain(
+            f'由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群邀请已失效'),
+                               )
         return
 
     if result:
@@ -146,14 +146,16 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 i += 1
     if not player_info:
         player_info = "(查询信息失败)"
-    if not ((player_info in ["(有效id)", "(注意:此id已经被bfban实锤!)", "(无效id)"]) or player_info.startswith("(无效id-时长不足:")):
+    if '\u4e00' <= event.message[event.message.find("答案：") + 3:] <= '\u9fa5':
+        player_info = ""
+    if not ((player_info in ["(有效id)", "(注意:此id已经被bfban实锤!)", "(无效id)", ""]) or player_info.startswith("(无效id-时长不足:")):
         logger.warning(player_info)
         player_info = "(查询信息失败)"
     if player_info != "(有效id)":
         bot_message = await app.send_message(group, MessageChain(
             f'收到{event.nickname}({event.supplicant})入群申请\n'
             f'{event.message}{player_info}\n' if event.message else f'无申请信息\n',
-            f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复送 n+拒绝理由'
+            f'请在10分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复送 n+拒绝理由'
         ))
     else:
         player_pid = player_data['personas']['persona'][0]['personaId']
@@ -242,7 +244,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 bot_message = await app.send_message(group, MessageChain(
                     f'收到{event.nickname}({event.supplicant})入群申请\n'
                     f'{event.message}{player_info}\n' if event.message else f'无申请信息\n',
-                    f'请在5分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理由'
+                    f'请在10分钟内回复"y"来同意或"n"来拒绝\n拒绝可回复 n+拒绝理由'
                 ))
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
@@ -253,7 +255,6 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         except:
             if_join = False
         if if_join is False:
-            # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
             if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \
                     and eval(event_waiter.json())['message_chain'][1]['type'] == "Quote" and \
                     eval(event_waiter.json())['message_chain'][1]['id'] == bot_message.id:
@@ -268,7 +269,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
             return None, None, None
 
     try:
-        result, admin, reason = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=300)
+        result, admin, reason = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=600)
     except asyncio.exceptions.TimeoutError:
         await app.send_message(group, MessageChain(
             f'注意:由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群请求已失效'), )

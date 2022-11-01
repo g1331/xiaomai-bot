@@ -180,9 +180,7 @@ if __name__ == "__main__":
             mah = httpx.get(bot_data["botinfo"]["mah"] + "/about")
             logger.info(f'mah.status_code:{mah.status_code}')
             if mah.status_code == 200:
-                # app.launch_blocking()
                 Ariadne.launch_blocking()
-                # save_config() -工具类的函数
                 break
             else:
                 logger.critical("MAH 尚未启动，正在重试...")

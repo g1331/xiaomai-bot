@@ -1,22 +1,7 @@
-"""
-一、注册一个背景：
-1.-注册背景 qq#pid#张数#到期时间
-2.-更改背景信息 qq#pid#张数#到期时间
-3.-我的背景 ->返回背景缩略图、张数
-4.-更换背景#n waiter 上传一张图片
-
-二、制作背景
-1.传入pid，查找图库信息，如果图库为空则找默认背景
-2.若有背景随机选择，进行等比放大，使得竖直方向上能够填满
-3.x尽量选择图片的中央位置
-4.返回图片temp地址
-"""
 import json
 import os
 import random
 import time
-
-from loguru import logger
 
 
 class bg_pic(object):

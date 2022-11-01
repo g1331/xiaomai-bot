@@ -77,6 +77,7 @@ if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/acco
     logger.error(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
     exit()
 
+
 # 根据玩家名字查找pid
 async def getPid_byName(player_name: str) -> dict:
     """

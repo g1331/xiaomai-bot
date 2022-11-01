@@ -6,16 +6,17 @@
    mirai:[MCL](https://docs.mirai.mamoe.net/ConsoleTerminal.html)
    并配置[mah](https://docs.mirai.mamoe.net/mirai-api-http/)
 2. 在bot根目录下使用
-   ```
-   pip install -r requirements.txt
-   ```
+   
+   ` pip install -r requirements.txt` 
+   
    安装requirements里的依赖
    
    或者其他你喜欢的方式(
 3. 在config文件夹内的config文件填写配置信息
 4. 点击bot.py运行
-5. 根据报错缺啥弄啥吧(
-6. 反馈Q群:[749094683](https://jq.qq.com/?_wv=1027&k=1YEq9zks)
+
+~~5.根据报错缺啥弄啥吧(~~
+5. 反馈Q群:[749094683](https://jq.qq.com/?_wv=1027&k=1YEq9zks)
 
 ### 战地一查询配置默认账号:
 

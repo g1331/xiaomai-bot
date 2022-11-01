@@ -10,6 +10,7 @@ from datetime import date, timedelta
 import aiohttp
 import httpx
 import requests
+import yaml
 import zhconv
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
@@ -67,6 +68,9 @@ access_token_time = None
 access_token_expires_time = 0
 pid_temp_dict = {
 }
+file = open(f"config/config.yaml", "r", encoding="utf-8")
+acc_data = yaml.load(file, Loader=yaml.Loader)
+default_account = acc_data["bf1"]["default_account"]
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 
@@ -83,7 +87,7 @@ async def getPid_byName(player_name: str) -> dict:
     if access_token is None or (time.time() - access_token_time) >= int(access_token_expires_time):
         logger.info(f"获取token中")
         # 获取token
-        with open("./data/battlefield/managerAccount/1003517866915/account.json", 'r', encoding='utf-8') as file_temp1:
+        with open(f"./data/battlefield/managerAccount/{default_account}/account.json", 'r', encoding='utf-8') as file_temp1:
             data_temp = json.load(file_temp1)
             remid = data_temp["remid"]
             sid = data_temp["sid"]

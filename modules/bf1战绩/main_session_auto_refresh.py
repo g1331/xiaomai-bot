@@ -37,6 +37,7 @@ async def auto_refresh_account(player_pid: str = f"{default_account}"):
         token = eval(response.text)["access_token"]
         # print(token)
     except Exception as e:
+        logger.warning(e)
         return response.text
 
     # 获取authcode

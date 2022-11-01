@@ -10,6 +10,12 @@
 
 战地一查询配置默认账号:
 
-1. 使用指令 '-bf服管账号 新建 <游戏名字>',eg: -bf服管账号 新建 shlsan13,创建你的默认查询配置
-2. 使用指令 '-bf服管账号 登录 <pid> remid=<remid>,sid=<sid>',remid和sid可以用服管工具获取或者在ea官网登录后从cookie获取
+1. 在data/battlefield/managerAccount/账号pid/account.json中输入信息
+   ```
+   {
+    "remid":"你的remid",
+    "sid":"你的sid"
+   }
+   ```
+
 

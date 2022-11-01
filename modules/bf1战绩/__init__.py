@@ -73,7 +73,9 @@ acc_data = yaml.load(file, Loader=yaml.Loader)
 default_account = acc_data["bf1"]["default_account"]
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
-
+if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json"):
+    logger.error(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
+    exit()
 
 # 根据玩家名字查找pid
 async def getPid_byName(player_name: str) -> dict:
@@ -87,7 +89,8 @@ async def getPid_byName(player_name: str) -> dict:
     if access_token is None or (time.time() - access_token_time) >= int(access_token_expires_time):
         logger.info(f"获取token中")
         # 获取token
-        with open(f"./data/battlefield/managerAccount/{default_account}/account.json", 'r', encoding='utf-8') as file_temp1:
+        with open(f"./data/battlefield/managerAccount/{default_account}/account.json", 'r',
+                  encoding='utf-8') as file_temp1:
             data_temp = json.load(file_temp1)
             remid = data_temp["remid"]
             sid = data_temp["sid"]
@@ -3270,6 +3273,38 @@ async def auto_refresh_client():
         logger.error(f"刷新bf1战绩client失败:{e}")
 
 
+async def refresh_main_account(app: Ariadne, group: Group, source: Source):
+    i = 1
+    while i <= 3:
+        try:
+            await app.send_message(group, MessageChain(
+                f"session正常"
+            ), quote=source)
+            from main_session_auto_refresh import auto_refresh_account
+            result = await auto_refresh_account()
+            if result == "刷新成功":
+                await app.send_message(group, MessageChain(
+                    f"刷新成功"
+                ), quote=source)
+                return
+            else:
+                await app.send_message(group, MessageChain(
+                    f"刷新失败:{result}"
+                ), quote=source)
+            break
+        except Exception as e:
+            await app.send_message(group, MessageChain(
+                f"刷新失败:{e}"
+            ), quote=source)
+            i += 1
+    else:
+        with open('./config/config.yaml', 'r', encoding="utf-8") as file1:
+            master_id: int = json.load(file1)["botinfo"]["Master"]
+        await app.send_friend_message(await app.get_friend(master_id), MessageChain(
+            "session更新失败，请检查账号信息"
+        ))
+
+
 # 手动刷新
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[Perm.require(128),
@@ -3285,8 +3320,11 @@ async def refresh_main_session(app: Ariadne, group: Group, source: Source):
         f"刷新ing"
     ), quote=source)
     global bf_aip_header, bf_aip_url
-    session = record.get_session()
-    bf_aip_header["X-Gatewaysession"] = session
+    try:
+        session = record.get_session()
+        bf_aip_header["X-Gatewaysession"] = session
+    except:
+        await refresh_main_account(app, group, source)
     body = {
         "jsonrpc": "2.0",
         "method": "Companion.isLoggedIn",
@@ -3305,35 +3343,7 @@ async def refresh_main_session(app: Ariadne, group: Group, source: Source):
             ), quote=source)
             return
         else:
-            i = 1
-            while i <= 3:
-                try:
-                    await app.send_message(group, MessageChain(
-                        f"session正常"
-                    ), quote=source)
-                    from main_session_auto_refresh import auto_refresh_account
-                    result = await auto_refresh_account()
-                    if result == "刷新成功":
-                        await app.send_message(group, MessageChain(
-                            f"刷新成功"
-                        ), quote=source)
-                        return
-                    else:
-                        await app.send_message(group, MessageChain(
-                            f"刷新失败:{result}"
-                        ), quote=source)
-                    break
-                except Exception as e:
-                    await app.send_message(group, MessageChain(
-                        f"刷新失败:{e}"
-                    ), quote=source)
-                    i += 1
-            else:
-                with open('./config/config.yaml', 'r', encoding="utf-8") as file1:
-                    master_id: int = json.load(file1)["botinfo"]["Master"]
-                await app.send_friend_message(await app.get_friend(master_id), MessageChain(
-                    "session更新失败，请检查账号信息"
-                ))
+            await refresh_main_account(app, group, source)
     except Exception as e:
         await app.send_message(group, MessageChain(
             f"刷新失败:{e}"

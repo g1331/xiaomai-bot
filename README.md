@@ -10,7 +10,11 @@
 
 战地一查询配置默认账号:
 
-1. 在data/battlefield/managerAccount/账号pid/account.json中输入信息
+1. 在config文件夹内的config文件填写bf1查询默认账号的pid
+
+2. 从ea网站cookie中获取你查询账号的cookie信息:remid和sid
+   
+   然后在data/battlefield/managerAccount/账号pid/account.json中填入以下信息:
    ```
    {
     "remid":"你的remid",
@@ -18,6 +22,6 @@
    }
    ```
    
-2. 其余静态资源请加群下载
+3. 其余静态资源请加群下载
 
 

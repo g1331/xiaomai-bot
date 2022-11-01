@@ -1,8 +1,6 @@
-import os
 import time
-from typing import Union
-
 import yaml
+from typing import Union
 
 
 class rsp_log(object):

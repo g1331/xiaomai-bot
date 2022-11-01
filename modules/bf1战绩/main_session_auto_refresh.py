@@ -1,6 +1,4 @@
-# 用于公共查询的账号信息
 import json
-
 import httpx
 import requests
 import yaml
@@ -15,7 +13,6 @@ data = yaml.load(file, Loader=yaml.Loader)
 default_account = data["bf1"]["default_account"]
 
 
-# 这里的1003517866915是一个用来支持战绩查询的账号pid
 async def auto_refresh_account(player_pid: str = f"{default_account}"):
     global client
     logger.warning(f"刷新[{player_pid}]session中")

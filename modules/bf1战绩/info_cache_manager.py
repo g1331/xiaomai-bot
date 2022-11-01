@@ -40,12 +40,14 @@ class InfoCache(object):
         try:
             with open(self.file_cache_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
+                # logger.success(f"读取{self.pid}-{self.player_cache_type}缓存成功")
                 return data
         except Exception as e:
             logger.error(e)
             await self.update_cache()
             with open(self.file_cache_path, "r", encoding="utf-8") as file:
                 data = json.load(file)
+                # logger.success(f"读取{self.pid}-{self.player_cache_type}缓存成功")
                 return data
 
     async def update_cache(self) -> bool:
@@ -59,6 +61,7 @@ class InfoCache(object):
                 data = await get_player_stat_data(self.pid)
             with open(self.file_cache_path, 'w', encoding="utf-8") as file:
                 json.dump(data, file, indent=4, ensure_ascii=False)
+                # logger.success(f"更新{self.pid}-{self.player_cache_type}缓存成功")
             return True
         except Exception as e:
             logger.warning(f"更新{self.pid}-{self.player_cache_type}缓存失败:{e}")
@@ -100,7 +103,7 @@ class InfoCache_vehicle(InfoCache):
 
 
 class InfoCache_account(InfoCache):
-    def __init__(self, player_pid: str, player_name):
+    def __init__(self, player_pid: str):
         """
         初始化
         """

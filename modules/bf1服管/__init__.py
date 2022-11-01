@@ -5671,29 +5671,20 @@ def vip_file_bak(old_name):
     else:
         logger.error("备份出错!")
         return
-
     new_name = old_name[:index] + 'bak' + postfix
-
-    # 3. 备份文件写入数据(数据和原文件一样)
+    # 备份文件写入数据
     old_f = open(old_name, 'rb')
     new_f = open(new_name, 'wb')
-
-    # 3.2 原文件读取，备份文件写入
-    # 如果不确定目标文件大小，循环读取写入，当读取出来的数据没有了终止循环
     while True:
-        # 每次在原文件中读取的内容
-        con = old_f.read(1024)
-        # 表示读取完成了
-        if len(con) == 0:
-            # 终止读取
+        con = old_f.read()
+        if len(con) == 0:  # 当没有内容备份时终止循环
+            logger.error("vip文件失效")
             break
-
-        # 新文件写入读取的数据
         new_f.write(con)
-
     # 关闭文件
     old_f.close()
     new_f.close()
+    logger.success("备份文件成功")
 
 
 # TODO: vip过程:1.根据guid找到服务器文件夹 2.如果文件夹没有vip.json文件就创建 3.读取fullInfo，从里面读取vip列表

@@ -5662,6 +5662,40 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
         ), quote=message[Source][0])
 
 
+def vip_file_bak(old_name):
+    old_name = old_name
+    index = old_name.rfind('.')
+    if index > 0:
+        # 提取后缀，这里提取不到，后面拼接新文件名字的时候就会报错
+        postfix = old_name[index:]
+    else:
+        logger.error("备份出错!")
+        return
+
+    new_name = old_name[:index] + 'bak' + postfix
+
+    # 3. 备份文件写入数据(数据和原文件一样)
+    old_f = open(old_name, 'rb')
+    new_f = open(new_name, 'wb')
+
+    # 3.2 原文件读取，备份文件写入
+    # 如果不确定目标文件大小，循环读取写入，当读取出来的数据没有了终止循环
+    while True:
+        # 每次在原文件中读取的内容
+        con = old_f.read(1024)
+        # 表示读取完成了
+        if len(con) == 0:
+            # 终止读取
+            break
+
+        # 新文件写入读取的数据
+        new_f.write(con)
+
+    # 关闭文件
+    old_f.close()
+    new_f.close()
+
+
 # TODO: vip过程:1.根据guid找到服务器文件夹 2.如果文件夹没有vip.json文件就创建 3.读取fullInfo，从里面读取vip列表
 #  4.写入info的信息到json 5.如果vip玩家在名单内就加时间 6.不在就调用接口
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
@@ -5745,6 +5779,9 @@ async def add_vip(app: Ariadne, sender: Member, group: Group, message: MessageCh
                 await app.send_message(group, MessageChain(
                     "初始化服务器文件成功!"
                 ), quote=message[Source][0])
+
+    # 备份文件
+    vip_file_bak(file_path)
 
     vip_pid_list = {}
     for item in server_fullInfo["rspInfo"]["vipList"]:

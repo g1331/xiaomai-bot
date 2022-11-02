@@ -161,7 +161,7 @@ class record(object):
     # 获取绑定次数
     @staticmethod
     def get_bind_counter(qq_id: int) -> list:
-        file_path = os.getcwd() + f'./data/battlefield/binds/players/{qq_id}'
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
         with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["bind"]["history"]

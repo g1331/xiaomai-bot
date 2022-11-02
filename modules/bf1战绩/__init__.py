@@ -3278,9 +3278,6 @@ async def refresh_main_account(app: Ariadne, group: Group, source: Source):
     i = 1
     while i <= 3:
         try:
-            await app.send_message(group, MessageChain(
-                f"session正常"
-            ), quote=source)
             from main_session_auto_refresh import auto_refresh_account
             result = await auto_refresh_account()
             if result == "刷新成功":

@@ -49,25 +49,11 @@ async def at_reply(app: Ariadne, sender: Member, group: Group, at: RegexResult):
     try:
         at: At = at.result
         if at.target == app.account:
-            gl = random.randint(0, 99)
-            if 0 <= gl <= 70:
-                file_path = f"./data/battlefield/小标语/data.json"
-                with open(file_path, 'r', encoding="utf-8") as file1:
-                    data = json.load(file1)['result']
-                    a = random.choice(data)['name']
-                    send = zhconv.convert(a, 'zh-cn')
-            elif 70 < gl < 95:
-                bqb_path = './data/bqb'
-                bqb_pic_list = os.listdir(bqb_path)
-                pic = random.choice(bqb_pic_list)
-                pic_path = f"{bqb_path}/{pic}"
-                send = Image(path=pic_path)
-            else:
-                bf_dic = [
-                    "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-                    f"当武器击杀达到40⭐图片会发出白光,60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
-                ]
-                send = random.choice(bf_dic)
+            bqb_path = './data/bqb'
+            bqb_pic_list = os.listdir(bqb_path)
+            pic = random.choice(bqb_pic_list)
+            pic_path = f"{bqb_path}/{pic}"
+            send = Image(path=pic_path)
             await app.send_group_message(
                 group.id, MessageChain(
                     At(sender.id), '\n', send

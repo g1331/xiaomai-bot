@@ -17,7 +17,7 @@ class record(object):
         :param qq_id: qq号
         :return: bool
         """
-        file_path = f'./ata/battlefield/binds/players/{qq_id}'
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
         # 创建文件夹
         if not os.path.exists(file_path):
             os.makedirs(file_path)

@@ -67,8 +67,8 @@ class record(object):
             with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp:
                 json.dump(init_data, file_temp, indent=4)
         # 创建绑定文件
-        if not os.path.isfile(file_path + f'/bind.json'):
-            open(f"{file_path}/bind.json", 'w', encoding="utf-8")
+        if not os.path.exists(file_path + f'/bind.json'):
+            open(f"{file_path}/bind.json", 'w+', encoding="utf-8")
         return True
 
     # 检查绑定没有

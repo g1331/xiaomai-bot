@@ -38,11 +38,8 @@ from modules.bf1战绩.record_counter import record
 from util.internal_utils import MessageChainUtils
 
 saya = Saya.current()
-# 获取属于这个模组的实例
 channel = Channel.current()
-# channel.module
 channel.name("bf1战绩")
-# channel.meta
 channel.description("战地1战绩功能")
 channel.author("13")
 
@@ -73,7 +70,8 @@ acc_data = yaml.load(file, Loader=yaml.Loader)
 default_account = acc_data["bf1"]["default_account"]
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
-if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json"):
+if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json") or \
+        os.path.getsize(f"./data/battlefield/managerAccount/{default_account}/account.json") == 0:
     logger.error(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
     exit()
 

@@ -16,6 +16,7 @@ from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image as graia_Image
 from graia.ariadne.message.element import Source, At
@@ -38,8 +39,11 @@ from modules.bf1战绩.record_counter import record
 from util.internal_utils import MessageChainUtils
 
 saya = Saya.current()
+# 获取属于这个模组的实例
 channel = Channel.current()
+# channel.module
 channel.name("bf1战绩")
+# channel.meta
 channel.description("战地1战绩功能")
 channel.author("13")
 
@@ -3927,3 +3931,32 @@ async def download_baike(url):
                     logger.error(e)
                     i += 1
         return None
+
+
+# TODO 被戳回复小标语
+@channel.use(ListenerSchema(listening_events=[NudgeEvent],
+                            decorators=[
+                            ]))
+async def getup(app: Ariadne, event: NudgeEvent):
+    if event.group_id is not None:
+        if event.target == app.account:
+            if Switch.get("bf1战绩", group=app.get_group(event.group_id)):
+                gl = random.randint(0, 99)
+                if gl > 2:
+                    file_path = f"./data/battlefield/小标语/data.json"
+                    with open(file_path, 'r', encoding="utf-8") as file1:
+                        data = json.load(file1)['result']
+                        a = random.choice(data)['name']
+                        send = zhconv.convert(a, 'zh-cn')
+                else:
+                    bf_dic = [
+                        "你知道吗,小埋最初的灵感来自于胡桃-by水神",
+                        f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+                    ]
+                    send = random.choice(bf_dic)
+                await app.send_group_message(
+                    event.group_id, MessageChain(
+                        At(event.supplicant), '\n', send
+                    )
+                )
+                return

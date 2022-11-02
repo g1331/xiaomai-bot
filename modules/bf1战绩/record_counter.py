@@ -17,12 +17,12 @@ class record(object):
         :param qq_id: qq号
         :return: bool
         """
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
+        file_path = f'./ata/battlefield/binds/players/{qq_id}'
         # 创建文件夹
         if not os.path.exists(file_path):
             os.makedirs(file_path)
         # 创建查询记录文件
-        if not os.path.isfile(file_path + f'\\record.json'):
+        if not os.path.isfile(file_path + f'/record.json'):
             init_data = {
                 "bind": {
                     "history": [
@@ -64,11 +64,11 @@ class record(object):
                     ]
                 }
             }
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp:
                 json.dump(init_data, file_temp, indent=4)
         # 创建绑定文件
-        if not os.path.isfile(file_path + f'\\bind.json'):
-            open(f"{file_path}\\bind.json", 'w', encoding="utf-8")
+        if not os.path.isfile(file_path + f'/bind.json'):
+            open(f"{file_path}/bind.json", 'w', encoding="utf-8")
         return True
 
     # 检查绑定没有
@@ -79,7 +79,7 @@ class record(object):
         :param qq_id: qq号
         :return: bool
         """
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
         # 创建文件夹
         if os.path.exists(file_path):
             return True
@@ -94,8 +94,8 @@ class record(object):
         :param qq_id: qq号
         :return: pid
         """
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\bind.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/bind.json", 'r', encoding="utf-8") as file_temp:
             data = json.load(file_temp)
             pid = data['personas']['persona'][0]['personaId']
             return pid
@@ -108,8 +108,8 @@ class record(object):
         :param qq_id: qq号
         :return: pid
         """
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\bind.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/bind.json", 'r', encoding="utf-8") as file_temp:
             data = json.load(file_temp)
             name = data['personas']['persona'][0]['displayName']
             return name
@@ -122,8 +122,8 @@ class record(object):
         :param qq_id: qq号
         :return: pid
         """
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\bind.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/bind.json", 'r', encoding="utf-8") as file_temp:
             data = json.load(file_temp)
             name = data['personas']['persona'][0]['pidId']
             return name
@@ -151,18 +151,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["bind"]["history"].append(f"{time_now}-{bind_info}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取绑定次数
     @staticmethod
     def get_bind_counter(qq_id: int) -> list:
-        file_path = os.getcwd() + f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = os.getcwd() + f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["bind"]["history"]
 
@@ -179,18 +179,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["weapon"]["history"].append(f"{time_now}-{player_id}-{player_name}-{weapon_type}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取武器查询次数
     @staticmethod
     def get_weapon_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["weapon"]["history"]
 
@@ -207,18 +207,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["vehicle"]["history"].append(f"{time_now}-{player_id}-{player_name}-{vehicle_type}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取载具查询次数
     @staticmethod
     def get_vehicle_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["vehicle"]["history"]
 
@@ -234,18 +234,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["stat"]["history"].append(f"{time_now}-{player_id}-{player_name}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取生涯查询次数
     @staticmethod
     def get_stat_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["stat"]["history"]
 
@@ -261,18 +261,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["recent"]["history"].append(f"{time_now}-{player_id}-{player_name}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取最近查询次数
     @staticmethod
     def get_recent_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["recent"]["history"]
 
@@ -288,18 +288,18 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             data_temp["matches"]["history"].append(f"{time_now}-{player_id}-{player_name}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取对局查询次数
     @staticmethod
     def get_matches_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["matches"]["history"]
 
@@ -315,21 +315,21 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             if "tyc" not in data_temp:
                 data_temp["tyc"] = {"history": [
                 ]}
             data_temp["tyc"]["history"].append(f"{time_now}-{player_id}-{player_name}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取天眼查查询次数
     @staticmethod
     def get_tyc_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["tyc"]["history"]
 
@@ -345,20 +345,20 @@ class record(object):
         """
         time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
         record.config_bind(qq_id)
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./data/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             if "report" not in data_temp:
                 data_temp["report"] = {"history": [
                 ]}
             data_temp["report"]["history"].append(f"{time_now}-举报-{player_id}-{player_name}")
-            with open(f"{file_path}\\record.json", 'w', encoding="utf-8") as file_temp2:
+            with open(f"{file_path}/record.json", 'w', encoding="utf-8") as file_temp2:
                 json.dump(data_temp, file_temp2, indent=4, ensure_ascii=False)
 
     # 获取天眼查查询次数
     @staticmethod
     def get_report_counter(qq_id: int) -> list:
-        file_path = f'\\data\\battlefield\\binds\\players\\{qq_id}'
-        with open(f"{file_path}\\record.json", 'r', encoding="utf-8") as file_temp:
+        file_path = f'./dat/battlefield/binds/players/{qq_id}'
+        with open(f"{file_path}/record.json", 'r', encoding="utf-8") as file_temp:
             data_temp = json.load(file_temp)
             return data_temp["report"]["history"]

@@ -46,7 +46,8 @@ channel.author("13")
                             ]))
 async def at_reply(app: Ariadne, sender: Member, group: Group, at: RegexResult):
     try:
-        if at.result.target == app.account:
+        at: At = at.result
+        if at.target == app.account:
             gl = random.randint(0, 99)
             if 0 <= gl <= 70:
                 file_path = f"./data/battlefield/小标语/data.json"
@@ -146,12 +147,12 @@ async def get_MemberHonorChangeEvent(events: MemberHonorChangeEvent, app: Ariadn
         At(events.member.id),
         f" {'获得了' if events.action == 'achieve' else '失去了'} 群荣誉 {events.honor}！"
     ]
-    await app.send_message(events.member.group, MessageChain.create(msg))
+    await app.send_message(events.member.group, MessageChain(msg))
 
 
 # 生成随机字符串
 def random_string_generator(str_size, allowed_chars):
-    return ''.join(random.choice(allowed_chars) for x in range(str_size))
+    return ''.join(random.choice(allowed_chars) for _ in range(str_size))
 
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
@@ -190,7 +191,7 @@ async def kai_bai(app: Ariadne, group: Group, sender: Member, message: MessageCh
         f"你真的要开摆吗:[是|否]?"
     ), quote=message[Source][0])
 
-    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if waiter_member.id == sender.id and waiter_group.id == group.id:
             saying = waiter_message.display
             if saying == "是":

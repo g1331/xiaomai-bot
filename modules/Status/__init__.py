@@ -1,7 +1,6 @@
-import asyncio
 import time
-
 import psutil
+import asyncio
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, MessageEvent, ActiveMessage
 from graia.ariadne.message.chain import MessageChain
@@ -11,13 +10,10 @@ from graia.ariadne.model import Group
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
+
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 
-# 权限判断
-# 开启判断
-
-# 获取属于这个模组的实例
 
 saya = Saya.current()
 channel = Channel.current()
@@ -64,7 +60,7 @@ time_start = int(time.time())
                             inline_dispatchers=[
                                 Twilight(
                                     [
-                                        "action" @ UnionMatch("-bot", "-status", optional=False).space(
+                                        "action" @ UnionMatch("-bot", optional=False).space(
                                             SpacePolicy.PRESERVE),
                                     ]
                                     # 示例:-bot

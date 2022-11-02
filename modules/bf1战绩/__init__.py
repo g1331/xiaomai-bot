@@ -308,7 +308,7 @@ async def Bind(app: Ariadne, sender: Member, group: Group, message: MessageChain
     # 创建配置文件
     record.config_bind(sender.id)
     # 写入绑定信息
-    with open(f"./data/battlefield/binds/players/{sender.id}/bind.json", 'w+', encoding='utf-8') as file_temp1:
+    with open(f"./data/battlefield/binds/players/{sender.id}/bind.json", 'w', encoding='utf-8') as file_temp1:
         json.dump(player_info, file_temp1, indent=4)
         await app.send_message(group, MessageChain(
             f"绑定成功!你的信息如下:\n"

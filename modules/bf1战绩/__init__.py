@@ -2263,7 +2263,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, message: MessageCh
         except Exception as e:
             logger.error(e)
             await app.send_message(group, MessageChain(
-                f"网络出错，请稍后再试"
+                f"网络出错，请稍后再试!"
             ), quote=message[Source][0])
             return False
         if player_info['personas'] == {}:
@@ -2353,7 +2353,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, message: MessageCh
     except Exception as e:
         logger.error(e)
         await app.send_message(group, MessageChain(
-            "网络出错请稍后再试"
+            "网络出错，请稍后再试!"
         ), quote=message[Source][0])
         return False
     end_time2 = time.time()

@@ -278,7 +278,7 @@ async def FullInventory():
                                 Twilight(
                                     [
                                         "action" @ UnionMatch(
-                                            "-绑定", "-bind"
+                                            "-绑定"
                                         ).space(SpacePolicy.PRESERVE),
                                         "player_name" @ ParamMatch(optional=True).space(PRESERVE)
                                     ]

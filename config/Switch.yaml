@@ -1,8 +1,9 @@
 funlist_on:
+- 群管
 - test
 - 入群审核
-- bf1服管
 - 自动过审
+- bf1服管
 - bf1战绩
 funlist_off: []
 funlist_always:

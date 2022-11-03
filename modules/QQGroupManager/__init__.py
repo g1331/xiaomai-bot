@@ -249,10 +249,9 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
                      event_waiter: GroupMessage):
-        try:
-            await app.get_member(waiter_group, event.supplicant)
+        if event.supplicant in [member_temp.id for member_temp in await app.get_member_list(waiter_group)]:
             if_join = True
-        except:
+        else:
             if_join = False
         if if_join is False:
             if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \
@@ -266,7 +265,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 elif saying.startswith("n") and saying != "n":
                     return False, waiter_member.id, saying.replace("n", "").replace("n ", "")
         else:
-            return None, None, None
+            return [None] * 3
 
     try:
         result, admin, reason = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=600)

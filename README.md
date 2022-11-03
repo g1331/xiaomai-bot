@@ -26,7 +26,6 @@
 
 ~~5.根据报错缺啥弄啥吧(~~
 
-----
 
 ## 战地一查询配置默认账号:
 
@@ -43,7 +42,6 @@
      
 - 其余静态资源请加群下载
 
-----
 
 ## 鸣谢 & 相关项目
 - [`mirai`](https://github.com/mamoe/mirai) & [`mirai-console`](https://github.com/mamoe/mirai-console): 一个在全平台下运行，提供 QQ Android 和 TIM PC 协议支持的高效率机器人框架

@@ -3112,15 +3112,6 @@ async def op_info(app: Ariadne, group: Group, message: MessageChain):
                             ]))
 async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     global bf_aip_header, bf_aip_url
-    # await app.send_message(group, MessageChain(
-    #     f"查询ing"
-    # ), quote=message[Source][0])
-
-    # TODO 1.如果今天不是周一,就获取缓存里的图片,如果是周一且时间在20:00至24:00之间,就制图
-    # jh_time_ = (date.today() + timedelta(days=-1)).strftime("%m月%d日")
-    # jh_time__ = (date.today() + timedelta(days=-1)).strftime("%m月%d日")
-    # 当前时间
-    # n_time = datetime.now()
     i = 0
     file_path = f'./data/battlefield/exchange/{(date.today() + timedelta(days=i)).strftime("%#m月%#d日")}.png'
     while (not os.path.exists(file_path)) and (i >= -31):
@@ -3161,7 +3152,6 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     with open(f'./data/battlefield/exchange/{jh_time}.json', 'w', encoding="utf-8") as file1:
         json.dump(SE_data, file1, indent=4)
     SE_data_list = SE_data["result"]["items"]
-    # print(len(SE_data_list))
     # 创建一个交换物件的列表列表，元素列表的元素有价格，皮肤名字，武器名字，品质，武器图片
     SE_list = []
     for item in SE_data_list:
@@ -3185,7 +3175,6 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     while i < len(SE_list):
         SE_list[i][4] = await download_skin(SE_list[i][4])
         i += 1
-    # print(SE_list)
     # 制作图片,总大小:2351*1322,黑框间隔为8,黑框尺寸220*292，第一张黑框距左边界39，上边界225，武器尺寸为180*45,第一个钱币图片的位置是72*483
     # 交换的背景图
     bg_img = Image.open('./data/battlefield/pic/bg/SE_bg.png')
@@ -3263,38 +3252,9 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     logger.info("更新交换缓存成功!")
 
 
-# # TODO 被戳回复小标语
-# @channel.use(ListenerSchema(listening_events=[NudgeEvent],
-#                             decorators=[
-#                                 # Switch.require("bf1战绩")
-#                             ]))
-# async def getup(app: Ariadne, event: NudgeEvent):
-#     if event.group_id is not None:
-#         if event.target == app.account:
-#             gl = random.randint(0, 99)
-#             if gl > 2:
-#                 file_path = f"./data/battlefield/小标语/data.json"
-#                 with open(file_path, 'r', encoding="utf-8") as file1:
-#                     data = json.load(file1)['result']
-#                     a = random.choice(data)['name']
-#                     send = zhconv.convert(a, 'zh-cn')
-#             else:
-#                 bf_dic = [
-#                     "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-#                     f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
-#                 ]
-#                 send = random.choice(bf_dic)
-#             await app.send_group_message(
-#                 event.group_id, MessageChain(
-#                     At(event.supplicant), '\n', send
-#                 )
-#             )
-#             return
-
-
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[Perm.require(),
-                                        # Switch.require("bf1战绩"),
+                                        Switch.require("bf1战绩"),
                                         DuoQ.require()],
                             inline_dispatchers=[
                                 Twilight(
@@ -3617,13 +3577,12 @@ async def download_baike(url):
 
 
 # TODO 被戳回复小标语
-@channel.use(ListenerSchema(listening_events=[NudgeEvent],
-                            decorators=[
-                            ]))
+@channel.use(ListenerSchema(listening_events=[NudgeEvent]))
 async def getup(app: Ariadne, event: NudgeEvent):
-    if event.group_id is not None:
+    event_group = await app.get_group(event.group_id)
+    if event_group is not None:
         if event.target == app.account:
-            if Switch.get("bf1战绩", group=app.get_group(event.group_id)):
+            if Switch.get("bf1战绩", event_group):
                 gl = random.randint(0, 99)
                 if gl > 2:
                     file_path = f"./data/battlefield/小标语/data.json"

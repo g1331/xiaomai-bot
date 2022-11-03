@@ -249,10 +249,10 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
                      event_waiter: GroupMessage):
-        member_id_list = [member_temp.id for member_temp in await app.get_member_list(waiter_group)]
-        if event.supplicant in member_id_list:
+        try:
+            await app.get_member(waiter_group, event.supplicant)
             if_join = True
-        else:
+        except:
             if_join = False
         if if_join is False:
             if Perm.get(waiter_member, group) >= 32 and group.id == waiter_group.id \

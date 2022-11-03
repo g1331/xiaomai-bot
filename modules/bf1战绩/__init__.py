@@ -2157,13 +2157,17 @@ async def recent(app: Ariadne, sender: Member, group: Group, message: MessageCha
         # async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=head_temp, timeout=10)
         end_time = time.time()
-        logger.info(f'查询最近耗时:{end_time - start_time}')
         html = response.text
         # 处理网页超时
         if html == "timed out":
             raise Exception
         elif html == {}:
             raise Exception
+        if "Invalid URI: The URI is empty." in html:
+            await app.send_message(group, MessageChain(
+                "接口出错，请稍后再试!"
+            ), quote=message[Source][0])
+            return
 
         soup = BeautifulSoup(html, "html.parser")  # 查找符合要求的字符串 形成列表
         for item in soup.find_all("div", class_="card-body player-sessions"):
@@ -2213,6 +2217,7 @@ async def recent(app: Ariadne, sender: Member, group: Group, message: MessageCha
                 data_list
             ), quote=message[Source][0])
             record.recent_counter(sender.id, str(player_pid), str(player_name))
+            logger.info(f'查询最近耗时:{end_time - start_time}')
             return True
     except Exception as e:
         logger.warning(e)

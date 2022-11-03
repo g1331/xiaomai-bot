@@ -1573,7 +1573,13 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, message: M
     except Exception as e:
         logger.error(e)
         await InfoCache(str(player_pid), "stat").update_cache()
-        player_stat_data = (await InfoCache_stat(str(player_pid)).get_data())["result"]
+        try:
+            player_stat_data = (await InfoCache_stat(str(player_pid)).get_data())["result"]
+        except:
+            await app.send_message(group, MessageChain(
+                f"查询时出现网络错误!"
+            ), quote=message[Source][0])
+            return False
 
     # 等级信息
     rank_data = "0"
@@ -1632,11 +1638,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, message: M
         bfban_status = stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]
         if bf_stat["personaids"][str(player_pid)]["hacker"]:
             if_cheat = True
-        # if bf_stat['personaids'][str(player_pid)]['cheatMethods'] != "":
-        #     if if_cheat:
-        #         cheat_method = f"作弊方式:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
-        #     else:
-        #         cheat_method = f"被举报为:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
     else:
         bf_url = "暂无信息"
         bfban_status = "未查询到联ban信息"
@@ -1714,9 +1715,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, message: M
     # 武器数据
     # noinspection PyBroadException
     try:
-        # weapon_data = await get_weapon_data(str(player_pid))
-        # weapon_data = scrape_index_tasks[1].result()
-        # weapon_data = await InfoCache(str(player_pid), "weapon").get_data()
         # noinspection PyBroadException
         try:
             # weapon_data = await InfoCache(str(player_pid), "weapon").get_data()
@@ -1795,8 +1793,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, message: M
     # 载具数据
     # noinspection PyBroadException
     try:
-        # vehicle_data = await get_vehicle_data(str(player_pid))
-        # vehicle_data = scrape_index_tasks[2].result()
         # noinspection PyBroadException
         try:
             # vehicle_data = await InfoCache(str(player_pid), "vehicle").get_data()
@@ -2202,19 +2198,6 @@ async def recent(app: Ariadne, sender: Member, group: Group, message: MessageCha
                 i += 1
                 c += 6
             data_list[-1][-1] = data_list[-1][-1].replace("\n", "")
-
-            # msg = ''
-            # for item in data_list:
-            #     for item2 in item:
-            #         msg += item2
-            # await app.send_message(
-            #     group,
-            #     await MessageChainUtils.messagechain_to_img(
-            #         MessageChain(
-            #             data_list
-            #         )
-            #     ), quote=message[Source][0]
-            # )
             if if_blocked(app.account):
                 await app.send_message(
                     group,
@@ -2752,306 +2735,6 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
     ), quote=message[Source][0])
     record.tyc_counter(sender.id, player_pid, player_name)
     return
-
-
-# TODO: 举报到eac
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[Perm.require(32),
-                                        Switch.require("bf1战绩"),
-                                        DuoQ.require()],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        "message" @ UnionMatch(
-                                            "-举报"
-                                        ).space(SpacePolicy.PRESERVE),
-                                        "player_name" @ ParamMatch(optional=False).space(PRESERVE)
-                                    ]
-                                )
-                            ]))
-async def report(app: Ariadne, sender: Member, group: Group, message: MessageChain, player_name: RegexResult):
-    global client
-    # TODO 1.查验id是否有效
-    player_name = player_name.result.display
-    # noinspection PyBroadException
-    try:
-        player_info = await getPid_byName(player_name)
-    except Exception as e:
-        logger.error(e)
-        await app.send_message(group, MessageChain(
-            f"网络出错，请稍后再试"
-        ), quote=message[Source][0])
-        return False
-    if player_info['personas'] == {}:
-        await app.send_message(group, MessageChain(
-            f"玩家[{player_name}]不存在"
-        ), quote=message[Source][0])
-        return False
-    else:
-        player_pid = player_info['personas']['persona'][0]['personaId']
-        player_name = player_info['personas']['persona'][0]['displayName']
-        # player_uid = player_info['personas']['persona'][0]['pidId']
-
-    await app.send_message(group, MessageChain(
-        f"注意:请勿随意、乱举报,“垃圾”举报将会影响eac的处理效率,同时将撤销bot的使用"
-    ), quote=message[Source][0])
-    # TODO 2.查验是否已经有举报信息
-    check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
-    header = {
-        "Connection": "Keep-Alive"
-    }
-    # noinspection PyBroadException
-    try:
-        await app.send_message(group, MessageChain(
-            f"查询信息ing"
-        ), quote=message[Source][0])
-        # async with httpx.AsyncClient() as client:
-        response = await client.get(check_eacInfo_url, headers=header, timeout=10)
-        response = eval(response.text)
-    except Exception as e:
-        logger.error(e)
-        await app.send_message(group, MessageChain(
-            f"网络出错，请稍后再试"
-        ), quote=message[Source][0])
-        return False
-    if response["data"] != "":
-        data = response["data"][0]
-        case_id = data["case_id"]
-        case_url = f"https://bfeac.com/#/case/{case_id}"
-        await app.send_message(group, MessageChain(
-            f"查询到已有案件信息如下:\n",
-            case_url
-        ), quote=message[Source][0])
-        return
-
-    # TODO 3.选择举报类型 1/5,其他则退出
-    # report_type = 0
-    # await app.send_message(group, MessageChain(
-    #     f"请在10秒内发送举报的游戏:1"
-    # ), quote=message[Source][0])
-    #
-    # async def waiter_report_type(waiter_member: Member, waiter_group: Group,
-    #                              waiter_message: MessageChain):
-    #     if waiter_member.id == sender.id and waiter_group.id == group.id:
-    #         choices = ["1"]
-    #         say = waiter_message.display
-    #         if say in choices:
-    #             return True, waiter_member.id, say
-    #         else:
-    #             return False, waiter_member.id, say
-    #
-    # try:
-    #     result, operator, report_type = await FunctionWaiter(waiter_report_type, [GroupMessage],
-    #                                                          block_propagation=True).wait(timeout=10)
-    # except asyncio.exceptions.TimeoutError:
-    #     await app.send_message(group, MessageChain(
-    #         f'操作超时,请重新举报!'), quote=message[Source][0])
-    #     return
-    # if result:
-    #     await app.send_message(group, MessageChain(
-    #         f"已获取到举报的游戏:bf{report_type},请在30秒内发送举报的理由(不带图片)!"
-    #     ), quote=message[Source][0])
-    # else:
-    #     await app.send_message(group, MessageChain(
-    #         f"获取到举报的游戏:{report_type}无效的选项,已退出举报!"
-    #     ), quote=message[Source][0])
-    #     return False
-
-    # TODO 4.发送举报的理由
-    # report_reason = None
-    await app.send_message(group, MessageChain(
-        f"请在30秒内发送举报的理由(请一次描述完且不带图片!!!)"
-    ), quote=message[Source][0])
-    saying = None
-
-    async def waiter_report_reason(waiter_member: Member, waiter_group: Group,
-                                   waiter_message: MessageChain):
-        if waiter_member.id == sender.id and waiter_group.id == group.id:
-            nonlocal saying
-            saying = waiter_message.display
-            return waiter_member.id, f"<p>{saying}</p>"
-
-    try:
-        operator, report_reason = await FunctionWaiter(waiter_report_reason, [GroupMessage],
-                                                       block_propagation=True).wait(timeout=30)
-    except asyncio.exceptions.TimeoutError:
-        await app.send_message(group, MessageChain(
-            f'操作超时,请重新举报!'), quote=message[Source][0])
-        return
-    await app.send_message(group, MessageChain(
-        f"获取到举报理由:{saying}\n若需补充图片请在30秒内发送一张图片,无图片则发送'确认'以提交举报。"
-    ), quote=message[Source][0])
-
-    # TODO 5.发送举报的图片,其他则退出
-
-    list_pic = []
-    # remove_list = []
-    # data = ()
-    if_confirm = False
-    while not if_confirm:
-        if len(list_pic) == 0:
-            pass
-        else:
-            await app.send_message(group, MessageChain(
-                f"收到{len(list_pic)}张图片,如需添加请继续发送图片,否则发送'确认'以提交举报。"
-            ), quote=message[Source][0])
-
-        async def waiter_report_pic(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group):
-            nonlocal if_confirm  # 内部函数修改外部函数的变量
-            if group.id == waiter_group.id and waiter_member.id == sender.id:
-                say = waiter_message.display.replace(f"{At(app.account)} ", '')
-                if say == '[图片]':
-                    return True, waiter_message
-                elif say == "确认":
-                    if_confirm = True
-                    return True, waiter_message
-                else:
-                    return False, waiter_message
-
-        try:
-            result, img = await FunctionWaiter(waiter_report_pic, [GroupMessage], block_propagation=True).wait(
-                timeout=30)
-        except asyncio.exceptions.TimeoutError:
-            await app.send_message(group, MessageChain(
-                f'操作超时,已自动退出!'), quote=message[Source][0])
-            return
-
-        if result:
-            # 如果是图片则下载
-            if img.display == '[图片]':
-                try:
-                    img_url = img[1].url
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'
-                    }
-                    # noinspection PyBroadException
-                    try:
-                        # async with httpx.AsyncClient() as client:
-                        response = await client.get(img_url, headers=headers, timeout=5)
-                        r = response
-                    except Exception as e:
-                        logger.error(e)
-                        await app.send_message(group, MessageChain(
-                            f'获取图片出错,请重新举报!'
-                        ), quote=message[Source][0])
-                        return False
-                    # wb 以二进制打开文件并写入，文件名不存在会创
-                    file_name = int(time.time())
-                    file_path = f'./data/battlefield/Temp/{file_name}.png'
-                    with open(file_path, 'wb') as f:
-                        f.write(r.content)  # 写入二进制内容
-                        f.close()
-
-                    # 获取图床
-                    # tc_url = "https://www.imgurl.org/upload/aws_s3"
-                    tc_url = "https://api.bfeac.com/inner_api/upload_image"
-                    tc_files = {'file': open(file_path, 'rb')}
-                    # tc_data = {'file': tc_files}
-                    apikey = "15fab20d-2abd-11ed-9352-00163ec65fff"
-                    tc_headers = {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
-                        "apikey": apikey
-                    }
-                    try:
-                        # async with httpx.AsyncClient() as client:
-                        response = await client.post(tc_url, files=tc_files, headers=tc_headers)
-                        # response = requests.post(tc_url, files=tc_files, data=tc_data, headers=tc_headers)
-                    except Exception as e:
-                        logger.error(e)
-                        await app.send_message(group, MessageChain(
-                            f'获取图片图床失败,请重新举报!'
-                        ), quote=message[Source][0])
-                        return False
-                    json_temp = response.json()
-
-                    # img_temp = f"<img src = '{json_temp['data']}' />"
-                    img_temp = f'<img class="img-fluid" src="{json_temp["data"]}">'
-                    report_reason += img_temp
-                    list_pic.append(json_temp['data'])
-                    # noinspection PyBroadException
-                    try:
-                        os.remove(file_path)
-                    except Exception as e:
-                        logger.error(e)
-                        pass
-                except Exception as e:
-                    logger.error(response)
-                    logger.error(e)
-                    await app.send_message(group, MessageChain(
-                        f'获取图片图床失败,请重新举报!'
-                    ), quote=message[Source][0])
-                    return False
-            # 是确认则提交
-            if img.display == '确认':
-                await app.send_message(group, MessageChain(
-                    f"提交举报ing"
-                ), quote=message[Source][0])
-                # 调用接口
-                report_result = eval(await report_Interface(player_name, report_reason, sender.id))
-                # await app.send_message(group, MessageChain(
-                #     f'举报id:{player_name}\n'
-                #     f'举报游戏:{report_type}\n'
-                #     f'举报理由:{report_reason}\n'
-                #     f'举报图片:{list_pic}',
-                # ), quote=message[Source][0])
-                if type(report_result["data"]) == int:
-                    try:
-                        with open(f"./data/battlefield/report_log/data.json", "r", encoding="utf-8") as file1:
-                            log_data = json.load(file1)
-                            log_data["data"].append(
-                                {
-                                    "time": time.time(),
-                                    "operatorQQ": sender.id,
-                                    "caseId": report_result['data'],
-                                    "sourceGroupId": f"{group.id}",
-                                }
-                            )
-                            with open(f"./data/battlefield/report_log/data.json", "r", encoding="utf-8") as file2:
-                                json.dump(log_data, file2, indent=4, ensure_ascii=False)
-                    except Exception as e:
-                        logger.error(f"日志出错:{e}")
-                    await app.send_message(group, MessageChain(
-                        f"举报成功!案件地址:https://bfeac.com/?#/case/{report_result['data']}"
-                    ), quote=message[Source][0])
-                    record.report_counter(sender.id, player_pid, player_name)
-                    return True
-                else:
-                    await app.send_message(group, MessageChain(
-                        f"举报结果:{report_result}"
-                    ), quote=message[Source][0])
-                    return
-        else:
-            await app.send_message(group, MessageChain(
-                f'未识成功别到图片,请重新举报!'
-            ), quote=message[Source][0])
-            return False
-
-
-async def report_Interface(player_name, report_reason, report_qq):
-    report_url = "https://api.bfeac.com/inner_api/case_report"
-    apikey = "15fab20d-2abd-11ed-9352-00163ec65fff"
-    headers = {
-        "apikey": apikey
-    }
-    body = {
-        "target_EAID": player_name,
-        "case_body": report_reason,
-        "game_type": 1,
-        "report_by": {
-            "report_platform": "qq",
-            "user_id": report_qq
-        }
-    }
-    try:
-        # response = requests.post(report_url, headers=headers, json=json.dumps(body), files=report_pic, timeout=10)
-        # async with httpx.AsyncClient() as client:
-        response = await client.post(report_url, headers=headers, data=json.dumps(body), timeout=10)
-        # logger.warning(response)
-        logger.warning(response.text)
-        return response.text
-    except Exception as e:
-        logger.error(e)
-        return e
 
 
 # bfstat

@@ -1,6 +1,7 @@
-import time
-import psutil
 import asyncio
+import time
+
+import psutil
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, MessageEvent, ActiveMessage
 from graia.ariadne.message.chain import MessageChain
@@ -10,10 +11,13 @@ from graia.ariadne.model import Group
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 
+# 权限判断
+# 开启判断
+
+# 获取属于这个模组的实例
 
 saya = Saya.current()
 channel = Channel.current()
@@ -60,7 +64,7 @@ time_start = int(time.time())
                             inline_dispatchers=[
                                 Twilight(
                                     [
-                                        "action" @ UnionMatch("-bot", optional=False).space(
+                                        "action" @ UnionMatch("-bot", "-status", optional=False).space(
                                             SpacePolicy.PRESERVE),
                                     ]
                                     # 示例:-bot
@@ -89,13 +93,13 @@ async def bot(app: Ariadne, group: Group, source: Source):
     # 磁盘
     cp = str(psutil.disk_usage('/').percent) + "%"
     # 上传与下载网速
-    sent_before = psutil.net_io_counters().bytes_sent  # 已发送的流量
-    recv_before = psutil.net_io_counters().bytes_recv  # 已接收的流量
+    # sent_before = psutil.net_io_counters().bytes_sent  # 已发送的流量
+    # recv_before = psutil.net_io_counters().bytes_recv  # 已接收的流量
     await asyncio.sleep(1)
-    sent_now = psutil.net_io_counters().bytes_sent
-    recv_now = psutil.net_io_counters().bytes_recv
-    sent = (sent_now - sent_before) / 1024  # 算出1秒后的差值
-    recv = (recv_now - recv_before) / 1024
+    # sent_now = psutil.net_io_counters().bytes_sent
+    # recv_now = psutil.net_io_counters().bytes_recv
+    # sent = (sent_now - sent_before) / 1024  # 算出1秒后的差值
+    # recv = (recv_now - recv_before) / 1024
 
     await app.send_message(group, MessageChain(
         f"运行时长：{work_time}\n"
@@ -106,10 +110,11 @@ async def bot(app: Ariadne, group: Group, source: Source):
         '内存占比：%.0f%%\n' % zb,
         f'CPU占比：{zb2}\n',
         f'磁盘占比：{cp}\n',
-        "上传速度：{0}KB/s\n".format("%.2f" % sent),
-        "下载速度：{0}KB/s\n".format("%.2f" % recv),
         f"当前响应bot数:{len(app_list)}\n",
-        f"当前接收使用群数:{len(group_list)}",
+        f"当前接收使用群数:{len(group_list)}\n"
+        f"项目地址:https://github.com/g1331/xiaomai-bot\n"
+        f"爱发电地址:https://afdian.net/a/ss1333\n"
+        f"反馈Q群:749094683",
 
     ), quote=source)
     app_list = []
@@ -124,7 +129,7 @@ async def bot(app: Ariadne, group: Group, source: Source):
                                 Twilight.from_command("-help status")
                             ]
                             ))
-async def help(app: Ariadne, group: Group, message: MessageChain):
+async def manager_help(app: Ariadne, group: Group):
     await app.send_message(group, MessageChain(
-        f'1.使用-bot/-status查看bot运行状态'
+        f'1.使用-bot查看bot运行状态'
     ))

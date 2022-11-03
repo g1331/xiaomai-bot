@@ -1,20 +1,18 @@
 import os
+import yaml
 from typing import Union
-
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import MemberJoinEvent, MemberLeaveEventQuit
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, At
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, RegexMatch, SpacePolicy, \
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
     PRESERVE, UnionMatch
 from graia.ariadne.model import Group, Member, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
-from graia.saya import Channel, SayaModuleInstalled
+from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from loguru import logger
-import yaml
 
 # 获取属于这个模组的实例
 from modules.DuoQHandle import DuoQ
@@ -23,13 +21,6 @@ channel = Channel.current()
 channel.name("权限组模块")
 channel.description("统一的模组型权限管理，可以对其他插件使用时进行权限判断，控制所有权限相关的内容,与插件开关区别")
 channel.author("13")
-
-
-# @channel.use(ListenerSchema(
-#     listening_events=[SayaModuleInstalled]
-# ))
-# async def module_listener(event: SayaModuleInstalled):
-#     logger.info(f"{event.module} :: 模块加载成功!!!")
 
 
 # 该类用于depend等权限判断，含有修饰器来检查权限
@@ -117,14 +108,14 @@ class Perm(object):
                                     # 示例: -perm create group (group_id) <type>
                                 )
                             ]))
-async def crete_perm_group(app: Ariadne, group: Group, sender: Member, message: MessageChain,
+async def crete_perm_group(app: Ariadne, group: Group, message: MessageChain,
                            group_id: RegexResult, group_type: RegexResult):
     """
     创建权限组配置文件
+    :param app:
     :param group_type: 权限类型-默认/管理
     :param group_id: 是否匹配群id
     :param group: 群
-    :param sender: 发送的人
     :param message: 传入消息
     :return:
     """
@@ -187,23 +178,11 @@ async def crete_perm_group(app: Ariadne, group: Group, sender: Member, message: 
                             inline_dispatchers=[
                                 Twilight.from_command("-perm del group {group_id}")
                             ]))
-async def del_perm_group(app: Ariadne, group: Group, sender: Member, message: MessageChain, group_id: RegexResult):
+async def del_perm_group(app: Ariadne, group: Group, message: MessageChain, group_id: RegexResult):
     group_id = int(str(group_id.result))
-    # 判断群号是否有效
-    if await app.get_group(group_id) is None:
-        await app.send_message(group, MessageChain(
-            f"没有找到群{group_id}"
-        ), quote=message[Source][0])
-        return False
-
     path = f'./config/group/{group_id}/perm.yaml'
-    file_path = f"f'./config/group/{group_id}/管理组.txt"
     if os.path.exists(path):
-        try:
-            os.remove(file_path)
-        except:
-            pass
-        os.remove(path)
+        os.remove(f'./config/group/{group_id}')
         await app.send_message(group, MessageChain(
             f"为<{group.name}><{group_id}>删除权限组成功"
         ), quote=message[Source][0])
@@ -260,6 +239,10 @@ async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: Me
                          action: RegexResult, level: RegexResult, member_id: RegexResult):
     """
     对权限组进行增删改查
+    :param message:
+    :param sender:
+    :param group:
+    :param app:
     :param group_id:qq群
     :param action:权限操作
     :param level:权限级
@@ -324,10 +307,7 @@ async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: Me
 
 
 # 管理组-加群自动添加,默认和管理组-退群自动删除
-@channel.use(ListenerSchema(listening_events=[MemberJoinEvent],
-                            decorators=[
-                                # DuoQ.require()
-                            ]))
+@channel.use(ListenerSchema(listening_events=[MemberJoinEvent]))
 async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
     group_id = group.id
     member_id = member.id
@@ -350,10 +330,7 @@ async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
             return True
 
 
-@channel.use(ListenerSchema(listening_events=[MemberLeaveEventQuit],
-                            decorators=[
-                                # DuoQ.require()
-                            ]))
+@channel.use(ListenerSchema(listening_events=[MemberLeaveEventQuit]))
 async def auto_del_perm(app: Ariadne, group: Group, member: Member):
     group_id = group.id
     member_id = member.id
@@ -392,7 +369,7 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
                                     ]
                                 )
                             ]))
-async def perm_list(app: Ariadne, group: Group, sender: Member, message: MessageChain):
+async def perm_list(app: Ariadne, group: Group, message: MessageChain):
     # 进行增删改
     path = f'./config/group/{group.id}'
     file_path = f'{path}/perm.yaml'
@@ -447,7 +424,7 @@ async def perm_list(app: Ariadne, group: Group, sender: Member, message: Message
                                     ]
                                 )
                             ]))
-async def change_botAdmin(app: Ariadne, group: Group, sender: Member, message: MessageChain,
+async def change_botAdmin(app: Ariadne, group: Group, message: MessageChain,
                           action: RegexResult, member_id: RegexResult):
     with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
         bot_data = yaml.load(bot_file, Loader=yaml.Loader)
@@ -491,7 +468,6 @@ async def change_botAdmin(app: Ariadne, group: Group, sender: Member, message: M
                             ]
                             ))
 async def check_perm(app: Ariadne, group: Group, sender: Member, message: MessageChain):
-    # message = message.display.replace("/test", "")
     await app.send_message(group, MessageChain(
         "这是一则测试内容\n"f"你的权限级:{Perm.get(sender, group)}\n"
         f"你的群权限:{sender.permission}"
@@ -508,7 +484,7 @@ async def check_perm(app: Ariadne, group: Group, sender: Member, message: Messag
                                 Twilight.from_command("-help perm")
                             ]
                             ))
-async def help(app: Ariadne, group: Group, sender: Member, message: MessageChain):
+async def help_manager(app: Ariadne, group: Group, message: MessageChain):
     await app.send_message(group, MessageChain(
         f'()表示可选项,<>表示必填项,a/b表示可选参数a和b\n'
         f'1.创建权限组:\n-perm create group (群号) <默认/管理>\n'

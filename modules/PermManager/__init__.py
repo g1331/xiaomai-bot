@@ -181,8 +181,17 @@ async def crete_perm_group(app: Ariadne, group: Group, message: MessageChain,
 async def del_perm_group(app: Ariadne, group: Group, message: MessageChain, group_id: RegexResult):
     group_id = int(str(group_id.result))
     path = f'./config/group/{group_id}/perm.yaml'
+    admin_file_path = f"{path}/管理组.txt"
     if os.path.exists(path):
-        os.remove(f'./config/group/{group_id}')
+        try:
+            os.remove(path)
+            if os.path.exists(admin_file_path):
+                os.remove(admin_file_path)
+        except Exception as e:
+            await app.send_message(group, MessageChain(
+                f"删除权限组失败:{e}"
+            ), quote=message[Source][0])
+            return
         await app.send_message(group, MessageChain(
             f"为<{group.name}><{group_id}>删除权限组成功"
         ), quote=message[Source][0])

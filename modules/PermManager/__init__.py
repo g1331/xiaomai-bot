@@ -180,11 +180,12 @@ async def crete_perm_group(app: Ariadne, group: Group, message: MessageChain,
                             ]))
 async def del_perm_group(app: Ariadne, group: Group, message: MessageChain, group_id: RegexResult):
     group_id = int(str(group_id.result))
-    path = f'./config/group/{group_id}/perm.yaml'
+    path = f'./config/group/{group_id}'
+    file_path = f'./config/group/{group_id}/perm.yaml'
     admin_file_path = f"{path}/管理组.txt"
     if os.path.exists(path):
         try:
-            os.remove(path)
+            os.remove(file_path)
             if os.path.exists(admin_file_path):
                 os.remove(admin_file_path)
         except Exception as e:

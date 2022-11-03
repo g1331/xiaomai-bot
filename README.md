@@ -1,6 +1,6 @@
 <div align="center">
-
-#xiaomai-bot 
+ 
+<h1>xiaomai-bot</h1>
 <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt=""/>
 <div>一个以<a href="https://github.com/GraiaProject/Ariadne">Graia Ariadne</a>框架为基础的 QQ 机器人</div>
 <br>

@@ -324,7 +324,7 @@ async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
     path = f'./config/group/{group_id}'
     file_path = f'{path}/perm.yaml'
     file_path2 = f'{path}/管理组.txt'
-    if os.path.exists(file_path) and not os.path.exists(file_path2):
+    if not os.path.exists(file_path) or not os.path.exists(file_path2):
         return
     with open(file_path, 'r', encoding="utf-8") as file1:
         file_before = yaml.load(file1, Loader=yaml.Loader)

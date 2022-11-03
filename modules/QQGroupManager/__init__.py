@@ -249,7 +249,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
                      event_waiter: GroupMessage):
-        if event.supplicant in [member_temp.id for member_temp in await app.get_member_list(waiter_group)]:
+        member_id_list = [member_temp.id for member_temp in await app.get_member_list(waiter_group)]
+        if event.supplicant in member_id_list:
             if_join = True
         else:
             if_join = False

@@ -390,6 +390,11 @@ async def perm_list(app: Ariadne, group: Group, message: MessageChain):
     else:
         with open(file_path, 'r', encoding="utf-8") as file1:
             data = yaml.load(file1, Loader=yaml.Loader)
+            if data is None:
+                await app.send_message(group, MessageChain(
+                    "当前权限组为空!"
+                ), quote=message[Source][0])
+                return
             level_64 = []
             level_32 = []
             level_else = []

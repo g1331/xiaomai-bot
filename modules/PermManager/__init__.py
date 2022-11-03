@@ -236,7 +236,7 @@ async def succeed_perm_group(app: Ariadne, group: Group, sender: Member, message
                                 )
                             ]))
 async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: MessageChain, group_id: RegexResult,
-                         action: RegexResult, level: RegexResult, member_id: RegexResult):
+                         level: RegexResult, member_id: RegexResult):
     """
     对权限组进行增删改查
     :param message:
@@ -244,7 +244,6 @@ async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: Me
     :param group:
     :param app:
     :param group_id:qq群
-    :param action:权限操作
     :param level:权限级
     :param member_id:被添加人的id
     :return:
@@ -315,8 +314,8 @@ async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
     path = f'./config/group/{group_id}'
     file_path = f'{path}/perm.yaml'
     file_path2 = f'{path}/管理组.txt'
-    if not (os.path.exists(file_path2) and os.path.exists(file_path)):
-        return False
+    if os.path.exists(file_path) and not os.path.exists(file_path2):
+        return
     with open(file_path, 'r', encoding="utf-8") as file1:
         file_before = yaml.load(file1, Loader=yaml.Loader)
         if file_before is None:
@@ -327,7 +326,7 @@ async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
             await app.send_message(group, MessageChain(
                 At(member), f"已自动修改权限为32"
             ))
-            return True
+            return
 
 
 @channel.use(ListenerSchema(listening_events=[MemberLeaveEventQuit]))

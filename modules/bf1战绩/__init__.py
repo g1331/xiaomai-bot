@@ -30,6 +30,7 @@ from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
 from loguru import logger
 
+from main_session_auto_refresh import auto_refresh_account
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.Switch import Switch
@@ -2926,7 +2927,6 @@ async def auto_refresh_session(app: Ariadne):
                 # noinspection PyBroadException
                 try:
                     logger.info("开始刷新session")
-                    from main_session_auto_refresh import auto_refresh_account
                     result = await auto_refresh_account()
                     if result == "刷新成功":
                         logger.success("session自动刷新成功")

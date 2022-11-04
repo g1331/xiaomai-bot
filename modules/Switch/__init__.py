@@ -59,7 +59,7 @@ class Switch(object):
         :return: Depend
         """
 
-        async def wrapper(group: Group, app: Ariadne):
+        async def wrapper(group: Group):
             # 通过get来获取插件使用的状态
             try:
                 result = cls.get(module_name, group)
@@ -68,9 +68,6 @@ class Switch(object):
             if result:
                 return Depend(wrapper)
             else:
-                # await app.send_message(group, MessageChain(
-                #     f"功能{module_name}未开启~"
-                # ))
                 raise ExecutionStop
 
         return Depend(wrapper)
@@ -96,12 +93,6 @@ class Switch(object):
                             ]))
 async def switch_on_off(app: Ariadne, group: Group, sender: Member, message: MessageChain, group_id: RegexResult,
                         switch_type: RegexResult, fun_name: RegexResult):
-    """
-    开启/关闭 某个功能
-    :param switch_type: 开启/关闭
-    :param fun_name: 功能名字
-    :return: bool
-    """
     if group_id.matched:
         group_id = int(str(group_id.result))
         # 如果不是当前群，判假
@@ -279,7 +270,7 @@ async def switch_module(app: Ariadne, group: Group, sender: Member, message: Mes
                                     # 示例: -test 插件开/关 插件名字
                                 )
                             ]))
-async def fun_test(app: Ariadne, group: Group, sender: Member, message: MessageChain, switch_type: RegexResult,
+async def fun_test(app: Ariadne, group: Group, message: MessageChain, switch_type: RegexResult,
                    module_name: RegexResult):
     await app.send_message(group, MessageChain(
         f"识别到指令:{switch_type.result} {module_name.result}"
@@ -296,7 +287,7 @@ async def fun_test(app: Ariadne, group: Group, sender: Member, message: MessageC
                                 Twilight.from_command("-help switch")
                             ]
                             ))
-async def help(app: Ariadne, group: Group, sender: Member, message: MessageChain):
+async def help_manager(app: Ariadne, group: Group):
     await app.send_message(group, MessageChain(
         f'全局指令格式:\n()表示可选项<>表示必填项\na/b表示可选参数a和b\n'
         f'1.开关功能:\n-<开启/关闭> <功能名> (群号)\n'
@@ -320,12 +311,10 @@ async def help(app: Ariadne, group: Group, sender: Member, message: MessageChain
                                 ])
                             ]
                             ))
-async def menu(app: Ariadne, group: Group, sender: Member, message: MessageChain):
+async def menu(app: Ariadne, group: Group, message: MessageChain):
     with open('./config/Switch.yaml', 'r', encoding="utf-8") as file:
         temp = yaml.load(file, Loader=yaml.Loader)
         funlist_on = temp["funlist_on"]
-        funlist_off = temp["funlist_off"]
-        funlist_always = temp["funlist_always"]
         if funlist_on is None or len(funlist_on) == 0:
             await app.send_message(group, MessageChain(
                 f"注意:没有识别到装载的插件，可能正在维护"
@@ -410,7 +399,7 @@ async def menu(app: Ariadne, group: Group, sender: Member, message: MessageChain
                                     # 示例: -插件重载 test
                                 )
                             ]))
-async def module_reload(app: Ariadne, sender: Member, group: Group, message: MessageChain, module_name: RegexResult,
+async def module_reload(app: Ariadne, group: Group, module_name: RegexResult,
                         source: Source):
     module_name = f"modules.{module_name.result.display}"
     if module_name not in saya.channels:
@@ -446,7 +435,7 @@ async def module_reload(app: Ariadne, sender: Member, group: Group, message: Mes
                                     ],
                                 )
                             ]))
-async def module_list(app: Ariadne, sender: Member, group: Group, message: MessageChain, source: Source):
+async def module_list(app: Ariadne, group: Group):
     temp = saya.channels
     send = []
     for module in temp.keys():

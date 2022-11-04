@@ -19,7 +19,6 @@ from modules.PermManager import Perm
 from modules.Switch import Switch
 from modules.bf1战绩 import getPid_byName, get_player_stat_data, record
 
-# 获取属于这个模组的实例
 
 channel = Channel.current()
 channel.name("群管功能")

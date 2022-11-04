@@ -14,7 +14,6 @@ from graia.broadcast.builtin.decorators import Depend
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-# 获取属于这个模组的实例
 from modules.DuoQHandle import DuoQ
 
 channel = Channel.current()

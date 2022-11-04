@@ -1,30 +1,20 @@
-import os
-
 import yaml
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage, FriendMessage
-from graia.ariadne.event.mirai import NudgeEvent
+from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Source, Image
-from graia.ariadne.message.parser.base import DetectPrefix
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, PRESERVE, ParamMatch, UnionMatch, RegexResult, \
+from graia.ariadne.message.element import Source
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, UnionMatch, RegexResult, \
     SpacePolicy
 from graia.ariadne.model import Group, Member
-
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-
-# 权限判断
 from loguru import logger
 
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-
-# 获取属于这个模组的实例
 from util.internal_utils import MessageChainUtils
-from util.text2image import create_image
 
 saya = Saya.current()
 channel = Channel.current()

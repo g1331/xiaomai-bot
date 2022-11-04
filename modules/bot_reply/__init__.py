@@ -1,10 +1,9 @@
-import asyncio
-import json
 import os
 import random
 import string
+import asyncio
 
-import zhconv
+from loguru import logger
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import MemberHonorChangeEvent
@@ -16,15 +15,9 @@ from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-# 权限判断
-from loguru import logger
 
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-
-# 开启判断
-
-# 获取属于这个模组的实例
 
 saya = Saya.current()
 channel = Channel.current()

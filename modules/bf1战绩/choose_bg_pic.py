@@ -1,7 +1,7 @@
-import json
 import os
-import random
 import time
+import json
+import random
 
 
 class bg_pic(object):

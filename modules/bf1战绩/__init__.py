@@ -1,50 +1,47 @@
 import asyncio
 import json
 import os
-import random
 import re
 import time
-import uuid
-from datetime import date, timedelta
-
-import aiohttp
-import httpx
-import requests
 import yaml
+import uuid
+import httpx
 import zhconv
+import random
+import aiohttp
+import requests
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
+from loguru import logger
+from datetime import date, timedelta
+from graia.saya import Channel, Saya
+from graia.scheduler import timers
+from graia.scheduler.saya import SchedulerSchema
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.model import Group, Member
 from graia.ariadne.event.mirai import NudgeEvent
+from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image as graia_Image
 from graia.ariadne.message.element import Source, At
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
     PRESERVE, UnionMatch
-from graia.ariadne.model import Group, Member
-from graia.ariadne.util.interrupt import FunctionWaiter
-from graia.saya import Channel, Saya
-from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.scheduler import timers
-from graia.scheduler.saya import SchedulerSchema
-from loguru import logger
 
-from main_session_auto_refresh import auto_refresh_account
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.Switch import Switch
-from modules.bf1战绩.choose_bg_pic import bg_pic
-from modules.bf1战绩.info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
-from modules.bf1战绩.record_counter import record
 from util.internal_utils import MessageChainUtils
 
+from .choose_bg_pic import bg_pic
+from .info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
+from .main_session_auto_refresh import auto_refresh_account
+from .record_counter import record
+
 saya = Saya.current()
-# 获取属于这个模组的实例
 channel = Channel.current()
-# channel.module
 channel.name("bf1战绩")
-# channel.meta
 channel.description("战地1战绩功能")
 channel.author("13")
 

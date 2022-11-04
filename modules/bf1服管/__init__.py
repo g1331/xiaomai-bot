@@ -1,16 +1,12 @@
 import asyncio
 import difflib
-import json
 import math
 import os
 import shutil
 import time
 from datetime import datetime
-from typing import Union
 
 import aiohttp
-import httpx
-import yaml
 import zhconv
 from PIL import Image as PIL_Image
 from PIL import ImageFont, ImageDraw, ImageFilter, ImageEnhance
@@ -27,18 +23,17 @@ from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
-from loguru import logger
 
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.Switch import Switch
 from modules.bf1战绩 import getPid_byName, server_playing, InfoCache_stat
 from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
-from modules.bf1服管 import api_gateway
-from modules.bf1服管.api_gateway import refresh_api_client
-from modules.bf1服管.bfgroups_log import rsp_log
-from modules.bf1服管.map_team_info import MapData
 from util.internal_utils import MessageChainUtils
+
+from .api_gateway import *
+from .bfgroups_log import rsp_log
+from .map_team_info import MapData
 
 saya = Saya.current()
 channel = Channel.current()

@@ -1,9 +1,8 @@
 import json
 import uuid
-from typing import Union
-
-import httpx
 import yaml
+import httpx
+from typing import Union
 from loguru import logger
 
 file = open(f"config/config.yaml", "r", encoding="utf-8")

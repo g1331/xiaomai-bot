@@ -1,7 +1,7 @@
 import json
+import yaml
 import httpx
 import requests
-import yaml
 from loguru import logger
 
 true = True

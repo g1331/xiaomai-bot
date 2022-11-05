@@ -1,12 +1,16 @@
 import asyncio
 import difflib
+import json
 import math
 import os
 import shutil
 import time
 from datetime import datetime
+from typing import Union
 
 import aiohttp
+import httpx
+import yaml
 import zhconv
 from PIL import Image as PIL_Image
 from PIL import ImageFont, ImageDraw, ImageFilter, ImageEnhance
@@ -23,6 +27,7 @@ from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
+from loguru import logger
 
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
@@ -32,6 +37,7 @@ from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
 from util.internal_utils import MessageChainUtils
 
 from .api_gateway import *
+from .api_gateway import refresh_api_client
 from .bfgroups_log import rsp_log
 from .map_team_info import MapData
 
@@ -2224,15 +2230,14 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         graia_Image(path=SavePic),
         "\n回复'-k 序号 原因'可踢出玩家(60秒内有效)"
     )
-    await app.send_message(group, message_send, quote=message[Source][0])
+    bot_message = await app.send_group_message(group, message_send, quote=message[Source][0])
     os.remove(SavePic)
 
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (Perm.get(waiter_member, waiter_group) >= 32) and waiter_group.id == group.id:
-            if eval(event.json())['message_chain'][1]['type'] == "Quote":
+            if eval(event.json())['message_chain'][1]['type'] == "Quote" and \
+                    eval(event.json())['message_chain'][1]['id'] == bot_message.id:
                 saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
-                if saying.startswith("-pl"):
-                    return
                 return saying
 
     try:
@@ -3739,7 +3744,7 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group, message: 
                             inline_dispatchers=[
                                 Twilight(
                                     [
-                                        "action" @ UnionMatch("-ban", "-b", "-封禁", "-封").space(SpacePolicy.NOSPACE),
+                                        "action" @ UnionMatch("-ban", "-封禁", "-封").space(SpacePolicy.NOSPACE),
                                         FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
                                         "server_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
                                         "player_name" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),

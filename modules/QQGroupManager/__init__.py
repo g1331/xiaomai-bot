@@ -1,6 +1,8 @@
 import json
 import httpx
 import asyncio
+
+import yaml
 from loguru import logger
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event import MiraiEvent
@@ -19,7 +21,6 @@ from modules.PermManager import Perm
 from modules.Switch import Switch
 from modules.bf1战绩 import getPid_byName, get_player_stat_data, record
 
-
 channel = Channel.current()
 channel.name("群管功能")
 channel.description("TODO:入群审核、欢迎、战地id查验、禁言、解禁、设置群精华、加退群判断、好友申请判断、邀请加群判断、退群删除群配置、加群建立文件夹")
@@ -29,20 +30,32 @@ true = True
 false = False
 null = ''
 
+# 读取账号信息
+with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
+    bot_data = yaml.load(bot_file, Loader=yaml.Loader)
+    master = bot_data["botinfo"]["Master"]
+    test_group = bot_data["botinfo"]["testgroup"]
+    admins = bot_data["botinfo"]["Admin"]
 
-@channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent], ))
+
+@channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent]))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """
     :param app:
     :param event: 被邀请加入群的事件
     :return:
     """
-    if event.supplicant == 1257661006:
-        await event.accept()
-        return
-    group = await app.get_group(749094683)
+    try:
+        if (event.supplicant == master) or (event.supplicant in admins):
+            await event.accept()
+            await app.send_message(await app.get_friend(event.supplicant), MessageChain(
+                f"已自动同意您的邀请~"
+            ))
+    except:
+        pass
+    group = await app.get_group(test_group)
     if group is None:
-        member = await app.get_friend(1257661006)
+        member = await app.get_friend(master)
         bot_message = await app.send_message(member, MessageChain(
             f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
             f'是否同意该申请，请在1小时内回复“y”或“n”'

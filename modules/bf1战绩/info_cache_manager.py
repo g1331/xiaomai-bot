@@ -29,17 +29,16 @@ class InfoCache(object):
         return os.path.getmtime(self.file_cache_path)
 
     def check_if_need_api(self) -> bool:
-        with open(self.file_cache_path, "r", encoding="utf-8") as file:
-            data = file.read()
-            if data is None:
-                return True
-            else:
-                data = json.loads(data)
+        try:
+            with open(self.file_cache_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
                 if "error" in data:
                     return True
-        if time.time() - self.get_cache_changedTime() > 900:
+        except:
             return True
-        elif time.time() - self.get_cache_changedTime() < 2:
+        if time.time() - self.get_cache_changedTime() >= 900:
+            return True
+        elif time.time() - self.get_cache_changedTime() <= 2:
             return True
         else:
             return False

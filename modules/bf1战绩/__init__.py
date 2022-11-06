@@ -34,10 +34,10 @@ from modules.PermManager import Perm
 from modules.Switch import Switch
 from util.internal_utils import MessageChainUtils
 
-from .choose_bg_pic import bg_pic
-from .info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
-from .main_session_auto_refresh import auto_refresh_account
-from .record_counter import record
+from modules.bf1战绩.choose_bg_pic import bg_pic
+from modules.bf1战绩.info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
+from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
+from modules.bf1战绩.record_counter import record
 
 saya = Saya.current()
 channel = Channel.current()

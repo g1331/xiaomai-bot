@@ -36,6 +36,7 @@ from modules.bf1战绩 import getPid_byName, server_playing, InfoCache_stat
 from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
 from util.internal_utils import MessageChainUtils
 
+from modules.bf1服管 import api_gateway
 from modules.bf1服管.api_gateway import refresh_api_client
 from modules.bf1服管.bfgroups_log import rsp_log
 from modules.bf1服管.map_team_info import MapData

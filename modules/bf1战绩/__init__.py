@@ -2601,6 +2601,7 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
         asyncio.ensure_future(tyc_bfban_api(player_pid)),
         asyncio.ensure_future(tyc_bfeac_api(player_name)),
         asyncio.ensure_future(server_playing(player_pid)),
+        asyncio.ensure_future(tyc_check_vban(player_pid)),
     ]
     tasks = asyncio.gather(*scrape_index_tasks)
     try:
@@ -2635,7 +2636,7 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
     # noinspection PyBroadException
     try:
         # vban检查
-        vban_info = await tyc_check_vban(player_pid)
+        vban_info = scrape_index_tasks[6].result()
         vban_num = None
         if type(vban_info) == str:
             pass
@@ -2652,10 +2653,10 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
             player_ban = len(html1["result"][3]["data"])
             data_list.append("拥有服务器数:%s\n" % player_server)
             data_list.append("管理服务器数:%s\n" % player_admin)
-            data_list.append("VIP数:%s\n" % player_vip)
             data_list.append("服务器封禁数:%s\n" % player_ban)
             if vban_num is not None:
                 data_list.append(f"vban数:{vban_num}\n")
+            data_list.append("VIP数:%s\n" % player_vip)
             data_list.append("详细情况:https://bf.s-wg.net/#/player?pid=%s\n" % player_pid)
             data_list.append("=" * 20 + '\n')
     except Exception as e:

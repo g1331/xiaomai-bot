@@ -2655,7 +2655,7 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
             data_list.append("管理服务器数:%s\n" % player_admin)
             data_list.append("服务器封禁数:%s\n" % player_ban)
             if vban_num is not None:
-                data_list.append(f"vban数:{vban_num}\n")
+                data_list.append(f"VBAN数:{vban_num}\n")
             data_list.append("VIP数:%s\n" % player_vip)
             data_list.append("详细情况:https://bf.s-wg.net/#/player?pid=%s\n" % player_pid)
             data_list.append("=" * 20 + '\n')

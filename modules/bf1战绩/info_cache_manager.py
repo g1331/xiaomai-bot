@@ -34,7 +34,7 @@ class InfoCache(object):
             if data is None:
                 return True
             else:
-                data = json.load(file)
+                data = json.loads(data)
                 if "error" in data:
                     return True
         if time.time() - self.get_cache_changedTime() > 900:

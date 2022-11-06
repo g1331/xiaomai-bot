@@ -2515,6 +2515,23 @@ async def tyc_bfeac_api(player_name):
     return response
 
 
+async def tyc_check_vban(player_pid) -> dict or str:
+    url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
+    head = {
+        'accept': 'application/json',
+        "Connection": "Keep-Alive"
+    }
+    try:
+        # async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=head, timeout=5)
+        try:
+            return eval(response.text)
+        except:
+            return "获取出错!"
+    except:
+        return '网络出错!'
+
+
 # TODO:天眼查
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[Perm.require(16),
@@ -2617,6 +2634,13 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
     # 水神api
     # noinspection PyBroadException
     try:
+        # vban检查
+        vban_info = await tyc_check_vban(player_pid)
+        vban_num = None
+        if type(vban_info) == str:
+            pass
+        else:
+            vban_num = len(vban_info["vban"])
         html1 = scrape_index_tasks[1].result().text
         if html1 == 404:
             raise Exception
@@ -2629,114 +2653,14 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, message: Messag
             data_list.append("拥有服务器数:%s\n" % player_server)
             data_list.append("管理服务器数:%s\n" % player_admin)
             data_list.append("VIP数:%s\n" % player_vip)
-            data_list.append("被服务器封禁数:%s\n" % player_ban)
+            data_list.append("服务器封禁数:%s\n" % player_ban)
+            if vban_num is not None:
+                data_list.append(f"vban数:{vban_num}\n")
             data_list.append("详细情况:https://bf.s-wg.net/#/player?pid=%s\n" % player_pid)
             data_list.append("=" * 20 + '\n')
     except Exception as e:
         logger.error(f"获取水神api出错:{e}")
         pass
-
-    # 战绩软件api
-    # noinspection PyBroadException
-    try:
-        record_html = eval(scrape_index_tasks[2].result().text)
-        browse = record_html["data"]["browse"]
-        hacker = record_html["data"]["hacker"]
-        doubt = record_html["data"]["doubt"]
-        data_list.append("战绩软件查询结果:\n")
-        data_list.append(f"浏览量:{browse} ")
-        data_list.append(f"外挂标记:{hacker} ")
-        data_list.append(f"怀疑标记:{doubt}\n")
-        data_list.append("=" * 20 + '\n')
-    except Exception as e:
-        logger.error(f"获取战绩软件出错:{e}")
-        pass
-
-    # bfban查询
-    # noinspection PyBroadException
-    bf_html = None
-    try:
-        bf_html = scrape_index_tasks[3].result().text
-        if bf_html == "timed out":
-            raise Exception(f"网络出错")
-        elif bf_html == {}:
-            raise Exception(f"网络出错")
-        bf_stat = eval(bf_html)
-        stat_dict = {
-            "0": "未处理",
-            "1": "实锤",
-            "2": "嫌疑再观察",
-            "3": "认为没开",
-            "4": "回收站",
-            "5": "回复讨论中",
-            "6": "等待管理确认"
-        }
-        # 先看下有无案件信息
-        if "url" in bf_stat["personaids"][str(player_pid)]:
-            bf_url = bf_stat["personaids"][str(player_pid)]["url"]
-            data_list.append("查询到BFBAN信息:\n")
-            data_list.append(f"案件地址:{bf_url}\n")
-            data_list.append(f'状态:{stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]}\n')
-            if bf_stat['personaids'][str(player_pid)]['cheatMethods'] != "":
-                if bf_stat["personaids"][str(player_pid)]["hacker"]:
-                    data_list.append(f"作弊方式:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n")
-                else:
-                    data_list.append(f"被举报为:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n")
-            data_list.append("=" * 20 + '\n')
-        else:
-            # pass
-            data_list.append("未查询到BFBAN信息\n")
-            data_list.append("=" * 20 + '\n')
-    except Exception as e:
-        logger.error(f"获取bfban信息出错:{e}")
-        logger.error(f"{bf_html}")
-
-        pass
-
-    # bfeac查询
-    # noinspection PyBroadException
-    try:
-        eac_stat_dict = {
-            0: "未处理",
-            1: "已封禁",
-            2: "证据不足",
-            3: "自证通过",
-            4: "自证中",
-            5: "刷枪",
-        }
-        eac_response = eval(scrape_index_tasks[4].result().text)
-        if eac_response["data"] != "":
-            data = eac_response["data"][0]
-            case_id = data["case_id"]
-            case_url = f"https://bfeac.com/#/case/{case_id}"
-            eac_status = eac_stat_dict[data["current_status"]]
-            data_list.append("查询到BFEAC信息:\n")
-            data_list.append(f"案件地址:{case_url}\n")
-            data_list.append(f"状态:{eac_status}\n")
-            data_list.append("=" * 20 + '\n')
-        else:
-            data_list.append("未查询到BFEAC信息\n")
-            data_list.append("=" * 20 + '\n')
-    except Exception as e:
-        logger.error(f"获取bfeac信息出错:{e}")
-        pass
-    # 正在游玩
-    server_name = scrape_index_tasks[5].result()
-    if type(server_name) == str:
-        data_list.append("正在游玩:\n")
-        data_list.append(server_name)
-        data_list.append("\n")
-        data_list.append("=" * 20)
-    else:
-        server_name = server_name["name"]
-        data_list.append("正在游玩:\n%s\n" % server_name)
-        data_list.append("=" * 20)
-
-    await app.send_message(group, MessageChain(
-        data_list
-    ), quote=message[Source][0])
-    record.tyc_counter(sender.id, player_pid, player_name)
-    return
 
 
 # bfstat

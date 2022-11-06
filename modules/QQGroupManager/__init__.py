@@ -278,13 +278,15 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 elif saying.startswith("n") and saying != "n":
                     return False, waiter_member.id, saying.replace("n", "").replace("n ", "")
         else:
-            return [None] * 3
+            return None
 
     try:
         result, admin, reason = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=600)
     except asyncio.exceptions.TimeoutError:
         await app.send_message(group, MessageChain(
             f'注意:由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群请求已失效'), )
+        return
+    except:
         return
 
     if result:

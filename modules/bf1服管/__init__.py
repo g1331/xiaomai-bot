@@ -1146,7 +1146,7 @@ async def check_server(app: Ariadne, group: Group, message: MessageChain):
             result.append(人数)
             result.append(f"  收藏:{i['serverBookmarkCount']}\n")
             result.append(
-                f'模式:{i["mapModePretty"]}-{i["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"))
+                f'地图:{i["mapModePretty"]}-{i["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"))
             # result.append(f'GameId:{i["gameId"]} ')
             result.append(f"=" * 18 + "\n")
             counter += 1

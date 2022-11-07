@@ -1141,7 +1141,7 @@ async def check_server(app: Ariadne, group: Group, message: MessageChain):
             # result.append(f"收藏:{i['serverInfo']['serverBookmarkCount']}\n")
             # result.append(f'gameId:{i["serverInfo"]["gameId"]}\n')
 
-            result.append(f'{counter}#服名:{i["name"][:25]}\n')
+            result.append(f'{counter}#:{i["name"][:20]}\n')
             人数 = f'人数:{i["slots"]["Soldier"]["current"]}/{i["slots"]["Soldier"]["max"]}[{i["slots"]["Queue"]["current"]}]({i["slots"]["Spectator"]["current"]})'
             result.append(人数)
             result.append(f"  收藏:{i['serverBookmarkCount']}\n")

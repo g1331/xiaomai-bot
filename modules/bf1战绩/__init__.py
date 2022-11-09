@@ -2692,6 +2692,12 @@ async def bf_status(app: Ariadne, group: Group, message: MessageChain):
         ), quote=message[Source][0])
         return False
     html = eval(response.text)
+    if 'errors' in html:
+        # {'errors': ['Error connecting to the database']}
+        await app.send_message(group, MessageChain(
+            f"{html['errors'][0]}"
+        ), quote=message[Source][0])
+        return
     data1 = html["regions"]["ALL"]
     data_list1 = [
         data1["modes"]["Conquest"], data1["modes"]["BreakthroughLarge"], data1["modes"]["TugOfWar"],

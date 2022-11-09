@@ -658,6 +658,36 @@ async def bfgroup_bind_server(app: Ariadne, group: Group, message: MessageChain,
             f"网络出错或检查输入的gameid"
         ), quote=message[Source][0])
         return False
+    # 获取管理pid列表，如果服管账号pid在里面则绑定
+    admin_list = []
+    for item in result["rspInfo"]["adminList"]:
+        temp = f"{item['personaId']}"
+        admin_list.append(temp)
+    # 获取服管账号列表
+    file_path = f'./data/battlefield/managerAccount'
+    if not (os.path.exists(file_path) or os.path.isfile(file_path)):
+        await app.send_message(group, MessageChain(
+            f'未检测到managerAccount文件夹'
+        ), quote=message[Source][0])
+        return False
+    else:
+        account_list = os.listdir(file_path)
+        if len(account_list) == 0:
+            await app.send_message(group, MessageChain(
+                f'未检测到任何服管账号，请新建一个'
+            ), quote=message[Source][0])
+            return False
+        managerAccount_list_temp = {}
+        for item in account_list:
+            with open(file_path + f"/{item}/info.json", 'r', encoding="utf-8") as file_tamp:
+                data = json.load(file_tamp)
+                name = data["personas"]["persona"][0]["displayName"]
+                pid = data["personas"]["persona"][0]["personaId"]
+                managerAccount_list_temp[str(pid)] = name
+    managerAccount = None
+    for i, item in enumerate(managerAccount_list_temp):
+        if str(item) in admin_list:
+            managerAccount = item
     # 绑定服务器gameid
     with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)
@@ -666,15 +696,17 @@ async def bfgroup_bind_server(app: Ariadne, group: Group, message: MessageChain,
             data = {"servers": ["" for _ in range(30)]}
             data["servers"][server_rank - 1] = {"gameid": server_gameid, "guid": result["serverInfo"]["guid"],
                                                 "serverid": result["rspInfo"]["server"]["serverId"],
-                                                "managerAccount": None}
+                                                "managerAccount": managerAccount}
         else:
             data["servers"][server_rank - 1] = {"gameid": server_gameid, "guid": result["serverInfo"]["guid"],
                                                 "serverid": result["rspInfo"]["server"]["serverId"],
-                                                "managerAccount": None}
+                                                "managerAccount": managerAccount}
         with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'w', encoding="utf-8") as file2:
             yaml.dump(data, file2, allow_unicode=True)
             await app.send_message(group, MessageChain(
-                f'群组{group_name}成功绑定服务器{server_rank}:{server_gameid}'
+                f'群组{group_name}成功绑定服务器{server_rank}:{server_gameid}\n' +
+                (f"服管账号为:{managerAccount_list_temp[managerAccount]}({managerAccount})"
+                 if managerAccount else "未检测到服管账号请手动指定!")
             ), quote=message[Source][0])
             return True
 

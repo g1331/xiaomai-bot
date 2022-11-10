@@ -1458,16 +1458,12 @@ async def player_stat_bfban_api(player_pid) -> dict:
         response = await client.get(bfban_url, headers=bfban_head, timeout=3)
     except Exception as e:
         logger.error(e)
-        # await app.send_message(group, MessageChain(
-        #     # At(sender.id),
-        #     "获取玩家bfban信息出错,请稍后再试!"
-        # ), quote=message[Source][0])
-        return "获取玩家bfban信息出错,请稍后再试!"
+        return "查询失败"
     bf_html = response.text
     if bf_html == "timed out":
-        return "获取玩家bfban信息出错,请稍后再试!"
+        return "查询失败"
     elif bf_html == {}:
-        return "获取玩家bfban信息出错,请稍后再试!"
+        return "查询失败"
     return eval(bf_html)
 
 
@@ -1614,31 +1610,30 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, message: M
     # bfban查询
     bf_html = scrape_index_tasks[3].result()
     if type(bf_html) == str:
-        await app.send_message(group, MessageChain(
-            # At(sender.id),
-            "获取玩家bfban信息出错,请稍后再试!"
-        ), quote=message[Source][0])
-        return
-    bf_stat = bf_html
-    if_cheat = False
-    stat_dict = {
-        "0": "未处理",
-        "1": "实锤",
-        "2": "嫌疑再观察",
-        "3": "认为没开",
-        "4": "回收站",
-        "5": "回复讨论中",
-        "6": "等待管理确认"
-    }
-    # 先看下有无案件信息
-    if "url" in bf_stat["personaids"][str(player_pid)]:
-        bf_url = bf_stat["personaids"][str(player_pid)]["url"]
-        bfban_status = stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]
-        if bf_stat["personaids"][str(player_pid)]["hacker"]:
-            if_cheat = True
-    else:
+        if_cheat = False
         bf_url = "暂无信息"
-        bfban_status = "未查询到联ban信息"
+        bfban_status = bf_html
+    else:
+        bf_stat = bf_html
+        if_cheat = False
+        stat_dict = {
+            "0": "未处理",
+            "1": "实锤",
+            "2": "嫌疑再观察",
+            "3": "认为没开",
+            "4": "回收站",
+            "5": "回复讨论中",
+            "6": "等待管理确认"
+        }
+        # 先看下有无案件信息
+        if "url" in bf_stat["personaids"][str(player_pid)]:
+            bf_url = bf_stat["personaids"][str(player_pid)]["url"]
+            bfban_status = stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]
+            if bf_stat["personaids"][str(player_pid)]["hacker"]:
+                if_cheat = True
+        else:
+            bf_url = "暂无信息"
+            bfban_status = "未查询到联ban信息"
     # 头像信息
     # noinspection PyBroadException
     html = None

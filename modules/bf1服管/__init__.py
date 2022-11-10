@@ -340,7 +340,9 @@ async def get_server_detail(app: Ariadne, group: Group, message: MessageChain,
         f'人数:{result["serverInfo"]["slots"]["Soldier"]["current"]}/{result["serverInfo"]["slots"]["Soldier"]["max"]}'
         f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
         f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
-        f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
+        f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血",
+                                                                                                        "流\u200b血").replace(
+            "战争", "战\u200b争")
     ]
     try:
         temp.append(f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n')
@@ -1089,6 +1091,37 @@ async def bfgroup_bind_qqgroup(app: Ariadne, group: Group, message: MessageChain
         return True
 
 
+async def auto_update_gameid(group_file_path):
+    with open(group_file_path, 'r', encoding="utf-8") as file1:
+        data = yaml.load(file1, yaml.Loader)
+        # 检查是否servers.yaml是否为空
+        if data is None:
+            logger.warning("群组服务器信息为空!")
+            return
+        else:
+            for i, item in enumerate(data["servers"]):
+                if item != "":
+                    # 查询guid_server_path是否存在,如果,gameid!=当前的,就更新成当前的
+                    guid_path = f"./data/battlefield/servers/{item['guid']}/searched.json"
+                    if not os.path.exists(guid_path):
+                        logger.warning("群组服务器guid文件不存在!")
+                        return
+                    with open(guid_path, 'r', encoding="utf-8") as file2:
+                        data2 = json.load(file2)
+                        if data2 is None:
+                            logger.warning("服务器guid文件为空!")
+                            return
+                        if data2["gameId"] != item["gameid"]:
+                            data["servers"][i]["gameid"] = data2["gameId"]
+                            with open(group_file_path, 'w', encoding="utf-8") as file3:
+                                yaml.dump(data, file3, allow_unicode=True)
+                                logger.success(f"更新服务器gameid成功")
+                        else:
+                            logger.info("服务器gameid未变更")
+                else:
+                    return
+
+
 # 绑定过群组的群-查服务器
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[Perm.require(16),
@@ -1128,7 +1161,11 @@ async def check_server(app: Ariadne, group: Group, message: MessageChain):
             f"群组{bfgroups_name}不存在"
         ), quote=message[Source][0])
         return False
-    with open(f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml', 'r', encoding="utf-8") as file1:
+    time_start = time.time()
+    group_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml'
+    # 检查更新服务器gameid
+    await auto_update_gameid(group_file_path)
+    with open(group_file_path, 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)
         # 检查是否servers.yaml是否为空
         if data is None:
@@ -1148,7 +1185,6 @@ async def check_server(app: Ariadne, group: Group, message: MessageChain):
     # scrape_index_tasks = [asyncio.ensure_future(api_gateway.get_server_fulldetails(gameid)) for gameid in server_list]
     tasks = asyncio.gather(*scrape_index_tasks)
     try:
-        time_start = time.time()
         await tasks
         logger.info(f"查询{bfgroups_name}服务器ing")
     except:
@@ -1283,7 +1319,8 @@ async def check_server_by_index(app: Ariadne, group: Group, message: MessageChai
         return False
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18 + "\n", f'{server_index}:{server_info["serverInfo"]["name"]}\n',
               "=" * 18 + "\n",
-              f'地图:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"),
+              f'地图:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}\n'.replace(
+                  "流血", "流\u200b血").replace("战争", "战\u200b争"),
               f'人数:{server_info["serverInfo"]["slots"]["Soldier"]["current"]}/{server_info["serverInfo"]["slots"]["Soldier"]["max"]}'
               f'[{server_info["serverInfo"]["slots"]["Queue"]["current"]}]({server_info["serverInfo"]["slots"]["Spectator"]["current"]}) ',
               f"收藏:{server_info['serverInfo']['serverBookmarkCount']}\n",
@@ -4356,7 +4393,8 @@ async def check_ban(app: Ariadne, group: Group, message: MessageChain,
                                     ]
                                 )
                             ]))
-async def add_groupBan(app: Ariadne, sender: Member, group: Group, message: MessageChain, player_name: RegexResult, reason: RegexResult):
+async def add_groupBan(app: Ariadne, sender: Member, group: Group, message: MessageChain, player_name: RegexResult,
+                       reason: RegexResult):
     player_name = player_name.result.display
     try:
         player_info = await getPid_byName(player_name)
@@ -4817,7 +4855,8 @@ async def akbw_check_global_whitelist():
                                     ]
                                 )
                             ]))
-async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult, clear_num: RegexResult):
+async def clear_ban(app: Ariadne, sender: Member, group: Group, message: MessageChain, server_rank: RegexResult,
+                    clear_num: RegexResult):
     # 检查清理ban位的数量
     if clear_num.matched:
         try:
@@ -5547,13 +5586,11 @@ async def change_map(app: Ariadne, sender: Member, group: Group, message: Messag
             choices = []
             for item in map_index_list:
                 map_index_list[i] = f"{i}#{item}●\n".replace("流血", "流\u200b血") if (
-                        item.startswith('行動模式') and item.endswith(('聖康坦的傷痕', '窩瓦河',
-                                                                   '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
-                                                                   '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳',
-                                                                   '澤布呂赫',
-                                                                   '索姆河',
-                                                                   '武普庫夫山口'))) else f"{i}#{item}\n".replace('流血',
-                                                                                                            '流\u200b血')
+                        item.startswith('行動模式') and
+                        item.endswith(('聖康坦的傷痕', '窩瓦河', '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
+                                       '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
+                                       '索姆河', '武普庫夫山口', '龐然闇影'))) \
+                    else f"{i}#{item}\n".replace('流血', '流\u200b血')
                 choices.append(str(i))
                 i += 1
             map_index_list[-1] = map_index_list[-1].replace("\n", '')
@@ -5592,7 +5629,8 @@ async def change_map(app: Ariadne, sender: Member, group: Group, message: Messag
                     return False
                 elif type(result) == dict:
                     await app.send_message(group, MessageChain(
-                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}".replace("\n", "").replace('流血', '流\u200b血')
+                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}".replace(
+                            "\n", "").replace('流血', '流\u200b血')
                     ), quote=message[Source][0])
                     rsp_log.map_logger(sender.id, group.id,
                                        map_list[int(map_index)].replace("-", " "), server_id)
@@ -5720,8 +5758,7 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
                         '聖康坦的傷痕', '窩瓦河',
                         '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
                         '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
-                        '索姆河',
-                        '武普庫夫山口'
+                        '索姆河', '武普庫夫山口', '龐然闇影'
                     ]
             )
             else f"{i}#{item['modePrettyName']}-{item['mapPrettyName']}\n".replace('流血', '流\u200b血')
@@ -5782,9 +5819,13 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, message:
             return False
         elif type(result) == dict:
             await app.send_message(group, MessageChain(
-                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}".replace("\n", "").replace('流血', '流\u200b血')
+                f"已更换服务器{server_rank + 1}地图为:{map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:]}".replace(
+                    "\n", "").replace('流血', '流\u200b血')
             ), quote=message[Source][0])
-            rsp_log.map_logger(sender.id, group.id, map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:].replace('-', ' ').replace('\n', ''), server_id)
+            rsp_log.map_logger(sender.id, group.id,
+                               map_list[int(map_index)][map_list[int(map_index)].find('#') + 1:].replace('-',
+                                                                                                         ' ').replace(
+                                   '\n', ''), server_id)
             return True
         else:
             await app.send_message(group, MessageChain(
@@ -5941,7 +5982,8 @@ async def add_vip(app: Ariadne, sender: Member, group: Group, message: MessageCh
             json.dump(data1, file2, indent=4)
 
     # 如果为行动模式且人数为0，则添加失败
-    if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式" and server_fullInfo["serverInfo"]["slots"]["Soldier"]["current"] == 0:
+    if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式" and \
+            server_fullInfo["serverInfo"]["slots"]["Soldier"]["current"] == 0:
         await app.send_message(group, MessageChain(
             "当前服务器为行动模式且人数为0,操作失败!"
         ), quote=message[Source][0])

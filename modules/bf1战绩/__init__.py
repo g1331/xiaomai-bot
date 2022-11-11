@@ -2693,14 +2693,14 @@ async def bf_status(app: Ariadne, group: Group, message: MessageChain):
             f"{html['errors'][0]}"
         ), quote=message[Source][0])
         return
-    data1 = html["regions"]["ALL"]
+    data1 = html["regions"][0]
     data_list1 = [
         data1["modes"]["Conquest"], data1["modes"]["BreakthroughLarge"], data1["modes"]["TugOfWar"],
         data1["modes"]["Breakthrough"], data1["modes"]["Rush"], data1["modes"]["Domination"],
         data1["modes"]["TeamDeathMatch"], data1["modes"]["Possession"], data1["modes"]["AirAssault"],
         data1["modes"]["ZoneControl"]
     ]
-    data2 = html["regions"]["ALL"]
+    data2 = data1
     data_list2 = [
         data2["amounts"]["soldierAmount"], data2["amounts"]["serverAmount"], data2["amounts"]["queueAmount"],
         data2["amounts"]["spectatorAmount"], data2["amounts"]["communityServerAmount"],

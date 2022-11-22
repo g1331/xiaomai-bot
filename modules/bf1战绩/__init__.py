@@ -2207,7 +2207,7 @@ async def recent(app: Ariadne, sender: Member, group: Group, message: MessageCha
             logger.info(f'查询最近耗时:{end_time - start_time}')
             return True
         await app.send_message(group, MessageChain(
-            "接口出错，请稍后再试!"
+            "没有查询到最近记录哦~"
         ), quote=message[Source][0])
         return
     except Exception as e:

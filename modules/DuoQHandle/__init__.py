@@ -16,7 +16,6 @@ channel.name("多q适配")
 channel.description("当群里有多个bot的时候,避免冲突响应")
 channel.author("13")
 
-temp = []
 bot_list = []
 temp_dict = {}
 temp_list = []
@@ -31,17 +30,24 @@ class DuoQ(object):
         :return: Depend
         """
 
-        async def wrapper(group: Union[Group, Friend], app: Ariadne):
-            global temp, temp_list, temp_dict, bot_list
+        async def wrapper(group: Union[Group, Friend], app: Ariadne, source: Source):
+            global temp_dict
             if type(group) == Friend:
                 return Depend(wrapper)
+            # 第一次要获取群列表，然后添加bot到groupid字典，编号
+            # 然后对messageId取余，对应编号bot响应
             if group.id not in temp_dict:
-                temp_dict[group.id] = app.account
-            if app.account != temp_dict[group.id]:
-                if temp_dict[group.id] not in Ariadne.service.connections:
-                    temp_dict[group.id] = app.account
-                else:
-                    raise ExecutionStop
+                member_list = await app.get_member_list(group)
+                temp_dict[group.id] = {}
+                temp_dict[group.id][0] = app.account
+                for item in member_list:
+                    if item.id in Ariadne.service.connections:
+                        temp_dict[group.id][len(temp_dict[group.id])] = item.id
+            if temp_dict[group.id][source.id % len(temp_dict[group.id])] != app.account:
+                raise ExecutionStop
+            # 防止bot中途掉线/风控造成无响应
+            if temp_dict[group.id][source.id % len(temp_dict[group.id])] not in Ariadne.service.connections:
+                temp_dict.pop(group.id)
             return Depend(wrapper)
 
         return Depend(wrapper)

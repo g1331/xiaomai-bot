@@ -296,14 +296,14 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 
     if result:
         await event.accept()  # 同意入群
+        await app.send_message(group, MessageChain(
+            f'已同意 {event.nickname}({event.supplicant}) 的入群请求'), )
         await asyncio.sleep(2)
         try:
             member = await app.get_member(event.source_group, event.supplicant)
             await app.modify_member_info(member, MemberInfo(name=player_name))
         except:
             pass
-        await app.send_message(group, MessageChain(
-            f'已同意 {event.nickname}({event.supplicant}) 的入群请求'), )
     elif result is False:
         await event.reject(f'{reason}' if reason else f'管理员拒绝了你的入群申请')  # 拒绝好友请求
         await app.send_message(group, MessageChain(

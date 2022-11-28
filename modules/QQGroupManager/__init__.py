@@ -34,7 +34,7 @@ null = ''
 with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
     bot_data = yaml.load(bot_file, Loader=yaml.Loader)
     master = bot_data["botinfo"]["Master"]
-    test_group = bot_data["botinfo"]["testgroup"]
+    testgroup = bot_data["botinfo"]["testgroup"]
     admins = bot_data["botinfo"]["Admin"]
 
 
@@ -51,9 +51,14 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
             await app.send_message(await app.get_friend(event.supplicant), MessageChain(
                 f"已自动同意您的邀请~"
             ))
+            await app.send_message(await app.get_group(int(testgroup)), MessageChain(
+                f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
+                f'已经自动同意该管理的邀请'
+            ))
+            return
     except:
         pass
-    group = await app.get_group(test_group)
+    group = await app.get_group(int(testgroup))
     if group is None:
         member = await app.get_friend(master)
         bot_message = await app.send_message(member, MessageChain(

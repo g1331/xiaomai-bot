@@ -40,7 +40,7 @@
    ``` 
    pip install -r requirements.txt
    ```
-   安装requirements里的依赖,或者其他你喜欢的方式(
+   安装requirements里的依赖(或者其他你喜欢的方式,推荐使用虚拟环境)
 3. 在config文件夹内的config文件填写配置信息
 4. 点击bot.py运行
 

@@ -1,0 +1,25 @@
+# 基本配置
+Master: 1257661006
+Admins: []
+bot_accounts: [2417999374]
+default_account: 000
+off_bots: []
+bot_blocked: []
+mirai_host: "http://localhost:8080"
+verify_key: "SBXMMX"
+test_group: []
+vip_group: []
+db_link: "sqlite+aiosqlite:///data.db"
+proxy: "proxy"
+
+# 日志相关
+log_related:
+  error_retention: 14
+  common_retention: 7
+
+# 战地一配置
+bf1:
+  default_account: abc
+
+# chatGPT配置
+openai_cookie: abc

@@ -79,3 +79,5 @@ richuru==0.1.1
     Pygments==2.13.0
 setuptools==65.5.0
 zhconv==1.4.3
+
+SQLAlchemy~=1.4.44

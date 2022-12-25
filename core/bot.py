@@ -1,15 +1,18 @@
-import os
 import datetime
+import os
 from abc import ABC
+from enum import Enum
 from pathlib import Path
-from loguru import logger
-from pydantic import BaseModel
 from typing import Dict, List, Type
-from sqlalchemy.exc import InternalError, ProgrammingError
 
-from graia.saya import Saya
+from creart import create, add_creator, exists_module
+from creart.creator import AbstractCreator, CreateTargetInfo
 from graia.ariadne import Ariadne
-from graia.broadcast import Broadcast
+from graia.ariadne.connection.config import (
+    HttpClientConfig,
+    WebsocketClientConfig,
+    config,
+)
 from graia.ariadne.event.message import (
     GroupMessage,
     FriendMessage,
@@ -19,17 +22,14 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
-from graia.ariadne.connection.config import (
-    HttpClientConfig,
-    WebsocketClientConfig,
-    config,
-)
-from graiax.playwright import PlaywrightService
 from graia.ariadne.model import LogConfig, Group
-from creart import create, add_creator, exists_module
+from graia.broadcast import Broadcast
+from graia.saya import Saya
 from graia.saya.builtins.broadcast import BroadcastBehaviour
-from creart.creator import AbstractCreator, CreateTargetInfo
-from enum import Enum
+from graiax.playwright import PlaywrightService
+from loguru import logger
+from pydantic import BaseModel
+from sqlalchemy.exc import InternalError, ProgrammingError
 
 from core.config import GlobalConfig
 from core.orm import orm
@@ -105,7 +105,7 @@ class Umaru(object):
         except (AttributeError, InternalError, ProgrammingError):
             _ = await orm.create_all()
         # 检查活动群组:
-        await orm.update(GroupPerm, [], {"active": False})
+        await orm.update(GroupPerm, {"active": False}, [])
         total_groups = {}
         for app in self.apps:
             group_list = await app.get_group_list()
@@ -113,7 +113,9 @@ class Umaru(object):
                 await orm.insert_or_update(
                     GroupPerm,
                     {"group_id": group.id, "group_name": group.name, "active": True},
-                    [GroupPerm.group_id == group.id],
+                    [
+                        GroupPerm.group_id == group.id
+                    ]
                 )
             await self.update_host_permission(group_list)
             total_groups[app.account] = group_list
@@ -126,13 +128,12 @@ class Umaru(object):
     async def update_host_permission(self, group_list: List[Group]):
         for group in group_list:
             await orm.insert_or_update(
-                MemberPerm,
-                [
+                table=MemberPerm,
+                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                condition=[
                     MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group.id,
-                    MemberPerm.perm != 256
-                ],
-                {"qq": self.config.Master, "groupid": group.id, "perm": 256},
+                    MemberPerm.group_id == group.id
+                ]
             )
             for admin in self.config.Admins:
                 await orm.insert_or_update(
@@ -140,7 +141,6 @@ class Umaru(object):
                     [
                         MemberPerm.qq == admin,
                         MemberPerm.group_id == group.id,
-                        MemberPerm.perm != 128
                     ],
                     {"qq": admin, "groupid": group.id, "perm": 128},
                 )
@@ -162,13 +162,10 @@ class Umaru(object):
         )
         logger.add(set_log)
 
-    async def set_group_account(self):
-        pass
-
     def config_check(self) -> None:
         """配置检查"""
         required_key = ("bot_accounts", "default_account", "host_qq", "mirai_host", "verify_key")
-        logger.info("开始检测配置\n" + "-"*50)
+        logger.info("开始检测配置\n" + "-" * 50)
         father_properties = tuple(dir(BaseModel))
         properties = [
             _
@@ -187,7 +184,7 @@ class Umaru(object):
                 logger.warning(f"Unchanged initial value detected: {key} - {value}")
             else:
                 logger.success(f"{key} - {value}")
-        logger.info("检查配置完成\n" + "-"*50)
+        logger.info("检查配置完成\n" + "-" * 50)
 
     @staticmethod
     def dict_check(dictionary: dict, indent: int = 4) -> None:

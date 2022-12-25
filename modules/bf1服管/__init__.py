@@ -14,6 +14,7 @@ import yaml
 import zhconv
 from PIL import Image as PIL_Image
 from PIL import ImageFont, ImageDraw, ImageFilter, ImageEnhance
+from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
@@ -29,6 +30,7 @@ from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
 from loguru import logger
 
+from core.config import GlobalConfig
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.Switch import Switch
@@ -485,8 +487,8 @@ bfgroup_list_info_send_temp = []
 bot_list_temp = []
 joined_group = []
 group_bot_dict = {}
-with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
-    bot_list = yaml.load(bot_file, Loader=yaml.Loader)["botinfo"]["bot"]
+config = create(GlobalConfig)
+bot_list = config.bot_accounts
 
 
 # bf群组名单

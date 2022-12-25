@@ -16,22 +16,14 @@ class GlobalConfig(BaseModel):
     bot_blocked: List[int]
     mirai_host: str = "http://localhost:8080"
     verify_key: str = "1234567890"
-    test_group: List[int]
+    test_group: int
     vip_group: List[int]
     proxy: str
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
-
-
-# async def check_config_update():
-#     global config
-#     last_modified = Path("config.yaml").stat().st_mtime
-#     while True:
-#         current_modified = Path("config.yaml").stat().st_mtime
-#         if current_modified > last_modified:
-#             last_modified = current_modified
-#             config = load_config()
-#         await asyncio.sleep(60)  # check every minute
+    bf1: dict = {
+        "default_account": 0
+    }
 
 
 def load_config():
@@ -58,4 +50,3 @@ class ConfigClassCreator(AbstractCreator, ABC):
 
 
 add_creator(ConfigClassCreator)
-# config = load_config()

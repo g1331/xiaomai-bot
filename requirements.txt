@@ -81,3 +81,5 @@ setuptools==65.5.0
 zhconv==1.4.3
 
 SQLAlchemy~=1.4.44
+playwright~=1.29.0
+bilireq~=0.2.3.post0

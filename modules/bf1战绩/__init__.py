@@ -12,6 +12,7 @@ import aiohttp
 import requests
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
+from creart import create
 from loguru import logger
 from datetime import date, timedelta
 from graia.saya import Channel, Saya
@@ -29,6 +30,7 @@ from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
     PRESERVE, UnionMatch
 
+from core.config import GlobalConfig
 from modules.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.Switch import Switch
@@ -67,15 +69,14 @@ access_token_time = None
 access_token_expires_time = 0
 pid_temp_dict = {
 }
-file = open(f"config/config.yaml", "r", encoding="utf-8")
-acc_data = yaml.load(file, Loader=yaml.Loader)
-default_account = acc_data["bf1"]["default_account"]
+config = create(GlobalConfig)
+default_account = config.bf1["default_account"]
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json") or \
         os.path.getsize(f"./data/battlefield/managerAccount/{default_account}/account.json") == 0:
-    logger.error(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
-    exit()
+    logger.warning(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
+    # exit()
 
 
 # 根据玩家名字查找pid

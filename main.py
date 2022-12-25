@@ -1,14 +1,16 @@
+# -*- coding: utf-8 -*-
+from pathlib import Path
+
 import httpx
 from creart import create
-from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import ActiveGroupMessage, ActiveFriendMessage
+from graia.ariadne import Ariadne
+from graia.ariadne.event.lifecycle import AccountLaunch
+from graia.ariadne.event.message import ActiveFriendMessage, ActiveGroupMessage, StrangerMessage, TempMessage
+from graia.ariadne.event.message import Member, MessageChain, Stranger
 from graia.ariadne.event.mirai import NudgeEvent
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.model import Member, Stranger
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from loguru import logger
-from pathlib import Path
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -19,7 +21,7 @@ bcc = create(Broadcast)
 saya = create(Saya)
 
 
-@bcc.receiver("ActiveGroupMessage")
+@bcc.receiver(ActiveGroupMessage)
 async def group_message_speaker(event: ActiveGroupMessage, _app: Ariadne):
     bot_member = await _app.get_friend(_app.account)
     message_text_log = event.message_chain.display.replace("\n", "\\n").strip()
@@ -31,7 +33,7 @@ async def group_message_speaker(event: ActiveGroupMessage, _app: Ariadne):
             f"【{_app.account}】成功向群【{event.subject.name.strip()}({event.subject.id})】发送消息：{message_text_log}")
 
 
-@bcc.receiver("ActiveFriendMessage")
+@bcc.receiver(ActiveFriendMessage)
 async def friend_message_speaker(event: ActiveFriendMessage, _app: Ariadne):
     bot_member = await _app.get_friend(_app.account)
     message_text_log = event.message_chain.display.replace("\n", "\\n").strip()
@@ -43,7 +45,7 @@ async def friend_message_speaker(event: ActiveFriendMessage, _app: Ariadne):
             f"【{_app.account}】成功向好友【{event.subject.nickname.strip()}({event.subject.id})】发送消息：{message_text_log}")
 
 
-@bcc.receiver("NudgeEvent")
+@bcc.receiver(NudgeEvent)
 async def nudged_listener(_app: Ariadne, event: NudgeEvent):
     bot_member = await _app.get_friend(_app.account)
     if event.target != _app.account or event.supplicant == _app.account:
@@ -58,7 +60,7 @@ async def nudged_listener(_app: Ariadne, event: NudgeEvent):
         logger.info(f"【{_app.account}】被群【{member.group.name}】中成员【{member.name}】戳了戳。")
 
 
-@bcc.receiver("TempMessage")
+@bcc.receiver(TempMessage)
 async def temp_message_listener(member: Member, message: MessageChain, _app: Ariadne):
     bot_member = await _app.get_friend(_app.account)
     message_text_log = message.display.replace("\n", "\\n").strip()
@@ -70,7 +72,7 @@ async def temp_message_listener(member: Member, message: MessageChain, _app: Ari
             f"【{_app.account}】收到群【{member.group.name.strip()}({member.group.id})】成员【{member.name.strip()}({member.id})】的临时消息：{message_text_log}")
 
 
-@bcc.receiver("StrangerMessage")
+@bcc.receiver(StrangerMessage)
 async def stranger_message_listener(stranger: Stranger, message: MessageChain, _app: Ariadne):
     bot_member = await _app.get_friend(_app.account)
     message_text_log = message.display.replace("\n", "\\n").strip()
@@ -82,21 +84,24 @@ async def stranger_message_listener(stranger: Stranger, message: MessageChain, _
             f"【{_app.account}】收到来自陌生人【{stranger.nickname.strip()}({stranger.id})】的消息：{message_text_log})")
 
 
+@bcc.receiver(AccountLaunch)
+async def init():
+    _ = await core.initialize()
+
+
 if __name__ == "__main__":
     if Path.cwd() != Path(__file__).parent:
-        logger.critical(f"当前目录非项目所在目录！请进入{str(Path(__file__).parent)}后再运行 SAGIRI-BOT!")
+        logger.critical(f"当前目录非项目所在目录！请进入{str(Path(__file__).parent)}后再运行!")
         exit(0)
     logger.info("正在检测 MAH 是否启动")
     while True:
         try:
             fl = 0
-            mah = httpx.get(config.mirai_host)
+            mah = httpx.get(config.mirai_host + "/about")
             logger.info(f'mah.status_code:{mah.status_code}')
             if mah.status_code == 200:
-                logger.success(f"mirai检测成功")
-                core.install_modules(Path("modules") / "self_contained")
-                core.install_modules(Path("modules") / "third_party")
-                core.install_modules(Path("modules") / "required")
+                logger.success(f"成功检测到mirai")
+                core.install_modules(Path("modules"))
                 core.launch()
                 break
             elif fl >= 3:
@@ -108,4 +113,4 @@ if __name__ == "__main__":
             logger.critical("MAH 尚未启动，请检查")
             break
         except KeyboardInterrupt:
-            break
+            exit(0)

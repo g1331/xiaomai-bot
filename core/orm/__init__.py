@@ -121,10 +121,7 @@ class AsyncORM:
         :param data: 更新的数据
         :param condition: 条件
         """
-        async with self.async_session() as session:
-            async with session.begin():
-                await session.execute(update(table).where(condition).values(**data))
-            await session.commit()
+        await self.execute(update(table).where(*condition).values(**data))
 
     async def insert_or_update(self, table, data, condition):
         """
@@ -133,10 +130,14 @@ class AsyncORM:
         :param data: 数据
         :param condition: 条件
         """
-        if (await self.execute(select(table).where(*condition))).all():
-            return await self.execute(update(table).where(*condition).values(**data))
+        # 判断是否存在符合条件的数据
+        exist = (await self.execute(select(table).where(*condition))).all()
+        if exist:
+            # 如果存在，则执行更新操作
+            await self.execute(update(table).where(*condition).values(**data))
         else:
-            return await self.execute(insert(table).values(**data))
+            # 否则执行插入操作
+            await self.execute(insert(table).values(**data))
 
     async def insert_or_ignore(self, table, data, condition):
         """

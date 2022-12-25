@@ -4,15 +4,18 @@ import uuid
 import yaml
 import httpx
 from typing import Union
+
+from creart import create
 from loguru import logger
 
-file = open(f"config/config.yaml", "r", encoding="utf-8")
-data = yaml.load(file, Loader=yaml.Loader)
-default_account = data["bf1"]["default_account"]
+from core.config import GlobalConfig
+
+config = create(GlobalConfig)
+default_account = config.bf1["default_account"]
 if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json") or \
         os.path.getsize(f"./data/battlefield/managerAccount/{default_account}/account.json") == 0:
-    logger.error(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
-    exit()
+    logger.warning(f"bf1默认查询账号cookie未设置请先检查信息,配置路径:./data/battlefield/managerAccount/{default_account}/account.json")
+    # exit()
 
 bf_aip_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'
 bf_aip_header = {

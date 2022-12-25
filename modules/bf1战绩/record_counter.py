@@ -2,10 +2,12 @@ import os
 import json
 import time
 import yaml
+from creart import create
 
-file = open(f"config/config.yaml", "r", encoding="utf-8")
-acc_data = yaml.load(file, Loader=yaml.Loader)
-default_account = acc_data["bf1"]["default_account"]
+from core.config import GlobalConfig
+
+config = create(GlobalConfig)
+default_account = config.bf1["default_account"]
 
 
 class record(object):

@@ -2,15 +2,17 @@ import json
 import yaml
 import httpx
 import requests
+from creart import create
 from loguru import logger
+
+from core.config import GlobalConfig
 
 true = True
 false = False
 null = ''
 client = httpx.AsyncClient()
-file = open(f"config/config.yaml", "r", encoding="utf-8")
-data = yaml.load(file, Loader=yaml.Loader)
-default_account = data["bf1"]["default_account"]
+config = create(GlobalConfig)
+default_account = config.bf1["default_account"]
 
 
 async def auto_refresh_account(player_pid: str = f"{default_account}"):

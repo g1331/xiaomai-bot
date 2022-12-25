@@ -3,6 +3,7 @@ import httpx
 import asyncio
 
 import yaml
+from creart import create
 from loguru import logger
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event import MiraiEvent
@@ -16,6 +17,7 @@ from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
+from core.config import GlobalConfig
 from modules.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 from modules.Switch import Switch
@@ -31,11 +33,10 @@ false = False
 null = ''
 
 # 读取账号信息
-with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
-    bot_data = yaml.load(bot_file, Loader=yaml.Loader)
-    master = bot_data["botinfo"]["Master"]
-    testgroup = bot_data["botinfo"]["testgroup"]
-    admins = bot_data["botinfo"]["Admin"]
+config = create(GlobalConfig)
+master = config.Master
+testgroup = config.test_group
+admins = config.Admins
 
 
 @channel.use(ListenerSchema(listening_events=[BotInvitedJoinGroupRequestEvent]))

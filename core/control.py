@@ -9,11 +9,12 @@ from graia.ariadne.message import Source
 from graia.ariadne.model import Member, Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
+from loguru import logger
 from sqlalchemy import select
 
 from core.config import GlobalConfig
 from core.orm import orm
-from core.orm.tables import MemberPerm
+from core.orm.tables import MemberPerm, GroupPerm
 
 config = create(GlobalConfig)
 
@@ -104,7 +105,7 @@ class Permission(object):
     @classmethod
     def user_require(cls, perm: int = User, if_noticed: bool = False):
         """
-        指定level及以上的等级才能执行
+        指定perm及以上的等级才能执行
         :param perm: 设定权限等级
         :param if_noticed: 是否发送权限不足的消息通知
         """
@@ -116,11 +117,72 @@ class Permission(object):
             if user_level >= perm:
                 return Depend(wrapper)
             elif user_level < perm:
-                if perm != user_level:
-                    if if_noticed:
-                        await app.send_message(group, MessageChain(
-                            f"权限不足!需要的权限:{perm},你的权限:{user_level}"
-                        ), quote=src)
+                if if_noticed:
+                    await app.send_message(group, MessageChain(
+                        f"权限不足！需要权限:{perm}，你的权限:{user_level}/"
+                    ), quote=src)
             raise ExecutionStop
 
         return Depend(wrapper)
+
+    @classmethod
+    async def get_group_perm(cls, group: Group) -> int:
+        """
+        根据传入的群号获取群权限
+        """
+        # 查询数据库
+        result = await orm.fetch_one(
+            select(GroupPerm.perm).where(
+                GroupPerm.group_id == group.id
+            )
+        )
+        # 如果有查询到数据，则返回群的权限等级
+        if result:
+            return result[0]
+        # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
+        if not result:
+            if group.id in config.black_group:
+                perm = 0
+            elif group.id in config.vip_group:
+                perm = 2
+            elif group.id == config.test_group:
+                perm = 3
+            else:
+                perm = 1
+            with contextlib.suppress(sqlalchemy.exc.IntegrityError):
+                await orm.insert_or_update(
+                    GroupPerm,
+                    {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
+                    [
+                        GroupPerm.group_id == group.id
+                    ]
+                )
+                return Permission.ActiveGroup
+
+    @classmethod
+    def group_require(cls, perm: int = ActiveGroup, if_noticed: bool = False):
+        """
+        指定perm及以上的等级才能执行
+        :param perm: 设定权限等级
+        :param if_noticed: 是否通知
+        """
+
+        async def wrapper(app: Ariadne, group: Group, src: Source or None):
+            # 通过get来获取群的权限等级
+            group_perm = await cls.get_group_perm(group)
+            if group_perm >= perm:
+                return Depend(wrapper)
+            elif group_perm < perm:
+                if if_noticed:
+                    await app.send_message(group, MessageChain(
+                        f"权限不足！需要权限:{perm}，当前群({group.id})权限:{group_perm}。"
+                    ), quote=src)
+            raise ExecutionStop
+
+        return Depend(wrapper)
+
+
+class Function(object):
+    """
+    判断功能的类
+    """

@@ -10,9 +10,9 @@ from graia.saya import Saya, Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from loguru import logger
 
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-from modules.Switch import Switch
+from modules.self_contained.Switch import Switch
 
 saya = Saya.current()
 channel = Channel.current()

@@ -12,7 +12,7 @@ from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from loguru import logger
 
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 from util.internal_utils import MessageChainUtils
 

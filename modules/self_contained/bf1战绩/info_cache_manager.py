@@ -56,7 +56,7 @@ class InfoCache(object):
                 return data
 
     async def update_cache(self) -> bool:
-        from modules.bf1战绩 import get_weapon_data, get_vehicle_data, get_player_stat_data
+        from modules.self_contained.bf1战绩 import get_weapon_data, get_vehicle_data, get_player_stat_data
         try:
             if self.player_cache_type == "weapon":
                 data = await get_weapon_data(self.pid)

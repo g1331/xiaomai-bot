@@ -79,15 +79,12 @@ class AsyncORM:
 
     async def fetch_one(self, sql, parameters=None):
         """获取单条记录"""
-        async with self.engine.connect() as conn:
-            result = await conn.execute(sql, parameters)
-            return await result.fetchone()
+        result = await self.execute(sql, parameters)
+        return one if (one := result.fetchone()) else None
 
     async def fetch_all(self, sql, parameters=None):
         """获取多条记录"""
-        async with self.engine.connect() as conn:
-            result = await conn.execute(sql, parameters)
-            return await result.fetchall()
+        return (await self.execute(sql)).fetchall()
 
     async def rowcount(self, sql, parameters=None):
         """获取记录条数"""
@@ -95,15 +92,14 @@ class AsyncORM:
             result = await conn.execute(sql, parameters)
             return result.rowcount
 
-    async def add(self, table, data: dict):
+    async def add(self, instance):
         """
         插入数据
-        :param table: 表
-        :param data: 数据
+        :param instance: 实例化的对象
         """
         async with self.async_session() as session:
             async with session.begin():
-                session.add(table(**data))
+                session.add(instance)
             await session.commit()
 
     async def delete(self, table, condition):
@@ -159,7 +155,7 @@ class AsyncORM:
         if condition is None:
             result = await self.execute(select([el]))
         else:
-            result = await self.execute(select([el]).where(condition))
+            result = await self.execute(select([el]).where(*condition))
         if result:
             return result.fetchall()
         else:

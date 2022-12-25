@@ -10,7 +10,7 @@ from graia.ariadne.model import Group
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
 
 saya = Saya.current()

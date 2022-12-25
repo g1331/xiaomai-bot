@@ -9,3 +9,6 @@
 # 配置文件、日志
 /config/config.yaml
 /logs
+
+# 测试文件
+/modules/test_modules/

@@ -31,17 +31,17 @@ from graia.scheduler.saya import SchedulerSchema
 from loguru import logger
 
 from core.config import GlobalConfig
-from modules.DuoQHandle import DuoQ, if_blocked
+from modules.self_contained.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
-from modules.Switch import Switch
-from modules.bf1战绩 import getPid_byName, server_playing, InfoCache_stat
-from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
+from modules.self_contained.Switch import Switch
+from modules.self_contained.bf1战绩 import getPid_byName, server_playing, InfoCache_stat
+from modules.self_contained.bf1战绩 import auto_refresh_account
 from util.internal_utils import MessageChainUtils
 
-from modules.bf1服管 import api_gateway
-from modules.bf1服管.api_gateway import refresh_api_client
-from modules.bf1服管.bfgroups_log import rsp_log
-from modules.bf1服管.map_team_info import MapData
+from modules.self_contained.bf1服管 import api_gateway
+from modules.self_contained.bf1服管.api_gateway import refresh_api_client
+from modules.self_contained.bf1服管 import rsp_log
+from modules.self_contained.bf1服管 import MapData
 
 saya = Saya.current()
 channel = Channel.current()

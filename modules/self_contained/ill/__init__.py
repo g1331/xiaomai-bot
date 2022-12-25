@@ -18,9 +18,9 @@ from graia.ariadne.model import Group, Member
 from graia.saya import Channel
 from graia.saya.builtins.broadcast import ListenerSchema
 
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-from modules.Switch import Switch
+from modules.self_contained.Switch import Switch
 
 channel = Channel.current()
 channel.name("发病")

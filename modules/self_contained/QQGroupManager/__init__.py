@@ -2,7 +2,6 @@ import json
 import httpx
 import asyncio
 
-import yaml
 from creart import create
 from loguru import logger
 from graia.ariadne.app import Ariadne
@@ -18,10 +17,10 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 
 from core.config import GlobalConfig
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-from modules.Switch import Switch
-from modules.bf1战绩 import getPid_byName, get_player_stat_data, record
+from modules.self_contained.Switch import Switch
+from modules.self_contained.bf1战绩 import getPid_byName, get_player_stat_data, record
 
 channel = Channel.current()
 channel.name("群管功能")

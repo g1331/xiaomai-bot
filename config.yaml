@@ -7,8 +7,9 @@ off_bots: []
 bot_blocked: []
 mirai_host: http://localhost:8080
 verify_key: SBXMMX
-test_group: 000
+test_group: 1090153034
 vip_group: []
+black_group: []
 db_link: sqlite+aiosqlite:///data.db
 proxy: proxy
 

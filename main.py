@@ -5,9 +5,17 @@ import httpx
 from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.lifecycle import AccountLaunch
-from graia.ariadne.event.message import ActiveFriendMessage, ActiveGroupMessage, StrangerMessage, TempMessage
+from graia.ariadne.event.message import (
+    ActiveFriendMessage,
+    ActiveGroupMessage,
+    StrangerMessage,
+    TempMessage,
+    GroupMessage,
+    FriendMessage
+)
 from graia.ariadne.event.message import Member, MessageChain, Stranger
 from graia.ariadne.event.mirai import NudgeEvent
+from graia.ariadne.model import Friend, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from loguru import logger
@@ -19,6 +27,30 @@ config = create(GlobalConfig)
 core = create(Umaru)
 bcc = create(Broadcast)
 saya = create(Saya)
+
+
+@bcc.receiver(GroupMessage)
+async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+    core.received_count += 1
+    # message_text_log = message.display.replace("\n", "\\n").strip()
+    # message_text_log = message.as_persistent_string().replace("\n", "\\n").strip()
+    # logger.info(
+    #     f"收到来自 Bot <{app.account}> 群 <{group.name.strip()}> 中成员 <{member.name.strip()}> 的消息：{message_text_log}"
+    # )
+
+
+@bcc.receiver(FriendMessage)
+async def friend_message_listener(app: Ariadne, friend: Friend, message: MessageChain):
+    core.received_count += 1
+    message_text_log = message.display.replace("\n", "\\n").strip()
+    logger.info(f"收到来自 Bot<{app.account}> 好友 <{friend.nickname.strip()}> 的消息：{message_text_log}")
+
+
+@bcc.receiver(StrangerMessage)
+async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: MessageChain):
+    core.received_count += 1
+    message_text_log = message.display.replace("\n", "\\n").strip()
+    logger.info(f"收到来自 Bot <{app.account}> 陌生人 <{stranger.nickname.strip()}> 的消息：{message_text_log}")
 
 
 @bcc.receiver(ActiveGroupMessage)
@@ -101,7 +133,8 @@ if __name__ == "__main__":
             logger.info(f'mah.status_code:{mah.status_code}')
             if mah.status_code == 200:
                 logger.success(f"成功检测到mirai")
-                core.install_modules(Path("modules"))
+                # core.install_modules(Path("modules"))
+                core.install_modules(Path("modules") / "test_modules")
                 core.launch()
                 break
             elif fl >= 3:

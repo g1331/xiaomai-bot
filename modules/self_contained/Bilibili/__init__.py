@@ -13,9 +13,9 @@ from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from loguru import logger
 
-from modules.DuoQHandle import DuoQ
+from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-from modules.Switch import Switch
+from modules.self_contained.Switch import Switch
 from util.text_engine.elements import Text
 from util.text_engine.text_engine import TextEngine
 from .library.b23_extract import b23_extract

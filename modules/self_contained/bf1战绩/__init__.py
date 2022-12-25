@@ -3,7 +3,6 @@ import json
 import os
 import re
 import time
-import yaml
 import uuid
 import httpx
 import zhconv
@@ -31,15 +30,15 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatc
     PRESERVE, UnionMatch
 
 from core.config import GlobalConfig
-from modules.DuoQHandle import DuoQ, if_blocked
+from modules.self_contained.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
-from modules.Switch import Switch
+from modules.self_contained.Switch import Switch
 from util.internal_utils import MessageChainUtils
 
-from modules.bf1战绩.choose_bg_pic import bg_pic
-from modules.bf1战绩.info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
-from modules.bf1战绩.main_session_auto_refresh import auto_refresh_account
-from modules.bf1战绩.record_counter import record
+from modules.self_contained.bf1战绩 import bg_pic
+from modules.self_contained.bf1战绩 import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
+from modules.self_contained.bf1战绩 import auto_refresh_account
+from modules.self_contained.bf1战绩 import record
 
 saya = Saya.current()
 channel = Channel.current()

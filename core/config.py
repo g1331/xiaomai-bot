@@ -18,6 +18,7 @@ class GlobalConfig(BaseModel):
     verify_key: str = "1234567890"
     test_group: int
     vip_group: List[int]
+    black_group: List[int]
     proxy: str
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}

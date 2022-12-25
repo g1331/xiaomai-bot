@@ -33,7 +33,10 @@ from sqlalchemy.exc import InternalError, ProgrammingError
 
 from core.config import GlobalConfig
 from core.orm import orm
-from core.perm_manager import MemberPerm, GroupPerm
+from core.orm.tables import (
+    GroupPerm,
+    MemberPerm
+)
 
 non_log = {
     GroupMessage,
@@ -96,7 +99,7 @@ class Umaru(object):
             return
         self.initialized = True
         self.set_logger()
-        logger.info("Umaru Initializing...")
+        logger.info("Umaru 初始化中...")
         bcc = create(Broadcast)
         saya = create(Saya)
         saya.install_behaviours(BroadcastBehaviour(bcc))
@@ -109,20 +112,31 @@ class Umaru(object):
         total_groups = {}
         for app in self.apps:
             group_list = await app.get_group_list()
+            # 更新群组权限
             for group in group_list:
+                if group.id in self.config.black_group:
+                    perm = 0
+                elif group.id in self.config.vip_group:
+                    perm = 2
+                elif group.id == self.config.test_group:
+                    perm = 3
+                else:
+                    perm = 1
                 await orm.insert_or_update(
                     GroupPerm,
-                    {"group_id": group.id, "group_name": group.name, "active": True},
+                    {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
                     [
                         GroupPerm.group_id == group.id
                     ]
                 )
+            # 更新成员权限
             await self.update_host_permission(group_list)
             total_groups[app.account] = group_list
         logger.info("本次启动活动群组如下：")
         for account, group_list in total_groups.items():
             for group in group_list:
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
+        logger.success("bot初始化完成~")
 
     # 更新master和admins权限
     async def update_host_permission(self, group_list: List[Group]):

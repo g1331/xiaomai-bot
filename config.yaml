@@ -1,16 +1,16 @@
 # 基本配置
-Master: 1257661006
+Master: 主人qq
 Admins: []
-bot_accounts: [2417999374]
-default_account: 000
+bot_accounts: [bot账号列表]
+default_account: 默认bot账号
 off_bots: []
 bot_blocked: []
-mirai_host: http://localhost:8080
-verify_key: SBXMMX
-test_group: 1090153034
+mirai_host: 你的mah配置例子如:http://localhost:8080
+verify_key: 你的verify_key
+test_group: 测试群
 vip_group: []
 black_group: []
-db_link: sqlite+aiosqlite:///data.db
+db_link: 数据库地址,默认为sqlite+aiosqlite:///data.db
 proxy: proxy
 
 # 日志相关
@@ -20,7 +20,7 @@ log_related:
 
 # 战地一配置
 bf1:
-  default_account: 123
+  default_account: 账号pid
 
 # chatGPT配置
-openai_cookie: abc
+openai_cookie: openai_cookie

@@ -133,12 +133,13 @@ if __name__ == "__main__":
             logger.info(f'mah.status_code:{mah.status_code}')
             if mah.status_code == 200:
                 logger.success(f"成功检测到mirai")
-                # core.install_modules(Path("modules"))
+                core.install_modules(Path("modules") / "required")
                 core.install_modules(Path("modules") / "test_modules")
                 core.launch()
                 break
             elif fl >= 3:
-                break
+                logger.critical("启动失败:请检查mirai是否正常启动/mah配置是否与bot配置一致")
+                exit(0)
             else:
                 fl += 1
                 logger.critical("MAH 尚未启动，正在重试...")
@@ -146,4 +147,4 @@ if __name__ == "__main__":
             logger.critical("MAH 尚未启动，请检查")
             break
         except KeyboardInterrupt:
-            exit(0)
+            exit("--已手动退出--")

@@ -9,7 +9,6 @@ from graia.ariadne.message import Source
 from graia.ariadne.model import Member, Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
-from loguru import logger
 from sqlalchemy import select
 
 from core.config import GlobalConfig
@@ -24,19 +23,19 @@ class Permission(object):
     判断权限的类
 
     成员权限:
-    -1为全局黑
-    0为单群黑
-    16为群员
-    32为管理
-    64为群主
-    128为Admin
-    256为Master
+    -1      全局黑
+    0       单群黑
+    16      群员
+    32      管理
+    64      群主
+    128     Admin
+    256     Master
 
     群权限:
-    0为非活动群组
-    1为正常活动群组
-    2为vip群组
-    3为测试群组
+    0       非活动群组
+    1       正常活动群组
+    2       vip群组
+    3       测试群组
     """
     Master = 256
     Admin = 128
@@ -186,3 +185,38 @@ class Function(object):
     """
     判断功能的类
     """
+
+
+temp_dict = {}
+
+
+class Distribute(object):
+
+    @classmethod
+    def require(cls):
+        """
+        只要是接收群消息的都要这个!
+        :return: Depend
+        """
+
+        async def wrapper(group: Union[Group, Friend], app: Ariadne, source: Source):
+            global temp_dict
+            if type(group) == Friend:
+                return Depend(wrapper)
+            # 第一次要获取群列表，然后添加bot到groupid字典，编号
+            # 然后对messageId取余，对应编号bot响应
+            if group.id not in temp_dict:
+                member_list = await app.get_member_list(group)
+                temp_dict[group.id] = {}
+                temp_dict[group.id][0] = app.account
+                for item in member_list:
+                    if item.id in Ariadne.service.connections:
+                        temp_dict[group.id][len(temp_dict[group.id])] = item.id
+            if temp_dict[group.id][source.id % len(temp_dict[group.id])] != app.account:
+                raise ExecutionStop
+            # 防止bot中途掉线/风控造成无响应
+            if temp_dict[group.id][source.id % len(temp_dict[group.id])] not in Ariadne.service.connections:
+                temp_dict.pop(group.id)
+            return Depend(wrapper)
+
+        return Depend(wrapper)

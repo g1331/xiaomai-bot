@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 from playwright.async_api import Page, Browser, async_playwright, Playwright
 
 
-path_to_extension = "./util/browser/extension/ad"
-user_data_dir = "./util/browser/data"
+path_to_extension = "./utils/browser/extension/ad"
+user_data_dir = "./utils/browser/data"
 
 
 _browser: Optional[Browser] = None

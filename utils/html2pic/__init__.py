@@ -6,7 +6,7 @@ from pathlib import Path
 from loguru import logger
 from typing import Optional
 
-from util.browser import get_new_page
+from utils.browser import get_new_page
 
 TEMPLATES_PATH = str(Path(__file__).parent / "templates")
 BASE_URL = f"file://{os.getcwd()}"

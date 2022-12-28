@@ -36,7 +36,7 @@ from modules.PermManager import Perm
 from modules.self_contained.Switch import Switch
 from modules.self_contained.bf1战绩 import getPid_byName, server_playing, InfoCache_stat
 from modules.self_contained.bf1战绩 import auto_refresh_account
-from util.internal_utils import MessageChainUtils
+from utils.internal_utils import MessageChainUtils
 
 from modules.self_contained.bf1服管 import api_gateway
 from modules.self_contained.bf1服管.api_gateway import refresh_api_client

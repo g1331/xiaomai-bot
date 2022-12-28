@@ -33,7 +33,7 @@ from core.config import GlobalConfig
 from modules.self_contained.DuoQHandle import DuoQ, if_blocked
 from modules.PermManager import Perm
 from modules.self_contained.Switch import Switch
-from util.internal_utils import MessageChainUtils
+from utils.internal_utils import MessageChainUtils
 
 from modules.self_contained.bf1战绩 import bg_pic
 from modules.self_contained.bf1战绩 import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat

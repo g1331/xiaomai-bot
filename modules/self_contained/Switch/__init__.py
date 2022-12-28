@@ -14,7 +14,7 @@ from loguru import logger
 
 from modules.self_contained.DuoQHandle import DuoQ
 from modules.PermManager import Perm
-from util.internal_utils import MessageChainUtils
+from utils.internal_utils import MessageChainUtils
 
 saya = Saya.current()
 channel = Channel.current()

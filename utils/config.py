@@ -79,11 +79,11 @@ class GlobalConfig(BaseModel):
 
 
 class ConfigClassCreator(AbstractCreator, ABC):
-    targets = (CreateTargetInfo("util.config", "GlobalConfig"),)
+    targets = (CreateTargetInfo("utils.config", "GlobalConfig"),)
 
     @staticmethod
     def available() -> bool:
-        return exists_module("util.config")
+        return exists_module("utils.config")
 
     @staticmethod
     def create(create_type: Type[GlobalConfig]) -> GlobalConfig:

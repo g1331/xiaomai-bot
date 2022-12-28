@@ -84,7 +84,7 @@ class AsyncORM:
 
     async def fetch_all(self, sql, parameters=None):
         """获取多条记录"""
-        return (await self.execute(sql)).fetchall()
+        return (await self.execute(sql, parameters)).fetchall()
 
     async def rowcount(self, sql, parameters=None):
         """获取记录条数"""

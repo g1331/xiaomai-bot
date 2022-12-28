@@ -33,10 +33,10 @@ saya = create(Saya)
 async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     core.received_count += 1
     # message_text_log = message.display.replace("\n", "\\n").strip()
-    # message_text_log = message.as_persistent_string().replace("\n", "\\n").strip()
-    # logger.info(
-    #     f"收到来自 Bot <{app.account}> 群 <{group.name.strip()}> 中成员 <{member.name.strip()}> 的消息：{message_text_log}"
-    # )
+    message_text_log = message.as_persistent_string().replace("\n", "\\n").strip()
+    logger.info(
+        f"收到来自 Bot <{app.account}> 群 <{group.name.strip()}> 中成员 <{member.name.strip()}> 的消息：{message_text_log}"
+    )
 
 
 @bcc.receiver(FriendMessage)

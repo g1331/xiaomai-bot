@@ -1,0 +1,1353 @@
+2022-12-28 01:30:45.845 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 400, message='Expected HTTP/', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_reqrep.py", line 899, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                             │        └ <function DataQueue.read at 0x000001A9A904FCA0>
+                             └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9ABF82B20>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\streams.py", line 616, in read
+    await self._waiter
+          │    └ None
+          └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9ABF82B20>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_proto.py", line 213, in data_received
+    messages, upgraded, tail = self._parser.feed_data(data)
+                               │    │                 └ b'GET /all?qq=2417999374&verifyKey=SBXMMX HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSe...
+                               │    └ None
+                               └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9ABF82B20>
+
+  File "aiohttp\_http_parser.pyx", line 551, in aiohttp._http_parser.HttpParser.feed_data
+    raise ex
+
+aiohttp.http_exceptions.BadHttpMessage: 400, message='Expected HTTP/'
+
+
+The above exception was the direct cause of the following exception:
+
+
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABF95B80>(<Future finis...ected HTTP/'>>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABF95B80>(<Future finis...ected HTTP/'>>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABF95B80>(<Future finis...ected HTTP/'>>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABF95B80>(<Future finis...ected HTTP/'>>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9ABDE9760>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 779, in _ws_connect
+    resp = await self.request(
+                 │    └ <function ClientSession.request at 0x000001A9A91FB160>
+                 └ <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 560, in _request
+    await resp.start(conn)
+          │    │     └ Connection<ConnectionKey(host='localhost', port=8080, is_ssl=False, ssl=None, proxy=None, proxy_auth=None, proxy_headers_hash...
+          │    └ <function ClientResponse.start at 0x000001A9A9169430>
+          └ <ClientResponse(http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX) [None None]>
+            None
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_reqrep.py", line 901, in start
+    raise ClientResponseError(
+          └ <class 'aiohttp.client_exceptions.ClientResponseError'>
+
+aiohttp.client_exceptions.ClientResponseError: 400, message='Expected HTTP/', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 05:59:42.572 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 400, message='Expected HTTP/', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_reqrep.py", line 899, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+                             │        └ <function DataQueue.read at 0x000001A9A904FCA0>
+                             └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9AC08A520>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\streams.py", line 616, in read
+    await self._waiter
+          │    └ None
+          └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9AC08A520>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_proto.py", line 213, in data_received
+    messages, upgraded, tail = self._parser.feed_data(data)
+                               │    │                 └ b'GET /all?qq=2417999374&verifyKey=SBXMMX HTTP/1.1\r\nHost: localhost:8080\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSe...
+                               │    └ None
+                               └ <aiohttp.client_proto.ResponseHandler object at 0x000001A9AC08A520>
+
+  File "aiohttp\_http_parser.pyx", line 551, in aiohttp._http_parser.HttpParser.feed_data
+    raise ex
+
+aiohttp.http_exceptions.BadHttpMessage: 400, message='Expected HTTP/'
+
+
+The above exception was the direct cause of the following exception:
+
+
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABFE08B0>(<Future finis...ected HTTP/'>>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABFE08B0>(<Future finis...ected HTTP/'>>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABFE08B0>(<Future finis...ected HTTP/'>>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9ABFE08B0>(<Future finis...ected HTTP/'>>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9ABDE9760>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 779, in _ws_connect
+    resp = await self.request(
+                 │    └ <function ClientSession.request at 0x000001A9A91FB160>
+                 └ <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 560, in _request
+    await resp.start(conn)
+          │    │     └ Connection<ConnectionKey(host='localhost', port=8080, is_ssl=False, ssl=None, proxy=None, proxy_auth=None, proxy_headers_hash...
+          │    └ <function ClientResponse.start at 0x000001A9A9169430>
+          └ <ClientResponse(http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX) [None None]>
+            None
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client_reqrep.py", line 901, in start
+    raise ClientResponseError(
+          └ <class 'aiohttp.client_exceptions.ClientResponseError'>
+
+aiohttp.client_exceptions.ClientResponseError: 400, message='Expected HTTP/', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 15:08:05.222 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC217E50>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC217E50>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC217E50>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC217E50>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 15:14:10.363 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC0B8670>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC0B8670>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC0B8670>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC0B8670>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 15:23:15.460 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1643A0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1643A0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1643A0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1643A0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:08:25.494 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x00000209599F6CD0>
+    └ <core.bot.Umaru object at 0x0000020955162D90>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x0000020958E95BB0>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x0000020958E8E130>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x0000020957A81220>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x0000020957C125E0>
+    │   └ <launart.manager.Launart object at 0x0000020959A0C490>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000002095787BB80>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x00000209578FD430>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000002095787F670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000002095781F280>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000002095AED3970>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000002095AED3970>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000002095AED3970>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000002095AED3970>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x0000020958546280>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000002095AD17B20>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000002095AD17B20>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x0000020959BD7160>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000002095AD17B20>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000002095AD17B20>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:08:27.975 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164550>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164550>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164550>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164550>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:09:16.605 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x0000028306FB8CD0>
+    └ <core.bot.Umaru object at 0x0000028302722D90>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x0000028305C52340>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x0000028305C4F040>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x0000028305030220>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x00000283051D25E0>
+    │   └ <launart.manager.Launart object at 0x0000028306FCC430>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x0000028304E3BB80>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x0000028304EBD430>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x0000028304E3F670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x0000028304DDF280>
+    └ <Handle <TaskWakeupMethWrapper object at 0x00000283084A3C40>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x00000283084A3C40>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x00000283084A3C40>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x00000283084A3C40>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x0000028305B04280>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000283082E6430>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000283082E6430>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x00000283071BFAC0>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000283082E6430>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000283082E6430>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:09:19.799 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164D30>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164D30>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164D30>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC164D30>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:10:28.238 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1E9100>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1E9100>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1E9100>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC1E9100>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:10:42.420 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001DA2BE969A0>
+    └ <core.bot.Umaru object at 0x000001DA27642D90>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001DA2B3323D0>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001DA2B325F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001DA29F30220>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001DA2A0B35E0>
+    │   └ <launart.manager.Launart object at 0x000001DA2BEAC460>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001DA29D1BB80>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001DA29D9D430>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001DA29D1F670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001DA29CBF280>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001DA2D382CA0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001DA2D382CA0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001DA2D382CA0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001DA2D382CA0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001DA2A9E6280>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001DA2D1C74C0>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001DA2D1C74C0>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001DA2C017160>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001DA2D1C74C0>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001DA2D1C74C0>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:12:48.556 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x0000025E5BCF6CD0>
+    └ <core.bot.Umaru object at 0x0000025E57452D90>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x0000025E5A992400>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x0000025E5A98F040>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x0000025E59DA1220>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x0000025E59F225E0>
+    │   └ <launart.manager.Launart object at 0x0000025E5BD0C490>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x0000025E59B7BB80>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x0000025E59BFD430>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x0000025E59B7F670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x0000025E59B1F280>
+    └ <Handle <TaskWakeupMethWrapper object at 0x0000025E5D1C2FD0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x0000025E5D1C2FD0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x0000025E5D1C2FD0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x0000025E5D1C2FD0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x0000025E5A846280>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000025E5BEC7970>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000025E5BEC7970>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x0000025E5BEC7190>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000025E5BEC7970>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000025E5BEC7970>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:12:51.888 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC18BE80>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC18BE80>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC18BE80>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC18BE80>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:13:56.646 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x00000206AEC47490>
+    └ <core.bot.Umaru object at 0x00000206AA5D8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x00000206AE0CB8E0>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x00000206AE0D3130>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x00000206ACCE1670>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x00000206ACE62C10>
+    │   └ <launart.manager.Launart object at 0x00000206AEC5C040>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x00000206ACAC0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x00000206ACB3E670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x00000206ACAC48B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x00000206ACA5E4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x00000206B00F9FD0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x00000206B00F9FD0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x00000206B00F9FD0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x00000206B00F9FD0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x00000206AD7858B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000206AEDB5850>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000206AEDB5850>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x00000206AEDB5550>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000206AEDB5850>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x00000206AEDB5850>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:13:59.537 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10E9A0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10E9A0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10E9A0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10E9A0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC1E93A0>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:14:31.489 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x0000021C8DE28520>
+    └ <core.bot.Umaru object at 0x0000021C89798B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x0000021C8D2B4370>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x0000021C8D2B1270>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x0000021C8BEA1670>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x0000021C8C032C10>
+    │   └ <launart.manager.Launart object at 0x0000021C8DE3B0D0>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x0000021C8BCA0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x0000021C8BD1E670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x0000021C8BCA48B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x0000021C8BC3F4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x0000021C8F2F8CD0>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x0000021C8F2F8CD0>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x0000021C8F2F8CD0>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x0000021C8F2F8CD0>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x0000021C8C9658B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000021C8DF1D070>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000021C8DF1D070>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x0000021C8DF94B80>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000021C8DF1D070>
+    │    └ None
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x0000021C8DF1D070>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+2022-12-28 16:33:17.262 | ERROR    | graia.amnesia.builtins.aiohttp:connection_manage:231 - 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')
+Traceback (most recent call last):
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\main.py", line 138, in <module>
+    core.launch()
+    │    └ <staticmethod object at 0x000001A9AA9374C0>
+    └ <core.bot.Umaru object at 0x000001A9A62B8B50>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\core\bot.py", line 282, in launch
+    Ariadne.launch_blocking()
+    │       └ <classmethod object at 0x000001A9A95C4310>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\ariadne\app.py", line 313, in launch_blocking
+    cls.launch_manager.launch_blocking(loop=cls.service.loop, stop_signal=stop_signals)
+    │   │              │                    │   │       │                 └ (<Signals.SIGINT: 2>,)
+    │   │              │                    │   │       └ <property object at 0x000001A9A95B4F90>
+    │   │              │                    │   └ <graia.ariadne.service.ElizabethService object at 0x000001A9A89C1610>
+    │   │              │                    └ <class 'graia.ariadne.app.Ariadne'>
+    │   │              └ <function Launart.launch_blocking at 0x000001A9A8B42C10>
+    │   └ <launart.manager.Launart object at 0x000001A9AA94D070>
+    └ <class 'graia.ariadne.app.Ariadne'>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\launart\manager.py", line 461, in launch_blocking
+    loop.run_until_complete(launch_task)
+    │    │                  └ <Task pending name='amnesia-launch' coro=<Launart.launch() running at F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\l...
+    │    └ <function BaseEventLoop.run_until_complete at 0x000001A9A87B0DC0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 629, in run_until_complete
+    self.run_forever()
+    │    └ <function ProactorEventLoop.run_forever at 0x000001A9A882D670>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\windows_events.py", line 316, in run_forever
+    super().run_forever()
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 596, in run_forever
+    self._run_once()
+    │    └ <function BaseEventLoop._run_once at 0x000001A9A87B58B0>
+    └ <ProactorEventLoop running=True closed=False debug=False>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\base_events.py", line 1890, in _run_once
+    handle._run()
+    │      └ <function Handle._run at 0x000001A9A874D4C0>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10EC40>(<Future finished result=None>)>
+
+  File "C:\Users\Gyc\AppData\Local\Programs\Python\Python39\lib\asyncio\events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+    │    │            │    │           │    └ <member '_args' of 'Handle' objects>
+    │    │            │    │           └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10EC40>(<Future finished result=None>)>
+    │    │            │    └ <member '_callback' of 'Handle' objects>
+    │    │            └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10EC40>(<Future finished result=None>)>
+    │    └ <member '_context' of 'Handle' objects>
+    └ <Handle <TaskWakeupMethWrapper object at 0x000001A9AC10EC40>(<Future finished result=None>)>
+
+> File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 217, in connection_manage
+    await self._start_conn()
+          │    └ <function AiohttpClientConnectionRider._start_conn at 0x000001A9A94758B0>
+          └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\graia\amnesia\builtins\aiohttp.py", line 180, in _start_conn
+    self.response = await self.conn_func(**self.call_param)
+    │    │                │    │           │    └ {'url': 'http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX', 'heartbeat': 30.0}
+    │    │                │    │           └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    │                │    └ <bound method ClientSession.ws_connect of <aiohttp.client.ClientSession object at 0x000001A9AAAF4B50>>
+    │    │                └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+    │    └ <aiohttp.client_ws.ClientWebSocketResponse object at 0x000001A9AC18B460>
+    └ <graia.amnesia.builtins.aiohttp.AiohttpClientConnectionRider object at 0x000001A9AAAF4940>
+
+  File "F:\CODE\BfBot\bot-xiaomai-open\venv\lib\site-packages\aiohttp\client.py", line 795, in _ws_connect
+    raise WSServerHandshakeError(
+          └ <class 'aiohttp.client_exceptions.WSServerHandshakeError'>
+
+aiohttp.client_exceptions.WSServerHandshakeError: 404, message='Invalid response status', url=URL('http://localhost:8080/all?qq=2417999374&verifyKey=SBXMMX')

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>QQ Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+    body {
+        width: 1000px;
+        height: 700px;
+        background: linear-gradient(to bottom, #4c4c4c, #0d0d0d);
+        color: #fff;
+        font-family: sans-serif;
+    }
+
+    .message-container {
+        display: flex;
+        align-items: flex-start;
+        margin: 20px;
+    }
+
+    .avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #fff;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      background: #6a6a6a;
+      border-radius: 10px;
+      padding: 10px;
+      margin-left: 10px;
+      position: relative;
+    }
+
+    .message::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -10px;
+      border: 10px solid transparent;
+      border-right-color: #6a6a6a;
+    }
+
+
+    .message.text {
+        font-size: 16px;
+    }
+
+    .triangle {
+        width: 0;
+        height: 0;
+        border-width: 15px;
+        border-style: solid;
+        border-color: transparent transparent transparent #6a6a6a;
+        position: absolute;
+        top: 0;
+        left: -15px;
+    }
+
+</style>
+</head>
+<body>
+    <div id="container">
+        <div id="message-container">
+            {% for message in message_list %}
+            <div class="message-container">
+              <img src="{{ message.avatar }}" class="avatar">
+              <div class="message-box" style="display: flex; flex-direction: column;">
+                <div class="message-username">{{ message.username }}</div>
+                <div class="message" style="margin-top: 10px;">{{ message.content }}</div>
+              </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

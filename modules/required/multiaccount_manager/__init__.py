@@ -1,15 +1,17 @@
 import yaml
-from typing import Union
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, SpacePolicy, RegexResult
-from graia.ariadne.model import Group, Friend
-from graia.broadcast import ExecutionStop
-from graia.broadcast.builtin.decorators import Depend
-from graia.saya.builtins.broadcast import ListenerSchema
+from graia.ariadne.model import Group
 from graia.saya import Channel
+from graia.saya.builtins.broadcast import ListenerSchema
+
+from core.control import (
+    Permission,
+    Distribute
+)
 
 channel = Channel.current()
 channel.name("多q适配")
@@ -21,45 +23,11 @@ temp_dict = {}
 temp_list = []
 
 
-class DuoQ(object):
-
-    @classmethod
-    def require(cls):
-        """
-        只要是接收群消息的都要这个!
-        :return: Depend
-        """
-
-        async def wrapper(group: Union[Group, Friend], app: Ariadne, source: Source):
-            global temp_dict
-            if type(group) == Friend:
-                return Depend(wrapper)
-            # 第一次要获取群列表，然后添加bot到groupid字典，编号
-            # 然后对messageId取余，对应编号bot响应
-            if group.id not in temp_dict:
-                member_list = await app.get_member_list(group)
-                temp_dict[group.id] = {}
-                temp_dict[group.id][0] = app.account
-                for item in member_list:
-                    if item.id in Ariadne.service.connections:
-                        temp_dict[group.id][len(temp_dict[group.id])] = item.id
-            if temp_dict[group.id][source.id % len(temp_dict[group.id])] != app.account:
-                raise ExecutionStop
-            # 防止bot中途掉线/风控造成无响应
-            if temp_dict[group.id][source.id % len(temp_dict[group.id])] not in Ariadne.service.connections:
-                temp_dict.pop(group.id)
-            return Depend(wrapper)
-
-        return Depend(wrapper)
-
-
-from modules.PermManager import Perm
-
-
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[
-                                Perm.require(128),
-                                DuoQ.require()
+                                Permission.user_require(Permission.Admin),
+                                Distribute.require()
+
                             ],
                             inline_dispatchers=[
                                 Twilight(

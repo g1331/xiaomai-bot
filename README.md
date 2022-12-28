@@ -37,7 +37,7 @@
     
 ## 简易搭建:
 
-1. python3.9+环境, mirai:[MCL](https://docs.mirai.mamoe.net/ConsoleTerminal.html) 并配置[mah](https://docs.mirai.mamoe.net/mirai-api-http/)
+1. python3.9+环境, mirai:[MCL](https://docs.mirai.mamoe.net/ConsoleTerminal.html) 并配置mah:[官方文档:](https://docs.mirai.mamoe.net/mirai-api-http/) 、[Graia文档:](https://graia.cn/ariadne/appendix/mah-install/)
 
 2. 在bot根目录下使用
    ``` powershell

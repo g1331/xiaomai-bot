@@ -20,9 +20,7 @@ XiaoMaiBot
 
 │  ├─── saya_modules    规定插件结构-控制开关
 
-│  │  ├─── __init__.py
-
-│  │  └─── ...
+│  │  └─── __init__.py
 
 │  └─── ...
 

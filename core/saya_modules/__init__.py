@@ -1,45 +1,10 @@
-"""
-插件元数据
-module_metadata:
-{
-    "module_name": {
-        "level": "插件等级1/2/3",
-        "name": "文件名",
-        "display_name": "显示名字",
-        "version": "0.0.1",
-        "author": ["作者"],
-        "description": "描述",
-        "usage": ["用法"],
-        "eg": ["例子"],
-        "default_switch": "默认是否为开启状态 TRUE/FALSE"
-    },
-    "module2": {
-
-    }
-}
-
-插件开关列表
-modules_data.json:
-
-{
-    "module_name" :{
-        "groups": {
-            "group_id" :{
-                "switch": "bool",
-                "notice": "bool"
-            }
-        },
-        "available": "bool"
-    }
-}
-"""
 import contextlib
 import json
 from abc import ABC
 from enum import Enum
 from json.decoder import JSONDecodeError
 from pathlib import Path
-from typing import Type
+from typing import Type, Dict
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
 from graia.ariadne.model import Group
@@ -55,10 +20,44 @@ class ModuleOperationType(Enum):
 
 
 class ModulesController:
+    modules: Dict[str, Dict[str, Dict[str, Dict[str:bool, str:bool], str:bool], str:bool]]
+    """
+    插件控制数据
+    modules_data.json:
+    {
+        "modules": {
+            "module_name": {
+                "groups": {
+                    "group_id": {
+                        "switch": "bool",
+                        "notice": "bool"
+                    }
+                },
+                "available": "bool"
+            },
+            "module2": {}
+        }
+    }
+    
+    插件元数据
+    module.metadata:
+    {
+        "level": "插件等级1/2/3",
+        "module_name": "文件名",
+        "display_name": "显示名字",
+        "version": "0.0.1",
+        "author": ["作者"],
+        "description": "描述",
+        "usage": ["用法"],
+        "eg": ["例子"],
+        "default_switch": "默认是否为开启状态 TRUE/FALSE"
+    }
+    """
+
     def __init__(self, modules=None):
         self.modules = modules or {}
 
-    def add_group(self, module_name):
+    def add_group(self, module_name, group: Group or int):
         """如果module默认为开，且群组不在module数据内则添加"""
         self.save()
 

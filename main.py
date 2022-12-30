@@ -131,8 +131,7 @@ async def init():
 
 if __name__ == "__main__":
     if Path.cwd() != Path(__file__).parent:
-        logger.critical(f"当前目录非项目所在目录！请进入{str(Path(__file__).parent)}后再运行!")
-        exit(0)
+        logger.critical(f"当前目录非项目所在目录！请进入{str(Path(__file__).parent)}后再运行!", exit(0))
     logger.info("正在检测 Mirai 是否启动")
     fl = 0
     while True:

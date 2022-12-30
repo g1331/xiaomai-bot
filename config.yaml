@@ -7,7 +7,7 @@ off_bots: []
 bot_blocked: []
 mirai_host: 你的mah配置例子如:http://localhost:8080
 verify_key: 你的verify_key
-test_group: 测试群
+test_group: 测试群群号-用于发送通知等
 vip_group: []
 black_group: []
 db_link: 数据库地址,默认为sqlite+aiosqlite:///data.db

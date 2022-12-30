@@ -42,7 +42,7 @@ async def at_reply(app: Ariadne, sender: Member, group: Group, at: RegexResult):
     try:
         at: At = at.result
         if at.target == app.account:
-            bqb_path = './data/bqb'
+            bqb_path = './data/Emoticons'
             bqb_pic_list = os.listdir(bqb_path)
             pic = random.choice(bqb_pic_list)
             pic_path = f"{bqb_path}/{pic}"
@@ -72,7 +72,7 @@ async def at_reply(app: Ariadne, sender: Member, group: Group, at: RegexResult):
                             ]))
 async def fengkong_bqb(app: Ariadne, group: Group):
     try:
-        bqb_path = './data/bqb'
+        bqb_path = './data/Emoticons'
         bqb_pic_list = os.listdir(bqb_path)
         pic = None
         for item in bqb_pic_list:

@@ -17,6 +17,7 @@ sqlalchemy = "^1.4.45"
 pyyaml = "^6.0"
 aiosqlite = "^0.18.0"
 psutil = "^5.9.4"
+arclet-alconna-graia = "^0.10.4"
 
 
 [build-system]

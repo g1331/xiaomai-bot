@@ -14,6 +14,7 @@ from sqlalchemy import select
 from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
+from core.saya_modules import get_module_data
 
 config = create(GlobalConfig)
 
@@ -130,11 +131,7 @@ class Permission(object):
         根据传入的群号获取群权限
         """
         # 查询数据库
-        result = await orm.fetch_one(
-            select(GroupPerm.perm).where(
-                GroupPerm.group_id == group.id
-            )
-        )
+        result = await orm.fetch_one(select(GroupPerm.perm).where(GroupPerm.group_id == group.id))
         # 如果有查询到数据，则返回群的权限等级
         if result:
             return result[0]
@@ -186,6 +183,13 @@ class Function(object):
     判断功能的类
     """
 
+    @classmethod
+    def require(cls, module_name):
+        # 如果module_name不在modules_list里面就添加
+        modules_data = get_module_data()
+        if module_name not in modules_data.modules:
+            modules_data.add(module_name)
+
 
 temp_dict = {}
 
@@ -195,7 +199,7 @@ class Distribute(object):
     @classmethod
     def require(cls):
         """
-        只要是接收群消息的都要这个!
+        用于消息分发
         :return: Depend
         """
 

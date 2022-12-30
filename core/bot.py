@@ -1,7 +1,6 @@
 import datetime
 import os
 from abc import ABC
-from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Type
 
@@ -48,13 +47,6 @@ non_log = {
     ActiveFriendMessage
 }
 
-
-class ModuleOperationType(Enum):
-    INSTALL = "install"
-    UNINSTALL = "uninstall"
-    RELOAD = "reload"
-
-
 logs = []
 
 
@@ -72,6 +64,7 @@ class Umaru(object):
     initialized: bool = False
 
     def __init__(self, g_config: GlobalConfig, base_path: str or Path):
+        self.total_groups = {}
         self.launch_time = datetime.datetime.now()
         self.config = create(GlobalConfig)
         self.base_path = base_path if isinstance(base_path, Path) else Path(base_path)
@@ -99,7 +92,7 @@ class Umaru(object):
             return
         self.initialized = True
         self.set_logger()
-        logger.info("Umaru 初始化中...")
+        logger.info("bot初始化中...")
         bcc = create(Broadcast)
         saya = create(Saya)
         saya.install_behaviours(BroadcastBehaviour(bcc))
@@ -109,7 +102,6 @@ class Umaru(object):
             _ = await orm.create_all()
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
-        total_groups = {}
         for app in self.apps:
             group_list = await app.get_group_list()
             # 更新群组权限
@@ -131,9 +123,9 @@ class Umaru(object):
                 )
             # 更新成员权限
             await self.update_host_permission(group_list)
-            total_groups[app.account] = group_list
+            self.total_groups[app.account] = group_list
         logger.info("本次启动活动群组如下：")
-        for account, group_list in total_groups.items():
+        for account, group_list in self.total_groups.items():
             for group in group_list:
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
         logger.success("bot初始化完成~")
@@ -244,37 +236,6 @@ class Umaru(object):
                 except Exception as e:
                     logger.exception("")
                     exceptions[str(base_path / module.split('.')[0])] = e
-        return exceptions
-
-    @staticmethod
-    def module_operation(modules: str or list[str], operation_type: ModuleOperationType) -> dict[str, Exception]:
-        saya = create(Saya)
-        exceptions = {}
-        if isinstance(modules, str):
-            modules = [modules]
-        if operation_type == ModuleOperationType.INSTALL:
-            op_modules = {
-                module: module
-                for module in modules
-            }
-        else:
-            loaded_channels = saya.channels
-            op_modules = {
-                module: loaded_channels[module]
-                for module in modules
-                if module in loaded_channels
-            }
-        with saya.module_context():
-            for c, value in op_modules.items():
-                try:
-                    if operation_type == ModuleOperationType.INSTALL:
-                        saya.require(c)
-                    elif operation_type == ModuleOperationType.UNINSTALL:
-                        saya.uninstall_channel(value)
-                    else:
-                        saya.reload_channel(value)
-                except Exception as e:
-                    exceptions[c] = e
         return exceptions
 
     @staticmethod

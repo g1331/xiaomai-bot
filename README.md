@@ -8,19 +8,21 @@
 
 XiaoMaiBot
 
-├─── core           核心-机器人配置/信息
+├─── core               核心-机器人配置/信息
 
-│  ├─── orm         对象关系映射-进行数据库处理
+│  ├─── orm             对象关系映射-进行数据库处理
 
 │  │  ├─── __init__.py
 
-│  │  ├─── tables.py	 内置表
+│  │  └─── tables.py    内置表
 
 │  └─── ...
 
-│  ├─── saya_modules  规定插件结构-控制开关
+│  ├─── saya_modules    规定插件结构-控制开关
 
 │  │  ├─── __init__.py
+
+│  │  └─── ...
 
 │  └─── ...
 
@@ -50,7 +52,7 @@ XiaoMaiBot
 
 │  │  ├─── common.log   常规日志
 
-│  │  ├─── error.log    错误日志
+│  │  └─── error.log    错误日志
 
 │  └─── ...
 
@@ -71,6 +73,8 @@ XiaoMaiBot
 ├─── main.py            应用执行入口
 
 ├─── pyproject.toml     项目依赖关系和打包信息
+
+├─── poetry.lock        项目依赖
 
 ├─── README.md          项目说明文件
 

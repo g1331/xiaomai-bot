@@ -20,7 +20,6 @@ class ModuleOperationType(Enum):
 
 
 class ModulesController:
-    modules: Dict[str, Dict[str, Dict[str, Dict[str:bool, str:bool], str:bool], str:bool]]
     """
     插件控制数据
     modules_data.json:

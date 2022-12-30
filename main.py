@@ -32,8 +32,7 @@ saya = create(Saya)
 @bcc.receiver(GroupMessage)
 async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
     core.received_count += 1
-    # message_text_log = message.display.replace("\n", "\\n").strip()
-    message_text_log = message.as_persistent_string().replace("\n", "\\n").strip()
+    message_text_log = message.display.replace("\n", "\\n").strip()
     logger.info(
         f"收到来自 Bot <{app.account}> 群 <{group.name.strip()}> 中成员 <{member.name.strip()}> 的消息：{message_text_log}"
     )
@@ -134,26 +133,26 @@ if __name__ == "__main__":
     if Path.cwd() != Path(__file__).parent:
         logger.critical(f"当前目录非项目所在目录！请进入{str(Path(__file__).parent)}后再运行!")
         exit(0)
-    logger.info("正在检测 MAH 是否启动")
+    logger.info("正在检测 Mirai 是否启动")
+    fl = 0
     while True:
         try:
-            fl = 0
-            mah = httpx.get(config.mirai_host + "/about")
-            logger.info(f'mah.status_code:{mah.status_code}')
+            mah = httpx.get(config.mirai_host + "/about", timeout=3)
             if mah.status_code == 200:
-                logger.success(f"成功检测到mirai")
-                core.install_modules(Path("modules") / "required")
-                core.install_modules(Path("modules") / "test_modules")
-                core.launch()
+                logger.opt(colors=True).info(f'<blue>mah.status_code:{mah.status_code}</blue>')
+                logger.opt(colors=True).info(f'<blue>mah.version:{eval(mah.text)["data"]["version"]}</blue>')
+                logger.success(f"成功检测到 Mirai !")
                 break
             elif fl >= 3:
-                logger.critical("启动失败:请检查mirai是否正常启动/mah配置是否与bot配置一致")
-                exit(0)
+                logger.critical("启动失败:请检查(mirai是否正常启动)/(mah端口是否被占用)/(mah配置是否与bot配置一致)", exit(0))
             else:
                 fl += 1
-                logger.critical("MAH 尚未启动，正在重试...")
+                logger.warning("未检测到 Mirai ，正在重试...")
         except httpx.HTTPError:
-            logger.critical("MAH 尚未启动，请检查")
-            break
+            logger.error("Mirai 尚未启动，请检查", exit(0))
         except KeyboardInterrupt:
-            exit("--已手动退出--")
+            exit("--已手动退出启动--")
+    core.install_modules(Path("modules") / "required")
+    core.install_modules(Path("modules") / "test_modules")
+    core.launch()
+    logger.info("UmaruBot 已关闭")

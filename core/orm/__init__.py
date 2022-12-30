@@ -47,6 +47,20 @@ class AsyncORM:
         self.async_session = sessionmaker(bind=self.engine, class_=AsyncSession)
         logger.success(f"已连接至数据库: {self.engine.url}")
 
+    async def close(self):
+        """关闭数据库连接"""
+        try:
+            logger.warning("注意:正在关闭数据库连接!")
+            async with self.async_session() as session:
+                await session.commit()
+            if self.async_session:
+                async with orm.async_session() as session:
+                    await session.close()
+                    self.async_session = None
+            logger.success("成功关闭数据库连接")
+        except Exception as e:
+            logger.error(f"关闭数据库时出错!{e}")
+
     # 建表、删表、获取表
     async def create_all(self):
         """创建所有表"""

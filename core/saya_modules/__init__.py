@@ -18,7 +18,7 @@ class Metadata(BaseModel):
     level: int = 1
     name: str = ""
     display_name: str = ""
-    version: str = " 0.0.0"
+    version: str = "0.1"
     author: List[str] = []
     description: str = ""
     usage: List[str] = []
@@ -56,13 +56,13 @@ class ModulesController:
     module.metadata:
     {
         "level": "插件等级1/2/3",
-        "module_name": "文件名",
+        "name": "名字",
         "display_name": "显示名字",
         "version": "0.0.1",
         "author": ["作者"],
         "description": "描述",
         "usage": ["用法"],
-        "eg": ["例子"],
+        "example": ["例子"],
         "default_switch": "默认为开启状态 True",
         "default_notice": "默认不通知状态 False"
     }
@@ -77,7 +77,7 @@ class ModulesController:
         module_path = Path(module_path)
         # 如果是文件夹就找文件夹内的metadata.json
         if module_path.is_dir():
-            metadata_path = module_path.joinpath('metadata.json')
+            metadata_path = module_path / 'metadata.json'
             if metadata_path.is_file():
                 with open(metadata_path, "r") as r:
                     data = json.load(r)
@@ -90,7 +90,7 @@ class ModulesController:
                 return Metadata(**data)
             # 不是的话就找同级文件夹内的metadata.json
             else:
-                metadata_path = module_path.parent.joinpath('metadata.json')
+                metadata_path = module_path.parent / 'metadata.json'
                 if metadata_path.is_file():
                     with open(metadata_path, "r", encoding="utf-8") as r:
                         data = json.load(r)

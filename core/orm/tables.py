@@ -32,7 +32,7 @@ class GroupPerm(orm.Base):
     group_id = Column(Integer, primary_key=True)
     group_name = Column(String(length=60), nullable=False)
     perm = Column(Integer, nullable=False, info={'check': [0, 1, 2, 3]}, default=1)
-    active = Column(Boolean(create_constraint=False), default=True)
+    active = Column(Boolean, default=True)
 
 
 class PermissionGroup(orm.Base):

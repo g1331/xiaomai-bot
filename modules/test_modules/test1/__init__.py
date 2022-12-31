@@ -95,8 +95,8 @@ async def fun():
 
 @listen(GroupMessage, FriendMessage)
 @decorate(
-    Permission.user_require(Permission.Admin),
-    Permission.group_require(channel.metadata.level),
+    Permission.user_require(512, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module)
 )
 @dispatch(Twilight([FullMatch("-test")]))
@@ -117,6 +117,6 @@ async def fun_test(app: Ariadne, ori_place: Union[Group, Friend], src: Source):
         # 传入了由框架saya解析的模块地址名(channel.module),注意它并不是文件路径,如:modules.test_modules.test1
         logger.info(Path(channel.module))
         print(channel.metadata)
-        return app.send_message(ori_place, MessageChain("成功"), quote=src)
+        return await app.send_message(ori_place, MessageChain("成功"), quote=src)
     except Exception as e:
-        return app.send_message(ori_place, MessageChain(f"失败:{e}"), quote=src)
+        return await app.send_message(ori_place, MessageChain(f"失败:{e}"), quote=src)

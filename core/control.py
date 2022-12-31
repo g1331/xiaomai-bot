@@ -110,10 +110,10 @@ class Permission(object):
         async def wrapper(app: Ariadne, sender: Union[Member, Friend], group: Union[Group, Friend],
                           src: Source or None = None):
             # 获取并判断用户的权限等级
-            if user_level := await cls.get_user_perm(sender, group) < perm:
+            if (user_level := await cls.get_user_perm(sender, group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
-                        f"权限不足！需要权限:{perm}，你的权限:{user_level}/"
+                        f"权限不足!需要权限:{perm}/你的权限:{user_level}"
                     ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -127,7 +127,8 @@ class Permission(object):
         """
         # 查询数据库
         # 如果有查询到数据，则返回群的权限等级
-        if result := await orm.fetch_one(select(GroupPerm.perm).where(GroupPerm.group_id == group.id)):
+        if result := await orm.fetch_one(select(GroupPerm.perm).where(
+                GroupPerm.group_id == group.id)):
             return result[0]
         # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
         else:
@@ -159,10 +160,10 @@ class Permission(object):
 
         async def wrapper(app: Ariadne, group: Group, src: Source or None):
             # 获取并判断群的权限等级
-            if group_perm := await cls.get_group_perm(group) < perm:
+            if (group_perm := await cls.get_group_perm(group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
-                        f"权限不足！需要权限:{perm}，当前群({group.id})权限:{group_perm}。"
+                        f"权限不足!需要权限:{perm}/当前群{group.id}权限:{group_perm}"
                     ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -205,6 +206,9 @@ class Function(object):
             return
 
         return Depend(judge)
+
+
+temp_dict = {}
 
 
 class Distribute(object):

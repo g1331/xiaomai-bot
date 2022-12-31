@@ -113,7 +113,7 @@ bot基础配置:
 - [ ]   指定bot响应(指定模式)
 
 #### Function功能开关:
-- [ ] 开关判断->Function.require("模组名")
+- [x] 开关判断->Function.require("模组名")
 
 插件结构:
 
@@ -128,7 +128,7 @@ module_metadata:
         "author": ["作者"],
         "description": "描述",
         "usage": ["用法"],
-        "eg": ["例子"],
+        "example": ["例子"],
         "default_switch": "bool"
     },
     "module2": {

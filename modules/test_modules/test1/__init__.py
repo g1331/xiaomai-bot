@@ -9,7 +9,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, MatchResult
 from graia.ariadne.model import Group, Friend
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
@@ -18,7 +18,7 @@ from loguru import logger
 from core.bot import Umaru
 from core.config import GlobalConfig
 from core.control import Permission, Function
-from core.saya_modules import ModulesController
+from core.saya_model import ModulesController
 from modules.test_modules.test1.test_depend import test_depend
 
 saya = Saya.current()
@@ -83,14 +83,20 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
     ), quote=source)
 
 
+def check(a):
+    return a
+
+
 # 接收事件
 @listen(GroupMessage, FriendMessage)
 # 依赖注入
 @decorate(test_depend.user_require())
 # 消息链处理器
 @dispatch(Twilight(["action" @ UnionMatch("-test", optional=False).space(SpacePolicy.PRESERVE)]))
-async def fun():
-    logger.success("执行成功")
+async def fun(action: MatchResult):
+    action = action.result
+    if check(action):
+        return False
 
 
 @listen(GroupMessage, FriendMessage)

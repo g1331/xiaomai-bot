@@ -117,37 +117,33 @@ bot基础配置:
 
 插件结构:
 
-module_metadata:
+module.metadata.json:
 ```json
 {
-    "module_name": {
-        "level": "插件等级1/2/3",
-        "name": "文件名",
-        "display_name": "显示名字",
-        "version": "0.0.1",
-        "author": ["作者"],
-        "description": "描述",
-        "usage": ["用法"],
-        "example": ["例子"],
-        "default_switch": "bool"
-    },
-    "module2": {
-    
-    }
+    "level": "插件等级1/2/3",
+    "name": "文件名",
+    "display_name": "显示名字",
+    "version": "0.0.1",
+    "author": ["作者"],
+    "description": "描述",
+    "usage": ["用法"],
+    "example": ["例子"],
+    "default_switch": true,
+    "default_notice": false
 }
 ```
 
-modules_data.json:
-```json
+modules:
+```python
 {
     "module_name":{
         "groups": {
             "group_id":{
-            	"switch": "bool",
-                "notice": "bool"
+            	"switch": bool,
+                "notice": bool
             }
 		},
-        "available": "bool"
+        "available": bool
     }
 }
 ```

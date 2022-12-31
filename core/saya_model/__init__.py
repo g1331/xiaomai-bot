@@ -301,11 +301,11 @@ def get_module_data():
 
 
 class ModulesControllerClassCreator(AbstractCreator, ABC):
-    targets = (CreateTargetInfo("core.saya_modules", "ModulesController"),)
+    targets = (CreateTargetInfo("core.saya_model", "ModulesController"),)
 
     @staticmethod
     def available() -> bool:
-        return exists_module("core.saya_modules")
+        return exists_module("core.saya_model")
 
     @staticmethod
     def create(create_type: Type[ModulesController]) -> ModulesController:

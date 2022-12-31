@@ -14,14 +14,13 @@ from sqlalchemy import select
 from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
-from core.saya_modules import get_module_data
+from core.saya_model import get_module_data
 
 config = create(GlobalConfig)
 
 
 class Permission(object):
-    """
-    判断权限的类
+    """权限判断
 
     成员权限:
     -1      全局黑
@@ -172,9 +171,7 @@ class Permission(object):
 
 
 class Function(object):
-    """
-    判断功能的类
-    """
+    """功能判断"""
 
     @classmethod
     def require(cls, module_name):
@@ -211,6 +208,9 @@ class Function(object):
 temp_dict = {}
 
 
+# TODO 完善消息分发require
+#   需要根据响应类型 随机/指定bot 来响应
+#   可以做一个类似于saya_model的response_model来辅助使用
 class Distribute(object):
 
     @classmethod
@@ -241,3 +241,8 @@ class Distribute(object):
             return Depend(wrapper)
 
         return Depend(wrapper)
+
+
+# TODO 实现频率限制FrequencyLimitation
+class FrequencyLimitation(object):
+    """频率限制"""

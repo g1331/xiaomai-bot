@@ -1,4 +1,6 @@
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Union
 
 import psutil
@@ -7,39 +9,35 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch
 from graia.ariadne.model import Group, Friend
+from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
-from graia.saya.builtins.broadcast.schema import ListenerSchema
+from loguru import logger
 
 from core.bot import Umaru
 from core.config import GlobalConfig
-from core.control import Permission
+from core.control import Permission, Function
+from core.saya_modules import ModulesController
+from modules.test_modules.test1.test_depend import test_depend
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("Status")
+channel.name(channel.module)
 channel.description("bot的运行状态")
 channel.author("13")
+channel.metadata = ModulesController.get_metadata_from_file(Path(__file__))
 
 config = create(GlobalConfig)
 core = create(Umaru)
 
 
-# 接发消息、cpu内存占用、bot数量
-@channel.use(ListenerSchema(listening_events=[GroupMessage, FriendMessage],
-                            decorators=[
-                                Permission.user_require(Permission.User),
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        "action" @ UnionMatch("-bot", "-status", optional=False).space(
-                                            SpacePolicy.PRESERVE),
-                                    ]
-                                    # 示例:-bot
-                                )
-                            ]))
+# 接收事件
+@listen(GroupMessage, FriendMessage)
+# 依赖注入
+@decorate(Permission.user_require(Permission.User))
+# 消息链处理器
+@dispatch(Twilight(["action" @ FullMatch("-bot").space(SpacePolicy.PRESERVE)]))
 async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
     # 运行时长
     time_start = int(time.mktime(core.launch_time.timetuple()))
@@ -64,8 +62,12 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
     cp = str(psutil.disk_usage('/').percent) + "%"
     receive_counter = core.received_count
     send_counter = core.sent_count
+    launch_time = datetime.fromtimestamp(core.launch_time.timestamp()).strftime('%Y年%m月%d日%H时%M分%S秒')
+    active_groups = []
+    for account, group_list in core.total_groups.items():
+        active_groups = [group.id for group in group_list]
     await app.send_message(src_place, MessageChain(
-        f"开机时间：{core.launch_time}\n"
+        f"开机时间：{launch_time}\n"
         f"运行时长：{work_time}\n"
         f"接收消息：{receive_counter}条(%.1f/m)\n" % ((receive_counter / (int(time.time()) - time_start)) * 60),
         f"发送消息：{send_counter + 1}条(%.1f/m)\n" % ((send_counter + 1) / (int(time.time()) - time_start) * 60),
@@ -73,23 +75,48 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
         '内存占比：%.0f%%\n' % zb,
         f'CPU占比：{zb2}\n',
         f'磁盘占比：{cp}\n',
-        f"当前在线bot数:{len(Ariadne.service.connections)}\n",
-        # f"当前接收使用群数:{len()}\n"
+        f"在线bot数量:{len(Ariadne.service.connections)}\n",
+        f"活动群组数量:{len(active_groups)}\n"
         f"反馈Q群:749094683\n",
         f"爱发电地址:https://afdian.net/a/ss1333\n"
         f"项目地址:https://github.com/g1331/xiaomai-bot"
     ), quote=source)
 
 
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(16),
-                            ],
-                            inline_dispatchers=[
-                                Twilight.from_command("-help status")
-                            ]
-                            ))
-async def manager_help(app: Ariadne, group: Group):
-    await app.send_message(group, MessageChain(
-        f'1.使用-bot查看bot运行状态'
-    ))
+# 接收事件
+@listen(GroupMessage, FriendMessage)
+# 依赖注入
+@decorate(test_depend.user_require())
+# 消息链处理器
+@dispatch(Twilight(["action" @ UnionMatch("-test", optional=False).space(SpacePolicy.PRESERVE)]))
+async def fun():
+    logger.success("执行成功")
+
+
+@listen(GroupMessage, FriendMessage)
+@decorate(
+    Permission.user_require(Permission.Admin),
+    Permission.group_require(channel.metadata.level),
+    Function.require(channel.module)
+)
+@dispatch(Twilight([FullMatch("-test")]))
+async def fun_test(app: Ariadne, ori_place: Union[Group, Friend], src: Source):
+    try:
+        logger.info(channel.module)
+        logger.info(channel.meta)
+        # for item in channel.content[:1]:
+        #     logger.info(item.content)
+        #     logger.info(item.metaclass)
+        #     logger.info(type(item.metaclass))
+        #     logger.info(type(item.metaclass))
+
+        # 这个会返回当前模块文件的路径
+        logger.info(Path(__file__))
+        # 因为是从main运行的，所以会返回main.py的目录
+        logger.info(Path.cwd())
+        # 传入了由框架saya解析的模块地址名(channel.module),注意它并不是文件路径,如:modules.test_modules.test1
+        logger.info(Path(channel.module))
+        print(channel.metadata)
+        return app.send_message(ori_place, MessageChain("成功"), quote=src)
+    except Exception as e:
+        return app.send_message(ori_place, MessageChain(f"失败:{e}"), quote=src)

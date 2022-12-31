@@ -77,16 +77,13 @@ class Permission(object):
                 else:
                     return Permission.User
         # 查询数据库
-        result = await orm.fetch_one(
-            select(MemberPerm.perm).where(
-                MemberPerm.group_id == group_id, MemberPerm.qq == sender.id
-            )
-        )
         # 如果有查询到数据，则返回用户的权限等级
-        if result:
+        if result := await orm.fetch_one(
+                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == sender.id)
+        ):
             return result[0]
-        # 如果没有查询到数据，则返回16（群员）,并写入初始权限
-        if not result:
+        # 如果没有查询到数据，则返回16(群员),并写入初始权限
+        else:
             with contextlib.suppress(sqlalchemy.exc.IntegrityError):
                 await orm.insert_or_ignore(
                     table=MemberPerm,
@@ -111,17 +108,15 @@ class Permission(object):
         """
 
         async def wrapper(app: Ariadne, sender: Union[Member, Friend], group: Union[Group, Friend],
-                          src: Source or None):
-            # 通过get来获取用户的权限等级
-            user_level = await cls.get_user_perm(sender, group)
-            if user_level >= perm:
-                return Depend(wrapper)
-            elif user_level < perm:
+                          src: Source or None = None):
+            # 获取并判断用户的权限等级
+            if user_level := await cls.get_user_perm(sender, group) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
                         f"权限不足！需要权限:{perm}，你的权限:{user_level}/"
                     ), quote=src)
-            raise ExecutionStop
+                raise ExecutionStop
+            return Depend(wrapper)
 
         return Depend(wrapper)
 
@@ -131,12 +126,11 @@ class Permission(object):
         根据传入的群号获取群权限
         """
         # 查询数据库
-        result = await orm.fetch_one(select(GroupPerm.perm).where(GroupPerm.group_id == group.id))
         # 如果有查询到数据，则返回群的权限等级
-        if result:
+        if result := await orm.fetch_one(select(GroupPerm.perm).where(GroupPerm.group_id == group.id)):
             return result[0]
         # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
-        if not result:
+        else:
             if group.id in config.black_group:
                 perm = 0
             elif group.id in config.vip_group:
@@ -164,16 +158,14 @@ class Permission(object):
         """
 
         async def wrapper(app: Ariadne, group: Group, src: Source or None):
-            # 通过get来获取群的权限等级
-            group_perm = await cls.get_group_perm(group)
-            if group_perm >= perm:
-                return Depend(wrapper)
-            elif group_perm < perm:
+            # 获取并判断群的权限等级
+            if group_perm := await cls.get_group_perm(group) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
                         f"权限不足！需要权限:{perm}，当前群({group.id})权限:{group_perm}。"
                     ), quote=src)
-            raise ExecutionStop
+                raise ExecutionStop
+            return Depend(wrapper)
 
         return Depend(wrapper)
 
@@ -185,13 +177,34 @@ class Function(object):
 
     @classmethod
     def require(cls, module_name):
-        # 如果module_name不在modules_list里面就添加
-        modules_data = get_module_data()
-        if module_name not in modules_data.modules:
-            modules_data.add(module_name)
+        async def judge(app: Ariadne, src: Source or None = None, group: Group or None = None):
+            # 如果module_name不在modules_list里面就添加
+            modules_data = get_module_data()
+            if module_name not in modules_data.modules:
+                modules_data.add_module(module_name)
+            if not group:
+                return
+            # 如果group不在modules里面就添加
+            if str(group.id) not in modules_data.modules[module_name]:
+                modules_data.add_group(group)
+            # 如果在维护就停止
+            if not modules_data.if_module_available(module_name):
+                if modules_data.if_module_notice_on(module_name, group):
+                    await app.send_message(group, MessageChain(
+                        f"{module_name}插件正在维护~"
+                    ), quote=src)
+                raise ExecutionStop
+            else:
+                # 如果群未打开开关就停止
+                if not modules_data.if_module_switch_on(module_name, group):
+                    if modules_data.if_module_notice_on(module_name, group):
+                        await app.send_message(group, MessageChain(
+                            f"{module_name}插件已关闭，请联系管理员"
+                        ), quote=src)
+                    raise ExecutionStop
+            return
 
-
-temp_dict = {}
+        return Depend(judge)
 
 
 class Distribute(object):

@@ -105,19 +105,22 @@ bot基础配置:
 - [ ] 在n秒内触发n次功能后开始限制
 - [ ] cd时间
 
-#### Distribute多账户消息分发:
-- [ ] 分发require 
+#### Config配置判断:
+- [ ] require(需要的配置信息)
 
-#### 多账户响应模式:
-- [ ] 随机响应(默认)
-- [ ]   指定bot响应(指定模式)
+#### Distribute多账户消息分发:
+- [ ] 分发require
+  
+    多账户响应模式:
+    - [ ] 随机响应(默认)
+    - [ ] 指定bot响应(指定模式)
 
 #### Function功能开关:
 - [x] 开关判断->Function.require("模组名")
 
 插件结构:
 
-module.metadata.json:
+metadata.json:
 ```json
 {
     "level": "插件等级1/2/3",
@@ -134,15 +137,16 @@ module.metadata.json:
 ```
 
 modules:
+
 ```python
-{
-    "module_name":{
+modules = {
+    "module_name": {
         "groups": {
-            "group_id":{
-            	"switch": bool,
+            "group_id": {
+                "switch": bool,
                 "notice": bool
             }
-		},
+        },
         "available": bool
     }
 }

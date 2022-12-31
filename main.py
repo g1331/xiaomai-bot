@@ -56,7 +56,7 @@ async def friend_message_listener(app: Ariadne, friend: Friend, message: Message
 
 
 @bcc.receiver(ActiveGroupMessage)
-async def group_message_speaker(event: ActiveGroupMessage, app: Ariadne):
+async def group_message_speaker(app: Ariadne, event: ActiveGroupMessage):
     core.sent_count += 1
     message_text_log = event.message_chain.display.replace("\n", "\\n").strip()
     bot_member = await app.get_friend(app.account)
@@ -69,7 +69,7 @@ async def group_message_speaker(event: ActiveGroupMessage, app: Ariadne):
 
 
 @bcc.receiver(ActiveFriendMessage)
-async def friend_message_speaker(event: ActiveFriendMessage, app: Ariadne):
+async def friend_message_speaker(app: Ariadne, event: ActiveFriendMessage):
     core.sent_count += 1
     bot_member = await app.get_friend(app.account)
     message_text_log = event.message_chain.display.replace("\n", "\\n").strip()
@@ -82,38 +82,38 @@ async def friend_message_speaker(event: ActiveFriendMessage, app: Ariadne):
 
 
 @bcc.receiver(NudgeEvent)
-async def nudged_listener(_app: Ariadne, event: NudgeEvent):
+async def nudged_listener(app: Ariadne, event: NudgeEvent):
     core.sent_count += 1
-    bot_member = await _app.get_friend(_app.account)
-    if event.target != _app.account or event.supplicant == _app.account:
+    bot_member = await app.get_friend(app.account)
+    if event.target != app.account or event.supplicant == app.account:
         return
     if event.group_id is None:
         return
-    if not (member := await _app.get_member(event.group_id, event.supplicant)):
+    if not (member := await app.get_member(event.group_id, event.supplicant)):
         return
     if bot_member is not None:
         logger.info(
             f"【{bot_member.nickname}({bot_member.id})】被群【{member.group.name}】中成员【{member.name}】戳了戳。")
     else:
         logger.info(
-            f"【{_app.account}】被群【{member.group.name}】中成员【{member.name}】戳了戳。")
+            f"【{app.account}】被群【{member.group.name}】中成员【{member.name}】戳了戳。")
 
 
 @bcc.receiver(TempMessage)
-async def temp_message_listener(member: Member, message: MessageChain, _app: Ariadne):
+async def temp_message_listener(app: Ariadne, member: Member, message: MessageChain):
     core.received_count += 1
-    bot_member = await _app.get_friend(_app.account)
+    bot_member = await app.get_friend(app.account)
     message_text_log = message.display.replace("\n", "\\n").strip()
     if bot_member is not None:
         logger.info(
             f"【{bot_member.nickname}({bot_member.id})】收到群【{member.group.name.strip()}({member.group.id})】成员【{member.name.strip()}({member.id})】的临时消息：{message_text_log}")
     else:
         logger.info(
-            f"【{_app.account}】收到群【{member.group.name.strip()}({member.group.id})】成员【{member.name.strip()}({member.id})】的临时消息：{message_text_log}")
+            f"【{app.account}】收到群【{member.group.name.strip()}({member.group.id})】成员【{member.name.strip()}({member.id})】的临时消息：{message_text_log}")
 
 
 @bcc.receiver(StrangerMessage)
-async def stranger_message_listener(stranger: Stranger, message: MessageChain, app: Ariadne):
+async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: MessageChain):
     core.received_count += 1
     bot_member = await app.get_friend(app.account)
     message_text_log = message.display.replace("\n", "\\n").strip()

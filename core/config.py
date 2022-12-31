@@ -25,6 +25,7 @@ class GlobalConfig(BaseModel):
     bf1: dict = {
         "default_account": 0
     }
+    GroupMsg_log: bool
 
 
 def load_config():

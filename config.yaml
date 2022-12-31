@@ -12,6 +12,7 @@ vip_group: []
 black_group: []
 db_link: 数据库地址,默认为sqlite+aiosqlite:///data.db
 proxy: proxy
+GroupMsg_log: true
 
 # 日志相关
 log_related:

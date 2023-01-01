@@ -256,7 +256,7 @@ class FrequencyLimitation(object):
         return Depend(limit)
 
 
-# TODO 实现配置前置需要Config
+# TODO 实现配置前置Config
 class Config(object):
     """配置检查"""
 

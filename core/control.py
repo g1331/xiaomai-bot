@@ -15,7 +15,10 @@ from sqlalchemy import select
 from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
-from core.models.saya_model import get_module_data
+from core.models import (
+    saya_model,
+    frequency_model
+)
 
 config = create(GlobalConfig)
 
@@ -55,6 +58,7 @@ class Permission(object):
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
         根据传入的qq号与群号来判断该用户的权限等级
+        :return: 查询到的权限
         """
         sender = event.sender
         # 判断是群还是好友
@@ -123,6 +127,7 @@ class Permission(object):
     async def get_group_perm(cls, group: Group) -> int:
         """
         根据传入的群号获取群权限
+        :return: 查询到的权限
         """
         # 查询数据库
         # 如果有查询到数据，则返回群的权限等级
@@ -175,10 +180,10 @@ class Function(object):
     """功能判断"""
 
     @classmethod
-    def require(cls, module_name):
+    def require(cls, module_name: str):
         async def judge(app: Ariadne, src: Source or None = None, group: Group or None = None):
             # 如果module_name不在modules_list里面就添加
-            modules_data = get_module_data()
+            modules_data = saya_model.get_module_data()
             if module_name not in modules_data.modules:
                 modules_data.add_module(module_name)
             if not group:
@@ -210,8 +215,8 @@ temp_dict = {}
 
 
 # TODO 完善消息分发require
-#   需要根据响应类型 随机/指定bot 来响应
-#   可以做一个类似于saya_model的response_model来辅助使用
+#   需要根据响应类型 随机/指定account 来响应
+#   构建response_model来辅助使用
 class Distribute(object):
 
     @classmethod
@@ -244,24 +249,65 @@ class Distribute(object):
         return Depend(wrapper)
 
 
-# TODO 实现频率限制FrequencyLimitation
 class FrequencyLimitation(object):
     """频率限制"""
 
     @classmethod
-    def require(cls, Weights):
-        async def limit():
-            ...
+    def require(
+            cls,
+            module_name: str,
+            weight: int = 1,
+            total_weights: int = 10,
+            override_perm: int = Permission.GroupAdmin
+    ):
+        """
+        :param module_name:插件名字
+        :param weight:增加权重
+        :param total_weights:总权重
+        :param override_perm:越级权限
+        """
 
-        return Depend(limit)
+        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+            if isinstance(event, FriendMessage):
+                return
+            group_id = event.sender.group.id
+            sender_id = event.sender.id
+            if Permission.get_user_perm(event) >= override_perm:
+                return
+            frequency_data = frequency_model.get_frequency_data()
+            # 如果已经在黑名单则返回
+            if frequency_data.blacklist_judge(group_id, sender_id):
+                if not frequency_data.blacklist_noticed_judge(group_id, sender_id):
+                    await app.send_message(
+                        event.sender.group, MessageChain("检测到大量请求,加入黑名单20分钟!"),
+                        quote=event.message_chain.get_first(Source)
+                    )
+            current_weight = frequency_data.get_weight(module_name, event.sender.group, event.sender)
+            if (current_weight + weight) >= total_weights:
+                await app.send_message(
+                    event.sender.group,
+                    MessageChain("超过频率调用限制!"),
+                    quote=event.message_chain.get_first(Source),
+                )
+                raise ExecutionStop()
+            else:
+                frequency_data.add_weight(module_name, group_id, sender_id, weight)
+
+        return Depend(judge)
 
 
-# TODO 实现配置前置Config
+# TODO 冷却
+#   在调用n次后需要间隔x秒才能继续调用
+class CoolDown(object):
+    """冷却"""
+
+
+# TODO 配置前置
 class Config(object):
     """配置检查"""
 
     @classmethod
-    def require(cls, config_item):
+    def check(cls, config_item):
         async def check_config():
             ...
 

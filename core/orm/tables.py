@@ -60,3 +60,12 @@ class PermissionGroupPerm(orm.Base):
     group_id = Column(Integer, ForeignKey('PermissionGroup.id'))
     qq = Column(String)
     perm = Column(Integer, nullable=False, info={'check': [0, 16, 32, 64]})
+
+
+class GroupSetting(orm.Base):
+    """
+    群设置
+    """
+    __tablename__ = 'GroupSetting'
+
+    FrequencyLimitation = Column(Boolean, default=True)

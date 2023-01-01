@@ -1,0 +1,124 @@
+import asyncio
+import time
+from abc import ABC
+from typing import Type
+
+from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
+from graia.ariadne.model import Member, Group
+
+frequency_data_instance = None
+
+
+class FrequencyController(object):
+    """频率控制器
+    frequency_dict = {
+        module_name:{
+            group_id:{
+                sender_id: weights
+            },
+        },
+
+    }
+
+    blacklist = {
+        group_id:{
+            sender_id: {
+                time: xxx,
+                noticed: True
+            }
+        }
+    }
+    """
+
+    def __init__(self):
+        self.frequency_dict = {}
+        self.blacklist = {}
+        self.limit_running = True
+        await self.set_zero()
+
+    def init_module(self, module_name: str):
+        """添加插件"""
+        if module_name not in self.frequency_dict:
+            self.frequency_dict[module_name] = {}
+
+    def init_group(self, group_id: int):
+        """初始化群"""
+        for module in self.frequency_dict:
+            if group_id not in self.frequency_dict[module]:
+                self.frequency_dict[module][group_id] = {}
+            if group_id not in self.blacklist:
+                self.blacklist[group_id] = {}
+
+    def add_weight(self, module_name: str, group_id: int, sender_id: int, weight: int):
+        self.init_module(module_name)
+        self.init_group(group_id)
+        if sender_id not in self.frequency_dict[module_name][group_id]:
+            self.frequency_dict[module_name][group_id][sender_id] = weight
+        else:
+            self.frequency_dict[module_name][group_id][sender_id] += weight
+        if self.frequency_dict[group_id][sender_id] > 10:
+            self.add_blacklist(group_id, sender_id)
+
+    def get_weight(self, module_name: str, group_id: int, sender_id: int):
+        self.init_module(module_name)
+        self.init_group(group_id)
+        if sender_id not in self.frequency_dict[module_name][group_id]:
+            self.frequency_dict[module_name][group_id][sender_id] = 0
+            return 0
+        else:
+            return self.frequency_dict[module_name][group_id][sender_id]
+
+    def blacklist_judge(self, group_id: int, sender_id: int) -> bool:
+        if self.blacklist.get(group_id) and self.blacklist[group_id].get(sender_id):
+            return self.blacklist[group_id][sender_id].get("time", time.time()) >= time.time()
+        else:
+            self.blacklist[group_id] = {}
+        return False
+
+    def blacklist_notice(self, group_id: int, sender_id: int):
+        self.blacklist[group_id][sender_id]["noticed"] = True
+
+    def blacklist_noticed_judge(self, group_id: int, sender_id: int) -> bool:
+        if sender_id in self.blacklist[group_id]:
+            return self.blacklist[group_id][sender_id].get("noticed", False)
+        return False
+
+    def add_blacklist(self, group_id: int, sender_id: int):
+        self.blacklist[group_id][sender_id] = {
+            "time": time.time(),
+            "noticed": False
+        }
+
+    async def limited(self):
+        if self.limit_running:
+            return
+        while True:
+            await self.set_zero()
+            await asyncio.sleep(10)
+
+    async def set_zero(self):
+        for module in self.frequency_dict:
+            for group in self.frequency_dict[module]:
+                self.frequency_dict[module][group] = {}
+
+
+def get_frequency_data():
+    global frequency_data_instance
+    if not frequency_data_instance:
+        frequency_data_instance = create(FrequencyController)
+    return frequency_data_instance
+
+
+class FrequencyControllerClassCreator(AbstractCreator, ABC):
+    targets = (CreateTargetInfo("core.saya_model", "ModulesController"),)
+
+    @staticmethod
+    def available() -> bool:
+        return exists_module("core.saya_model")
+
+    @staticmethod
+    def create(create_type: Type[FrequencyController]) -> FrequencyController:
+        return get_frequency_data()
+
+
+add_creator(FrequencyControllerClassCreator)

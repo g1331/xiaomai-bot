@@ -5,8 +5,9 @@ import sqlalchemy.exc
 from creart import create
 from graia.amnesia.message import MessageChain
 from graia.ariadne import Ariadne
+from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message import Source
-from graia.ariadne.model import Member, Group, Friend
+from graia.ariadne.model import Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
 from sqlalchemy import select
@@ -14,7 +15,7 @@ from sqlalchemy import select
 from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
-from core.saya_model import get_module_data
+from core.models.saya_model import get_module_data
 
 config = create(GlobalConfig)
 
@@ -51,12 +52,13 @@ class Permission(object):
     TestGroup = 3
 
     @classmethod
-    async def get_user_perm(cls, sender: Member, group: Union[Group, Friend]) -> int:
+    async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
         根据传入的qq号与群号来判断该用户的权限等级
         """
+        sender = event.sender
         # 判断是群还是好友
-        group_id = group.id if isinstance(group, Group) else None
+        group_id = event.sender.group.id if isinstance(event, GroupMessage) else None
         if not group_id:
             # 查询是否在全局黑当中
             result = await orm.fetch_one(
@@ -75,7 +77,6 @@ class Permission(object):
                     return Permission.Admin
                 else:
                     return Permission.User
-        # 查询数据库
         # 如果有查询到数据，则返回用户的权限等级
         if result := await orm.fetch_one(
                 select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == sender.id)
@@ -106,14 +107,13 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, sender: Union[Member, Friend], group: Union[Group, Friend],
-                          src: Source or None = None):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
             # 获取并判断用户的权限等级
-            if (user_level := await cls.get_user_perm(sender, group)) < perm:
+            if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
-                    await app.send_message(group, MessageChain(
+                    await app.send_message(event.sender.group, MessageChain(
                         f"权限不足!需要权限:{perm}/你的权限:{user_level}"
-                    ), quote=src)
+                    ), quote=event.message_chain.get_first(Source))
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -157,13 +157,14 @@ class Permission(object):
         :param if_noticed: 是否通知
         """
 
-        async def wrapper(app: Ariadne, group: Group, src: Source or None):
+        async def wrapper(app: Ariadne, event: GroupMessage):
             # 获取并判断群的权限等级
+            group = event.sender.group
             if (group_perm := await cls.get_group_perm(group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
                         f"权限不足!需要权限:{perm}/当前群{group.id}权限:{group_perm}"
-                    ), quote=src)
+                    ), quote=event.message_chain.get_first(Source))
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -214,7 +215,7 @@ temp_dict = {}
 class Distribute(object):
 
     @classmethod
-    def require(cls):
+    def require(cls, response_type: str = "random"):
         """
         用于消息分发
         :return: Depend
@@ -246,3 +247,22 @@ class Distribute(object):
 # TODO 实现频率限制FrequencyLimitation
 class FrequencyLimitation(object):
     """频率限制"""
+
+    @classmethod
+    def require(cls, Weights):
+        async def limit():
+            ...
+
+        return Depend(limit)
+
+
+# TODO 实现配置前置需要Config
+class Config(object):
+    """配置检查"""
+
+    @classmethod
+    def require(cls, config_item):
+        async def check_config():
+            ...
+
+        return Depend(check_config)

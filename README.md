@@ -98,7 +98,7 @@ bot基础配置:
 - [x] 群权限判断
 
 #### Frequency频率限制:
-- [ ] current_weight/total_weight
+- [x] current_weight/total_weight
 
 #### Config配置判断:
 - [ ] require(需要的配置信息)

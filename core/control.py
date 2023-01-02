@@ -7,19 +7,19 @@ from graia.amnesia.message import MessageChain
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message import Source
-from graia.ariadne.model import Group, Friend
+from graia.ariadne.model import Group
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
 from sqlalchemy import select
 
 from core.config import GlobalConfig
-from core.orm import orm
-from core.orm.tables import MemberPerm, GroupPerm
 from core.models import (
     saya_model,
     frequency_model,
     response_model
 )
+from core.orm import orm
+from core.orm.tables import MemberPerm, GroupPerm
 
 global_config = create(GlobalConfig)
 
@@ -112,13 +112,13 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None = None):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
             # 获取并判断用户的权限等级
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
                         f"权限不足!(需要权限:{perm}/你的权限:{user_level})"
-                    ), quote=src)
+                    ), quote=event.message_chain.get_first(Source).id)
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -182,7 +182,7 @@ class Function(object):
 
     @classmethod
     def require(cls, module_name: str):
-        async def judge(app: Ariadne, src: Source or None = None, group: Group or None = None):
+        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage], group: Group or None = None):
             # 如果module_name不在modules_list里面就添加
             modules_data = saya_model.get_module_data()
             if module_name not in modules_data.modules:
@@ -197,7 +197,7 @@ class Function(object):
                 if modules_data.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
                         f"{module_name}插件正在维护~"
-                    ), quote=src)
+                    ), quote=event.message_chain.get_first(Source).id)
                 raise ExecutionStop
             else:
                 # 如果群未打开开关就停止
@@ -205,7 +205,7 @@ class Function(object):
                     if modules_data.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
                             f"{module_name}插件已关闭,请联系管理员"
-                        ), quote=src)
+                        ), quote=event.message_chain.get_first(Source).id)
                     raise ExecutionStop
             return
 
@@ -287,18 +287,12 @@ class FrequencyLimitation(object):
         return Depend(judge)
 
 
-# TODO 冷却
-#   在调用n次后需要间隔x秒才能继续调用
-class CoolDown(object):
-    """冷却"""
-
-
 class Config(object):
     """配置检查"""
 
     @classmethod
     def check(cls, key_string):
-        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None = None):
+        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
             paths = key_string.split(".")
             current = global_config
             for path in paths:
@@ -308,14 +302,14 @@ class Config(object):
                         current = getattr(current, path, "缺少配置: {}".format(key_string))
                         await app.send_message(event.sender.group, MessageChain(
                             current
-                        ), quote=src)
+                        ), quote=event.message_chain.get_first(Source).id)
                         raise ExecutionStop
                     else:
                         # 如果 current 是字典类型，则尝试使用 current.get 获取值
                         current = current.get(path, "缺少配置: {}".format(key_string))
                         await app.send_message(event.sender.group, MessageChain(
                             current
-                        ), quote=src)
+                        ), quote=event.message_chain.get_first(Source).id)
                         raise ExecutionStop
                 else:
                     # 如果 current 既不是 GlobalConfig 也不是字典，则说明已经遍历到了最后一个 key，返回 current 的值
@@ -323,7 +317,13 @@ class Config(object):
             # 如果遍历完所有的 key 后 current 仍然不是值类型，说明配置信息不存在，返回 "缺少配置: {}"
             await app.send_message(event.sender.group, MessageChain(
                 current
-            ), quote=src)
+            ), quote=event.message_chain.get_first(Source).id)
             raise ExecutionStop
 
         return Depend(check_config)
+
+
+# TODO 冷却
+#   在调用n次后需要间隔x秒才能继续调用
+class CoolDown(object):
+    """冷却"""

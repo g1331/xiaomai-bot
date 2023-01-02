@@ -57,6 +57,7 @@ class FrequencyController(object):
     def add_weight(self, module_name: str, group_id: int, sender_id: int, weight: int):
         self.init_module(module_name)
         self.init_group(group_id)
+        self.init_blacklist(group_id, sender_id)
         if sender_id not in self.frequency_dict[module_name][group_id]:
             self.frequency_dict[module_name][group_id][sender_id] = weight
         else:
@@ -75,7 +76,11 @@ class FrequencyController(object):
 
     def blacklist_judge(self, group_id: int, sender_id: int) -> bool:
         self.init_blacklist(group_id, sender_id)
-        return self.blacklist[group_id][sender_id].get("time", time.time()) > time.time()
+        if self.blacklist[group_id][sender_id].get("time", time.time()) > time.time():
+            return True
+        elif self.blacklist[group_id][sender_id].get("time", time.time()) <= time.time():
+            self.blacklist[group_id][sender_id] = {}
+        return False
 
     def blacklist_notice(self, group_id: int, sender_id: int):
         self.blacklist[group_id][sender_id]["noticed"] = True

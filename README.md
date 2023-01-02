@@ -4,8 +4,6 @@
 <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt=""/>
 <div>一个以<a href="https://github.com/GraiaProject/Ariadne">Graia Ariadne</a>框架为基础的 QQ 机器人</div>
 <br>
-<div>主要功能服务于战地一战绩查询与服务器管理</div>
-<br>
 <div>若您在使用过程中发现了bug或有一些建议，欢迎提出ISSUE、PR或加入 <a href="https://jq.qq.com/?_wv=1027&k=1YEq9zks">QQ交流群：749094683</a> </div>
 <br>
 </div>

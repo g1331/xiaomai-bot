@@ -2,7 +2,7 @@
 name = "bot-xiaomai-open"
 version = "0.3.0"
 description = "基于Graia-Ariadne开的qqbot-小埋，v3重构版本"
-authors = ["Your Name <you@example.com>"]
+authors = ["13"]
 license = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 packages = [{include = "bot_xiaomai_open"}]

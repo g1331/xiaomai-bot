@@ -19,7 +19,7 @@ from core.models import (
     response_model
 )
 from core.orm import orm
-from core.orm.tables import MemberPerm, GroupPerm
+from core.orm.tables import MemberPerm, GroupPerm, GroupSetting
 
 global_config = create(GlobalConfig)
 
@@ -246,8 +246,8 @@ class FrequencyLimitation(object):
     def require(
             cls,
             module_name: str,
-            weight: int = 1,
-            total_weights: int = 10,
+            weight: int = 2,
+            total_weights: int = 15,
             override_perm: int = Permission.GroupAdmin
     ):
         """
@@ -262,6 +262,12 @@ class FrequencyLimitation(object):
                 return
             group_id = event.sender.group.id
             sender_id = event.sender.id
+            if frequency_limitation_switch := await orm.fetch_one(
+                    select(GroupSetting.frequency_limitation).where(GroupSetting.group_id == group_id)
+            ):
+                frequency_limitation_switch = frequency_limitation_switch[0]
+            if not frequency_limitation_switch:
+                return
             if await Permission.get_user_perm(event) >= override_perm:
                 return
             frequency_data = frequency_model.get_frequency_data()

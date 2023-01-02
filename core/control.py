@@ -1,5 +1,5 @@
 import contextlib
-from typing import Union
+from typing import Union, Dict
 
 import sqlalchemy.exc
 from creart import create
@@ -20,7 +20,7 @@ from core.models import (
     frequency_model
 )
 
-config = create(GlobalConfig)
+global_config = create(GlobalConfig)
 
 
 class Permission(object):
@@ -75,9 +75,9 @@ class Permission(object):
             if result:
                 return result[0]
             else:
-                if sender.id == config.Master:
+                if sender.id == global_config.Master:
                     return Permission.Master
-                elif sender.id in config.Admins:
+                elif sender.id in global_config.Admins:
                     return Permission.Admin
                 else:
                     return Permission.User
@@ -116,7 +116,7 @@ class Permission(object):
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
-                        f"权限不足!需要权限:{perm}/你的权限:{user_level}"
+                        f"权限不足!(需要权限:{perm}/你的权限:{user_level})"
                     ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -136,11 +136,11 @@ class Permission(object):
             return result[0]
         # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
         else:
-            if group.id in config.black_group:
+            if group.id in global_config.black_group:
                 perm = 0
-            elif group.id in config.vip_group:
+            elif group.id in global_config.vip_group:
                 perm = 2
-            elif group.id == config.test_group:
+            elif group.id == global_config.test_group:
                 perm = 3
             else:
                 perm = 1
@@ -168,7 +168,7 @@ class Permission(object):
             if (group_perm := await cls.get_group_perm(group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
-                        f"权限不足!需要权限:{perm}/当前群{group.id}权限:{group_perm}"
+                        f"权限不足!(需要权限:{perm}/当前群{group.id}权限:{group_perm})"
                     ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -203,7 +203,7 @@ class Function(object):
                 if not modules_data.if_module_switch_on(module_name, group):
                     if modules_data.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
-                            f"{module_name}插件已关闭，请联系管理员"
+                            f"{module_name}插件已关闭,请联系管理员"
                         ), quote=src)
                     raise ExecutionStop
             return
@@ -308,8 +308,33 @@ class Config(object):
     """配置检查"""
 
     @classmethod
-    def check(cls, config_item):
-        async def check_config():
-            ...
+    def check(cls, key_string):
+        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None):
+            paths = key_string.split(".")
+            current = global_config
+            for path in paths:
+                if isinstance(current, (GlobalConfig, Dict)):
+                    if not isinstance(current, Dict):
+                        # 如果 current 不是字典类型，则尝试使用 getattr 获取属性值
+                        current = getattr(current, path, "缺少配置: {}".format(key_string))
+                        await app.send_message(event.sender.group, MessageChain(
+                            current
+                        ), quote=src)
+                        raise ExecutionStop
+                    else:
+                        # 如果 current 是字典类型，则尝试使用 current.get 获取值
+                        current = current.get(path, "缺少配置: {}".format(key_string))
+                        await app.send_message(event.sender.group, MessageChain(
+                            current
+                        ), quote=src)
+                        raise ExecutionStop
+                else:
+                    # 如果 current 既不是 GlobalConfig 也不是字典，则说明已经遍历到了最后一个 key，返回 current 的值
+                    return
+            # 如果遍历完所有的 key 后 current 仍然不是值类型，说明配置信息不存在，返回 "缺少配置: {}"
+            await app.send_message(event.sender.group, MessageChain(
+                current
+            ), quote=src)
+            raise ExecutionStop
 
         return Depend(check_config)

@@ -98,8 +98,7 @@ bot基础配置:
 - [x] 群权限判断
 
 #### Frequency频率限制:
-- [ ] 在n秒内触发n次功能后开始限制
-- [ ] cd时间
+- [ ] current_weight/total_weight
 
 #### Config配置判断:
 - [ ] require(需要的配置信息)

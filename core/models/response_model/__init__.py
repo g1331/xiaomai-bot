@@ -33,24 +33,24 @@ class AccountController:
         self.deterministic_account = {}
 
     @staticmethod
-    def get_response_type(group_id: int) -> str:
+    async def get_response_type(group_id: int) -> str:
         if result := await orm.fetch_one(select(GroupSetting.response_type).where(
                 GroupSetting.group_id == group_id)):
             return result[0]
         else:
             return "random"
 
-    def get_response_account(self, group_id: int):
-        if self.get_response_type(group_id) == "deterministic":
+    async def get_response_account(self, group_id: int):
+        if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
-        return self.account_dict[group_id][time.time() % len(self.account_dict[group_id])]
+        return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
 
     def check_initialization(self, group_id: int):
         if self.account_dict.get(group_id, {}) == {}:
             return False
         return True
 
-    def init_group(self, group_id: int, member_list: List[Member], bot_account: int):
+    async def init_group(self, group_id: int, member_list: List[Member], bot_account: int):
         self.account_dict[group_id] = {}
         self.account_dict[group_id][0] = bot_account
         self.deterministic_account[group_id] = 0

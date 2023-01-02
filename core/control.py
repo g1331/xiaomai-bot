@@ -112,13 +112,13 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
             # 获取并判断用户的权限等级
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
                         f"权限不足!(需要权限:{perm}/你的权限:{user_level})"
-                    ), quote=event.message_chain.get_first(Source).id)
+                    ), quote=source)
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -182,7 +182,8 @@ class Function(object):
 
     @classmethod
     def require(cls, module_name: str):
-        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage], group: Group or None = None):
+        async def judge(app: Ariadne, group: Group or None = None,
+                        source: Source or None = None):
             # 如果module_name不在modules_list里面就添加
             modules_data = saya_model.get_module_data()
             if module_name not in modules_data.modules:
@@ -197,7 +198,7 @@ class Function(object):
                 if modules_data.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
                         f"{module_name}插件正在维护~"
-                    ), quote=event.message_chain.get_first(Source).id)
+                    ), quote=source)
                 raise ExecutionStop
             else:
                 # 如果群未打开开关就停止
@@ -205,7 +206,7 @@ class Function(object):
                     if modules_data.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
                             f"{module_name}插件已关闭,请联系管理员"
-                        ), quote=event.message_chain.get_first(Source).id)
+                        ), quote=source)
                     raise ExecutionStop
             return
 
@@ -226,13 +227,13 @@ class Distribute(object):
             account_data = response_model.get_acc_data()
             bot_account = app.account
             if not account_data.check_initialization(group_id):
-                account_data.init_group(group_id, await app.get_member_list(group), bot_account)
+                await account_data.init_group(group_id, await app.get_member_list(group), bot_account)
                 raise ExecutionStop
-            res_acc = account_data.get_response_account(group_id)
+            res_acc = await account_data.get_response_account(group_id)
             if res_acc not in Ariadne.service.connections:
                 account_data.account_dict.pop(group_id)
                 raise ExecutionStop
-            if bot_account != account_data.get_response_account(group_id):
+            if bot_account != await account_data.get_response_account(group_id):
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -297,39 +298,37 @@ class Config(object):
     """配置检查"""
 
     @classmethod
-    def check(cls, key_string):
-        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+    def require(cls, key_string):
+        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
             paths = key_string.split(".")
             current = global_config
             for path in paths:
                 if isinstance(current, (GlobalConfig, Dict)):
-                    if not isinstance(current, Dict):
+                    if isinstance(current, Dict):
+                        # 如果 current 是字典类型，则尝试使用 current.get 获取值
+                        current = current.get(path, "缺少配置:{}".format(key_string))
+                        if isinstance(current, Dict):
+                            continue
+                        elif (not isinstance(current, Dict)) and current != path:
+                            return
+                    elif isinstance(current, GlobalConfig):
                         # 如果 current 不是字典类型，则尝试使用 getattr 获取属性值
                         current = getattr(current, path, "缺少配置: {}".format(key_string))
-                        await app.send_message(event.sender.group, MessageChain(
-                            current
-                        ), quote=event.message_chain.get_first(Source).id)
-                        raise ExecutionStop
+                        if isinstance(current, Dict):
+                            continue
+                        elif (not isinstance(current, Dict)) and current != path:
+                            return
+                    elif (not isinstance(current, Dict)) and current != path:
+                        return
                     else:
-                        # 如果 current 是字典类型，则尝试使用 current.get 获取值
-                        current = current.get(path, "缺少配置: {}".format(key_string))
-                        await app.send_message(event.sender.group, MessageChain(
-                            current
-                        ), quote=event.message_chain.get_first(Source).id)
-                        raise ExecutionStop
+                        return
                 else:
-                    # 如果 current 既不是 GlobalConfig 也不是字典，则说明已经遍历到了最后一个 key，返回 current 的值
+                    # 如果 current 既不是 GlobalConfig 也不是字典，则说明已经遍历到了最后一个 key
                     return
             # 如果遍历完所有的 key 后 current 仍然不是值类型，说明配置信息不存在，返回 "缺少配置: {}"
             await app.send_message(event.sender.group, MessageChain(
-                current
-            ), quote=event.message_chain.get_first(Source).id)
+                "缺少配置: {}".format(key_string)
+            ), quote=source)
             raise ExecutionStop
 
         return Depend(check_config)
-
-
-# TODO 冷却
-#   在调用n次后需要间隔x秒才能继续调用
-class CoolDown(object):
-    """冷却"""

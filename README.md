@@ -101,10 +101,10 @@ bot基础配置:
 - [x] current_weight/total_weight
 
 #### Config配置判断:
-- [ ] require(需要的配置信息)
+- [x] require(需要的配置信息)
 
 #### Distribute多账户消息分发:
-- [ ] 分发require
+- [x] 分发require
   
     多账户响应模式:
     - [ ] 随机响应(默认)

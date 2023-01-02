@@ -17,7 +17,8 @@ from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
 from core.models import (
     saya_model,
-    frequency_model
+    frequency_model,
+    response_model
 )
 
 global_config = create(GlobalConfig)
@@ -111,7 +112,7 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None = None):
             # 获取并判断用户的权限等级
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
@@ -211,39 +212,28 @@ class Function(object):
         return Depend(judge)
 
 
-temp_dict = {}
-
-
-# TODO 完善消息分发require
-#   需要根据响应类型 随机/指定account 来响应
-#   构建response_model来辅助使用
 class Distribute(object):
 
     @classmethod
-    def require(cls, response_type: str = "random"):
+    def require(cls):
         """
-        用于消息分发
+        群内有多个bot时随机/指定bot响应
         :return: Depend
         """
 
-        async def wrapper(group: Union[Group, Friend], app: Ariadne, source: Source):
-            global temp_dict
-            if isinstance(group, Friend):
-                return Depend(wrapper)
-            # 第一次要获取群列表，然后添加bot到groupid字典，编号
-            # 然后对messageId取余，对应编号bot响应
-            if group.id not in temp_dict:
-                member_list = await app.get_member_list(group)
-                temp_dict[group.id] = {}
-                temp_dict[group.id][0] = app.account
-                for item in member_list:
-                    if item.id in Ariadne.service.connections:
-                        temp_dict[group.id][len(temp_dict[group.id])] = item.id
-            if temp_dict[group.id][source.id % len(temp_dict[group.id])] != app.account:
+        async def wrapper(group: Group, app: Ariadne):
+            group_id = group.id
+            account_data = response_model.get_acc_data()
+            bot_account = app.account
+            if not account_data.check_initialization(group_id):
+                account_data.init_group(group_id, await app.get_member_list(group), bot_account)
                 raise ExecutionStop
-            # 防止bot中途掉线/风控造成无响应
-            if temp_dict[group.id][source.id % len(temp_dict[group.id])] not in Ariadne.service.connections:
-                temp_dict.pop(group.id)
+            res_acc = account_data.get_response_account(group_id)
+            if res_acc not in Ariadne.service.connections:
+                account_data.account_dict.pop(group_id)
+                raise ExecutionStop
+            if bot_account != account_data.get_response_account(group_id):
+                raise ExecutionStop
             return Depend(wrapper)
 
         return Depend(wrapper)
@@ -303,13 +293,12 @@ class CoolDown(object):
     """冷却"""
 
 
-# TODO 配置前置
 class Config(object):
     """配置检查"""
 
     @classmethod
     def check(cls, key_string):
-        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None):
+        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None = None):
             paths = key_string.split(".")
             current = global_config
             for path in paths:

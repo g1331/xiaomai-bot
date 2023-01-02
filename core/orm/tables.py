@@ -69,4 +69,7 @@ class GroupSetting(orm.Base):
     __tablename__ = 'GroupSetting'
 
     group_id = Column(Integer, primary_key=True)
-    FrequencyLimitation = Column(Boolean, default=True)
+    # 频率限制
+    frequency_limitation = Column(Boolean, default=True)
+    # 多账户响应类型
+    response_type = Column(String, info={'check': ["random", "deterministic"]}, default="random")

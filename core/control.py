@@ -111,13 +111,13 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source or None):
             # 获取并判断用户的权限等级
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
                         f"权限不足!需要权限:{perm}/你的权限:{user_level}"
-                    ), quote=event.message_chain.get_first(Source))
+                    ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -162,14 +162,14 @@ class Permission(object):
         :param if_noticed: 是否通知
         """
 
-        async def wrapper(app: Ariadne, event: GroupMessage):
+        async def wrapper(app: Ariadne, event: GroupMessage, src: Source):
             # 获取并判断群的权限等级
             group = event.sender.group
             if (group_perm := await cls.get_group_perm(group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
                         f"权限不足!需要权限:{perm}/当前群{group.id}权限:{group_perm}"
-                    ), quote=event.message_chain.get_first(Source))
+                    ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -228,7 +228,7 @@ class Distribute(object):
 
         async def wrapper(group: Union[Group, Friend], app: Ariadne, source: Source):
             global temp_dict
-            if type(group) == Friend:
+            if isinstance(group, Friend):
                 return Depend(wrapper)
             # 第一次要获取群列表，然后添加bot到groupid字典，编号
             # 然后对messageId取余，对应编号bot响应
@@ -267,31 +267,32 @@ class FrequencyLimitation(object):
         :param override_perm:越级权限
         """
 
-        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
             if isinstance(event, FriendMessage):
                 return
             group_id = event.sender.group.id
             sender_id = event.sender.id
-            if Permission.get_user_perm(event) >= override_perm:
+            if await Permission.get_user_perm(event) >= override_perm:
                 return
             frequency_data = frequency_model.get_frequency_data()
+            frequency_data.add_weight(module_name, group_id, sender_id, weight)
             # 如果已经在黑名单则返回
             if frequency_data.blacklist_judge(group_id, sender_id):
                 if not frequency_data.blacklist_noticed_judge(group_id, sender_id):
                     await app.send_message(
                         event.sender.group, MessageChain("检测到大量请求,加入黑名单20分钟!"),
-                        quote=event.message_chain.get_first(Source)
+                        quote=src
                     )
-            current_weight = frequency_data.get_weight(module_name, event.sender.group, event.sender)
-            if (current_weight + weight) >= total_weights:
+                    frequency_data.blacklist_notice(group_id, sender_id)
+                raise ExecutionStop
+            current_weight = frequency_data.get_weight(module_name, group_id, sender_id)
+            if current_weight >= total_weights:
                 await app.send_message(
                     event.sender.group,
                     MessageChain("超过频率调用限制!"),
-                    quote=event.message_chain.get_first(Source),
+                    quote=src,
                 )
-                raise ExecutionStop()
-            else:
-                frequency_data.add_weight(module_name, group_id, sender_id, weight)
+                raise ExecutionStop
 
         return Depend(judge)
 

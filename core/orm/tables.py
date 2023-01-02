@@ -68,4 +68,5 @@ class GroupSetting(orm.Base):
     """
     __tablename__ = 'GroupSetting'
 
+    group_id = Column(Integer, primary_key=True)
     FrequencyLimitation = Column(Boolean, default=True)

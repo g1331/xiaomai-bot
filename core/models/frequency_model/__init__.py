@@ -34,7 +34,6 @@ class FrequencyController(object):
         self.frequency_dict = {}
         self.blacklist = {}
         self.limit_running = True
-        await self.set_zero()
 
     def init_module(self, module_name: str):
         """添加插件"""
@@ -49,6 +48,12 @@ class FrequencyController(object):
             if group_id not in self.blacklist:
                 self.blacklist[group_id] = {}
 
+    def init_blacklist(self, group_id: int, sender_id: int):
+        if group_id not in self.blacklist:
+            self.blacklist[group_id] = {}
+        if sender_id not in self.blacklist[group_id]:
+            self.blacklist[group_id][sender_id] = {}
+
     def add_weight(self, module_name: str, group_id: int, sender_id: int, weight: int):
         self.init_module(module_name)
         self.init_group(group_id)
@@ -56,7 +61,7 @@ class FrequencyController(object):
             self.frequency_dict[module_name][group_id][sender_id] = weight
         else:
             self.frequency_dict[module_name][group_id][sender_id] += weight
-        if self.frequency_dict[group_id][sender_id] > 10:
+        if self.frequency_dict[module_name][group_id][sender_id] > 10:
             self.add_blacklist(group_id, sender_id)
 
     def get_weight(self, module_name: str, group_id: int, sender_id: int):
@@ -69,25 +74,28 @@ class FrequencyController(object):
             return self.frequency_dict[module_name][group_id][sender_id]
 
     def blacklist_judge(self, group_id: int, sender_id: int) -> bool:
-        if self.blacklist.get(group_id) and self.blacklist[group_id].get(sender_id):
-            return self.blacklist[group_id][sender_id].get("time", time.time()) >= time.time()
-        else:
-            self.blacklist[group_id] = {}
-        return False
+        self.init_blacklist(group_id, sender_id)
+        return self.blacklist[group_id][sender_id].get("time", time.time()) > time.time()
 
     def blacklist_notice(self, group_id: int, sender_id: int):
         self.blacklist[group_id][sender_id]["noticed"] = True
 
     def blacklist_noticed_judge(self, group_id: int, sender_id: int) -> bool:
         if sender_id in self.blacklist[group_id]:
-            return self.blacklist[group_id][sender_id].get("noticed", False)
+            return self.blacklist[group_id][sender_id].get("noticed")
         return False
 
     def add_blacklist(self, group_id: int, sender_id: int):
-        self.blacklist[group_id][sender_id] = {
-            "time": time.time(),
-            "noticed": False
-        }
+        if not self.blacklist[group_id][sender_id].get("time"):
+            self.blacklist[group_id][sender_id] = {
+                "time": time.time() + 3600,
+                "noticed": False
+            }
+        elif self.blacklist[group_id][sender_id].get("time") < time.time():
+            self.blacklist[group_id][sender_id] = {
+                "time": time.time() + 3600,
+                "noticed": False
+            }
 
     async def limited(self):
         if self.limit_running:
@@ -110,15 +118,15 @@ def get_frequency_data():
 
 
 class FrequencyControllerClassCreator(AbstractCreator, ABC):
-    targets = (CreateTargetInfo("core.saya_model", "ModulesController"),)
+    targets = (CreateTargetInfo("core.models.frequency_model", "FrequencyController"),)
 
     @staticmethod
     def available() -> bool:
-        return exists_module("core.saya_model")
+        return exists_module("core.models.frequency_model")
 
     @staticmethod
     def create(create_type: Type[FrequencyController]) -> FrequencyController:
-        return get_frequency_data()
+        return FrequencyController()
 
 
 add_creator(FrequencyControllerClassCreator)

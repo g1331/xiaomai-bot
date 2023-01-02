@@ -22,6 +22,7 @@ from loguru import logger
 
 from core.bot import Umaru
 from core.config import GlobalConfig
+from core.models import frequency_model
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -128,11 +129,13 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 @bcc.receiver(AccountLaunch)
 async def init():
     _ = await core.initialize()
+    await frequency_model.get_frequency_data().limited()
 
 
 if __name__ == "__main__":
     if Path.cwd() != Path(__file__).parent:
-        logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!", exit(0))
+        logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!")
+        exit(0)
     logger.info("正在检测 Mirai 是否启动")
     fl = 0
     while True:
@@ -144,12 +147,14 @@ if __name__ == "__main__":
                 logger.success(f"成功检测到 Mirai !")
                 break
             elif fl >= 3:
-                logger.critical("启动失败:请检查(mirai是否正常启动)/(mah端口是否被占用)/(mah配置是否与bot配置一致)", exit(0))
+                logger.critical("启动失败:请检查(mirai是否正常启动)/(mah端口是否被占用)/(mah配置是否与bot配置一致)")
+                exit(0)
             else:
                 fl += 1
                 logger.warning("未检测到 Mirai ，正在重试...")
         except httpx.HTTPError:
-            logger.error("Mirai 尚未启动，请检查", exit(0))
+            logger.error("Mirai 尚未启动，请检查")
+            exit(0)
         except KeyboardInterrupt:
             exit("--已手动退出启动--")
     core.install_modules(Path("modules") / "required")

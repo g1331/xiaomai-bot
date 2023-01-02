@@ -258,7 +258,6 @@ class ModulesController:
                 data = json.load(r)
                 self.modules = data.get("modules", {})
                 self.groups = data.get("groups", {})
-                print(self.modules)
         return self
 
     @staticmethod
@@ -301,11 +300,11 @@ def get_module_data():
 
 
 class ModulesControllerClassCreator(AbstractCreator, ABC):
-    targets = (CreateTargetInfo("core.saya_model", "ModulesController"),)
+    targets = (CreateTargetInfo("core.models.saya_model", "ModulesController"),)
 
     @staticmethod
     def available() -> bool:
-        return exists_module("core.saya_model")
+        return exists_module("core.models.saya_model")
 
     @staticmethod
     def create(create_type: Type[ModulesController]) -> ModulesController:

@@ -20,9 +20,9 @@ from graia.broadcast import Broadcast
 from graia.saya import Saya
 from loguru import logger
 
-from core.bot import Umaru
 from core.config import GlobalConfig
 from core.models import frequency_model
+from core.bot import Umaru
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -137,8 +137,7 @@ if __name__ == "__main__":
         logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!")
         exit(0)
     logger.info("正在检测 Mirai 是否启动")
-    fl = 0
-    while True:
+    for fl in range(3):
         try:
             mah = httpx.get(config.mirai_host + "/about", timeout=3)
             if mah.status_code == 200:

@@ -18,6 +18,10 @@ pyyaml = "^6.0"
 aiosqlite = "^0.18.0"
 psutil = "^5.9.4"
 arclet-alconna-graia = "^0.10.4"
+jinja2 = "^3.1.2"
+markdown-it-py = "^2.1.0"
+mdit-py-plugins = "^0.3.3"
+graiax-text2img-playwright = "^0.3.0"
 
 
 [build-system]

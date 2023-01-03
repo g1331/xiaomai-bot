@@ -226,6 +226,9 @@ class Distribute(object):
             group_id = group.id
             account_data = response_model.get_acc_data()
             bot_account = app.account
+            if len(Ariadne.service.connections.keys()) == 1:
+                await account_data.init_group(group_id, await app.get_member_list(group), bot_account)
+                return
             if not account_data.check_initialization(group_id):
                 await account_data.init_group(group_id, await app.get_member_list(group), bot_account)
                 raise ExecutionStop

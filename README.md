@@ -49,13 +49,13 @@
 
 [![Stargazers over time](https://starchart.cc/g1331/xiaomai-bot.svg)](https://starchart.cc/g1331/xiaomai-bot)
 
+---
+
 # V3重构PJ
 框架重构进度:70%
 
----
 
 项目结构:
-
 ```
 
 XiaoMaiBot
@@ -127,6 +127,7 @@ XiaoMaiBot
 └─── ...  
 
 ```
+
 
 ## 核心(core):
 
@@ -207,7 +208,10 @@ modules = {
 ```
 
 
-### saya_manager:
+## 内置插件(modules.required):
+
+
+### saya_manager(插件管理):
 - [ ] 插件列表
 - [ ] 已加载插件
 - [ ] 未加载插件
@@ -218,19 +222,26 @@ modules = {
 - [ ] 关闭插件
 
 
-### perm_manager
+### perm_manager(权限管理):
+管理/查询权限
 - [ ] set user perm     更改用户权限
 - [ ] user perm list    查询用户权限
 - [ ] set group perm    更改群权限
 - [ ] check group perm  查询群权限
 
 
-### response_manager
+### response_manager(响应管理):
+修改多账户响应模式
 - [ ] set group response_type 设定多账户响应模式 随机/指定bot
 - [ ] set group account       设定指定响应bot
 
 
-### helper
+### helper(帮助菜单/功能管理):
+生成帮助菜单，打开/关闭群功能
 - [ ] 帮助
 - [ ] 开启功能
 - [ ] 关闭功能
+
+
+###status(运行状态):
+- [ ] 查询bot运行状态

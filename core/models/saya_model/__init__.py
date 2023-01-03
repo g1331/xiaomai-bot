@@ -11,6 +11,10 @@ from graia.ariadne.model import Group
 from graia.saya import Saya
 from pydantic import BaseModel
 
+from core.bot import Umaru
+
+saya = create(Saya)
+core = create(Umaru)
 module_data_instance = None
 
 
@@ -235,6 +239,8 @@ class ModulesController:
 
     def if_module_available(self, module_name: str) -> bool:
         """插件是否处于维护状态"""
+        if module_name not in saya.channels:
+            return False
         if self.modules.get(module_name):
             return self.modules.get(module_name).get("available")
         else:
@@ -262,7 +268,6 @@ class ModulesController:
 
     @staticmethod
     def module_operation(modules: str or list[str], operation_type: ModuleOperationType) -> dict[str, Exception]:
-        saya = create(Saya)
         exceptions = {}
         if isinstance(modules, str):
             modules = [modules]
@@ -290,6 +295,33 @@ class ModulesController:
                 except Exception as e:
                     exceptions[c] = e
         return exceptions
+
+    @staticmethod
+    def get_all_channels() -> list[str]:
+        ignore = ["__init__.py", "__pycache__"]
+        dirs = [
+            "modules/required",
+            "modules/self_contained",
+        ]
+        modules = []
+        for path in dirs:
+            for module in Path(path).glob("*"):
+                module = module.as_posix()
+                if str(module).split("/")[-1] in ignore:
+                    continue
+                if (core.base_path / module).is_dir():
+                    modules.append(str(module).replace("/", "."))
+                else:
+                    modules.append(str(module).split(".")[0].replace("/", "."))
+        return modules
+
+    @staticmethod
+    def get_installed_channels() -> list[str]:
+        return list(saya.channels.keys())
+
+    @staticmethod
+    def get_not_installed_channels() -> list[str]:
+        return [c for c in ModulesController.get_all_channels() if c not in saya.channels]
 
 
 def get_module_data():

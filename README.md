@@ -209,10 +209,11 @@ modules = {
 
 ### saya_manager:
 - [ ] 插件列表
-- [ ] 插件加载
-- [ ] 插件重载
 - [ ] 已加载插件
 - [ ] 未加载插件
+- [ ] 加载插件
+- [ ] 卸载插件
+- [ ] 重载插件
 - [ ] 开启插件
 - [ ] 关闭插件
 
@@ -227,3 +228,9 @@ modules = {
 ### response_manager
 - [ ] set group response_type 设定多账户响应模式 随机/指定bot
 - [ ] set group account       设定指定响应bot
+
+
+### helper
+- [ ] 帮助
+- [ ] 开启功能
+- [ ] 关闭功能

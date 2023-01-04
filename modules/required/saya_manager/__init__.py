@@ -63,8 +63,7 @@ inc = InterruptControl(saya.broadcast)
 )))
 async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: Source):
     # 菜单信息
-    column1 = Column(
-        elements=[
+    menu_column = Column(elements=[
             ColumnTitle(title="插件列表"),
             ColumnList(
                 rows=[
@@ -79,13 +78,11 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
                     ),
                 ]
             )
-        ]
-    )
+    ])
     # 已加载插件
-    column2 = [ColumnTitle(title="已加载插件")]
+    loaded_columns = [ColumnTitle(title="已加载插件")]
     for i, channel_temp in enumerate(saya.channels):
-        column2.append(
-            ColumnList(rows=[
+        loaded_columns.append(ColumnList(rows=[
                 ColumnListItem(
                     # 副标题
                     subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
@@ -95,26 +92,23 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
                     right_element=ColumnListItemSwitch(
                         switch=module_controller.if_module_available(channel_temp))
                 )
-            ])
-        )
-    column2 = [Column(elements=column2[i: i + 20]) for i in range(0, len(column2), 20)]
+        ]))
+    loaded_columns = [Column(elements=loaded_columns[i: i + 20]) for i in range(0, len(loaded_columns), 20)]
     # 未加载插件
-    column3 = [ColumnTitle(title="未加载插件")]
+    unloaded_columns = [ColumnTitle(title="未加载插件")]
     for i, channel_temp in enumerate(module_controller.get_not_installed_channels()):
-        column3.append(
-            ColumnList(rows=[
+        unloaded_columns.append(ColumnList(rows=[
                     ColumnListItem(
                         # 副标题
                         subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
                         # 内容
                         content=channel_temp,
                     )
-                ])
-        )
-    column3 = [Column(elements=column3[i: i + 20]) for i in range(0, len(column3), 20)]
+        ]))
+    unloaded_columns = [Column(elements=unloaded_columns[i: i + 20]) for i in range(0, len(unloaded_columns), 20)]
     return await app.send_message(ori_place, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=[column1]+column2+column3, color_type="dark")
+            GenForm(columns=[menu_column]+loaded_columns+unloaded_columns, color_type="dark")
         ))
     ), quote=src)
 
@@ -130,13 +124,11 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     FrequencyLimitation.require(channel.module),
     Distribute.require()
 )
-@dispatch(
-    Twilight([
+@dispatch(Twilight([
         UnionMatch("加载", "卸载", "重载") @ "operation",
         FullMatch("插件"),
         RegexMatch("[0-9]+") @ "index"
-    ])
-)
+]))
 async def install_module(
         app: Ariadne,
         group: Group,

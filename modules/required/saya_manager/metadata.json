@@ -4,9 +4,15 @@
       "display_name": "插件管理",
       "version": "0.1",
       "author": ["十三"],
-      "description": "用于管理插件:\n",
-      "usage": [],
-      "example": [],
+      "description": "用于管理插件",
+      "usage": ["加载/重载/卸载/开启/关闭插件 编号"],
+      "example": [
+            "加载插件 1",
+            "重载插件 2",
+            "卸载插件 3",
+            "开启插件 4",
+            "关闭插件 5"
+      ],
       "default_switch": true,
       "default_notice": false
 }

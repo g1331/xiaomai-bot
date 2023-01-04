@@ -2,14 +2,14 @@ import asyncio
 from pathlib import Path
 from typing import Union
 
-from arclet.alconna import Alconna, CommandMeta, Args
-from arclet.alconna.graia import AlconnaDispatcher, assign, Query, Match
-from arclet.alconna.tools import MarkdownTextFormatter, ArgParserTextFormatter
+from arclet.alconna import Alconna, CommandMeta
+from arclet.alconna.graia import AlconnaDispatcher
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, FullMatch, RegexMatch, RegexResult
 from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.broadcast.interrupt import InterruptControl
@@ -62,86 +62,66 @@ inc = InterruptControl(saya.broadcast)
     ),
 )))
 async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: Source):
-    form = GenForm(
-        columns=[
-            # 菜单信息
-            Column(
-                elements=[
-                    ColumnTitle(title="插件列表"),
-                    # ColumnImage(src=""),
-                    ColumnList(
-                        rows=[
-                            ColumnListItem(
-                                content="发送 '-插件 卸载/重载 {编号}' 来卸载/重载已加载插件",
-                            ),
-                            ColumnListItem(
-                                content="发送 '-插件 加载 {编号}' 来加载未加载插件",
-                            ),
-                            ColumnListItem(
-                                content="发送 '-插件 开启/关闭 {编号}' 来修改插件的可用状态",
-                            )
-                        ]
-                    )
-                ]
-            ),
-            # 已加载插件
-            Column(
-                elements=[
-                    ColumnTitle(title="已加载插件"),
-                    ColumnList(
-                        rows=[
-                            ColumnListItem(
-                                # 副标题
-                                subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-                                # 内容
-                                content=channel_temp,
-                                # 开关指示
-                                right_element=ColumnListItemSwitch(
-                                    switch=module_controller.if_module_available(channel_temp))
-                            ) for i, channel_temp in enumerate(saya.channels)
-                        ]
-                    )
-                ]
-            ),
-            # 未加载插件
-            Column(
-                elements=[
-                    ColumnTitle(title="未加载插件"),
-                    ColumnList(
-                        rows=[
-                            ColumnListItem(
-                                # 副标题
-                                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
-                                # 内容
-                                content=channel_temp,
-                            ) for i, channel_temp in enumerate(module_controller.get_not_installed_channels())
-                        ]
-                    )
+    # 菜单信息
+    column1 = Column(
+        elements=[
+            ColumnTitle(title="插件列表"),
+            ColumnList(
+                rows=[
+                    ColumnListItem(
+                        content="发送 '开启/关闭插件 {编号}' 来修改已加载插件的可用状态",
+                    ),
+                    ColumnListItem(
+                        content="发送 '卸载/重载插件 {编号}' 来卸载/重载已加载插件",
+                    ),
+                    ColumnListItem(
+                        content="发送 '加载插件 {编号}' 来加载未加载插件",
+                    ),
                 ]
             )
-        ],
-        color_type="dark"
+        ]
     )
-    return await app.send_message(ori_place, MessageChain(Image(data_bytes=await OneMockUI.gen(form))), quote=src)
+    # 已加载插件
+    column2 = [ColumnTitle(title="已加载插件")]
+    for i, channel_temp in enumerate(saya.channels):
+        column2.append(
+            ColumnList(rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                    # 内容
+                    content=channel_temp,
+                    # 开关指示
+                    right_element=ColumnListItemSwitch(
+                        switch=module_controller.if_module_available(channel_temp))
+                )
+            ])
+        )
+    column2 = [Column(elements=column2[i: i + 20]) for i in range(0, len(column2), 20)]
+    # 未加载插件
+    column3 = [ColumnTitle(title="未加载插件")]
+    for i, channel_temp in enumerate(module_controller.get_not_installed_channels()):
+        column3.append(
+            ColumnList(rows=[
+                    ColumnListItem(
+                        # 副标题
+                        subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                        # 内容
+                        content=channel_temp,
+                    )
+                ])
+        )
+    column3 = [Column(elements=column3[i: i + 20]) for i in range(0, len(column3), 20)]
+    return await app.send_message(ori_place, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=[column1]+column2+column3, color_type="dark")
+        ))
+    ), quote=src)
 
 
 #   加载插件
 #   卸载插件
 #   重载插件
-operation_list = ["加载", "卸载", "重载"]
-module_operation_order = Alconna(
-    "-插件",
-    Args['operation#执行的操作', operation_list],
-    "index#插件编号", Args.num[int],
-    meta=CommandMeta(
-        "对插件的操作",
-        usage="传入被操作插件的编号",
-        example="-插件 operation index",
-    ),
-    formatter_type=ArgParserTextFormatter
-)
-
-
 @listen(GroupMessage)
 @decorate(
     Permission.user_require(Permission.Master, if_noticed=True),
@@ -150,17 +130,23 @@ module_operation_order = Alconna(
     FrequencyLimitation.require(channel.module),
     Distribute.require()
 )
-@dispatch(AlconnaDispatcher(module_operation_order))
-@assign("operation", or_not=True)
+@dispatch(
+    Twilight([
+        UnionMatch("加载", "卸载", "重载") @ "operation",
+        FullMatch("插件"),
+        RegexMatch("[0-9]+") @ "index"
+    ])
+)
 async def install_module(
         app: Ariadne,
         group: Group,
         member: Member,
         source: Source,
-        operation: Match[str],
-        index: Query[int] = Query("num")
+        operation: RegexResult,
+        index: RegexResult
 ):
-    operation = operation.result
+    operation = operation.result.display
+    index = int(index.result.display)
     if operation == "加载":
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
@@ -189,20 +175,6 @@ async def install_module(
 
 #   开启插件
 #   关闭插件
-operation_list = ["开启", "关闭"]
-module_switch_order = Alconna(
-    "-插件",
-    Args['operation#执行的操作', operation_list],
-    "index#插件编号", Args.num[int],
-    meta=CommandMeta(
-        "对插件的操作",
-        usage="传入被操作插件的编号",
-        example="-插件 operation index",
-    ),
-    formatter_type=ArgParserTextFormatter
-)
-
-
 @listen(GroupMessage)
 @decorate(
     Permission.user_require(Permission.Master, if_noticed=True),
@@ -211,26 +183,34 @@ module_switch_order = Alconna(
     FrequencyLimitation.require(channel.module),
     Distribute.require()
 )
-@dispatch(AlconnaDispatcher(module_switch_order))
-@assign("operation", or_not=True)
+@dispatch(Twilight([
+    UnionMatch("开启", "关闭") @ "operation",
+    FullMatch("插件"),
+    RegexMatch("[0-9]+") @ "index"
+]))
 async def install_module(
         app: Ariadne,
         group: Group,
         member: Member,
         source: Source,
-        operation: Match[str],
-        index: Query[int] = Query("num")
+        operation: RegexResult,
+        index: RegexResult
 ):
-    operation = operation.result
-    index = index.result
+    operation = operation.result.display
+    index = int(index.result.display)
     modules = module_controller.get_installed_channels() + module_controller.get_not_installed_channels()
     module = modules[index - 1]
     if index == 0 or index > len(modules):
         return await app.send_message(group, MessageChain(f"当前只有{len(modules)}(index:{index})个插件~"), quote=source)
+    if operation == "开启" and module_controller.if_module_available(module):
+        return await app.send_message(group, MessageChain(f"插件{module}已处于开启状态!"), quote=source)
+    elif operation == "关闭" and (not module_controller.if_module_available(module)):
+        return await app.send_message(group, MessageChain(f"插件{module}已处于关闭状态!"), quote=source)
     await app.send_message(group, MessageChain(f"你确定要{operation}插件`{module}`吗?(是/否)"), quote=source)
     try:
         if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
-            exceptions = module_controller.enable_module(module) if operation == "开启" else module_controller.disable_module(module)
+            exceptions = module_controller.enable_module(
+                module) if operation == "开启" else module_controller.disable_module(module)
             if exceptions:
                 return await app.send_group_message(
                     group,

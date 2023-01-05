@@ -224,10 +224,11 @@ modules = {
 
 ### perm_manager(权限管理):
 管理/查询权限
-- [ ] set user perm     更改用户权限
-- [ ] user perm list    查询用户权限
-- [ ] set group perm    更改群权限
-- [ ] check group perm  查询群权限
+- [x] 更改用户权限
+- [x] 查询用户权限
+- [ ] 更改群权限
+- [ ] 查询群权限
+- [x] 增删BOT管理
 
 
 ### response_manager(响应管理):

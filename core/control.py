@@ -58,7 +58,7 @@ class Permission(object):
     @classmethod
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
-        根据传入的qq号与群号来判断该用户的权限等级
+        根据传入的消息事件(群消息事件/好友消息事件)
         :return: 查询到的权限
         """
         sender = event.sender
@@ -117,7 +117,7 @@ class Permission(object):
             if (user_level := await cls.get_user_perm(event)) < perm:
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
-                        f"权限不足!(需要权限:{perm}/你的权限:{user_level})"
+                        f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
                     ), quote=source)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -127,7 +127,7 @@ class Permission(object):
     @classmethod
     async def get_group_perm(cls, group: Group) -> int:
         """
-        根据传入的群号获取群权限
+        根据传入的群实例获取群权限
         :return: 查询到的权限
         """
         # 查询数据库
@@ -169,7 +169,7 @@ class Permission(object):
             if (group_perm := await cls.get_group_perm(group)) < perm:
                 if if_noticed:
                     await app.send_message(group, MessageChain(
-                        f"权限不足!(需要权限:{perm}/当前群{group.id}权限:{group_perm})"
+                        f"权限不足!(当前群权限:{group_perm}/需要权限:{perm})"
                     ), quote=src)
                 raise ExecutionStop
             return Depend(wrapper)
@@ -226,11 +226,12 @@ class Distribute(object):
             group_id = group.id
             account_data = response_model.get_acc_data()
             bot_account = app.account
+            await account_data.init_all_group()
             if len(Ariadne.service.connections.keys()) == 1:
-                await account_data.init_group(group_id, await app.get_member_list(group), bot_account)
+                await account_data.init_all_group()
                 return
-            if not account_data.check_initialization(group_id):
-                await account_data.init_group(group_id, await app.get_member_list(group), bot_account)
+            if not account_data.check_initialization(group_id, bot_account):
+                await account_data.init_group(group_id, bot_account)
                 raise ExecutionStop
             res_acc = await account_data.get_response_account(group_id)
             if res_acc not in Ariadne.service.connections:

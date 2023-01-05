@@ -63,52 +63,53 @@ inc = InterruptControl(saya.broadcast)
 )))
 async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: Source):
     # 菜单信息
+    usage = [ColumnListItem(
+        content=use_item,
+    ) for use_item in channel.metadata.usage]
+    example = [ColumnListItem(
+        content=example_item,
+    ) for example_item in channel.metadata.example]
     menu_column = Column(elements=[
-            ColumnTitle(title="插件列表"),
-            ColumnList(
-                rows=[
-                    ColumnListItem(
-                        content="发送 '开启/关闭插件 {编号}' 来修改已加载插件的可用状态",
-                    ),
-                    ColumnListItem(
-                        content="发送 '卸载/重载插件 {编号}' 来卸载/重载已加载插件",
-                    ),
-                    ColumnListItem(
-                        content="发送 '加载插件 {编号}' 来加载未加载插件",
-                    ),
-                ]
-            )
+        ColumnTitle(title="插件列表"),
+        ColumnTitle(title="用法"),
+        ColumnList(
+            rows=usage
+        ),
+        ColumnTitle(title="示例"),
+        ColumnList(
+            rows=example
+        ),
     ])
     # 已加载插件
     loaded_columns = [ColumnTitle(title="已加载插件")]
     for i, channel_temp in enumerate(saya.channels):
         loaded_columns.append(ColumnList(rows=[
-                ColumnListItem(
-                    # 副标题
-                    subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-                    # 内容
-                    content=channel_temp,
-                    # 开关指示
-                    right_element=ColumnListItemSwitch(
-                        switch=module_controller.if_module_available(channel_temp))
-                )
+            ColumnListItem(
+                # 副标题
+                subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                # 内容
+                content=channel_temp,
+                # 开关指示
+                right_element=ColumnListItemSwitch(
+                    switch=module_controller.if_module_available(channel_temp))
+            )
         ]))
     loaded_columns = [Column(elements=loaded_columns[i: i + 20]) for i in range(0, len(loaded_columns), 20)]
     # 未加载插件
     unloaded_columns = [ColumnTitle(title="未加载插件")]
     for i, channel_temp in enumerate(module_controller.get_not_installed_channels()):
         unloaded_columns.append(ColumnList(rows=[
-                    ColumnListItem(
-                        # 副标题
-                        subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
-                        # 内容
-                        content=channel_temp,
-                    )
+            ColumnListItem(
+                # 副标题
+                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                # 内容
+                content=channel_temp,
+            )
         ]))
     unloaded_columns = [Column(elements=unloaded_columns[i: i + 20]) for i in range(0, len(unloaded_columns), 20)]
     return await app.send_message(ori_place, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=[menu_column]+loaded_columns+unloaded_columns, color_type="dark")
+            GenForm(columns=[menu_column] + loaded_columns + unloaded_columns, color_type="dark")
         ))
     ), quote=src)
 
@@ -125,9 +126,9 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     Distribute.require()
 )
 @dispatch(Twilight([
-        UnionMatch("加载", "卸载", "重载") @ "operation",
-        FullMatch("插件"),
-        RegexMatch("[0-9]+") @ "index"
+    UnionMatch("加载", "卸载", "重载") @ "operation",
+    FullMatch("插件"),
+    RegexMatch("[0-9]+") @ "index"
 ]))
 async def install_module(
         app: Ariadne,

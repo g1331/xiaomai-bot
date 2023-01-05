@@ -1,232 +1,104 @@
-import os
+import asyncio
+from pathlib import Path
+from typing import Union
+
 import yaml
+from arclet.alconna import Alconna, CommandMeta
+from arclet.alconna.graia import AlconnaDispatcher
+from creart import create
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.event.mirai import MemberJoinEvent, MemberLeaveEventQuit
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Source, At
-from graia.ariadne.message.parser.twilight import (
-    Twilight,
-    FullMatch,
-    ParamMatch,
-    RegexResult,
-    SpacePolicy,
-    PRESERVE,
-    UnionMatch
-)
-from graia.ariadne.model import Group, Member
-from graia.saya import Channel
-from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.ariadne.message.element import Image, Source
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, FullMatch, RegexMatch, RegexResult, SpacePolicy, \
+    ParamMatch, PRESERVE
+from graia.ariadne.model import Group, Friend, Member
+from graia.ariadne.util.saya import listen, dispatch, decorate
+from graia.broadcast.interrupt import InterruptControl
+from graia.saya import Channel, Saya
+from graia.saya.builtins.broadcast import ListenerSchema
 
+from core.bot import Umaru
+from core.config import GlobalConfig
 from core.control import (
     Permission,
+    Function,
+    FrequencyLimitation,
     Distribute
 )
+from core.models import saya_model
+from utils.UI import *
+from utils.waiter import ConfirmWaiter
 
+config = create(GlobalConfig)
+core = create(Umaru)
+module_controller = saya_model.get_module_data()
+
+saya = Saya.current()
 channel = Channel.current()
-channel.name("权限管理模块")
-channel.description("统一的模组型权限管理，控制所有权限相关的内容")
+channel.name("SayaManager")
+channel.description("负责插件管理(必须插件)")
 channel.author("13")
+channel.metadata = module_controller.get_metadata_from_file(Path(__file__))
 
 
-# 创建权限组
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.Admin),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        FullMatch("-perm create group").space(PRESERVE),
-                                        "group_id" @ ParamMatch(optional=True),
-                                        "group_type" @ UnionMatch("默认", "管理")
-                                    ]
-                                    # 示例: -perm create group (group_id) <type>
-                                )
-                            ]))
-async def crete_perm_group(app: Ariadne, group: Group, message: MessageChain,
-                           group_id: RegexResult, group_type: RegexResult):
+# >=64可修改当前群的用户权限
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.GroupOwner, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Distribute.require()
+)
+@dispatch(Twilight([
+    FullMatch("修改权限").space(SpacePolicy.FORCE),
+    "group_id" @ ParamMatch(optional=True).space(SpacePolicy.FORCE),
+    "member_id" @ ParamMatch().space(SpacePolicy.FORCE),
+    "perm" @ UnionMatch("64", "32", "16", "0")
+    # 示例: 修改权限 群号 qq 32
+]))
+async def change_user_perm(
+        app: Ariadne, group: Group, sender: Member, message: MessageChain,event:GroupMessage,
+        group_id: RegexResult,
+        perm: RegexResult,
+        member_id: RegexResult,
+        source: Source
+):
     """
-    创建权限组配置文件
-    :param app:
-    :param group_type: 权限类型-默认/管理
-    :param group_id: 是否匹配群id
-    :param group: 群
-    :param message: 传入消息
-    :return:
-    """
-    if not group_id.matched:
-        group_id = group.id
-    else:
-        group_id = int(str(group_id.result))
-
-    # 判断群号是否有效
-    if await app.get_group(group_id) is None:
-        await app.send_message(group, MessageChain(
-            f"没有找到群{group_id}"
-        ), quote=message[Source][0])
-        return False
-    # 群目录判断
-    path = f'./config/group/{group_id}'
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-    file_path = f'{path}/perm.yaml'
-    if not os.path.isfile(file_path):
-        if str(group_type.result) == "默认":
-            open(file_path, mode="w", encoding="utf-8")
-            await app.send_message(group, MessageChain(
-                f"创建权限组配置成功,类型:{group_type.result}组"
-            ), quote=message[Source][0])
-        elif str(group_type.result) == "管理":
-            try:
-                dict_temp = {}
-                member_list = await app.get_member_list(group_id)
-                for item in member_list:
-                    if str(item.permission) != "OWNER":
-                        dict_temp[item.id] = 32
-                    else:
-                        dict_temp[item.id] = 64
-                open(f"{path}/管理组.txt", mode="w", encoding="utf-8")
-                with open(file_path, mode="w", encoding="utf-8") as file:
-                    yaml.dump(dict_temp, file, allow_unicode=True)
-                    await app.send_message(group, MessageChain(
-                        f"创建权限组配置成功,类型:{group_type.result}组"
-                    ), quote=message[Source][0])
-                    return True
-            except:
-                await app.send_message(group, MessageChain(
-                    f"未成功获取到群成员,创建配置失败"
-                ), quote=message[Source][0])
-    else:
-        await app.send_message(group, MessageChain(
-            f"<{group.name}><{group_id}>权限组已存在,请勿重复创建"
-        ), quote=message[Source][0])
-        return False
-
-
-# 删除权限组文件
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.Admin),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight.from_command("-perm del group {group_id}")
-                            ]))
-async def del_perm_group(app: Ariadne, group: Group, message: MessageChain, group_id: RegexResult):
-    group_id = int(str(group_id.result))
-    path = f'./config/group/{group_id}'
-    file_path = f'{path}/perm.yaml'
-    admin_file_path = f"{path}/管理组.txt"
-    if os.path.exists(file_path):
-        try:
-            os.remove(file_path)
-            if os.path.exists(admin_file_path):
-                os.remove(admin_file_path)
-        except Exception as e:
-            await app.send_message(group, MessageChain(
-                f"删除权限组失败:{e}"
-            ), quote=message[Source][0])
-            return
-        await app.send_message(group, MessageChain(
-            f"为<{group.name}><{group_id}>删除权限组成功"
-        ), quote=message[Source][0])
-    else:
-        await app.send_message(group, MessageChain(
-            f"未找到该群权限组文件"
-        ), quote=message[Source][0])
-
-
-# 继承权限组文件
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.Admin),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        FullMatch("-perm").space(SpacePolicy.FORCE),
-                                        FullMatch("succeed").space(SpacePolicy.FORCE),
-                                        "groupNew_id" @ ParamMatch(optional=True).space(PRESERVE),
-                                        FullMatch("from").space(SpacePolicy.FORCE),
-                                        "groupOld_id" @ ParamMatch().space(SpacePolicy.PRESERVE),
-                                        # 示例: -perm (gid) <action> <mid> <level:64,32,16,0>
-                                    ]
-                                )
-                            ]))
-async def succeed_perm_group(app: Ariadne, group: Group, sender: Member, message: MessageChain,
-                             groupNew_id: RegexResult,
-                             groupOld_id: RegexResult):
-    ...
-
-
-# 增删改权限组内容
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.GroupOwner),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        FullMatch("-perm").space(SpacePolicy.FORCE),
-                                        "group_id" @ ParamMatch(optional=True).space(PRESERVE),
-                                        "action" @ UnionMatch("add", "+", "set").space(SpacePolicy.FORCE),
-                                        FullMatch(" ", optional=True),
-                                        "member_id" @ ParamMatch().space(SpacePolicy.FORCE),
-                                        "level" @ UnionMatch("64", "32", "16", "0")
-                                        # 示例: -perm (gid) <action> <mid> <level:64,32,16,0>
-                                    ]
-                                )
-                            ]))
-async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: MessageChain, group_id: RegexResult,
-                         level: RegexResult, member_id: RegexResult):
-    """
-    对权限组进行增删改查
-    :param message:
-    :param sender:
-    :param group:
-    :param app:
-    :param group_id:qq群
-    :param level:权限级
-    :param member_id:被添加人的id
-    :return:
+    修改用户权限
     """
     if group_id.matched:
-        group_id = int(str(group_id.result))
+        group_id = int(group_id.result.display)
     else:
-        group_id = group.id
+        group_id:int = group.id
     try:
-        member_id = int(str(member_id.result).replace("@", ""))
+        member_id = int(member_id.result.display.replace("@", ""))
     except:
-        await app.send_message(group, MessageChain(
+        return await app.send_message(group, MessageChain(
             f"请检查输入的成员qq号"
-        ), quote=message[Source][0])
-        return False
+        ), quote=source)
+    try:
+        perm = int(perm.result.display)
+    except:
+        return await app.send_message(group, MessageChain(
+            f"请检查输入的权限(64/32/16/0)"
+        ), quote=source)
     # 修改其他群组的权限判假
-    if group_id != group.id and Permission.get_user_perm(sender, group) < 128:
-        await app.send_message(group, MessageChain(
-            f"无权执行此操作,所需权限级<{Permission.Admin}>,你的权限级<{Permission.get_user_perm(sender, group)}>"
-        ), quote=message[Source][0])
-        return False
+    if group_id != group.id:
+        if (user_level := await Permission.get_user_perm(event)) < Permission.Admin:
+            return await app.send_message(event.sender.group, MessageChain(
+                f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+            ), quote=source)
 
-    # 判断群号是否有效
-    # if await app.get_group(group_id) is None:
-    #     await app.send_message(group, MessageChain(
-    #         f"没有找到群{group_id}"
-    #     ), quote=message[Source][0])
-    #     return False
-    #
     if await app.get_member(group_id, member_id) is None:
         await app.send_message(group, MessageChain(
             f"没有找到群成员{member_id}"
         ), quote=message[Source][0])
         return False
-    if (Permission.get_user_perm(await app.get_member(group, member_id), group) >= 128) and (
-            Permission.get_user_perm(sender, group) < 128):
+    if (Permission.get_user_perm(await app.get_member(group, member_id)) >= 128) and (
+            Permission.get_user_perm(sender) < 128):
         await app.send_message(group, MessageChain(
             f"错误!无法将bot管理者降级!"
         ), quote=message[Source][0])
@@ -235,7 +107,7 @@ async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: Me
     # 进行增删改
     path = f'./config/group/{group_id}'
     file_path = f'{path}/perm.yaml'
-    if not os.path.exists(file_path):
+    if not Path.exists(file_path):
         await app.send_message(group, MessageChain(
             f"请先使用[-perm create group (group_id) <type>]创建权限组"
         ), quote=message[Source][0])
@@ -253,30 +125,7 @@ async def zsg_perm_group(app: Ariadne, group: Group, sender: Member, message: Me
             return True
 
 
-# 管理组-加群自动添加,默认和管理组-退群自动删除
-@channel.use(ListenerSchema(listening_events=[MemberJoinEvent]))
-async def auto_add_admin_perm(app: Ariadne, group: Group, member: Member):
-    group_id = group.id
-    member_id = member.id
-    # 进行增删改
-    path = f'./config/group/{group_id}'
-    file_path = f'{path}/perm.yaml'
-    file_path2 = f'{path}/管理组.txt'
-    if not os.path.exists(file_path) or not os.path.exists(file_path2):
-        return
-    with open(file_path, 'r', encoding="utf-8") as file1:
-        file_before = yaml.load(file1, Loader=yaml.Loader)
-        if file_before is None:
-            file_before = {}
-        file_before[int(str(member_id).replace("@", ""))] = 32
-        with open(file_path, 'w', encoding="utf-8") as file2:
-            yaml.dump(file_before, file2, allow_unicode=True)
-            await app.send_message(group, MessageChain(
-                At(member), f"已自动修改权限为32"
-            ))
-            return
-
-
+# 自动删除退群的权限
 @channel.use(ListenerSchema(listening_events=[MemberLeaveEventQuit]))
 async def auto_del_perm(app: Ariadne, group: Group, member: Member):
     group_id = group.id
@@ -284,7 +133,7 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
     # 进行增删改
     path = f'./config/group/{group_id}'
     file_path = f'{path}/perm.yaml'
-    if not os.path.exists(file_path):
+    if not Path.exists(file_path):
         return False
     with open(file_path, 'r', encoding="utf-8") as file1:
         file_before = yaml.load(file1, Loader=yaml.Loader)
@@ -423,25 +272,4 @@ async def check_perm(app: Ariadne, group: Group, sender: Member, message: Messag
     await app.send_message(group, MessageChain(
         "这是一则测试内容\n"f"你的权限级:{Permission.get_user_perm(sender, group)}\n"
         f"你的群权限:{sender.permission}"
-    ), quote=message[Source][0])
-
-
-# 帮助信息
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.User),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight.from_command("-help perm")
-                            ]
-                            ))
-async def help_manager(app: Ariadne, group: Group, message: MessageChain):
-    await app.send_message(group, MessageChain(
-        f'()表示可选项,<>表示必填项,a/b表示可选参数a和b\n'
-        f'1.创建权限组:\n-perm create group (群号) <默认/管理>\n'
-        f'2.删除权限组:\n-perm del group <群号>\n'
-        f'3.修改权限组-增删bot管理:\n-perm (群号) <set/add/+> <qq号> <64/32/16/0>\n注意:修改至0时，bot不会再响应该成员消息\n'
-        f'4.测试权限组:\n-test perm\n'
-        f'5.增删su管理权限:\n-perm botAdmin add/del <qq号>'
     ), quote=message[Source][0])

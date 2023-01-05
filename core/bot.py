@@ -65,6 +65,11 @@ class Umaru(object):
 
     def __init__(self, g_config: GlobalConfig, base_path: str or Path):
         self.total_groups = {}
+        """
+        total_groups = {
+            bot_account:[Group1, Group2]
+        }
+        """
         self.launch_time = datetime.datetime.now()
         self.config = create(GlobalConfig)
         self.base_path = base_path if isinstance(base_path, Path) else Path(base_path)

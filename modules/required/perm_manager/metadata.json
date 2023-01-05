@@ -1,0 +1,18 @@
+{
+      "level": 1,
+      "module_name": "PermManager",
+      "display_name": "权限管理",
+      "version": "0.1",
+      "author": ["十三"],
+      "description": "用于管理权限",
+      "usage": [""],
+      "example": [
+            "加载插件 1",
+            "重载插件 2",
+            "卸载插件 3",
+            "开启插件 4",
+            "关闭插件 5"
+      ],
+      "default_switch": true,
+      "default_notice": false
+}

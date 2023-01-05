@@ -4,7 +4,6 @@ from abc import ABC
 from typing import Type
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
-from graia.ariadne.model import Member, Group
 
 frequency_data_instance = None
 

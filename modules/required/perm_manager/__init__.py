@@ -92,7 +92,7 @@ async def change_user_perm(
             return await app.send_message(event.sender.group, MessageChain(
                 f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
             ), quote=source)
-        target_app = account_controller.get_app_from_total_groups(group_id)
+        target_app = await account_controller.get_app_from_total_groups(group_id)
         target_group = await target_app.get_group(group_id)
     else:
         target_app = app
@@ -103,7 +103,9 @@ async def change_user_perm(
                 target_perm := await Permission.get_user_perm_byID(target_group.id, target)):
             error_targets.append((target, f"无法降级{target}({target_perm})"))
         elif await target_app.get_member(target_group, target) is None:
-            error_targets.append(f"没有在群{target_group}找到群成员{target}")
+            error_targets.append((target, f"没有在群{target_group}找到群成员"))
+        elif await Permission.get_user_perm_byID(target_group.id, target) == Permission.Admin:
+            error_targets.append((target, f"无法直接通过该指令修改BOT管理权限"))
         else:
             await orm.insert_or_ignore(
                 table=MemberPerm,
@@ -121,7 +123,7 @@ async def change_user_perm(
     if error_targets:
         response_text += "\n\n失败目标:"
         for i in error_targets:
-            response_text += f"\n{i[0]} | {i[1]}"
+            response_text += f"\n{i[0]}-{i[1]}"
     await app.send_message(group, response_text, quote=source)
 
 
@@ -247,7 +249,7 @@ async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, membe
     if error_targets:
         response_text += "\n\n失败目标:"
         for i in error_targets:
-            response_text += f"\n{i[0]} | {i[1]}"
+            response_text += f"\n{i[0]}-{i[1]}"
     await app.send_message(group, response_text, quote=source)
 
 

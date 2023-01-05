@@ -21,7 +21,10 @@ from graia.saya import Saya
 from loguru import logger
 
 from core.config import GlobalConfig
-from core.models import frequency_model
+from core.models import (
+    frequency_model,
+    response_model
+)
 from core.bot import Umaru
 
 config = create(GlobalConfig)
@@ -130,6 +133,7 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 async def init():
     await core.initialize()
     await frequency_model.get_frequency_data().limited()
+    await response_model.get_acc_data().init_all_group()
 
 
 if __name__ == "__main__":

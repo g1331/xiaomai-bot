@@ -90,7 +90,7 @@ class AccountController:
                         self.public_groups.append(group)
                     if self.check_initialization(group.id, app.account):
                         return
-                    member_list = app.get_member_list(group.id)
+                    member_list = await app.get_member_list(group.id)
                     self.account_dict[group.id] = {}
                     self.account_dict[group.id][0] = bot_account
                     self.deterministic_account[group.id] = 0

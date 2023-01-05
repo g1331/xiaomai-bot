@@ -174,7 +174,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     for member in await app.get_member_list(group_id):
         for item in perm_list:
             perm_dict[item[1]] = item[0]
-        if member.id not in perm_dict:
+        if member.id not in perm_dict and Permission.perm_dict[member.permission.name] != 16:
             perm_dict[member.id] = Permission.perm_dict[member.permission.name]
     perm_dict = dict(sorted(perm_dict.items(), key=lambda x: x[1], reverse=True))
     """

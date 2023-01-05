@@ -1,10 +1,11 @@
+import random
 import time
 from abc import ABC
 from typing import Type, List
 
 from creart import create, CreateTargetInfo, AbstractCreator, exists_module, add_creator
 from graia.ariadne import Ariadne
-from graia.ariadne.model import Member, Group
+from graia.ariadne.model import Member
 from sqlalchemy import select
 
 from core.bot import Umaru
@@ -32,9 +33,31 @@ class AccountController:
 
     def __init__(self):
         self.account_dict = {}
+        """
+        account_dict = {
+            group_id:{
+                0: 123
+            }
+        }
+        """
         self.deterministic_account = {}
-        self.total_groups: List[Group] = []
-        self.public_groups: List[Group] = []
+        self.total_groups: dict = {}
+        """
+        total_groups = {
+            group.id: {
+                bot_account: Ariadne
+            }
+        }
+        """
+        self.public_groups: dict = {}
+        """
+        public_groups = {
+            group.id: {
+                bot_account1: Ariadne,
+                bot_account2: Ariadne
+            }
+        }
+        """
         self.all_initialized = False
 
     @staticmethod
@@ -49,6 +72,9 @@ class AccountController:
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
+
+    async def get_app_from_total_groups(self, group_id: int) -> Ariadne:
+        return self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
 
     def check_initialization(self, group_id: int, bot_account: int):
         """检查群、对应账号是否初始化
@@ -84,10 +110,11 @@ class AccountController:
                 app = Ariadne.current(bot_account)
                 group_list = await app.get_group_list()
                 for group in group_list:
-                    if group not in self.total_groups:
-                        self.total_groups.append(group)
-                    else:
-                        self.public_groups.append(group)
+                    if group.id not in self.total_groups:
+                        self.total_groups[group.id] = {}
+                    self.total_groups[group.id][bot_account] = Ariadne.current(bot_account)
+                    if len(self.total_groups[group.id].keys()) > 1:
+                        self.public_groups[group.id] = self.total_groups[group.id]
                     if self.check_initialization(group.id, app.account):
                         return
                     member_list = await app.get_member_list(group.id)
@@ -113,7 +140,8 @@ class AccountController:
         self.account_dict[group_id][len(self.account_dict[group_id])] = bot_account
 
     def remove_account(self, group_id: int, bot_account: int):
-        if self.deterministic_account.get(group_id) and self.account_dict[self.deterministic_account[group_id]] == bot_account:
+        if self.deterministic_account.get(group_id) and self.account_dict[
+            self.deterministic_account[group_id]] == bot_account:
             del self.deterministic_account[group_id]
         temp: dict = self.account_dict[group_id]
         self.account_dict[group_id] = {}

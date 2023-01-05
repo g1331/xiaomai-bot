@@ -55,6 +55,27 @@ class Permission(object):
     VipGroup = 2
     TestGroup = 3
 
+    perm_dict = {
+        "Member": 16,           # 普通成员
+        "Administrator": 32,    # 管理员
+        "Owner": 64             # 群主
+    }
+
+    @staticmethod
+    async def get_user_perm_byID(group_id: int, member_id: int) -> int:
+        if result := await orm.fetch_one(
+                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == member_id)
+        ):
+            return result[0]
+        else:
+            return Permission.User
+
+    @staticmethod
+    async def get_users_perm_byID(group_id: int) -> list[int]:
+        return await orm.fetch_all(
+            select(MemberPerm.perm, MemberPerm.qq).where(MemberPerm.group_id == group_id)
+        )
+
     @classmethod
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
@@ -226,9 +247,7 @@ class Distribute(object):
             group_id = group.id
             account_data = response_model.get_acc_data()
             bot_account = app.account
-            await account_data.init_all_group()
             if len(Ariadne.service.connections.keys()) == 1:
-                await account_data.init_all_group()
                 return
             if not account_data.check_initialization(group_id, bot_account):
                 await account_data.init_group(group_id, bot_account)

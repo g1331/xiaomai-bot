@@ -1,39 +1,48 @@
-import asyncio
 from pathlib import Path
-from typing import Union
 
 import yaml
-from arclet.alconna import Alconna, CommandMeta
-from arclet.alconna.graia import AlconnaDispatcher
 from creart import create
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage, FriendMessage
-from graia.ariadne.event.mirai import MemberJoinEvent, MemberLeaveEventQuit
+from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.event.mirai import MemberLeaveEventQuit
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, FullMatch, RegexMatch, RegexResult, SpacePolicy, \
-    ParamMatch, PRESERVE
-from graia.ariadne.model import Group, Friend, Member
+from graia.ariadne.message.parser.twilight import (
+    Twilight,
+    FullMatch,
+    ParamMatch,
+    UnionMatch,
+    RegexResult,
+    WildcardMatch
+)
+from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
-from graia.broadcast.interrupt import InterruptControl
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast import ListenerSchema
 
 from core.bot import Umaru
-from core.config import GlobalConfig
+from core.config import GlobalConfig, load_config
 from core.control import (
     Permission,
     Function,
     FrequencyLimitation,
     Distribute
 )
-from core.models import saya_model
+from core.models import (
+    saya_model,
+    response_model
+)
+from core.orm import orm
+from core.orm.tables import MemberPerm
 from utils.UI import *
-from utils.waiter import ConfirmWaiter
+from utils.image import get_user_avatar_url
+from .utils import get_targets
 
 config = create(GlobalConfig)
 core = create(Umaru)
+
 module_controller = saya_model.get_module_data()
+account_controller = response_model.get_acc_data()
 
 saya = Saya.current()
 channel = Channel.current()
@@ -53,14 +62,14 @@ channel.metadata = module_controller.get_metadata_from_file(Path(__file__))
     Distribute.require()
 )
 @dispatch(Twilight([
-    FullMatch("修改权限").space(SpacePolicy.FORCE),
-    "group_id" @ ParamMatch(optional=True).space(SpacePolicy.FORCE),
-    "member_id" @ ParamMatch().space(SpacePolicy.FORCE),
-    "perm" @ UnionMatch("64", "32", "16", "0")
-    # 示例: 修改权限 群号 qq 32
+    FullMatch("修改权限"),
+    "group_id" @ ParamMatch(optional=True),
+    "perm" @ UnionMatch("64", "32", "16", "0"),
+    "member_id" @ WildcardMatch()
+    # 示例: 修改权限 群号 perm
 ]))
 async def change_user_perm(
-        app: Ariadne, group: Group, sender: Member, message: MessageChain,event:GroupMessage,
+        app: Ariadne, group: Group, event: GroupMessage,
         group_id: RegexResult,
         perm: RegexResult,
         member_id: RegexResult,
@@ -69,16 +78,8 @@ async def change_user_perm(
     """
     修改用户权限
     """
-    if group_id.matched:
-        group_id = int(group_id.result.display)
-    else:
-        group_id:int = group.id
-    try:
-        member_id = int(member_id.result.display.replace("@", ""))
-    except:
-        return await app.send_message(group, MessageChain(
-            f"请检查输入的成员qq号"
-        ), quote=source)
+    group_id = int(group_id.result.display) if group_id.matched else group.id
+    targets = get_targets(member_id.result)
     try:
         perm = int(perm.result.display)
     except:
@@ -89,124 +90,117 @@ async def change_user_perm(
     if group_id != group.id:
         if (user_level := await Permission.get_user_perm(event)) < Permission.Admin:
             return await app.send_message(event.sender.group, MessageChain(
-                f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
             ), quote=source)
-
-    if await app.get_member(group_id, member_id) is None:
-        await app.send_message(group, MessageChain(
-            f"没有找到群成员{member_id}"
-        ), quote=message[Source][0])
-        return False
-    if (Permission.get_user_perm(await app.get_member(group, member_id)) >= 128) and (
-            Permission.get_user_perm(sender) < 128):
-        await app.send_message(group, MessageChain(
-            f"错误!无法将bot管理者降级!"
-        ), quote=message[Source][0])
-        return False
-
-    # 进行增删改
-    path = f'./config/group/{group_id}'
-    file_path = f'{path}/perm.yaml'
-    if not Path.exists(file_path):
-        await app.send_message(group, MessageChain(
-            f"请先使用[-perm create group (group_id) <type>]创建权限组"
-        ), quote=message[Source][0])
-        return False
-    with open(file_path, 'r', encoding="utf-8") as file1:
-        file_before = yaml.load(file1, Loader=yaml.Loader)
-        if file_before is None:
-            file_before = {}
-        file_before[int(str(member_id).replace("@", ""))] = int(str(level.result))
-        with open(file_path, 'w', encoding="utf-8") as file2:
-            yaml.dump(file_before, file2, allow_unicode=True)
-            await app.send_message(group, MessageChain(
-                f"群<{group.id}>设置成员<{str(member_id).replace('@', '')}>权限级<{level.result}>成功"
-            ), quote=message[Source][0])
-            return True
+        target_app = account_controller.get_app_from_total_groups(group_id)
+        target_group = await target_app.get_group(group_id)
+    else:
+        target_app = app
+        target_group = group
+    error_targets = []
+    for target in targets:
+        if await Permission.get_user_perm(event) < (
+                target_perm := await Permission.get_user_perm_byID(target_group.id, target)):
+            error_targets.append((target, f"无法降级{target}({target_perm})"))
+        elif await target_app.get_member(target_group, target) is None:
+            error_targets.append(f"没有在群{target_group}找到群成员{target}")
+        else:
+            await orm.insert_or_ignore(
+                table=MemberPerm,
+                condition=[
+                    MemberPerm.qq == target,
+                    MemberPerm.group_id == target_group.id
+                ],
+                data={
+                    "group_id": target_group.id,
+                    "qq": target,
+                    "perm": perm
+                }
+            )
+    response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
+    if error_targets:
+        response_text += "\n\n失败目标:"
+        for i in error_targets:
+            response_text += f"\n{i[0]} | {i[1]}"
+    await app.send_message(group, response_text, quote=source)
 
 
 # 自动删除退群的权限
-@channel.use(ListenerSchema(listening_events=[MemberLeaveEventQuit]))
+@listen(MemberLeaveEventQuit)
 async def auto_del_perm(app: Ariadne, group: Group, member: Member):
-    group_id = group.id
-    member_id = member.id
-    # 进行增删改
-    path = f'./config/group/{group_id}'
-    file_path = f'{path}/perm.yaml'
-    if not Path.exists(file_path):
-        return False
-    with open(file_path, 'r', encoding="utf-8") as file1:
-        file_before = yaml.load(file1, Loader=yaml.Loader)
-        if file_before is None:
-            file_before = {}
-        try:
-            file_before.pop(int(str(member_id).replace("@", "")))
-        except:
-            return False
-        with open(file_path, 'w', encoding="utf-8") as file2:
-            yaml.dump(file_before, file2, allow_unicode=True)
-            await app.send_message(group, MessageChain(
-                f"成员{member.name}({member.id})退群,已自动删除其权限"
-            ))
-            return True
+    target_perm = await Permission.get_user_perm_byID(group.id, member.id)
+    await orm.delete(
+        table=MemberPerm,
+        condition=[
+            MemberPerm.qq == member.id,
+            MemberPerm.group_id == group.id
+        ]
+    )
+    if target_perm >= Permission.GroupAdmin:
+        return await app.send_message(group, f"已自动删除退群成员{member.name}({member.id})的权限")
 
 
-# 查询权限组-当权限>=128时 可以查询其他群的
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.GroupAdmin),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight(
-                                    [
-                                        FullMatch("-perm list").space(SpacePolicy.PRESERVE)
-                                        # 示例: -perm list
-                                    ]
-                                )
-                            ]))
-async def perm_list(app: Ariadne, group: Group, message: MessageChain):
-    # 进行增删改
-    path = f'./config/group/{group.id}'
-    file_path = f'{path}/perm.yaml'
-    if not os.path.exists(file_path):
-        await app.send_message(group, MessageChain(
-            f"请先使用[-perm create group (group_id) <type>]创建权限组"
-        ), quote=message[Source][0])
-        return False
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Distribute.require()
+)
+@dispatch(Twilight([
+    UnionMatch("perm list", "权限列表"),
+    "group_id" @ ParamMatch(optional=True),
+    # 示例: perm list
+]))
+async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, source: Source, event: GroupMessage):
+    group_id = int(group_id.result.display) if group_id.matched else group.id
+    if group_id != group.id:
+        if (user_level := await Permission.get_user_perm(event)) < Permission.Admin:
+            return await app.send_message(event.sender.group, MessageChain(
+                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
+            ), quote=source)
+        target_app = account_controller.get_app_from_total_groups(group_id)
+        target_group = await target_app.get_group(group_id)
     else:
-        with open(file_path, 'r', encoding="utf-8") as file1:
-            data = yaml.load(file1, Loader=yaml.Loader)
-            if data is None:
-                await app.send_message(group, MessageChain(
-                    "当前权限组为空!"
-                ), quote=message[Source][0])
-                return
-            level_64 = []
-            level_32 = []
-            level_else = []
-            for key_id in list(data.keys()):
-                try:
-                    member = await app.get_member(group, int(key_id))
-                    if data[key_id] == 64:
-                        level_64.append(f"{member.name}({key_id})\n")
-                    elif data[key_id] == 32:
-                        level_32.append(f"{member.name}({key_id})\n")
-                    elif data[key_id] == 16:
-                        data.pop(key_id)
-                    else:
-                        level_else.append(f"{data[key_id]}-{member.name}({key_id})\n")
-                except Exception as e:
-                    data.pop(key_id)
-            with open(file_path, 'w', encoding="utf-8") as file2:
-                yaml.dump(data, file2, allow_unicode=True)
-        message_send = MessageChain(
-            f"64:\n", level_64,
-            f"32(共{len(level_32)}人):\n", level_32,
-            f"其他:\n" if len(level_else) != 0 else '', level_else if len(level_else) != 0 else ''
+        target_app = app
+        target_group = group
+    # 查询权限组-当权限>=128时 可以查询其他群的
+    """
+    [ (perm, qq) ]
+    """
+    perm_list = await Permission.get_users_perm_byID(group_id)
+    perm_dict = {}
+    for member in await app.get_member_list(group_id):
+        for item in perm_list:
+            perm_dict[item[1]] = item[0]
+        if member.id not in perm_dict:
+            perm_dict[member.id] = Permission.perm_dict[member.permission.name]
+    perm_dict = dict(sorted(perm_dict.items(), key=lambda x: x[1], reverse=True))
+    """
+    perm_dict = {
+        qq: perm
+    }
+    """
+    perm_list_column = [ColumnTitle(title="权限列表")]
+    for member_id in perm_dict:
+        try:
+            member_item = await target_app.get_member(target_group, member_id)
+        except:
+            member_item = None
+        perm_list_column.append(
+            ColumnUserInfo(
+                name=f"{member_item.name}({member_id})" if member_item else member_id,
+                description=perm_dict[member_id],
+                avatar=await get_user_avatar_url(member_id)
+            )
         )
-        await app.send_message(group, message_send, quote=message[Source][0])
-        return True
+    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
+    return await app.send_message(group, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=perm_list_column, color_type="dark")
+        ))
+    ), quote=source)
 
 
 # 增删bot管理
@@ -218,58 +212,76 @@ async def perm_list(app: Ariadne, group: Group, message: MessageChain):
                             inline_dispatchers=[
                                 Twilight(
                                     [
-                                        FullMatch("-perm botAdmin").space(SpacePolicy.FORCE),
-                                        "action" @ UnionMatch("add", "del").space(SpacePolicy.FORCE),
-                                        "member_id" @ ParamMatch().space(SpacePolicy.PRESERVE),
-                                        # 示例: -perm botAdmin add
+                                        "action" @ UnionMatch("添加", "删除"),
+                                        FullMatch("BOT管理"),
+                                        WildcardMatch() @ "member_id"
+                                        # 示例: 添加/删除 BOT管理 000
                                     ]
                                 )
                             ]))
-async def change_botAdmin(app: Ariadne, group: Group, message: MessageChain,
-                          action: RegexResult, member_id: RegexResult):
-    with open('./config/config.yaml', 'r', encoding="utf-8") as bot_file:
-        bot_data = yaml.load(bot_file, Loader=yaml.Loader)
-        member_id = int(str(member_id.result).replace("@", ""))
-        if str(action.result) == "add":
-            if member_id in bot_data["botinfo"]["Admin"]:
-                await app.send_message(group, MessageChain(
-                    f"{member_id}已经是bot管理员了"
-                ), quote=message[Source][0])
-                return False
+async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, member_id: RegexResult, source: Source):
+    action = action.result.display
+    targets = get_targets(member_id.result)
+    config_path = Path().cwd() / "config.yaml"
+    with open(config_path, "r", encoding="utf-8") as f:
+        config_data = yaml.safe_load(f.read())
+    error_targets = []
+    for target in targets:
+        if action == "添加":
+            if target in config_data["Admins"]:
+                error_targets.append((target, f"{target}已经是BOT管理啦!"))
             else:
-                bot_data["botinfo"]["Admin"].append(member_id)
-                with open('./config/config.yaml', 'w', encoding="utf-8") as bot_file2:
-                    yaml.dump(bot_data, bot_file2, allow_unicode=True)
-                    await app.send_message(group, MessageChain(
-                        f"添加{member_id}为bot管理员成功"
-                    ), quote=message[Source][0])
+                config_data["Admins"].append(target)
+                with open(config_path, 'w', encoding="utf-8") as f:
+                    yaml.dump(config_data, f, allow_unicode=True)
+                await core.update_host_permission()
         else:
-            if member_id in bot_data["botinfo"]["Admin"]:
-                bot_data["botinfo"]["Admin"].remove(member_id)
-                with open('./config/config.yaml', 'w', encoding="utf-8") as bot_file2:
-                    yaml.dump(bot_data, bot_file2, allow_unicode=True)
-                    await app.send_message(group, MessageChain(
-                        f"删除{member_id}bot管理员成功"
-                    ), quote=message[Source][0])
+            if target not in config_data["Admins"]:
+                error_targets.append((target, f"{target}还不是BOT管理哦!"))
             else:
-                await app.send_message(group, MessageChain(
-                    f"{member_id}不是bot管理员"
-                ), quote=message[Source][0])
-                return False
+                config_data["Admins"].remove(target)
+                with open(config_path, 'w', encoding="utf-8") as f:
+                    yaml.dump(config_data, f, allow_unicode=True)
+                await core.update_host_permission()
+    response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
+    if error_targets:
+        response_text += "\n\n失败目标:"
+        for i in error_targets:
+            response_text += f"\n{i[0]} | {i[1]}"
+    await app.send_message(group, response_text, quote=source)
 
 
-# 测试权限消息
-@channel.use(ListenerSchema(listening_events=[GroupMessage],
-                            decorators=[
-                                Permission.user_require(Permission.User),
-                                Distribute.require()
-                            ],
-                            inline_dispatchers=[
-                                Twilight.from_command("-test perm")
-                            ]
-                            ))
-async def check_perm(app: Ariadne, group: Group, sender: Member, message: MessageChain):
-    await app.send_message(group, MessageChain(
-        "这是一则测试内容\n"f"你的权限级:{Permission.get_user_perm(sender, group)}\n"
-        f"你的群权限:{sender.permission}"
-    ), quote=message[Source][0])
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Distribute.require()
+)
+@dispatch(Twilight([
+    FullMatch("BOT管理列表"),
+    # 示例: BOT管理列表
+]))
+async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
+    perm_list_column = [ColumnTitle(title="BOT管理列表")]
+    g_config = load_config()
+    if len(g_config.Admins) == 0:
+        return await app.send_message(group, MessageChain("当前还没有BOT管理哦~"), quote=source)
+    for member_id in g_config.Admins:
+        try:
+            member_item = await app.get_member(group, member_id)
+        except:
+            member_item = None
+        perm_list_column.append(
+            ColumnUserInfo(
+                name=f"{member_item.name}({member_id})" if member_item else member_id,
+                avatar=await get_user_avatar_url(member_id)
+            )
+        )
+    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
+    return await app.send_message(group, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=perm_list_column, color_type="dark")
+        ))
+    ), quote=source)

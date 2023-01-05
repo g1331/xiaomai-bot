@@ -21,7 +21,7 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
-from graia.ariadne.model import LogConfig, Group
+from graia.ariadne.model import LogConfig
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graia.saya.builtins.broadcast import BroadcastBehaviour
@@ -30,7 +30,7 @@ from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy.exc import InternalError, ProgrammingError
 
-from core.config import GlobalConfig
+from core.config import GlobalConfig, load_config
 from core.orm import orm
 from core.orm.tables import (
     GroupPerm,
@@ -109,6 +109,7 @@ class Umaru(object):
         await orm.update(GroupPerm, {"active": False}, [])
         for app in self.apps:
             group_list = await app.get_group_list()
+            self.total_groups[app.account] = group_list
             # 更新群组权限
             for group in group_list:
                 if group.id in self.config.black_group:
@@ -127,8 +128,7 @@ class Umaru(object):
                     ]
                 )
             # 更新成员权限
-            await self.update_host_permission(group_list)
-            self.total_groups[app.account] = group_list
+            await self.update_host_permission()
         logger.info("本次启动活动群组如下：")
         for account, group_list in self.total_groups.items():
             for group in group_list:
@@ -136,25 +136,47 @@ class Umaru(object):
         logger.success("bot初始化完成~")
 
     # 更新master和admins权限
-    async def update_host_permission(self, group_list: List[Group]):
-        for group in group_list:
-            await orm.insert_or_update(
-                table=MemberPerm,
-                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                condition=[
-                    MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group.id
-                ]
-            )
-            for admin in self.config.Admins:
-                await orm.insert_or_update(
-                    MemberPerm,
-                    [
-                        MemberPerm.qq == admin,
-                        MemberPerm.group_id == group.id,
-                    ],
-                    {"qq": admin, "groupid": group.id, "perm": 128},
-                )
+    async def update_host_permission(self):
+        g_config = load_config()
+        for bot_account in self.total_groups:
+            for group in self.total_groups[bot_account]:
+                member_list = await Ariadne.current(bot_account).get_member_list(group)
+                member_list = [member.id for member in member_list]
+                if g_config.Master in member_list:
+                    await orm.insert_or_update(
+                        table=MemberPerm,
+                        data={"qq": g_config.Master, "group_id": group.id, "perm": 256},
+                        condition=[
+                            MemberPerm.qq == g_config.Master,
+                            MemberPerm.group_id == group.id
+                        ]
+                    )
+                else:
+                    await orm.delete(
+                        table=MemberPerm,
+                        condition=[
+                            MemberPerm.qq == g_config.Master,
+                            MemberPerm.group_id == group.id
+                        ]
+                    )
+                for admin in g_config.Admins:
+                    if admin in member_list:
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": admin, "group_id": group.id, "perm": 128},
+                            condition=[
+                                MemberPerm.qq == admin,
+                                MemberPerm.group_id == group.id,
+                            ]
+                        )
+                    else:
+                        await orm.delete(
+                            table=MemberPerm,
+                            condition=[
+                                MemberPerm.qq == admin,
+                                MemberPerm.group_id == group.id
+                            ]
+                        )
 
     def set_logger(self):
         logger.add(

@@ -323,6 +323,10 @@ class ModulesController:
     def get_not_installed_channels() -> list[str]:
         return [c for c in ModulesController.get_all_channels() if c not in saya.channels]
 
+    @staticmethod
+    def get_required_modules() -> list[str]:
+        return [c for c in saya.channels.keys() if c.startswith("modules.required")]
+
 
 def get_module_data():
     global module_data_instance

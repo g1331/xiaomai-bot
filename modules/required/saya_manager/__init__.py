@@ -130,7 +130,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     FullMatch("插件"),
     RegexMatch("[0-9]+") @ "index"
 ]))
-async def install_module(
+async def change_module_status(
         app: Ariadne,
         group: Group,
         member: Member,
@@ -170,7 +170,7 @@ async def install_module(
 #   关闭插件
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.Master, if_noticed=True),
+    Permission.user_require(Permission.Admin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
@@ -181,7 +181,7 @@ async def install_module(
     FullMatch("插件"),
     RegexMatch("[0-9]+") @ "index"
 ]))
-async def install_module(
+async def switch_module(
         app: Ariadne,
         group: Group,
         member: Member,
@@ -198,6 +198,8 @@ async def install_module(
     if operation == "开启" and module_controller.if_module_available(module):
         return await app.send_message(group, MessageChain(f"插件{module}已处于开启状态!"), quote=source)
     elif operation == "关闭" and (not module_controller.if_module_available(module)):
+        if module in module_controller.get_required_modules():
+            return await app.send_message(group, MessageChain(f"无法关闭必须插件!"), quote=source)
         return await app.send_message(group, MessageChain(f"插件{module}已处于关闭状态!"), quote=source)
     await app.send_message(group, MessageChain(f"你确定要{operation}插件`{module}`吗?(是/否)"), quote=source)
     try:

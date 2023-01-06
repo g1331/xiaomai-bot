@@ -25,7 +25,7 @@ temp_list = []
 
 @channel.use(ListenerSchema(listening_events=[GroupMessage],
                             decorators=[
-                                Permission.user_require(Permission.Admin),
+                                Permission.user_require(Permission.BotAdmin),
                                 Distribute.require()
 
                             ],

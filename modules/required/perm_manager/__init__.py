@@ -89,9 +89,9 @@ async def change_user_perm(
         ), quote=source)
     # 修改其他群组的权限判假
     if group_id != group.id:
-        if (user_level := await Permission.get_user_perm(event)) < Permission.Admin:
+        if (user_level := await Permission.get_user_perm(event)) < Permission.BotAdmin:
             return await app.send_message(event.sender.group, MessageChain(
-                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
+                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.BotAdmin})"
             ), quote=source)
         target_app = await account_controller.get_app_from_total_groups(group_id)
         target_group = await target_app.get_group(group_id)
@@ -105,7 +105,7 @@ async def change_user_perm(
             error_targets.append((target, f"无法降级{target}({target_perm})"))
         elif await target_app.get_member(target_group, target) is None:
             error_targets.append((target, f"没有在群{target_group}找到群成员"))
-        elif await Permission.get_user_perm_byID(target_group.id, target) == Permission.Admin:
+        elif await Permission.get_user_perm_byID(target_group.id, target) == Permission.BotAdmin:
             error_targets.append((target, f"无法直接通过该指令修改BOT管理权限"))
         else:
             await orm.insert_or_update(
@@ -146,7 +146,7 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
 # >=128可修改群权限
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.Admin, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
@@ -199,7 +199,7 @@ async def change_group_perm(
 # 查询VIP群
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.Admin, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
@@ -267,9 +267,9 @@ async def get_vg_list(
 async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, source: Source, event: GroupMessage):
     group_id = int(group_id.result.display) if group_id.matched else group.id
     if group_id != group.id:
-        if (user_level := await Permission.get_user_perm(event)) < Permission.Admin:
+        if (user_level := await Permission.get_user_perm(event)) < Permission.BotAdmin:
             return await app.send_message(event.sender.group, MessageChain(
-                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
+                f"权限不足!(你的权限:{user_level}/需要权限:{Permission.BotAdmin})"
             ), quote=source)
         if group_id not in account_controller.total_groups:
             return await app.send_message(event.sender.group, MessageChain(

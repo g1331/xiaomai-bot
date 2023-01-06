@@ -43,7 +43,7 @@ class Permission(object):
     3       测试群组
     """
     Master = 256
-    Admin = 128
+    BotAdmin = 128
     GroupOwner = 64
     GroupAdmin = 32
     User = 16
@@ -129,7 +129,7 @@ class Permission(object):
                 if sender.id == global_config.Master:
                     return Permission.Master
                 elif sender.id in cls.get_BotAdminsList():
-                    return Permission.Admin
+                    return Permission.BotAdmin
                 else:
                     return Permission.User
         # 如果有查询到数据，则返回用户的权限等级

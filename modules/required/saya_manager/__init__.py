@@ -170,7 +170,7 @@ async def change_module_status(
 #   关闭插件
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.Admin, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),

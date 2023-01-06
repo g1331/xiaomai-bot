@@ -1,3 +1,5 @@
+import base64
+
 import aiohttp
 
 from graia.ariadne.event.message import Friend, Member
@@ -20,3 +22,7 @@ async def get_user_avatar_url(user: Friend or Member or int or str, size: int = 
     if isinstance(user, str) and not user.isnumeric():
         raise ValueError
     return f"https://q1.qlogo.cn/g?b=qq&nk={user}&s={size}"
+
+
+def get_img_base64_str(data: bytes) -> str:
+    return f"data:image/png;base64,{base64.b64encode(data).decode()}"

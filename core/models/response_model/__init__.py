@@ -8,12 +8,12 @@ from graia.ariadne import Ariadne
 from graia.ariadne.model import Member
 from sqlalchemy import select
 
-from core.bot import Umaru
+from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import GroupSetting
 
 res_data_instance = None
-core = create(Umaru)
+config = create(GlobalConfig)
 
 
 class AccountController:
@@ -105,7 +105,7 @@ class AccountController:
     async def init_all_group(self):
         if self.all_initialized:
             return
-        for bot_account in core.config.bot_accounts:
+        for bot_account in config.bot_accounts:
             if bot_account in Ariadne.service.connections:
                 app = Ariadne.current(bot_account)
                 group_list = await app.get_group_list()
@@ -140,8 +140,7 @@ class AccountController:
         self.account_dict[group_id][len(self.account_dict[group_id])] = bot_account
 
     def remove_account(self, group_id: int, bot_account: int):
-        if self.deterministic_account.get(group_id) and self.account_dict[
-            self.deterministic_account[group_id]] == bot_account:
+        if self.deterministic_account.get(group_id) and self.account_dict[self.deterministic_account[group_id]] == bot_account:
             del self.deterministic_account[group_id]
         temp: dict = self.account_dict[group_id]
         self.account_dict[group_id] = {}

@@ -47,7 +47,7 @@ class Permission(object):
     GroupOwner = 64
     GroupAdmin = 32
     User = 16
-    Black = 0
+    GroupBlack = 0
     GlobalBlack = -1
 
     InactiveGroup = 0
@@ -55,10 +55,27 @@ class Permission(object):
     VipGroup = 2
     TestGroup = 3
 
-    perm_dict = {
-        "Member": 16,           # 普通成员
-        "Administrator": 32,    # 管理员
-        "Owner": 64             # 群主
+    member_permStr_dict = {
+        "Member": 16,  # 普通成员
+        "Administrator": 32,  # 管理员
+        "Owner": 64  # 群主
+    }
+
+    user_str_dict = {
+        256: "Master",
+        128: "Admin",
+        64: "GroupOwner",
+        32: "GroupAdmin",
+        16: "User",
+        0: "GroupBlack",
+        -1: "GlobalBlack"
+    }
+
+    group_str_dict = {
+        0: "InactiveGroup",
+        1: "ActiveGroup",
+        2: "VipGroup",
+        3: "TestGroup"
     }
 
     @staticmethod

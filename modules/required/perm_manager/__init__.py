@@ -17,6 +17,7 @@ from graia.ariadne.message.parser.twilight import (
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
+from sqlalchemy import select
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -33,7 +34,7 @@ from core.models import (
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
 from utils.UI import *
-from utils.image import get_user_avatar_url
+from utils.image import get_user_avatar_url, get_img_base64_str
 from .utils import get_targets
 
 config = create(GlobalConfig)
@@ -187,11 +188,64 @@ async def change_group_perm(
         GroupPerm,
         {"group_id": target_group.id, "group_name": target_group.name, "active": True, "perm": perm},
         [
-            GroupPerm.group_id == group.id
+            GroupPerm.group_id == target_group.id
         ]
     )
     return await app.send_message(group, MessageChain(
         f"已修改群{target_group.name}({target_group.id})权限为{perm}"
+    ), quote=source)
+
+
+# 查询VIP群
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.Admin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Distribute.require()
+)
+@dispatch(
+    Twilight([
+        FullMatch("VIP群列表"),
+        # 示例: VIP群列表
+    ])
+)
+async def get_vg_list(
+        app: Ariadne,
+        group: Group,
+        source: Source
+):
+    vip_group_list = []
+    if result := await orm.fetch_all(
+            select(GroupPerm.group_id).where(
+                GroupPerm.perm == 2,
+            )
+    ):
+        for item in result:
+            for k in core.total_groups:
+                for Group_item in core.total_groups[k]:
+                    Group_item: Group
+                    if Group_item.id == item[0] and Group_item not in vip_group_list:
+                        vip_group_list.append(Group_item)
+    if not vip_group_list:
+        return await app.send_message(group, MessageChain(
+            f"当前没有VIP群~"
+        ), quote=source)
+    vg_group_list_column = [ColumnTitle(title="VIP群列表")]
+    for Group_item in vip_group_list:
+        vg_group_list_column.append(
+            ColumnUserInfo(
+                name=f"{Group_item.name}({Group_item.id})",
+                avatar=get_img_base64_str(await Group_item.get_avatar())
+            )
+        )
+    vg_group_list_column = [Column(elements=vg_group_list_column[i: i + 20]) for i in
+                            range(0, len(vg_group_list_column), 20)]
+    return await app.send_message(group, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=vg_group_list_column, color_type="dark")
+        ))
     ), quote=source)
 
 
@@ -217,8 +271,12 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
             return await app.send_message(event.sender.group, MessageChain(
                 f"权限不足!(你的权限:{user_level}/需要权限:{Permission.Admin})"
             ), quote=source)
-        target_app = await account_controller.get_app_from_total_groups(group_id)
-        target_group = await target_app.get_group(group_id)
+        if group_id not in account_controller.total_groups:
+            return await app.send_message(event.sender.group, MessageChain(
+                f"没有找到群{group_id}~"
+            ), quote=source)
+        target_app: Ariadne = await account_controller.get_app_from_total_groups(group_id)
+        target_group: Group = await target_app.get_group(group_id)
     else:
         target_app = app
         target_group = group
@@ -231,15 +289,23 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     for member in await app.get_member_list(group_id):
         for item in perm_list:
             perm_dict[item[1]] = item[0]
-        if member.id not in perm_dict and Permission.perm_dict[member.permission.name] != 16:
-            perm_dict[member.id] = Permission.perm_dict[member.permission.name]
+        if member.id not in perm_dict and Permission.member_permStr_dict[member.permission.name] != 16:
+            perm_dict[member.id] = Permission.member_permStr_dict[member.permission.name]
     perm_dict = dict(sorted(perm_dict.items(), key=lambda x: x[1], reverse=True))
     """
     perm_dict = {
         qq: perm
     }
     """
-    perm_list_column = [ColumnTitle(title="权限列表")]
+    perm_list_column = [
+        ColumnUserInfo(
+            name=f"{target_group.name}({target_group.id})",
+            description=f"群权限为{await Permission.get_group_perm(target_group)}:"
+                        f"{Permission.group_str_dict[await Permission.get_group_perm(target_group)]}",
+            avatar=get_img_base64_str(await target_group.get_avatar())
+        ),
+        ColumnTitle(title="权限列表")
+    ]
     for member_id in perm_dict:
         try:
             member_item = await target_app.get_member(target_group, member_id)
@@ -248,7 +314,8 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
         perm_list_column.append(
             ColumnUserInfo(
                 name=f"{member_item.name}({member_id})" if member_item else member_id,
-                description=perm_dict[member_id],
+                description=f"{perm_dict[member_id]}——"
+                            f"{Permission.user_str_dict[perm_dict[member_id]]}",
                 avatar=await get_user_avatar_url(member_id)
             )
         )

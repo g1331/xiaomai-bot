@@ -115,6 +115,13 @@ class Umaru(object):
             for group in group_list:
                 if group.id == self.config.test_group:
                     perm = 3
+                elif await orm.fetch_one(
+                        select(GroupPerm.group_id).where(
+                            GroupPerm.perm == 2,
+                            GroupPerm.group_id == group.id
+                        )
+                ):
+                    perm = 2
                 else:
                     perm = 1
                 await orm.insert_or_update(

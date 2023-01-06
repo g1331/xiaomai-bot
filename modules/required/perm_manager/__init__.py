@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import yaml
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
@@ -20,7 +19,7 @@ from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
 
 from core.bot import Umaru
-from core.config import GlobalConfig, load_config
+from core.config import GlobalConfig
 from core.control import (
     Permission,
     Function,
@@ -281,26 +280,24 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
 async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, member_id: RegexResult, source: Source):
     action = action.result.display
     targets = get_targets(member_id.result)
-    config_path = Path().cwd() / "config.yaml"
-    with open(config_path, "r", encoding="utf-8") as f:
-        config_data = yaml.safe_load(f.read())
+    admin_list = await Permission.get_BotAdminsList()
     error_targets = []
     for target in targets:
         if action == "添加":
-            if target in config_data["Admins"]:
+            if target in admin_list:
                 error_targets.append((target, f"{target}已经是BOT管理啦!"))
             else:
-                config_data["Admins"].append(target)
-                with open(config_path, 'w', encoding="utf-8") as f:
-                    yaml.dump(config_data, f, allow_unicode=True)
-                await core.update_admins_permission()
+                await core.update_admins_permission([target])
         else:
-            if target not in config_data["Admins"]:
+            if target not in admin_list:
                 error_targets.append((target, f"{target}还不是BOT管理哦!"))
             else:
-                config_data["Admins"].remove(target)
-                with open(config_path, 'w', encoding="utf-8") as f:
-                    yaml.dump(config_data, f, allow_unicode=True)
+                await orm.delete(
+                    table=MemberPerm,
+                    condition=[
+                        MemberPerm.qq == target,
+                    ]
+                )
                 await core.update_admins_permission()
     response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
     if error_targets:
@@ -324,10 +321,10 @@ async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, membe
 ]))
 async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
     perm_list_column = [ColumnTitle(title="BOT管理列表")]
-    g_config = load_config()
-    if len(g_config.Admins) == 0:
+    admin_list = await Permission.get_BotAdminsList()
+    if len(admin_list) == 0:
         return await app.send_message(group, MessageChain("当前还没有BOT管理哦~"), quote=source)
-    for member_id in g_config.Admins:
+    for member_id in admin_list:
         try:
             member_item = await app.get_member(group, member_id)
         except:

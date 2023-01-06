@@ -28,6 +28,7 @@ from graia.saya.builtins.broadcast import BroadcastBehaviour
 from graiax.playwright import PlaywrightService
 from loguru import logger
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
 
 from core.config import GlobalConfig, load_config
@@ -112,11 +113,7 @@ class Umaru(object):
             self.total_groups[app.account] = group_list
             # 更新群组权限
             for group in group_list:
-                if group.id in self.config.black_group:
-                    perm = 0
-                elif group.id in self.config.vip_group:
-                    perm = 2
-                elif group.id == self.config.test_group:
+                if group.id == self.config.test_group:
                     perm = 3
                 else:
                     perm = 1
@@ -136,7 +133,7 @@ class Umaru(object):
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
         logger.success("bot初始化完成~")
 
-    # 更新master和admins权限
+    # 更新master权限
     async def update_host_permission(self):
         g_config = load_config()
         for bot_account in self.total_groups:
@@ -160,32 +157,23 @@ class Umaru(object):
                             MemberPerm.group_id == group.id
                         ]
                     )
-                for admin in g_config.Admins:
-                    if admin in member_list:
-                        await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": admin, "group_id": group.id, "perm": 128},
-                            condition=[
-                                MemberPerm.qq == admin,
-                                MemberPerm.group_id == group.id,
-                            ]
-                        )
-                    else:
-                        await orm.delete(
-                            table=MemberPerm,
-                            condition=[
-                                MemberPerm.qq == admin,
-                                MemberPerm.group_id == group.id
-                            ]
-                        )
 
-    async def update_admins_permission(self):
-        g_config = load_config()
+    # 更新admins权限
+    async def update_admins_permission(self, admin_list: list[int] = None):
+        if not admin_list:
+            if result := await orm.fetch_all(
+                    select(MemberPerm.qq).where(
+                        MemberPerm.perm == 128,
+                    )
+            ):
+                admin_list = [item[0] for item in result]
+            else:
+                return
         for bot_account in self.total_groups:
             for group in self.total_groups[bot_account]:
                 member_list = await Ariadne.current(bot_account).get_member_list(group)
                 member_list = [member.id for member in member_list]
-                for admin in g_config.Admins:
+                for admin in admin_list:
                     if admin in member_list:
                         await orm.insert_or_update(
                             table=MemberPerm,

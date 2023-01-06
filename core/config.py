@@ -9,11 +9,8 @@ from pydantic import BaseModel
 
 class GlobalConfig(BaseModel):
     Master: int
-    Admins: List[int]
     bot_accounts: List[int]
-    default_account: int or None
-    off_bots: List[int]
-    bot_blocked: List[int]
+    default_account: int
     mirai_host: str = "http://localhost:8080"
     verify_key: str = "1234567890"
     test_group: int

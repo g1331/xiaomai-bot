@@ -3,8 +3,6 @@ Master: Master
 Admins: []
 bot_accounts: []
 default_account: default_account
-bot_blocked: []
-off_bots: []
 GroupMsg_log: true
 test_group: test_group
 proxy: proxy

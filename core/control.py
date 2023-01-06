@@ -76,6 +76,19 @@ class Permission(object):
             select(MemberPerm.perm, MemberPerm.qq).where(MemberPerm.group_id == group_id)
         )
 
+    @staticmethod
+    async def get_BotAdminsList() -> list[int]:
+        admin_list = []
+        if result := await orm.fetch_all(
+                select(MemberPerm.qq).where(
+                    MemberPerm.perm == 128,
+                )
+        ):
+            for item in result:
+                if item[0] not in admin_list:
+                    admin_list.append(item[0])
+        return admin_list
+
     @classmethod
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
@@ -87,19 +100,18 @@ class Permission(object):
         group_id = event.sender.group.id if isinstance(event, GroupMessage) else None
         if not group_id:
             # 查询是否在全局黑当中
-            result = await orm.fetch_one(
-                select(MemberPerm.perm).where(
-                    MemberPerm.qq == sender.id,
-                    MemberPerm.group_id == 0
-                )
-            )
             # 如果有查询到数据，则返回用户的权限等级
-            if result:
+            if result := await orm.fetch_one(
+                    select(MemberPerm.perm).where(
+                        MemberPerm.qq == sender.id,
+                        MemberPerm.group_id == 0
+                    )
+            ):
                 return result[0]
             else:
                 if sender.id == global_config.Master:
                     return Permission.Master
-                elif sender.id in global_config.Admins:
+                elif sender.id in cls.get_BotAdminsList():
                     return Permission.Admin
                 else:
                     return Permission.User
@@ -160,11 +172,7 @@ class Permission(object):
             return result[0]
         # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
         else:
-            if group.id in global_config.black_group:
-                perm = 0
-            elif group.id in global_config.vip_group:
-                perm = 2
-            elif group.id == global_config.test_group:
+            if group.id == global_config.test_group:
                 perm = 3
             else:
                 perm = 1

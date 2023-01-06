@@ -1,27 +1,26 @@
-# 基本配置
-Master: 主人qq
+# bot基本配置
+Master: Master
 Admins: []
-bot_accounts: [bot账号列表]
-default_account: 默认bot账号
-off_bots: []
+bot_accounts: []
+default_account: default_account
 bot_blocked: []
-mirai_host: 你的mah配置例子如:http://localhost:8080
-verify_key: 你的verify_key
-test_group: 测试群群号-用于发送通知等
-vip_group: []
-black_group: []
-db_link: 数据库地址,默认为sqlite+aiosqlite:///data.db
-proxy: proxy
+off_bots: []
 GroupMsg_log: true
+test_group: test_group
+proxy: proxy
 
-# 日志相关
+# mah配置
+mirai_host: http://localhost:8080
+verify_key: verify_key
+
+# 数据库连接地址
+db_link: sqlite+aiosqlite:///data.db
+
+# 日志信息
 log_related:
-  error_retention: 14
   common_retention: 7
+  error_retention: 14
 
-# 战地一配置
+# 其他功能配置信息
 bf1:
   default_account: default_account
-
-# chatGPT配置
-openai_cookie: openai_cookie

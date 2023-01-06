@@ -129,6 +129,7 @@ class Umaru(object):
                 )
             # 更新成员权限
             await self.update_host_permission()
+            await self.update_admins_permission()
         logger.info("本次启动活动群组如下：")
         for account, group_list in self.total_groups.items():
             for group in group_list:
@@ -159,6 +160,31 @@ class Umaru(object):
                             MemberPerm.group_id == group.id
                         ]
                     )
+                for admin in g_config.Admins:
+                    if admin in member_list:
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": admin, "group_id": group.id, "perm": 128},
+                            condition=[
+                                MemberPerm.qq == admin,
+                                MemberPerm.group_id == group.id,
+                            ]
+                        )
+                    else:
+                        await orm.delete(
+                            table=MemberPerm,
+                            condition=[
+                                MemberPerm.qq == admin,
+                                MemberPerm.group_id == group.id
+                            ]
+                        )
+
+    async def update_admins_permission(self):
+        g_config = load_config()
+        for bot_account in self.total_groups:
+            for group in self.total_groups[bot_account]:
+                member_list = await Ariadne.current(bot_account).get_member_list(group)
+                member_list = [member.id for member in member_list]
                 for admin in g_config.Admins:
                     if admin in member_list:
                         await orm.insert_or_update(

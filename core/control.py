@@ -136,6 +136,8 @@ class Permission(object):
         async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
             # 获取并判断用户的权限等级
             if (user_level := await cls.get_user_perm(event)) < perm:
+                if user_level == Permission.GlobalBlack:
+                    raise ExecutionStop
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(
                         f"权限不足!(你的权限:{user_level}/需要权限:{perm})"

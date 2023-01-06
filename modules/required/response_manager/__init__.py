@@ -76,7 +76,9 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
     if type_now == "random":
         type_now = "随机"
     else:
-        type_now = "指定"
+        response_bot = await account_controller.get_response_account(target_group.id)
+        type_now = f"指定({response_bot})"
+
     bot_list_column = [
         ColumnUserInfo(
             name=f"{target_group.name}({target_group.id})",

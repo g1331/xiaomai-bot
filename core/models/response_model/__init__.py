@@ -86,7 +86,7 @@ class AccountController:
                 ]
             )
 
-    async def get_response_account(self, group_id: int):
+    async def get_response_account(self, group_id: int) -> int:
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
@@ -116,6 +116,8 @@ class AccountController:
         for member in member_list:
             if member.id in Ariadne.service.connections:
                 self.account_dict[group_id][len(self.account_dict[group_id])] = member.id
+        if await self.get_response_type(group_id) != "random":
+            return
         await orm.insert_or_update(
             GroupSetting,
             {"group_id": group_id, "response_type": "random"},
@@ -146,6 +148,8 @@ class AccountController:
                     for member in member_list:
                         if member.id in Ariadne.service.connections:
                             self.add_account(group.id, member.id)
+                    if await self.get_response_type(group.id) != "random":
+                        continue
                     await orm.insert_or_update(
                         GroupSetting,
                         {"group_id": group.id, "response_type": "random"},

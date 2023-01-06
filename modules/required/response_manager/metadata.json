@@ -1,0 +1,22 @@
+{
+      "level": 1,
+      "module_name": "ResponseManager",
+      "display_name": "响应管理",
+      "version": "0.1",
+      "author": ["十三"],
+      "description": "用于管理/查询多账户响应信息",
+      "usage": [
+            "在线BOT (群号)",
+            "BOT列表",
+            "设定响应 (群号) 随机/指定",
+            "(群号) 指定BOT bot账号"
+      ],
+      "example": [
+            "在线BOT 000",
+            "BOT列表",
+            "设定响应 000 指定",
+            "000 指定BOT 123"
+      ],
+      "default_switch": true,
+      "default_notice": false
+}

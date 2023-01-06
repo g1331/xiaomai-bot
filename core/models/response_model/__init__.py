@@ -5,7 +5,7 @@ from typing import Type, List
 
 from creart import create, CreateTargetInfo, AbstractCreator, exists_module, add_creator
 from graia.ariadne import Ariadne
-from graia.ariadne.model import Member
+from graia.ariadne.model import Member, Group
 from sqlalchemy import select
 
 from core.config import GlobalConfig
@@ -41,6 +41,11 @@ class AccountController:
         }
         """
         self.deterministic_account = {}
+        """
+        deterministic_account = {
+            group.id: index
+        }
+        """
         self.total_groups: dict = {}
         """
         total_groups = {
@@ -68,13 +73,30 @@ class AccountController:
         else:
             return "random"
 
+    @staticmethod
+    async def change_response_type(group_id: int, response_type: str):
+        if response_type not in ["random", "deterministic"]:
+            return
+        else:
+            return await orm.insert_or_update(
+                table=GroupSetting,
+                data={"group_id": group_id, "response_type": response_type},
+                condition=[
+                    GroupSetting.group_id == group_id
+                ]
+            )
+
     async def get_response_account(self, group_id: int):
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
 
-    async def get_app_from_total_groups(self, group_id: int) -> Ariadne:
-        return self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
+    async def get_app_from_total_groups(self, group_id: int) -> (Ariadne, Group):
+        if not (group_id in self.total_groups):
+            return None, None
+        app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
+        group = await app.get_group(group_id)
+        return app, group
 
     def check_initialization(self, group_id: int, bot_account: int):
         """检查群、对应账号是否初始化
@@ -140,7 +162,8 @@ class AccountController:
         self.account_dict[group_id][len(self.account_dict[group_id])] = bot_account
 
     def remove_account(self, group_id: int, bot_account: int):
-        if self.deterministic_account.get(group_id) and self.account_dict[self.deterministic_account[group_id]] == bot_account:
+        if self.deterministic_account.get(group_id) and \
+                self.account_dict[self.deterministic_account[group_id]] == bot_account:
             del self.deterministic_account[group_id]
         temp: dict = self.account_dict[group_id]
         self.account_dict[group_id] = {}

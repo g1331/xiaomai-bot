@@ -45,8 +45,8 @@ account_controller = response_model.get_acc_data()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("SayaManager")
-channel.description("负责插件管理(必须插件)")
+channel.name("PermissionManager")
+channel.description("负责权限管理(必须插件)")
 channel.author("13")
 channel.metadata = module_controller.get_metadata_from_file(Path(__file__))
 
@@ -93,8 +93,11 @@ async def change_user_perm(
             return await app.send_message(event.sender.group, MessageChain(
                 f"权限不足!(你的权限:{user_level}/需要权限:{Permission.BotAdmin})"
             ), quote=source)
-        target_app = await account_controller.get_app_from_total_groups(group_id)
-        target_group = await target_app.get_group(group_id)
+        target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
+        if not (target_app and target_group):
+            return await app.send_message(group, MessageChain(
+                f"没有找到目标群:{group_id}"
+            ), quote=source)
     else:
         target_app = app
         target_group = group
@@ -174,9 +177,8 @@ async def change_group_perm(
         return await app.send_message(group, MessageChain(
             f"请检查输入的权限(3/2/1/0)"
         ), quote=source)
-    target_app = await account_controller.get_app_from_total_groups(group_id)
-    target_group: Group = await target_app.get_group(group_id)
-    if not target_group:
+    target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
+    if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
             f"没有找到目标群:{group_id}"
         ), quote=source)
@@ -275,8 +277,11 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
             return await app.send_message(event.sender.group, MessageChain(
                 f"没有找到群{group_id}~"
             ), quote=source)
-        target_app: Ariadne = await account_controller.get_app_from_total_groups(group_id)
-        target_group: Group = await target_app.get_group(group_id)
+        target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
+        if not (target_app and target_group):
+            return await app.send_message(group, MessageChain(
+                f"没有找到目标群:{group_id}"
+            ), quote=source)
     else:
         target_app = app
         target_group = group

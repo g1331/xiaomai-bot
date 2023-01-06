@@ -233,8 +233,10 @@ modules = {
 
 ### response_manager(响应管理):
 修改多账户响应模式
-- [ ] set group response_type 设定多账户响应模式 随机/指定bot
-- [ ] set group account       设定指定响应bot
+- [x] 查询BOT列表
+- [x] 查询指定群的BOT
+- [x] 设定多账户响应模式 随机/指定bot
+- [ ] 设定指定响应bot
 
 
 ### helper(帮助菜单/功能管理):

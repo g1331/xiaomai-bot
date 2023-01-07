@@ -204,7 +204,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
                 ),
                 ColumnListItem(
                     subtitle="作者",
-                    content=",".join(module_metadata.author)
+                    content=",".join(module_metadata.authors)
                 )
             ]),
             ColumnTitle(title="描述"),

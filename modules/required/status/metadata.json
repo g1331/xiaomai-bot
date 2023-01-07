@@ -1,0 +1,18 @@
+{
+      "level": 1,
+      "name": "Status",
+      "display_name": "运行状态",
+      "version": "0.1",
+      "authors": [
+            "十三"
+      ],
+      "description": "查看BOT运行状态",
+      "usage": [
+            "发送 '-bot 来查看BOT运行状态"
+      ],
+      "example": [
+            "加-bot"
+      ],
+      "default_switch": true,
+      "default_notice": false
+}

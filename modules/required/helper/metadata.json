@@ -3,7 +3,7 @@
       "name": "Helper",
       "display_name": "帮助",
       "version": "0.1",
-      "author": ["十三"],
+      "authors": ["十三"],
       "description": "用于生成帮助菜单,管理群内功能开关",
       "usage": [
             "使用 ‘-开启/关闭 {功能编号}’ 来控制群内功能",

@@ -3,7 +3,7 @@
       "name": "PermManager",
       "display_name": "权限管理",
       "version": "0.1",
-      "author": [
+      "authors": [
             "十三"
       ],
       "description": "用于管理权限",

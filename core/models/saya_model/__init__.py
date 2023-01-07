@@ -23,7 +23,7 @@ class Metadata(BaseModel):
     name: str = ""
     display_name: str = ""
     version: str = "0.1"
-    author: List[str] = []
+    authors: List[str] = []
     description: str = ""
     usage: List[str] = []
     example: List[str] = []

@@ -171,12 +171,22 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
     if not (0 <= index < len(module_list)):
         return await app.send_message(group, MessageChain("编号不在范围内~"), quote=source)
     module_metadata = module_controller.get_metadata_from_module_name(module_list[index])
-    usage = [ColumnListItem(
-        content=use_item,
-    ) for use_item in module_metadata.usage]
-    example = [ColumnListItem(
-        content=example_item,
-    ) for example_item in module_metadata.example]
+    if module_metadata.usage:
+        usage = [ColumnListItem(
+            content=use_item,
+        ) for use_item in module_metadata.usage]
+    else:
+        usage = [ColumnListItem(
+            content="暂无",
+        )]
+    if module_metadata.example:
+        example = [ColumnListItem(
+            content=example_item,
+        ) for example_item in module_metadata.example]
+    else:
+        example = [ColumnListItem(
+            content="暂无",
+        )]
     # display_name
     # module_name
 
@@ -209,7 +219,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
             ]),
             ColumnTitle(title="描述"),
             ColumnList(rows=[ColumnListItem(
-                content=module_metadata.description,
+                content=module_metadata.description if module_metadata.description else "暂无",
             )]),
             ColumnTitle(title="用法"),
             ColumnList(

@@ -131,7 +131,7 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
     for bot_account in Ariadne.service.connections:
         bot_list_column.append(
             ColumnUserInfo(
-                name=f"{bot_account}",
+                name=f"{(await Ariadne.current(bot_account).get_bot_profile()).nickname}({bot_account})",
                 avatar=await get_user_avatar_url(bot_account)
             )
         )

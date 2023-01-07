@@ -106,6 +106,15 @@ class Permission(object):
                     admin_list.append(item[0])
         return admin_list
 
+    @staticmethod
+    async def require_user_perm(group_id: int, member_id: int, perm: int) -> bool:
+        if result := await orm.fetch_one(
+                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == member_id)
+        ):
+            return result[0] >= perm
+        else:
+            return Permission.User >= perm
+
     @classmethod
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """
@@ -333,7 +342,7 @@ class FrequencyLimitation(object):
                     frequency_controller.blacklist_notice(group_id, sender_id)
                 raise ExecutionStop
             current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
-            if (current_weight+weight) >= total_weights:
+            if (current_weight + weight) >= total_weights:
                 await app.send_message(
                     event.sender.group,
                     MessageChain(f"超过频率调用限制!({current_weight}/{total_weights})"),

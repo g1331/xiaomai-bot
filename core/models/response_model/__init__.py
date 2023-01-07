@@ -12,7 +12,7 @@ from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import GroupSetting
 
-res_data_instance = None
+account_controller_instance = None
 config = create(GlobalConfig)
 
 
@@ -176,11 +176,11 @@ class AccountController:
             self.account_dict[group_id][index] = bots_list[index]
 
 
-def get_acc_data():
-    global res_data_instance
-    if not res_data_instance:
-        res_data_instance = create(AccountController)
-    return res_data_instance
+def get_acc_controller():
+    global account_controller_instance
+    if not account_controller_instance:
+        account_controller_instance = create(AccountController)
+    return account_controller_instance
 
 
 class AccountControllerClassCreator(AbstractCreator, ABC):

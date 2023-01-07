@@ -132,8 +132,8 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 @bcc.receiver(AccountLaunch)
 async def init():
     await core.initialize()
-    await frequency_model.get_frequency_data().limited()
-    await response_model.get_acc_data().init_all_group()
+    await frequency_model.get_frequency_controller().limited()
+    await response_model.get_acc_controller().init_all_group()
 
 
 if __name__ == "__main__":

@@ -29,14 +29,14 @@ from utils.waiter import ConfirmWaiter
 
 config = create(GlobalConfig)
 core = create(Umaru)
-module_controller = saya_model.get_module_data()
+module_controller = saya_model.get_module_controller()
 
 saya = Saya.current()
 channel = Channel.current()
 channel.name("SayaManager")
 channel.description("负责插件管理(必须插件)")
 channel.author("13")
-channel.metadata = module_controller.get_metadata_from_file(Path(__file__))
+channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(saya.broadcast)
 
@@ -86,7 +86,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
         loaded_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题
-                subtitle=f"{i + 1}.{module_controller.get_metadata_from_file(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
                 # 内容
                 content=channel_temp,
                 # 开关指示
@@ -101,7 +101,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
         unloaded_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题
-                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_file(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
                 # 内容
                 content=channel_temp,
             )
@@ -125,11 +125,13 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     FrequencyLimitation.require(channel.module),
     Distribute.require()
 )
-@dispatch(Twilight([
-    UnionMatch("加载", "卸载", "重载") @ "operation",
-    FullMatch("插件"),
-    RegexMatch("[0-9]+") @ "index"
-]))
+@dispatch(
+    Twilight([
+        UnionMatch("加载", "卸载", "重载") @ "operation",
+        FullMatch("插件"),
+        RegexMatch("[0-9]+") @ "index"
+    ])
+)
 async def change_module_status(
         app: Ariadne,
         group: Group,
@@ -176,11 +178,13 @@ async def change_module_status(
     FrequencyLimitation.require(channel.module),
     Distribute.require()
 )
-@dispatch(Twilight([
-    UnionMatch("开启", "关闭") @ "operation",
-    FullMatch("插件"),
-    RegexMatch("[0-9]+") @ "index"
-]))
+@dispatch(
+    Twilight([
+        UnionMatch("开启", "关闭") @ "operation",
+        FullMatch("插件"),
+        RegexMatch("[0-9]+") @ "index"
+    ])
+)
 async def switch_module(
         app: Ariadne,
         group: Group,

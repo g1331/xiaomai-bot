@@ -233,7 +233,7 @@ class Function(object):
         async def judge(app: Ariadne, group: Group or None = None,
                         source: Source or None = None):
             # 如果module_name不在modules_list里面就添加
-            modules_data = saya_model.get_module_data()
+            modules_data = saya_model.get_module_controller()
             if module_name not in modules_data.modules:
                 modules_data.add_module(module_name)
             if not group:
@@ -272,7 +272,7 @@ class Distribute(object):
 
         async def wrapper(group: Group, app: Ariadne):
             group_id = group.id
-            account_data = response_model.get_acc_data()
+            account_data = response_model.get_acc_controller()
             bot_account = app.account
             if len(Ariadne.service.connections.keys()) == 1:
                 return
@@ -321,18 +321,18 @@ class FrequencyLimitation(object):
                 return
             if await Permission.get_user_perm(event) >= override_perm:
                 return
-            frequency_data = frequency_model.get_frequency_data()
-            frequency_data.add_weight(module_name, group_id, sender_id, weight)
+            frequency_controller = frequency_model.get_frequency_controller()
+            frequency_controller.add_weight(module_name, group_id, sender_id, weight)
             # 如果已经在黑名单则返回
-            if frequency_data.blacklist_judge(group_id, sender_id):
-                if not frequency_data.blacklist_noticed_judge(group_id, sender_id):
+            if frequency_controller.blacklist_judge(group_id, sender_id):
+                if not frequency_controller.blacklist_noticed_judge(group_id, sender_id):
                     await app.send_message(
                         event.sender.group, MessageChain("检测到大量请求,加入黑名单20分钟!"),
                         quote=src
                     )
-                    frequency_data.blacklist_notice(group_id, sender_id)
+                    frequency_controller.blacklist_notice(group_id, sender_id)
                 raise ExecutionStop
-            current_weight = frequency_data.get_weight(module_name, group_id, sender_id)
+            current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
             if current_weight >= total_weights:
                 await app.send_message(
                     event.sender.group,

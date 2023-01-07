@@ -40,15 +40,15 @@ from .utils import get_targets
 config = create(GlobalConfig)
 core = create(Umaru)
 
-module_controller = saya_model.get_module_data()
-account_controller = response_model.get_acc_data()
+module_controller = saya_model.get_module_controller()
+account_controller = response_model.get_acc_controller()
 
 saya = Saya.current()
 channel = Channel.current()
 channel.name("PermissionManager")
 channel.description("负责权限管理(必须插件)")
 channel.author("13")
-channel.metadata = module_controller.get_metadata_from_file(Path(__file__))
+channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 # >=64可修改当前群的用户权限

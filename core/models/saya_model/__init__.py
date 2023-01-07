@@ -15,7 +15,7 @@ from core.bot import Umaru
 
 saya = create(Saya)
 core = create(Umaru)
-module_data_instance = None
+module_controller_instance = None
 
 
 class Metadata(BaseModel):
@@ -77,13 +77,15 @@ class ModulesController:
         self.groups = groups or {}
 
     @staticmethod
-    def get_metadata_from_file(module_path: str) -> Metadata:
-        module_path = Path(module_path)
+    def get_metadata_from_path(module_path: Path) -> Metadata:
+        """
+        传入插件路径
+        """
         # 如果是文件夹就找文件夹内的metadata.json
         if module_path.is_dir():
             metadata_path = module_path / 'metadata.json'
             if metadata_path.is_file():
-                with open(metadata_path, "r") as r:
+                with open(metadata_path, "r", encoding="utf-8") as r:
                     data = json.load(r)
                 return Metadata(**data)
         else:
@@ -103,6 +105,18 @@ class ModulesController:
             data = json.load(r)
         return Metadata(**data)
 
+    @staticmethod
+    def get_metadata_from_module_name(module_name: str) -> Metadata:
+        """
+        传入插件名
+        """
+        paths = module_name.split('.')
+        base_path = Path().cwd()
+        for path in paths:
+            base_path = base_path / path
+        module_path = Path(base_path)
+        return ModulesController.get_metadata_from_path(module_path)
+
     def add_group(self, group: Group or int or str):
         """如果module默认为开，且群不在module数据内则添加"""
         if isinstance(group, Group):
@@ -111,7 +125,7 @@ class ModulesController:
         if group_id not in self.groups:
             self.groups[group_id] = {}
         for key in self.modules:
-            module = self.get_metadata_from_file(key)
+            module = self.get_metadata_from_module_name(key)
             if module.default_switch:
                 if group_id not in self.modules[key]:
                     self.modules[key][group_id] = {
@@ -134,7 +148,7 @@ class ModulesController:
 
     def add_module(self, module_name: str):
         """如果插件不在modules字典内就添加,读取modules元数据,尝试进行初始化"""
-        module = self.get_metadata_from_file(module_name)
+        module = self.get_metadata_from_module_name(module_name)
         if module_name not in self.modules:
             self.modules[module_name] = {
                 group: {
@@ -199,7 +213,7 @@ class ModulesController:
                 self.add_group(group_id)
             if group_id in self.modules[module_name]:
                 return self.modules[module_name][group_id]["switch"]
-        module = self.get_metadata_from_file(module_name)
+        module = self.get_metadata_from_module_name(module_name)
         return module.default_switch
 
     def if_module_notice_on(self, module_name: str, group: Group or int or str) -> bool:
@@ -219,7 +233,7 @@ class ModulesController:
                 self.add_group(group_id)
             if group_id in self.modules[module_name]:
                 return self.modules[module_name][group_id]["notice"]
-        module = self.get_metadata_from_file(module_name)
+        module = self.get_metadata_from_module_name(module_name)
         return module.default_notice
 
     def module_available_change(self, module_name: str, status: bool):
@@ -328,11 +342,11 @@ class ModulesController:
         return [c for c in saya.channels.keys() if c.startswith("modules.required")]
 
 
-def get_module_data():
-    global module_data_instance
-    if not module_data_instance:
-        module_data_instance = create(ModulesController)
-    return module_data_instance
+def get_module_controller():
+    global module_controller_instance
+    if not module_controller_instance:
+        module_controller_instance = create(ModulesController)
+    return module_controller_instance
 
 
 class ModulesControllerClassCreator(AbstractCreator, ABC):

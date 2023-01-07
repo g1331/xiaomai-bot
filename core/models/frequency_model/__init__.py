@@ -5,7 +5,7 @@ from typing import Type
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
 
-frequency_data_instance = None
+frequency_controller_instance = None
 
 
 class FrequencyController(object):
@@ -114,11 +114,11 @@ class FrequencyController(object):
                 self.frequency_dict[module][group] = {}
 
 
-def get_frequency_data():
-    global frequency_data_instance
-    if not frequency_data_instance:
-        frequency_data_instance = create(FrequencyController)
-    return frequency_data_instance
+def get_frequency_controller():
+    global frequency_controller_instance
+    if not frequency_controller_instance:
+        frequency_controller_instance = create(FrequencyController)
+    return frequency_controller_instance
 
 
 class FrequencyControllerClassCreator(AbstractCreator, ABC):

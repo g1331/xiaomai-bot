@@ -1,6 +1,5 @@
 # bot基本配置
 Master: Master
-Admins: []
 bot_accounts: []
 default_account: default_account
 GroupMsg_log: true

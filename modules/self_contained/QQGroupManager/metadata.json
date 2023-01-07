@@ -1,0 +1,21 @@
+{
+  "level": 1,
+  "name": "QQGroupManager",
+  "display_name": "QQ群管",
+  "version": "0.1",
+  "authors": [
+    "13"
+  ],
+  "description": "简易的qq群管理功能",
+  "usage": [
+    "1.回复消息 加精/设精 可将消息加入群精华",
+    "2.回复消息/At成员 禁言 (分钟) 可将回复对象禁言(默认2min)",
+    "3.发送消息 全体禁言 (仅群管理/群主)",
+    "4.发送消息 关闭全体禁言 (仅群管理/群主)",
+    "5.回复消息 解禁 可将回复对象解禁",
+    "6.回复消息 撤回 可将回复对象消息撤回"
+  ],
+  "example": [],
+  "default_switch": true,
+  "default_notice": false
+}

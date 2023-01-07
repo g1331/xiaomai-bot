@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Literal
 
@@ -70,8 +71,17 @@ class Column(BaseModel):
 
 
 class GenForm(BaseModel):
+
+    @staticmethod
+    def get_color_type():
+        now = datetime.now()
+        hour = now.hour
+        if 7 <= hour < 18:
+            return 'light'
+        else:
+            return 'dark'
     columns: List[Column] = []
-    color_type: Literal["light", "dark"] = "light"
+    color_type: Literal["light", "dark"] = get_color_type()
     load_awesome_font: bool = False
     body_width: int = 580
 

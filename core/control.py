@@ -333,10 +333,10 @@ class FrequencyLimitation(object):
                     frequency_controller.blacklist_notice(group_id, sender_id)
                 raise ExecutionStop
             current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
-            if current_weight >= total_weights:
+            if (current_weight+weight) >= total_weights:
                 await app.send_message(
                     event.sender.group,
-                    MessageChain("超过频率调用限制!"),
+                    MessageChain(f"超过频率调用限制!({current_weight}/{total_weights})"),
                     quote=src,
                 )
                 raise ExecutionStop
@@ -351,7 +351,7 @@ class Config(object):
     def require(cls, key_string):
         async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
             paths = key_string.split(".")
-            current = global_config
+            current: GlobalConfig = global_config
             for path in paths:
                 if isinstance(current, (GlobalConfig, Dict)):
                     if isinstance(current, Dict):
@@ -363,7 +363,7 @@ class Config(object):
                             return
                     elif isinstance(current, GlobalConfig):
                         # 如果 current 不是字典类型，则尝试使用 getattr 获取属性值
-                        current = getattr(current, path, "缺少配置: {}".format(key_string))
+                        current = getattr(current, path, "缺少配置:{}".format(key_string))
                         if isinstance(current, Dict):
                             continue
                         elif (not isinstance(current, Dict)) and current != path:
@@ -377,7 +377,7 @@ class Config(object):
                     return
             # 如果遍历完所有的 key 后 current 仍然不是值类型，说明配置信息不存在，返回 "缺少配置: {}"
             await app.send_message(event.sender.group, MessageChain(
-                "缺少配置: {}".format(key_string)
+                "缺少配置:{}".format(key_string)
             ), quote=source)
             raise ExecutionStop
 

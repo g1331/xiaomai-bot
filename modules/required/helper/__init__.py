@@ -80,7 +80,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
     example = [ColumnListItem(
         content=example_item,
     ) for example_item in channel.metadata.example]
-    dirs = [e for e in (Path("statics") / "Emoticons").iterdir() if not str(e).endswith("gif")]
+    dirs = [e for e in (Path("statics") / "Emoticons").iterdir()]
 
     # 必须插件
     required_columns = [
@@ -134,7 +134,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
     module_columns = [Column(elements=module_columns[i: i + 20]) for i in range(0, len(module_columns), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=required_columns + module_columns, color_type="dark")
+            GenForm(columns=required_columns + module_columns)
         ))
     ), quote=source)
 
@@ -224,7 +224,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
 
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=module_column, color_type="dark")
+            GenForm(columns=module_column)
         ))
     ), quote=source)
 
@@ -268,9 +268,13 @@ async def change_module_switch(app: Ariadne,
     if target_module in required_module_list:
         return await app.send_message(group, MessageChain(f"无法操作必须插件<{target_name}>"), quote=source)
     if operation == "开启" and module_controller.if_module_switch_on(target_module, group):
-        return await app.send_message(group, MessageChain(f"功能{target_name}已处于{operation}状态请不要重复{operation}!"), quote=source)
+        return await app.send_message(group, MessageChain(
+            f"功能{target_name}已处于{operation}状态请不要重复{operation}!"
+        ), quote=source)
     elif operation == "关闭" and not module_controller.if_module_switch_on(target_module, group):
-        return await app.send_message(group, MessageChain(f"功能{target_name}已处于{operation}状态请不要重复{operation}!"), quote=source)
+        return await app.send_message(group, MessageChain(
+            f"功能{target_name}已处于{operation}状态请不要重复{operation}!"
+        ), quote=source)
     if operation == "开启":
         module_controller.turn_on_module(target_module, group)
         return await app.send_message(group, MessageChain(f"功能<{target_name}>已开启~"), quote=source)

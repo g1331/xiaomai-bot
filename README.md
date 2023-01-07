@@ -182,7 +182,7 @@ metadata.json:
     "name": "文件名",
     "display_name": "显示名字",
     "version": "0.0.1",
-    "author": ["作者"],
+    "authors": ["作者"],
     "description": "描述",
     "usage": ["用法"],
     "example": ["例子"],

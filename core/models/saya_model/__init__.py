@@ -40,10 +40,8 @@ class ModuleOperationType(Enum):
 class ModulesController:
     """插件控制器
     插件数据
-    modules_data.json:
-    {
-        "modules": {
-            "module_name": {
+    self.modules={
+        "module_name": {
                 "groups": {
                     "group_id": {
                         "switch": "bool",
@@ -52,12 +50,12 @@ class ModulesController:
                 },
                 "available": "bool"
             },
-            "module2": {}
-        }
+        "module2": {}
     }
+
     
     插件元数据
-    module.metadata:
+    module.metadata=
     {
         "level": "插件等级1/2/3",
         "name": "名字",
@@ -74,6 +72,20 @@ class ModulesController:
 
     def __init__(self, modules=None, groups=None):
         self.modules = modules or {}
+        """
+        {
+            "module_name": {
+                    "groups": {
+                        "group_id": {
+                            "switch": "bool",
+                            "notice": "bool"
+                        }
+                    },
+                    "available": "bool"
+                },
+            "module2": {}
+        }
+        """
         self.groups = groups or {}
 
     @staticmethod
@@ -165,7 +177,7 @@ class ModulesController:
             del self.modules[module_name]
         self.save()
 
-    def change_group_module(self, module_name: str, key: str, group: Group or int or str, value: bool):
+    def change_group_module(self, module_name: str, group: Group or int or str, key: str, value: bool):
         """群插件状态变更"""
         if isinstance(group, Group):
             group = group.id
@@ -342,7 +354,7 @@ class ModulesController:
         return [c for c in saya.channels.keys() if c.startswith("modules.required")]
 
 
-def get_module_controller():
+def get_module_controller() -> ModulesController:
     global module_controller_instance
     if not module_controller_instance:
         module_controller_instance = create(ModulesController)

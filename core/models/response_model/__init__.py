@@ -176,7 +176,7 @@ class AccountController:
             self.account_dict[group_id][index] = bots_list[index]
 
 
-def get_acc_controller():
+def get_acc_controller() -> AccountController:
     global account_controller_instance
     if not account_controller_instance:
         account_controller_instance = create(AccountController)

@@ -41,7 +41,6 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 inc = InterruptControl(saya.broadcast)
 
 
-# TODO
 #   插件列表
 #   已加载插件
 #   未加载插件
@@ -141,12 +140,13 @@ async def change_module_status(
         index: RegexResult
 ):
     operation = operation.result.display
-    index = int(index.result.display)
+    index = int(index.result.display) if index.result.display.isdigit() else None
+    if not index:
+        return await app.send_message(group, MessageChain(f"请检查输入的编号!"), quote=source)
     if operation == "加载":
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
         operation_type = saya_model.ModuleOperationType.UNINSTALL if operation == "卸载" else saya_model.ModuleOperationType.RELOAD
-    index = index.result
     modules = module_controller.get_installed_channels() + module_controller.get_not_installed_channels()
     module = modules[index - 1]
     if index == 0 or index > len(modules):

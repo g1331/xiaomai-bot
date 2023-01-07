@@ -233,25 +233,25 @@ class Function(object):
         async def judge(app: Ariadne, group: Group or None = None,
                         source: Source or None = None):
             # 如果module_name不在modules_list里面就添加
-            modules_data = saya_model.get_module_controller()
-            if module_name not in modules_data.modules:
-                modules_data.add_module(module_name)
+            module_controller = saya_model.get_module_controller()
+            if module_name not in module_controller.modules:
+                module_controller.add_module(module_name)
             if not group:
                 return
             # 如果group不在modules里面就添加
-            if str(group.id) not in modules_data.modules[module_name]:
-                modules_data.add_group(group)
+            if str(group.id) not in module_controller.modules[module_name]:
+                module_controller.add_group(group)
             # 如果在维护就停止
-            if not modules_data.if_module_available(module_name):
-                if modules_data.if_module_notice_on(module_name, group):
+            if not module_controller.if_module_available(module_name):
+                if module_controller.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
                         f"{module_name}插件正在维护~"
                     ), quote=source)
                 raise ExecutionStop
             else:
                 # 如果群未打开开关就停止
-                if not modules_data.if_module_switch_on(module_name, group):
-                    if modules_data.if_module_notice_on(module_name, group):
+                if not module_controller.if_module_switch_on(module_name, group):
+                    if module_controller.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
                             f"{module_name}插件已关闭,请联系管理员"
                         ), quote=source)
@@ -272,18 +272,18 @@ class Distribute(object):
 
         async def wrapper(group: Group, app: Ariadne):
             group_id = group.id
-            account_data = response_model.get_acc_controller()
+            account_controller = response_model.get_acc_controller()
             bot_account = app.account
             if len(Ariadne.service.connections.keys()) == 1:
                 return
-            if not account_data.check_initialization(group_id, bot_account):
-                await account_data.init_group(group_id, bot_account)
+            if not account_controller.check_initialization(group_id, bot_account):
+                await account_controller.init_group(group_id, await app.get_member_list(group_id), bot_account)
                 raise ExecutionStop
-            res_acc = await account_data.get_response_account(group_id)
+            res_acc = await account_controller.get_response_account(group_id)
             if res_acc not in Ariadne.service.connections:
-                account_data.account_dict.pop(group_id)
+                account_controller.account_dict.pop(group_id)
                 raise ExecutionStop
-            if bot_account != await account_data.get_response_account(group_id):
+            if bot_account != await account_controller.get_response_account(group_id):
                 raise ExecutionStop
             return Depend(wrapper)
 

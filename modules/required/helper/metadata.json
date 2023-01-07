@@ -1,18 +1,18 @@
 {
       "level": 1,
-      "module_name": "Helper",
+      "name": "Helper",
       "display_name": "帮助",
       "version": "0.1",
       "author": ["十三"],
       "description": "用于生成帮助菜单,管理群内功能开关",
       "usage": [
-            "帮助",
-            "-开启/关闭 {功能编号}"
+            "使用 ‘-开启/关闭 {功能编号}’ 来控制群内功能",
+            "使用 ‘帮助 {功能编号}’ 来查看功能的具体信息"
       ],
       "example": [
-            "帮助",
             "-开启 1",
-            "-关闭 2"
+            "-关闭 2",
+            "帮助 3"
       ],
       "default_switch": true,
       "default_notice": false

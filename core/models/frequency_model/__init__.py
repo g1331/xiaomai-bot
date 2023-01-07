@@ -114,7 +114,7 @@ class FrequencyController(object):
                 self.frequency_dict[module][group] = {}
 
 
-def get_frequency_controller():
+def get_frequency_controller() -> FrequencyController:
     global frequency_controller_instance
     if not frequency_controller_instance:
         frequency_controller_instance = create(FrequencyController)

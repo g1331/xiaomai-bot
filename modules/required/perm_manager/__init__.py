@@ -35,7 +35,7 @@ from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm
 from utils.UI import *
 from utils.image import get_user_avatar_url, get_img_base64_str
-from .utils import get_targets
+from utils.parse_messagechain import get_targets
 
 config = create(GlobalConfig)
 core = create(Umaru)

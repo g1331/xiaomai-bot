@@ -1,9 +1,11 @@
 {
       "level": 1,
-      "module_name": "SayaManager",
+      "name": "SayaManager",
       "display_name": "插件管理",
       "version": "0.1",
-      "author": ["十三"],
+      "author": [
+            "十三"
+      ],
       "description": "用于管理插件",
       "usage": [
             "发送 '开启/关闭插件 {编号}' 来修改已加载插件的可用状态",

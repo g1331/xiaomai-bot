@@ -1,9 +1,11 @@
 {
       "level": 1,
-      "module_name": "PermManager",
+      "name": "PermManager",
       "display_name": "权限管理",
       "version": "0.1",
-      "author": ["十三"],
+      "author": [
+            "十三"
+      ],
       "description": "用于管理权限",
       "usage": [
             "修改/查询 群和权限列表,增删BOT管理",

@@ -104,7 +104,7 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
             )
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=[Column(elements=bot_list_column)])
+            GenForm(columns=[Column(elements=bot_list_column)], color_tupe=get_color_type_follow_time())
         ))
     ), quote=source)
 
@@ -132,12 +132,13 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
         bot_list_column.append(
             ColumnUserInfo(
                 name=f"{(await Ariadne.current(bot_account).get_bot_profile()).nickname}({bot_account})",
+                description=f"已加入{len(await Ariadne.current(bot_account).get_group_list())}个群",
                 avatar=await get_user_avatar_url(bot_account)
             )
         )
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=[Column(elements=bot_list_column)])
+            GenForm(columns=[Column(elements=bot_list_column)], color_tupe=get_color_type_follow_time())
         ))
     ), quote=source)
 

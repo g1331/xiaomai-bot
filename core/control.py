@@ -115,6 +115,14 @@ class Permission(object):
         else:
             return Permission.User >= perm
 
+    @staticmethod
+    async def require_group_perm(group_id: int, perm: int) -> bool:
+        if result := await orm.fetch_one(select(GroupPerm.perm).where(
+                GroupPerm.group_id == group_id)):
+            return result[0] >= perm
+        else:
+            return Permission.ActiveGroup >= perm
+
     @classmethod
     async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
         """

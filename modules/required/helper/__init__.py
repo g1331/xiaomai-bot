@@ -134,7 +134,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
     module_columns = [Column(elements=module_columns[i: i + 20]) for i in range(0, len(module_columns), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=required_columns + module_columns)
+            GenForm(columns=required_columns + module_columns, color_tupe=get_color_type_follow_time())
         ))
     ), quote=source)
 
@@ -234,7 +234,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
 
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=module_column)
+            GenForm(columns=module_column, color_tupe=get_color_type_follow_time())
         ))
     ), quote=source)
 

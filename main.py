@@ -34,7 +34,7 @@ saya = create(Saya)
 
 
 @bcc.receiver(GroupMessage)
-async def group_message_handler(app: Ariadne, message: MessageChain, group: Group, member: Member):
+async def group_message_listener(app: Ariadne, message: MessageChain, group: Group, member: Member):
     core.received_count += 1
     if core.config.GroupMsg_log:
         bot_member = await app.get_friend(app.account)
@@ -46,6 +46,7 @@ async def group_message_handler(app: Ariadne, message: MessageChain, group: Grou
 
 @bcc.receiver(FriendMessage)
 async def friend_message_listener(app: Ariadne, friend: Friend, message: MessageChain):
+    core.received_count += 1
     message_text_log = message.display.replace("\n", "\\n").strip()
     bot_member = await app.get_bot_profile()
     logger.info(
@@ -75,7 +76,6 @@ async def friend_message_speaker(app: Ariadne, event: ActiveFriendMessage):
 
 @bcc.receiver(NudgeEvent)
 async def nudged_listener(app: Ariadne, event: NudgeEvent):
-    core.sent_count += 1
     bot_member = await app.get_bot_profile()
     if event.target != app.account or event.supplicant == app.account:
         return

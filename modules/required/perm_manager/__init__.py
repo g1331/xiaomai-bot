@@ -408,7 +408,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     """
     perm_list = await Permission.get_users_perm_byID(group_id)
     perm_dict = {}
-    for member in await app.get_member_list(group_id):
+    for member in await target_app.get_member_list(group_id):
         for item in perm_list:
             perm_dict[item[1]] = item[0]
         if member.id not in perm_dict and Permission.member_permStr_dict[member.permission.name] != 16:

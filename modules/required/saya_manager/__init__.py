@@ -108,7 +108,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     unloaded_columns = [Column(elements=unloaded_columns[i: i + 20]) for i in range(0, len(unloaded_columns), 20)]
     return await app.send_message(ori_place, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=[menu_column] + loaded_columns + unloaded_columns, color_tupe=get_color_type_follow_time())
+            GenForm(columns=[menu_column] + loaded_columns + unloaded_columns, color_type=get_color_type_follow_time())
         ))
     ), quote=src)
 

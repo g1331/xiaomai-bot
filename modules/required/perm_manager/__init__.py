@@ -362,7 +362,7 @@ async def get_vg_list(
                             range(0, len(vg_group_list_column), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=vg_group_list_column, color_tupe=get_color_type_follow_time())
+            GenForm(columns=vg_group_list_column, color_type=get_color_type_follow_time())
         ))
     ), quote=source)
 
@@ -446,7 +446,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())
+            GenForm(columns=perm_list_column, color_type=get_color_type_follow_time())
         ))
     ), quote=source)
 
@@ -529,6 +529,6 @@ async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
     perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
-            GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())
+            GenForm(columns=perm_list_column, color_type=get_color_type_follow_time())
         ))
     ), quote=source)

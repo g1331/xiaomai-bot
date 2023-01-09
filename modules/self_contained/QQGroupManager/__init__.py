@@ -3,7 +3,6 @@ from pathlib import Path
 
 from creart import create
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event import MiraiEvent
 from graia.ariadne.event.message import GroupMessage, MessageEvent
 from graia.ariadne.event.mirai import BotInvitedJoinGroupRequestEvent
 from graia.ariadne.message.chain import MessageChain

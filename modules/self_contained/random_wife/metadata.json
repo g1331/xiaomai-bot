@@ -1,0 +1,25 @@
+{
+  "level": 1,
+  "name": "RandomWife",
+  "version": "0.1",
+  "display_name": "随机老婆",
+  "authors": [
+    "13"
+  ],
+  "description": "生成随机老婆图片的插件",
+  "usage": [
+    "在群中发送 -随机<老婆/wife>",
+    "在群中发送 -离婚 可放弃老婆",
+    "连续抽到两次别人的老婆可以抢走他的老婆",
+    "管理员:",
+    "-添加wife 名字 图片",
+    "-删除wife 名字"
+  ],
+  "example": [
+    "-随机老婆",
+    "-随机wife",
+    "-抽老婆"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

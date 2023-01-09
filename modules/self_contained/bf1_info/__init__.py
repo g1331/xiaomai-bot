@@ -19,7 +19,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as graia_Image
+from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.element import Source, At
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
     PRESERVE, UnionMatch
@@ -605,7 +605,9 @@ async def bg_change(app: Ariadne, group: Group, sender: Member, bg_rank: RegexRe
         # 如果是图片则下载
         if img.display == '[图片]':
             try:
-                img_url = img[1].url
+                img: MessageChain
+                img_url: GraiaImage = img[GraiaImage]
+                img_url = img_url.url
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'
                 }
@@ -724,7 +726,7 @@ async def bg_check(app: Ariadne, group: Group, sender: Member, source: Source):
         temp.save(SavePic, quality=95)
         message_send = MessageChain(
             f"你当前有{len(bg_list)}张背景:\n",
-            graia_Image(path=SavePic)
+            GraiaImage(path=SavePic)
         )
         await app.send_message(group, message_send, quote=source)
         return
@@ -1054,7 +1056,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
     start_time4 = time.time()
 
     # message_send = MessageChain([At(sender), graia_Image(base64=ls_f)])
-    message_send = MessageChain(graia_Image(path=SavePic))
+    message_send = MessageChain(GraiaImage(path=SavePic))
 
     # logger.info(message_send)
     await app.send_message(group, message_send, quote=source)
@@ -1373,7 +1375,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
     start_time4 = time.time()
     await app.send_message(group, MessageChain(
         # At(sender.id),
-        graia_Image(path=SavePic)
+        GraiaImage(path=SavePic)
     ), quote=source)
     end_time4 = time.time()
     logger.info(f"发送耗时:{end_time4 - start_time4}秒")
@@ -2112,12 +2114,12 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     if not if_cheat:
         await app.send_message(group, MessageChain(
             # At(sender.id),
-            graia_Image(path=SavePic)
+            GraiaImage(path=SavePic)
         ), quote=source)
     else:
         await app.send_message(group, MessageChain(
             # At(sender.id),
-            graia_Image(path=SavePic),
+            GraiaImage(path=SavePic),
             f"案件地址:{bf_url}"
         ), quote=source)
     end_time4 = time.time()
@@ -3005,7 +3007,8 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
             # 如果是图片则下载
             if img.display == '[图片]':
                 try:
-                    img_url = img[1].url
+                    img_url: GraiaImage = img[GraiaImage]
+                    img_url = img_url.url
                     headers = {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'
                     }
@@ -3553,7 +3556,7 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
         i -= 1
         file_path = f'./data/battlefield/exchange/{(date.today() + timedelta(days=i)).strftime("%#m月%#d日")}.png'
     await app.send_message(group, MessageChain(
-        At(sender), graia_Image(path=file_path), f"\n更新日期:{file_path[file_path.rfind('/') + 1:].replace('.png', '')}"
+        At(sender), GraiaImage(path=file_path), f"\n更新日期:{file_path[file_path.rfind('/') + 1:].replace('.png', '')}"
     ))
     jh_time = (date.today() + timedelta(days=0)).strftime("%#m月%#d日")
     session = await record.get_session()
@@ -3766,27 +3769,27 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
         return True
     if resv_message == "武器":
         await app.send_message(group, MessageChain(
-            graia_Image(path="./data/battlefield/pic/百科/百科武器.jpg")
+            GraiaImage(path="./data/battlefield/pic/百科/百科武器.jpg")
         ), quote=source)
         return True
     if resv_message == "载具":
         await app.send_message(group, MessageChain(
-            graia_Image(path="./data/battlefield/pic/百科/百科载具.jpg")
+            GraiaImage(path="./data/battlefield/pic/百科/百科载具.jpg")
         ), quote=source)
         return True
     if resv_message == "战略":
         await app.send_message(group, MessageChain(
-            graia_Image(path="./data/battlefield/pic/百科/百科战略.jpg")
+            GraiaImage(path="./data/battlefield/pic/百科/百科战略.jpg")
         ), quote=source)
         return True
     if resv_message == "战争":
         await app.send_message(group, MessageChain(
-            graia_Image(path="./data/battlefield/pic/百科/百科战争.jpg")
+            GraiaImage(path="./data/battlefield/pic/百科/百科战争.jpg")
         ), quote=source)
         return True
     if resv_message == "全世界":
         await app.send_message(group, MessageChain(
-            graia_Image(path="./data/battlefield/pic/百科/百科全世界.jpg")
+            GraiaImage(path="./data/battlefield/pic/百科/百科全世界.jpg")
         ), quote=source)
         return True
     # TODO -bf1百科 序号 ->先读缓存 如果没有就制图
@@ -3814,7 +3817,7 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
     item_path = f"./data/battlefield/pic/百科/{baike_item['code']}.png"
     if os.path.exists(item_path):
         await app.send_message(group, MessageChain(
-            graia_Image(path=item_path)
+            GraiaImage(path=item_path)
         ), quote=source)
         return True
     await app.send_message(group, MessageChain(
@@ -3891,7 +3894,7 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
     draw.text((730, 160), new_input, font=font5)
     bg_img.save(item_path, 'png', quality=100)
     await app.send_message(group, MessageChain(
-        graia_Image(path=item_path)
+        GraiaImage(path=item_path)
     ), quote=source)
     return True
 

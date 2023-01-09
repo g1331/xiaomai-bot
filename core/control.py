@@ -179,7 +179,7 @@ class Permission(object):
                         "perm": perm
                     }
                 )
-                return perm
+            return perm
 
     @classmethod
     def user_require(cls, perm: int = User, if_noticed: bool = True):

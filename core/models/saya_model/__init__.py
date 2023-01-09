@@ -138,12 +138,11 @@ class ModulesController:
             self.groups[group_id] = {}
         for key in self.modules:
             module = self.get_metadata_from_module_name(key)
-            if module.default_switch:
-                if group_id not in self.modules[key]:
-                    self.modules[key][group_id] = {
-                        "switch": module.default_switch,
-                        "notice": module.default_notice
-                    }
+            if group_id not in self.modules[key]:
+                self.modules[key][group_id] = {
+                    "switch": module.default_switch,
+                    "notice": module.default_notice
+                }
         self.save()
 
     def remove_group(self, group: Group or int or str):
@@ -221,11 +220,11 @@ class ModulesController:
             self.add_group(group_id)
         else:
             self.add_module(module_name)
-            self.add_group(group_id)
+            if not self.modules[module_name].get(group_id):
+                self.add_group(group_id)
+            if group_id in self.modules[module_name]:
+                return self.modules[module_name][group_id]["switch"]
         module = self.get_metadata_from_module_name(module_name)
-        self.save()
-        if group_id in self.modules[module_name]:
-            return self.modules[module_name][group_id]["switch"]
         return module.default_switch
 
     def if_module_notice_on(self, module_name: str, group: Group or int or str) -> bool:
@@ -241,11 +240,11 @@ class ModulesController:
             self.add_group(group_id)
         else:
             self.add_module(module_name)
-            self.add_group(group_id)
+            if not self.modules[module_name].get(group_id):
+                self.add_group(group_id)
+            if group_id in self.modules[module_name]:
+                return self.modules[module_name][group_id]["notice"]
         module = self.get_metadata_from_module_name(module_name)
-        self.save()
-        if group_id in self.modules[module_name]:
-            return self.modules[module_name][group_id]["notice"]
         return module.default_notice
 
     def module_available_change(self, module_name: str, status: bool):

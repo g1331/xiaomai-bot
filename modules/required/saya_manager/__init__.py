@@ -154,6 +154,8 @@ async def change_module_status(
     await app.send_message(group, MessageChain(f"你确定要{operation}插件`{module}`吗?(是/否)"), quote=source)
     try:
         if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
+            if operation == "加载":
+                module_controller.add_module(module)
             exceptions = module_controller.module_operation(module, operation_type)
             if exceptions:
                 return await app.send_group_message(

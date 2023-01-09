@@ -226,6 +226,7 @@ class ModulesController:
             if group_id in self.modules[module_name]:
                 return self.modules[module_name][group_id]["switch"]
         module = self.get_metadata_from_module_name(module_name)
+        self.save()
         return module.default_switch
 
     def if_module_notice_on(self, module_name: str, group: Group or int or str) -> bool:
@@ -246,6 +247,7 @@ class ModulesController:
             if group_id in self.modules[module_name]:
                 return self.modules[module_name][group_id]["notice"]
         module = self.get_metadata_from_module_name(module_name)
+        self.save()
         return module.default_notice
 
     def module_available_change(self, module_name: str, status: bool):

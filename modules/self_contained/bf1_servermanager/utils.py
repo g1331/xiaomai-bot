@@ -12,9 +12,6 @@ from core.config import GlobalConfig
 
 global_config = create(GlobalConfig)
 default_account = global_config.bf1.get("default_account", 0)
-access_token = None
-access_token_time = None
-access_token_expires_time = 0
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 bf_aip_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'
@@ -29,6 +26,13 @@ bf_aip_header = {
     "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
     "Connection": "Keep-Alive"
 }
+
+true = True
+false = False
+null = ''
+access_token = None
+access_token_time = None
+access_token_expires_time = 0
 
 
 async def getPid_byName(player_name: str) -> dict:

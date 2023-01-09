@@ -94,7 +94,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
 
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.Master, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),

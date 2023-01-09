@@ -158,11 +158,11 @@ class Umaru(object):
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
                 if group.id not in initialized_group_list:
                     initialized_group_list.append(group.id)
-        logger.success(f"bot初始化完成~耗时:{(time.time()-time_start):.2f}秒")
-        logger.info(f"成功初始化{len(initialized_app_list)}个账户、{len(initialized_group_list)}个群组")
         await response_model.get_acc_controller().init_all_group()
         await self.update_host_permission()
         await self.update_admins_permission()
+        logger.success(f"bot初始化完成~耗时:{(time.time()-time_start):.2f}秒")
+        logger.info(f"成功初始化{len(initialized_app_list)}个账户、{len(initialized_group_list)}个群组")
 
     # 更新master权限
     async def update_host_permission(self):

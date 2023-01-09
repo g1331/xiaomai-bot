@@ -141,6 +141,5 @@ if __name__ == "__main__":
             exit("--已手动退出启动--")
     core.install_modules(Path("modules") / "required")
     core.install_modules(Path("modules") / "self_contained")
-    core.install_modules(Path("modules") / "test_modules")
     core.launch()
     logger.info("UmaruBot 已关闭")

@@ -74,7 +74,7 @@ async def add_wife(app: Ariadne, group: Group, source: Source,
             quote=source
         )
         return
-    path = "modules/Random_Wife/wife"
+    path = os.listdir(str(Path(__file__).parent/"wife"))
     file_name = f'{path}/{img_name}.{img_type}'
     wife_list = os.listdir(path)
     for item in wife_list:
@@ -138,7 +138,7 @@ async def add_wife(app: Ariadne, group: Group, source: Source,
 async def del_wife(app: Ariadne, group: Group, source: Source,
                    wife_name: RegexResult):
     img_name = wife_name.result.display
-    path = "modules/Random_Wife/wife"
+    path = os.listdir(str(Path(__file__).parent/"wife"))
     wife_list = os.listdir(path)
     for item in wife_list:
         if img_name in item:

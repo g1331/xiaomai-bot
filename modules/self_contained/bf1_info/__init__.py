@@ -4057,7 +4057,7 @@ async def getup(app: Ariadne, event: NudgeEvent):
     event_group = await app.get_group(event.group_id)
     if event_group is not None:
         if event.target == app.account:
-            if await Function.require(channel.module):
+            if module_controller.if_module_switch_on(channel.module, event_group):
                 gl = random.randint(0, 99)
                 if gl > 2:
                     file_path = f"./data/battlefield/小标语/data.json"

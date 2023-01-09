@@ -89,7 +89,8 @@ async def change_user_perm(
         ), quote=source)
     # 修改其他群组的权限判假
     if group_id != group.id:
-        if (user_level := await Permission.get_user_perm(event)) < Permission.BotAdmin:
+        user_level = await Permission.get_user_perm(event)
+        if user_level < Permission.BotAdmin:
             return await app.send_message(event.sender.group, MessageChain(
                 f"权限不足!(你的权限:{user_level}/需要权限:{Permission.BotAdmin})"
             ), quote=source)
@@ -384,7 +385,8 @@ async def get_vg_list(
 async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, source: Source, event: GroupMessage):
     group_id = int(group_id.result.display) if group_id.matched else group.id
     if group_id != group.id:
-        if (user_level := await Permission.get_user_perm(event)) < Permission.BotAdmin:
+        user_level = await Permission.get_user_perm(event)
+        if user_level < Permission.BotAdmin:
             return await app.send_message(event.sender.group, MessageChain(
                 f"权限不足!(你的权限:{user_level}/需要权限:{Permission.BotAdmin})"
             ), quote=source)

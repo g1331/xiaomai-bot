@@ -1,3 +1,5 @@
+from asyncio import Lock
+
 from creart import create
 from loguru import logger
 from sqlalchemy import MetaData, inspect, delete, update, select, insert
@@ -10,7 +12,7 @@ from core.config import GlobalConfig
 class AsyncORM:
     """对象关系映射（Object Relational Mapping）"""
 
-    def __init__(self, db_link: str):
+    def __init__(self, db_link: str, db_mutex: Lock or None = None):
         """
         AsyncORM类可以支持多种数据库，只需要将不同的数据库链接字符串传入db_link函数即可。
         :param db_link: 数据库链接
@@ -45,6 +47,10 @@ class AsyncORM:
         可以通过这个Session对象来执行SQL操作，如查询、插入、更新等。
         """
         self.async_session = sessionmaker(bind=self.engine, class_=AsyncSession)
+        """
+        Lock
+        """
+        self.db_mutex = db_mutex or Lock() if self.db_link.startswith("sqlite") else None
         logger.success(f"已连接至数据库: {self.engine.url}")
 
     async def close(self):
@@ -79,17 +85,19 @@ class AsyncORM:
 
     # 利用模型直接进行增删改查
     async def execute(self, sql, parameters=None):
-        """
-        执行SQL语句
-        :param sql: sql语句
-        :param parameters: 参数
-        :return: result
-        """
         async with self.async_session() as session:
-            async with session.begin():
+            try:
+                if self.db_mutex:
+                    await self.db_mutex.acquire()
                 result = await session.execute(sql, parameters)
                 await session.commit()
                 return result
+            except Exception as e:
+                await session.rollback()
+                raise e
+            finally:
+                if self.db_mutex:
+                    self.db_mutex.release()
 
     async def fetch_one(self, sql, parameters=None):
         """获取单条记录"""

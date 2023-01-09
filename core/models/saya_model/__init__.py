@@ -70,8 +70,8 @@ class ModulesController:
     }
     """
 
-    def __init__(self, modules=None, groups=None):
-        self.modules = modules or {}
+    def __init__(self):
+        self.modules = {}
         """
         {
             "module_name": {
@@ -86,7 +86,7 @@ class ModulesController:
             "module2": {}
         }
         """
-        self.groups = groups or {}
+        self.groups = {}
 
     @staticmethod
     def get_metadata_from_path(module_path: Path) -> Metadata:

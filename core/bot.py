@@ -23,7 +23,7 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
-from graia.ariadne.model import LogConfig
+from graia.ariadne.model import LogConfig, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graia.saya.builtins.broadcast import BroadcastBehaviour
@@ -95,6 +95,8 @@ class Umaru(object):
             )
         )
         self.config_check()
+        self.initialized_app_list: list[int] = []
+        self.initialized_group_list: list[int] = []
 
     async def initialize(self):
         if self.initialized:
@@ -112,16 +114,14 @@ class Umaru(object):
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
         time_start = int(time.mktime(self.launch_time.timetuple()))
-        initialized_app_list = []
-        initialized_group_list = []
-        Timeout = 10*len(self.config.bot_accounts)
+        Timeout = 10 * len(self.config.bot_accounts)
         while True:
-            if len(initialized_app_list) == len(self.apps):
+            if len(self.initialized_app_list) == len(self.apps):
                 break
-            if (time.time()-time_start) >= Timeout:
+            if (time.time() - time_start) >= Timeout:
                 break
             for app in self.apps:
-                if app.account in initialized_app_list:
+                if app.account in self.initialized_app_list:
                     continue
                 if not app.connection.status.available:
                     logger.warning(f"{app.account}失去连接,已跳过初始化")
@@ -148,21 +148,96 @@ class Umaru(object):
                             GroupPerm.group_id == group.id
                         ]
                     )
-                # 更新成员权限
-                initialized_app_list.append(app.account)
-            logger.info(f"已初始化{len(initialized_app_list)}/{len(self.config.bot_accounts)}")
+                self.initialized_app_list.append(app.account)
+            logger.info(f"已初始化{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             await asyncio.sleep(5)
         logger.info("本次启动活动群组如下：")
         for account, group_list in self.total_groups.items():
             for group in group_list:
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
-                if group.id not in initialized_group_list:
-                    initialized_group_list.append(group.id)
+                if group.id not in self.initialized_group_list:
+                    self.initialized_group_list.append(group.id)
+        # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
+        # 更新成员权限
         await self.update_host_permission()
         await self.update_admins_permission()
-        logger.success(f"bot初始化完成~耗时:{(time.time()-time_start):.2f}秒")
-        logger.info(f"成功初始化{len(initialized_app_list)}个账户、{len(initialized_group_list)}个群组")
+        logger.success(f"bot初始化完成~耗时:{(time.time() - time_start):.2f}秒")
+        logger.info(f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组")
+
+    async def init_group(self, app: Ariadne, group: Group):
+        """
+        初始化指定群
+        """
+        group_list = await app.get_group_list()
+        self.total_groups[app.account] = group_list
+        # 更新群组权限
+        if group.id == self.config.test_group:
+            perm = 3
+        elif await orm.fetch_one(
+                select(GroupPerm.group_id).where(
+                    GroupPerm.perm == 2,
+                    GroupPerm.group_id == group.id
+                )
+        ):
+            perm = 2
+        else:
+            perm = 1
+        await orm.insert_or_update(
+            GroupPerm,
+            {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
+            [
+                GroupPerm.group_id == group.id
+            ]
+        )
+        self.initialized_app_list.append(app.account)
+        # 更新成员权限
+        member_list = [member.id for member in await app.get_member_list()]
+        if self.config.Master in member_list:
+            await orm.insert_or_update(
+                table=MemberPerm,
+                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                condition=[
+                    MemberPerm.qq == self.config.Master,
+                    MemberPerm.group_id == group.id
+                ]
+            )
+        else:
+            await orm.delete(
+                table=MemberPerm,
+                condition=[
+                    MemberPerm.qq == self.config.Master,
+                    MemberPerm.group_id == group.id
+                ]
+            )
+        if result := await orm.fetch_all(
+                select(MemberPerm.qq).where(
+                    MemberPerm.perm == 128,
+                )
+        ):
+            admin_list = [item[0] for item in result]
+            for admin in admin_list:
+                if admin in member_list:
+                    await orm.insert_or_update(
+                        table=MemberPerm,
+                        data={"qq": admin, "group_id": group.id, "perm": 128},
+                        condition=[
+                            MemberPerm.qq == admin,
+                            MemberPerm.group_id == group.id,
+                        ]
+                    )
+                else:
+                    await orm.delete(
+                        table=MemberPerm,
+                        condition=[
+                            MemberPerm.qq == admin,
+                            MemberPerm.group_id == group.id
+                        ]
+                    )
+        await response_model.get_acc_controller().init_group(group.id, member_list, app.account)
+        if group.id not in self.initialized_group_list:
+            self.initialized_group_list.append(group.id)
+        logger.success(f"成功初始化群:{group.name}({group.id})")
 
     # 更新master权限
     async def update_host_permission(self):

@@ -64,7 +64,7 @@ async def add_wife(app: Ariadne, group: Group, source: Source,
                    img: ElementResult,
                    wife_name: RegexResult):
     img: Image = img.result
-    img_url: Image = img.url
+    img_url = img.url
     img_name = wife_name.result.display.replace("\n", '')
     img_type = img.dict()['imageId'][img.dict()['imageId'].rfind(".") + 1:]
     if img_name in ["\n", '']:

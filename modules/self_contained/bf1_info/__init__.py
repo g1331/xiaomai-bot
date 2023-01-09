@@ -606,7 +606,7 @@ async def bg_change(app: Ariadne, group: Group, sender: Member, bg_rank: RegexRe
         if img.display == '[图片]':
             try:
                 img: MessageChain
-                img_url: GraiaImage = img[GraiaImage]
+                img_url: GraiaImage = img[GraiaImage][0]
                 img_url = img_url.url
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'

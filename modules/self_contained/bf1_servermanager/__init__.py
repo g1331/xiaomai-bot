@@ -5927,7 +5927,7 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
             "action" @ UnionMatch("-图池", "-maplist", "-地图池").space(SpacePolicy.NOSPACE),
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             "server_rank" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-            # 示例: -ub#1 xiaoxiao
+            # 示例: -图池1
         ]
     )
 )

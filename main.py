@@ -14,7 +14,7 @@ from graia.ariadne.event.message import (
     FriendMessage
 )
 from graia.ariadne.event.message import Member, MessageChain, Stranger
-from graia.ariadne.event.mirai import NudgeEvent
+from graia.ariadne.event.mirai import NudgeEvent, BotJoinGroupEvent
 from graia.ariadne.model import Friend, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
@@ -111,6 +111,12 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 async def init():
     await core.initialize()
     await frequency_model.get_frequency_controller().limited()
+
+
+# BOT加入新群时,进行初始化
+@bcc.receiver(BotJoinGroupEvent)
+async def init_join_group(app: Ariadne, event: BotJoinGroupEvent):
+    await core.init_group(app, event.group)
 
 
 if __name__ == "__main__":

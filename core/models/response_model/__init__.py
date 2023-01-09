@@ -114,7 +114,7 @@ class AccountController:
         self.account_dict[group_id][0] = bot_account
         self.deterministic_account[group_id] = 0
         for member in member_list:
-            if member.id in Ariadne.service.connections:
+            if self.check_account_available(member.id):
                 self.account_dict[group_id][len(self.account_dict[group_id])] = member.id
         if await self.get_response_type(group_id) != "random":
             return
@@ -130,7 +130,7 @@ class AccountController:
         if self.all_initialized:
             return
         for bot_account in config.bot_accounts:
-            if bot_account in Ariadne.service.connections:
+            if self.check_account_available(bot_account):
                 app = Ariadne.current(bot_account)
                 group_list = await app.get_group_list()
                 for group in group_list:
@@ -139,14 +139,12 @@ class AccountController:
                     self.total_groups[group.id][bot_account] = Ariadne.current(bot_account)
                     if len(self.total_groups[group.id].keys()) > 1:
                         self.public_groups[group.id] = self.total_groups[group.id]
-                    if self.check_initialization(group.id, app.account):
-                        return
                     member_list = await app.get_member_list(group.id)
                     self.account_dict[group.id] = {}
                     self.account_dict[group.id][0] = bot_account
                     self.deterministic_account[group.id] = 0
                     for member in member_list:
-                        if member.id in Ariadne.service.connections:
+                        if self.check_account_available(member.id):
                             self.add_account(group.id, member.id)
                     if await self.get_response_type(group.id) != "random":
                         continue
@@ -158,6 +156,12 @@ class AccountController:
                         ]
                     )
         self.all_initialized = True
+
+    @staticmethod
+    def check_account_available(bot_account: int):
+        if bot_account in Ariadne.service.connections and Ariadne.current(bot_account).connection.status.available:
+            return True
+        return False
 
     def add_account(self, group_id: int, bot_account: int):
         for k in self.account_dict[group_id]:

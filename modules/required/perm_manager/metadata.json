@@ -15,7 +15,8 @@
             "perm list",
             "VIP群列表",
             "添加/删除 BOT管理 成员qq号",
-            "BOT管理列表"
+            "BOT管理列表",
+            "修改群权限类型 admin/default"
       ],
       "example": [
             "修改权限 000 32 @123,321 456",
@@ -23,7 +24,8 @@
             "权限列表",
             "VIP群列表",
             "添加BOT管理 123",
-            "BOT管理列表"
+            "BOT管理列表",
+            "修改群权限类型 admin"
       ],
       "default_switch": true,
       "default_notice": false

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, Boolean
 
 from core.orm import orm
 
@@ -46,3 +46,5 @@ class GroupSetting(orm.Base):
     frequency_limitation = Column(Boolean, default=True)
     # 多账户响应类型
     response_type = Column(String, info={'check': ["random", "deterministic"]}, default="random")
+    # 权限组类型
+    permission_type = Column(String, info={'check': ["default", "admin"]}, default="default")

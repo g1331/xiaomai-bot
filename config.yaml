@@ -21,3 +21,4 @@ log_related:
 # 其他功能配置信息
 bf1:
   default_account: default_account
+  apikey: apikey

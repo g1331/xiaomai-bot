@@ -89,17 +89,18 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
         ColumnUserInfo(
             name=f"{bot_member.name}({bot_member.id})",
             description=f"{bot_member.permission}",
-            avatar=await get_user_avatar_url(bot_member)
+            avatar=await get_user_avatar_url(bot_member.id)
         )
     ]
     member_list = await target_app.get_member_list(target_group)
     for member_item in member_list:
-        if member_item.id in config.bot_accounts and member_item.id in Ariadne.service.connections:
+        if member_item.id in Ariadne.service.connections:
+            online_status = "" if account_controller.check_account_available(member_item.id) else "[未连接]"
             bot_list_column.append(
                 ColumnUserInfo(
-                    name=f"{member_item.name}({member_item.id})",
+                    name=f"{member_item.name}({member_item.id}){online_status}",
                     description=f"{member_item.permission}",
-                    avatar=await get_user_avatar_url(member_item)
+                    avatar=await get_user_avatar_url(member_item.id)
                 )
             )
     return await app.send_message(group, MessageChain(
@@ -129,13 +130,21 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
         ColumnTitle(title="BOT列表")
     ]
     for bot_account in Ariadne.service.connections:
-        bot_list_column.append(
-            ColumnUserInfo(
-                name=f"{(await Ariadne.current(bot_account).get_bot_profile()).nickname}({bot_account})",
-                description=f"已加入{len(await Ariadne.current(bot_account).get_group_list())}个群",
-                avatar=await get_user_avatar_url(bot_account)
+        if account_controller.check_account_available(bot_account):
+            bot_list_column.append(
+                ColumnUserInfo(
+                    name=f"{(await Ariadne.current(bot_account).get_bot_profile()).nickname}({bot_account})",
+                    description=f"已加入{len(await Ariadne.current(bot_account).get_group_list())}个群",
+                    avatar=await get_user_avatar_url(bot_account)
+                )
             )
-        )
+        else:
+            bot_list_column.append(
+                ColumnUserInfo(
+                    name=f"{bot_account}[未连接]",
+                    avatar=await get_user_avatar_url(bot_account)
+                )
+            )
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=[Column(elements=bot_list_column)], color_tupe=get_color_type_follow_time())
@@ -209,7 +218,7 @@ async def choose_response_bot(app: Ariadne, group: Group, source: Source,
         return await app.send_message(group, MessageChain(
             f"请检查指定的BOT账号!"
         ), quote=source)
-    if bot_account not in (Ariadne.service.connections or config.bot_accounts):
+    if not account_controller.check_account_available(bot_account):
         return await app.send_message(group, MessageChain(
             f"该BOT账号不在线!"
         ), quote=source)

@@ -107,6 +107,15 @@ class Permission(object):
         return admin_list
 
     @staticmethod
+    async def get_group_perm_type(group_id: int) -> str:
+        if result := await orm.fetch_one(
+                select(GroupSetting.permission_type).where(GroupSetting.group_id == group_id)
+        ):
+            return result[0]
+        else:
+            return "default"
+
+    @staticmethod
     async def require_user_perm(group_id: int, member_id: int, perm: int) -> bool:
         if result := await orm.fetch_one(
                 select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == member_id)
@@ -154,8 +163,9 @@ class Permission(object):
                 select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == sender.id)
         ):
             return result[0]
-        # 如果没有查询到数据，则返回16(群员),并写入初始权限
+        # 如果没有查询到数据，则写入初始权限
         else:
+            perm = cls.member_permStr_dict[event.sender.permission.name]
             with contextlib.suppress(sqlalchemy.exc.IntegrityError):
                 await orm.insert_or_ignore(
                     table=MemberPerm,
@@ -166,13 +176,13 @@ class Permission(object):
                     data={
                         "group_id": group_id,
                         "qq": sender.id,
-                        "perm": Permission.User
+                        "perm": perm
                     }
                 )
-                return Permission.User
+                return perm
 
     @classmethod
-    def user_require(cls, perm: int = User, if_noticed: bool = False):
+    def user_require(cls, perm: int = User, if_noticed: bool = True):
         """
         指定perm及以上的等级才能执行
         :param perm: 设定权限等级
@@ -297,7 +307,7 @@ class Distribute(object):
                 await account_controller.init_group(group_id, await app.get_member_list(group_id), bot_account)
                 raise ExecutionStop
             res_acc = await account_controller.get_response_account(group_id)
-            if res_acc not in Ariadne.service.connections:
+            if not Ariadne.current(res_acc).connection.status.available:
                 account_controller.account_dict.pop(group_id)
                 raise ExecutionStop
             if bot_account != await account_controller.get_response_account(group_id):

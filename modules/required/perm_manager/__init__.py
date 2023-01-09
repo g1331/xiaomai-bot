@@ -3,7 +3,7 @@ from pathlib import Path
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
-from graia.ariadne.event.mirai import MemberLeaveEventQuit
+from graia.ariadne.event.mirai import MemberLeaveEventQuit, MemberJoinEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
 from graia.ariadne.message.parser.twilight import (
@@ -32,7 +32,7 @@ from core.models import (
     response_model
 )
 from core.orm import orm
-from core.orm.tables import MemberPerm, GroupPerm
+from core.orm.tables import MemberPerm, GroupPerm, GroupSetting
 from utils.UI import *
 from utils.image import get_user_avatar_url, get_img_base64_str
 from utils.parse_messagechain import get_targets
@@ -198,6 +198,121 @@ async def change_group_perm(
     ), quote=source)
 
 
+"""
+    # 更新管理群权限
+    async def update_admin_group_permission(self):
+        for bot_account in self.total_groups:
+            for group in self.total_groups[bot_account]:
+                permission_type = "default"
+                if result := await orm.fetch_one(
+                        select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)
+                ):
+                    permission_type = result[0]
+                if permission_type == "admin":
+                    app = Ariadne.current(bot_account)
+                    for member in await app.get_member_list(group):
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": member.id, "group_id": group.id, "perm": 32},
+                            condition=[
+                                MemberPerm.qq == member.id,
+                                MemberPerm.group_id == group.id
+                            ]
+                        )
+"""
+
+
+# >=128可修改群权限类型
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Distribute.require()
+)
+@dispatch(
+    Twilight([
+        FullMatch("修改群权限类型"),
+        "group_id" @ ParamMatch(optional=True),
+        "permission_type" @ UnionMatch("admin", "default"),
+        # 示例: 修改权限 群号 perm
+    ])
+)
+async def change_group_perm(
+        app: Ariadne,
+        group: Group,
+        group_id: RegexResult,
+        permission_type: RegexResult,
+        source: Source
+):
+    group_id = int(group_id.result.display) if group_id.matched else group.id
+    permission_type = permission_type.result.display
+    target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"没有找到目标群:{group_id}"
+        ), quote=source)
+    await orm.insert_or_update(
+        table=GroupSetting,
+        data={"permission_type": permission_type},
+        condition=[
+            GroupSetting.group_id == target_group.id
+        ]
+    )
+    if permission_type == "admin":
+        for member in await target_app.get_member_list(target_group):
+            if await Permission.get_user_perm_byID(target_group.id, member.id) < Permission.GroupAdmin:
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={"qq": member.id, "group_id": group.id, "perm": Permission.GroupAdmin},
+                    condition=[
+                        MemberPerm.qq == member.id,
+                        MemberPerm.group_id == group.id
+                    ]
+                )
+    else:
+        for member in await target_app.get_member_list(group):
+            target_perm = Permission.member_permStr_dict[member.permission.name]
+            now_perm = await Permission.get_user_perm_byID(target_group.id, member.id)
+            if now_perm >= Permission.GroupOwner:
+                continue
+            if now_perm != target_perm:
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={"qq": member.id,
+                          "group_id": group.id,
+                          "perm": target_perm},
+                    condition=[
+                        MemberPerm.qq == member.id,
+                        MemberPerm.group_id == group.id
+                    ]
+                )
+    return await app.send_message(group, MessageChain(
+        f"已修改群{target_group.name}({target_group.id})权限类型为{permission_type}"
+    ), quote=source)
+
+
+# 自动添加管理群的权限
+@listen(MemberJoinEvent)
+async def auto_del_perm(app: Ariadne, group: Group, member: Member):
+    permission_type = "default"
+    if result := await orm.fetch_one(
+            select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)
+    ):
+        permission_type = result[0]
+    if permission_type == "admin":
+        await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": member.id, "group_id": group.id, "perm": 32},
+            condition=[
+                MemberPerm.qq == member.id,
+                MemberPerm.group_id == group.id
+            ]
+        )
+        return await app.send_message(group, f"已自动修改成员{member.name}({member.id})的权限为32")
+
+
 # 查询VIP群
 @listen(GroupMessage)
 @decorate(
@@ -312,6 +427,8 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
         ColumnTitle(title="权限列表")
     ]
     for member_id in perm_dict:
+        if perm_dict[member_id] == 16:
+            continue
         try:
             member_item = await target_app.get_member(target_group, member_id)
         except:
@@ -324,7 +441,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
                 avatar=await get_user_avatar_url(member_id)
             )
         )
-    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
+    perm_list_column = [Column(elements=perm_list_column[i: i + 10]) for i in range(0, len(perm_list_column), 10)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())
@@ -407,7 +524,7 @@ async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
                 avatar=await get_user_avatar_url(member_id)
             )
         )
-    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
+    perm_list_column = [Column(elements=perm_list_column[i: i + 10]) for i in range(0, len(perm_list_column), 10)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())

@@ -31,7 +31,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
 
-from core.config import GlobalConfig, load_config
+from core.config import GlobalConfig
 from core.orm import orm
 from core.orm.tables import (
     GroupPerm,
@@ -109,6 +109,9 @@ class Umaru(object):
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
         for app in self.apps:
+            if not Ariadne.current(app.account).connection.status.available:
+                logger.warning(f"{app.account}失去连接,已跳过初始化")
+                continue
             group_list = await app.get_group_list()
             self.total_groups[app.account] = group_list
             # 更新群组权限
@@ -142,17 +145,16 @@ class Umaru(object):
 
     # 更新master权限
     async def update_host_permission(self):
-        g_config = load_config()
         for bot_account in self.total_groups:
             for group in self.total_groups[bot_account]:
                 member_list = await Ariadne.current(bot_account).get_member_list(group)
                 member_list = [member.id for member in member_list]
-                if g_config.Master in member_list:
+                if self.config.Master in member_list:
                     await orm.insert_or_update(
                         table=MemberPerm,
-                        data={"qq": g_config.Master, "group_id": group.id, "perm": 256},
+                        data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
                         condition=[
-                            MemberPerm.qq == g_config.Master,
+                            MemberPerm.qq == self.config.Master,
                             MemberPerm.group_id == group.id
                         ]
                     )
@@ -160,7 +162,7 @@ class Umaru(object):
                     await orm.delete(
                         table=MemberPerm,
                         condition=[
-                            MemberPerm.qq == g_config.Master,
+                            MemberPerm.qq == self.config.Master,
                             MemberPerm.group_id == group.id
                         ]
                     )

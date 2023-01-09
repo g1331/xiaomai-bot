@@ -24,15 +24,16 @@ config = create(GlobalConfig)
 
 @channel.use(ListenerSchema(listening_events=[ExceptionThrowed]))
 async def except_handle(event: ExceptionThrowed):
-    app = Ariadne.current()
+    app = Ariadne.current(config.default_account)
     if isinstance(event.event, ExceptionThrowed):
         return
     if isinstance(
-        event.exception,
-        (AccountMuted, UnknownTarget)
+            event.exception,
+            (AccountMuted, UnknownTarget)
     ):
         return
-    image = await md2img(generate_reports(event.exception), {"viewport": {"width": 1920, "height": 10}})
+    image = await md2img(generate_reports(event.exception),
+                         {"viewport": {"width": 1920, "height": 10}, "color_scheme": "dark"})
     return await app.send_friend_message(
         config.Master,
         MessageChain(Image(data_bytes=image))

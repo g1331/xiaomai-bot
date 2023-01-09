@@ -24,6 +24,10 @@ mdit-py-plugins = "^0.3.3"
 graiax-text2img-playwright = "^0.3.0"
 launart = "0.6.1"
 unwind = "0.3.2"
+aiofiles = "^22.1.0"
+zhconv = "^1.4.3"
+pillow = "^9.4.0"
+bs4 = "^0.0.1"
 
 
 [build-system]

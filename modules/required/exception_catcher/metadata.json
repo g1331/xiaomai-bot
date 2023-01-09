@@ -13,5 +13,7 @@
   "metadata": {
     "uninstallable": false,
     "reloadable": true
-  }
+  },
+  "default_switch": true,
+  "default_notice": false
 }

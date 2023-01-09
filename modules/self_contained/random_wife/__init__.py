@@ -39,7 +39,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def get_wife() -> str:
     wife_list = os.listdir(str(Path(__file__).parent/"wife"))
     wife = random.choice(wife_list)
-    return f'modules/Random_Wife/wife/{wife}'
+    return str(Path(__file__).parent/"wife")+f"/{wife}"
 
 
 @listen(GroupMessage)

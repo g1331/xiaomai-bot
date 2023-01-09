@@ -6409,11 +6409,11 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, action: RegexResul
     # 查验玩家存不存在
     try:
         player_info = await getPid_byName(player_name)
-    except:
-        await app.send_message(group, MessageChain(
-            f"获取玩家细腻些出错，请稍后再试"
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"获取玩家信息出错，请稍后再试"
         ), quote=source)
-        return False
     if player_info['personas'] == {}:
         await app.send_message(group, MessageChain(
             f"玩家{player_name}不存在"

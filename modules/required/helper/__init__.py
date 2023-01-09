@@ -66,12 +66,8 @@ async def helper(app: Ariadne, group: Group, source: Source):
     三、维护插件
     """
     required_module_list = sorted(module_controller.get_required_modules())
-    normal_module_list = []
-    for module in module_controller.get_installed_channels():
-        if module not in required_module_list:
-            normal_module_list.append(module)
-    normal_module_list = sorted(normal_module_list)
-    unavailable_module_list = sorted(module_controller.get_not_installed_channels())
+    normal_module_list = sorted(module_controller.get_available_modules())
+    unavailable_module_list = sorted(module_controller.get_unavailable_modules())
 
     # 菜单信息
     usage = [ColumnListItem(

@@ -118,7 +118,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
                 # 副标题
                 subtitle=f"{i + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
                 # 开关指示
-                right_element=ColumnListItemSwitch(switch=module_controller.if_module_available(channel_temp))
+                right_element=ColumnListItemSwitch(switch=module_controller.if_module_switch_on(channel_temp, group.id))
             )
         ]))
     # 维护插件

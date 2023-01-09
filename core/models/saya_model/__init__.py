@@ -352,16 +352,11 @@ class ModulesController:
     def get_required_modules() -> list[str]:
         return [c for c in saya.channels.keys() if c.startswith("modules.required")]
 
-    @staticmethod
-    def get_available_modules() -> list[str]:
-        temp = ModulesController.get_installed_channels()
-        return [module for module in temp if ModulesController.if_module_available(ModulesController, module) and module not in ModulesController.get_required_modules()]
+    def get_available_modules(self) -> list[str]:
+        return [module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()]
 
-    @staticmethod
-    def get_unavailable_modules() -> list[str]:
-        temp = ModulesController.get_installed_channels
-        return [module for module in temp if
-                ModulesController.if_module_available(ModulesController, module) and module not in ModulesController.get_not_installed_channels()]
+    def get_unavailable_modules(self) -> list[str]:
+        return [module for module in self.get_not_installed_channels() if not self.if_module_available(module)]
 
 
 def get_module_controller() -> ModulesController:

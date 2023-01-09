@@ -356,7 +356,7 @@ class ModulesController:
         return [module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()]
 
     def get_unavailable_modules(self) -> list[str]:
-        return [module for module in self.get_not_installed_channels() if not self.if_module_available(module)]
+        return [module for module in self.get_all_channels() if not self.if_module_available(module)]
 
 
 def get_module_controller() -> ModulesController:

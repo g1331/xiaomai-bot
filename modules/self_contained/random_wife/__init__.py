@@ -179,10 +179,10 @@ counter = {
 }
 
 
-async def judge(sender: Member, wife: str) -> MessageChain:
+async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
     global wife_dict, counter
     qq = sender.id
-    name = sender.name
+    name = (await app.get_member_profile(sender)).nickname
     wife_name = wife[wife.rfind('/') + 1:wife.rfind('.')]
     # 初始化字典
     if (time.time() - counter.get("time")) >= 60 * 3600 * 24:
@@ -333,7 +333,7 @@ async def random_wife(app: Ariadne, sender: Member, group: Group, source: Source
         wife = await get_wife()
         await app.send_message(
             group,
-            await judge(sender, wife),
+            await judge(app, sender, wife),
             quote=source
         )
     else:

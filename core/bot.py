@@ -192,7 +192,7 @@ class Umaru(object):
         )
         self.initialized_app_list.append(app.account)
         # 更新成员权限
-        member_list = [member.id for member in await app.get_member_list()]
+        member_list = [member.id for member in await app.get_member_list(group)]
         if self.config.Master in member_list:
             await orm.insert_or_update(
                 table=MemberPerm,

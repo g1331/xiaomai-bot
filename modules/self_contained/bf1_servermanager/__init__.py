@@ -2399,8 +2399,8 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
 
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (await Permission.require_user_perm(waiter_group.id, waiter_member.id, 32)) and waiter_group.id == group.id:
-            if eval(event.json())['message_chain'][1]['type'] == "Quote" and \
-                    eval(event.json())['message_chain'][1]['id'] == bot_message.id:
+            if event.quote and \
+                    event.quote.id == bot_message.id:
                 saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
                 return saying
 
@@ -3652,7 +3652,7 @@ async def kick_no_need_rank(
         event: GroupMessage, source: Source
 ):
     # TODO 1.获取玩家所在服务器gameid 2.如果没获取到就返回用k#1 3.获取到后判断是否在群组的服务器内若在则踢出 不在则返回正在游玩的服务器
-    if eval(event.json())['message_chain'][1]['type'] == "Quote":
+    if event.quote:
         return
     # 原因检测
     if str(reason.result) == "":
@@ -6396,7 +6396,7 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, action: RegexResul
         return
     # 服务器序号检测
     try:
-        server_rank = int(str(server_rank.result)) - 1
+        server_rank = int(server_rank.result.display) - 1
         if server_rank < 0 or server_rank > 30:
             raise Exception
     except:
@@ -6404,14 +6404,14 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, action: RegexResul
             f"请检查服务器序号"
         ), quote=source)
         return False
-    player_name = str(player_name.result)
+    player_name = player_name.result.display
 
     # 查验玩家存不存在
     try:
         player_info = await getPid_byName(player_name)
     except:
         await app.send_message(group, MessageChain(
-            f"网络出错，请稍后再试"
+            f"获取玩家细腻些出错，请稍后再试"
         ), quote=source)
         return False
     if player_info['personas'] == {}:

@@ -4,7 +4,7 @@ from pathlib import Path
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event import MiraiEvent
-from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.event.message import GroupMessage, MessageEvent
 from graia.ariadne.event.mirai import BotInvitedJoinGroupRequestEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source
@@ -103,9 +103,9 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
         "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         "command" @ UnionMatch("加精", "设精")
 ]))
-async def set_essence(app: Ariadne, group: Group, event: MiraiEvent, src: Source):
-    if eval(event.json())['message_chain'][1]['type'] == "Quote":
-        quote_id = eval(event.json())['message_chain'][1]['id']
+async def set_essence(app: Ariadne, group: Group, event: MessageEvent, src: Source):
+    if event.quote:
+        quote_id = event.quote.id
         bot_member = await app.get_member(group, app.account)
         if bot_member.permission.name == "Member":
             await app.send_message(group, MessageChain(

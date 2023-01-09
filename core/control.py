@@ -270,11 +270,12 @@ class Function(object):
             # 如果group不在modules里面就添加
             if str(group.id) not in module_controller.modules[module_name]:
                 module_controller.add_group(group)
+            module_meta = module_controller.get_metadata_from_module_name(module_name)
             # 如果在维护就停止
             if not module_controller.if_module_available(module_name):
                 if module_controller.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
-                        f"{module_name}插件正在维护~"
+                        f"{module_meta.display_name or module_name}插件正在维护~"
                     ), quote=source)
                 raise ExecutionStop
             else:
@@ -282,7 +283,7 @@ class Function(object):
                 if not module_controller.if_module_switch_on(module_name, group):
                     if module_controller.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
-                            f"{module_name}插件已关闭,请联系管理员"
+                            f"{module_meta.display_name or module_name}插件已关闭\n请使用'-开启 插件编号'来打开插件"
                         ), quote=source)
                     raise ExecutionStop
             return

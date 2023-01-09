@@ -11,21 +11,21 @@
             "修改/查询 群和权限列表,增删BOT管理",
             "修改权限 (群号) 64/32/16/0 成员qq号",
             "修改群权限 (群号) 3/2/1",
+            "修改群权限类型 (群号) admin/default",
             "权限列表",
             "perm list",
             "VIP群列表",
             "添加/删除 BOT管理 成员qq号",
-            "BOT管理列表",
-            "修改群权限类型 admin/default"
+            "BOT管理列表"
       ],
       "example": [
             "修改权限 000 32 @123,321 456",
             "修改群权限 000 2",
+            "修改群权限类型 000 admin",
             "权限列表",
             "VIP群列表",
             "添加BOT管理 123",
-            "BOT管理列表",
-            "修改群权限类型 admin"
+            "BOT管理列表"
       ],
       "default_switch": true,
       "default_notice": false

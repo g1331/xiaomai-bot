@@ -221,12 +221,11 @@ class ModulesController:
             self.add_group(group_id)
         else:
             self.add_module(module_name)
-            if not self.modules[module_name].get(group_id):
-                self.add_group(group_id)
-            if group_id in self.modules[module_name]:
-                return self.modules[module_name][group_id]["switch"]
+            self.add_group(group_id)
         module = self.get_metadata_from_module_name(module_name)
         self.save()
+        if group_id in self.modules[module_name]:
+            return self.modules[module_name][group_id]["switch"]
         return module.default_switch
 
     def if_module_notice_on(self, module_name: str, group: Group or int or str) -> bool:
@@ -242,12 +241,11 @@ class ModulesController:
             self.add_group(group_id)
         else:
             self.add_module(module_name)
-            if not self.modules[module_name].get(group_id):
-                self.add_group(group_id)
-            if group_id in self.modules[module_name]:
-                return self.modules[module_name][group_id]["notice"]
+            self.add_group(group_id)
         module = self.get_metadata_from_module_name(module_name)
         self.save()
+        if group_id in self.modules[module_name]:
+            return self.modules[module_name][group_id]["notice"]
         return module.default_notice
 
     def module_available_change(self, module_name: str, status: bool):

@@ -443,7 +443,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
                 avatar=await get_user_avatar_url(member_id)
             )
         )
-    perm_list_column = [Column(elements=perm_list_column[i: i + 10]) for i in range(0, len(perm_list_column), 10)]
+    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())
@@ -526,7 +526,7 @@ async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
                 avatar=await get_user_avatar_url(member_id)
             )
         )
-    perm_list_column = [Column(elements=perm_list_column[i: i + 10]) for i in range(0, len(perm_list_column), 10)]
+    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=perm_list_column, color_tupe=get_color_type_follow_time())

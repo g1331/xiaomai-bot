@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
 import html
+from pathlib import Path
+
 import httpx
 from creart import create
 from graia.ariadne import Ariadne
@@ -23,8 +24,7 @@ from loguru import logger
 from core.bot import Umaru
 from core.config import GlobalConfig
 from core.models import (
-    frequency_model,
-    response_model
+    frequency_model
 )
 
 config = create(GlobalConfig)
@@ -57,7 +57,7 @@ async def friend_message_listener(app: Ariadne, friend: Friend, message: Message
 @bcc.receiver(ActiveGroupMessage)
 async def group_message_speaker(app: Ariadne, event: ActiveGroupMessage):
     core.sent_count += 1
-    message_text_log = html.escape(event.message_chain.display).replace("\n", "\\n").strip()
+    message_text_log = html.escape(event.message_chain.display).replace("\n", "\\n").replace("<", "\\<").strip()
     bot_member = await app.get_bot_profile()
     logger.opt(colors=True).info(
         f"<green>【{bot_member.nickname}({app.account})】成功向群"
@@ -68,7 +68,7 @@ async def group_message_speaker(app: Ariadne, event: ActiveGroupMessage):
 async def friend_message_speaker(app: Ariadne, event: ActiveFriendMessage):
     core.sent_count += 1
     bot_member = await app.get_bot_profile()
-    message_text_log = html.escape(event.message_chain.display).replace("\n", "\\n").strip()
+    message_text_log = html.escape(event.message_chain.display).replace("\n", "\\n").replace("<", "\\<").strip()
     logger.opt(colors=True).info(
         f"<green>【{bot_member.nickname}({app.account})】成功向"
         f"好友【{event.subject.nickname.strip()}({event.subject.id})】发送消息：{message_text_log}</green>")

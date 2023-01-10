@@ -114,6 +114,14 @@ class Umaru(object):
             _ = await orm.create_all()
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
+        if result := await orm.fetch_all(
+                select(MemberPerm.qq).where(
+                    MemberPerm.perm == 128,
+                )
+        ):
+            admin_list = [item[0] for item in result]
+        else:
+            admin_list = []
         time_start = int(time.mktime(self.launch_time.timetuple()))
         Timeout = 10 * len(self.config.bot_accounts)
         while True:
@@ -149,9 +157,29 @@ class Umaru(object):
                             GroupPerm.group_id == group.id
                         ]
                     )
+                    # 更新Master权限
+                    await orm.insert_or_update(
+                        table=MemberPerm,
+                        data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                        condition=[
+                            MemberPerm.qq == self.config.Master,
+                            MemberPerm.group_id == group.id
+                        ]
+                    )
+                    # 更新BotAdmin权限
+                    for admin in admin_list:
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": admin, "group_id": group.id, "perm": 128},
+                            condition=[
+                                MemberPerm.qq == admin,
+                                MemberPerm.group_id == group.id,
+                            ]
+                        )
                 self.initialized_app_list.append(app.account)
             logger.info(f"已初始化{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
-            await asyncio.sleep(5)
+            if len(self.initialized_app_list) != len(self.apps):
+                await asyncio.sleep(5)
         logger.info("本次启动活动群组如下：")
         for account, group_list in self.total_groups.items():
             for group in group_list:
@@ -160,9 +188,6 @@ class Umaru(object):
                     self.initialized_group_list.append(group.id)
         # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
-        # 更新成员权限
-        await self.update_host_permission()
-        await self.update_admins_permission()
         init_result = f"bot启动初始化完成~耗时:{(time.time() - time_start):.2f}秒" \
                       f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组"
         logger.success(init_result)
@@ -248,42 +273,6 @@ class Umaru(object):
             await Ariadne.current(self.config.default_account).send_message(
                 self.config.test_group, MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})"))
         logger.success(f"成功初始化群:{group.name}({group.id})")
-
-    # 更新master权限
-    async def update_host_permission(self):
-        for bot_account in self.total_groups:
-            for group in self.total_groups[bot_account]:
-                await orm.insert_or_update(
-                    table=MemberPerm,
-                    data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                    condition=[
-                        MemberPerm.qq == self.config.Master,
-                        MemberPerm.group_id == group.id
-                    ]
-                )
-
-    # 更新admins权限
-    async def update_admins_permission(self, admin_list: list[int] = None):
-        if not admin_list:
-            if result := await orm.fetch_all(
-                    select(MemberPerm.qq).where(
-                        MemberPerm.perm == 128,
-                    )
-            ):
-                admin_list = [item[0] for item in result]
-            else:
-                return
-        for bot_account in self.total_groups:
-            for group in self.total_groups[bot_account]:
-                for admin in admin_list:
-                    await orm.insert_or_update(
-                        table=MemberPerm,
-                        data={"qq": admin, "group_id": group.id, "perm": 128},
-                        condition=[
-                            MemberPerm.qq == admin,
-                            MemberPerm.group_id == group.id,
-                        ]
-                    )
 
     def set_logger(self):
         logger.add(

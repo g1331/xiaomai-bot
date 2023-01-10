@@ -161,6 +161,7 @@ class Umaru(object):
                             table=MemberPerm,
                             data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
                             condition=[
+                                MemberPerm.qq == self.config.Master,
                                 MemberPerm.group_id == group.id
                             ]
                         )
@@ -170,6 +171,7 @@ class Umaru(object):
                                 table=MemberPerm,
                                 data={"qq": admin, "group_id": group.id, "perm": 128},
                                 condition=[
+                                    MemberPerm.qq == admin,
                                     MemberPerm.group_id == group.id,
                                 ]
                             )

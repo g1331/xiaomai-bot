@@ -103,7 +103,6 @@ class FrequencyController(object):
             }
 
     async def limited(self):
-        logger.success("注意:频率限制运行ing")
         if self.limit_running:
             return
         while True:

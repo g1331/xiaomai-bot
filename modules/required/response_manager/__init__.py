@@ -126,10 +126,13 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
     ])
 )
 async def get_bot_list(app: Ariadne, group: Group, source: Source):
-    bot_list_column = [
-        ColumnTitle(title="BOT列表")
-    ]
-    for bot_account in Ariadne.service.connections:
+    bot_list_column = [ColumnTitle(
+        title=f"BOT列表:"
+              f"{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}"
+              f"/"
+              f"{len(config.bot_accounts)}"
+    )]
+    for bot_account in config.bot_accounts:
         if account_controller.check_account_available(bot_account):
             bot_list_column.append(
                 ColumnUserInfo(
@@ -168,7 +171,7 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
         "target_type" @ UnionMatch("随机", "指定"),
     ])
 )
-async def change_group_responseType(app: Ariadne, group: Group,  source: Source,
+async def change_group_responseType(app: Ariadne, group: Group, source: Source,
                                     target_type: RegexResult, group_id: RegexResult):
     target_type = target_type.result.display
     if target_type == "随机":

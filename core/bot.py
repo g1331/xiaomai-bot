@@ -139,43 +139,43 @@ class Umaru(object):
                 self.total_groups[app.account] = group_list
                 # 更新群组权限
                 for group in group_list:
-                    if group.id == self.config.test_group:
-                        perm = 3
-                    elif await orm.fetch_one(
-                            select(GroupPerm.group_id).where(
-                                GroupPerm.perm == 2,
-                                GroupPerm.group_id == group.id
-                            )
-                    ):
-                        perm = 2
-                    else:
-                        perm = 1
-                    await orm.insert_or_update(
-                        GroupPerm,
-                        {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
-                        [
-                            GroupPerm.group_id == group.id
-                        ]
-                    )
-                    # 更新Master权限
-                    await orm.insert_or_update(
-                        table=MemberPerm,
-                        data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                        condition=[
-                            MemberPerm.qq == self.config.Master,
-                            MemberPerm.group_id == group.id
-                        ]
-                    )
-                    # 更新BotAdmin权限
-                    for admin in admin_list:
+                    if group.id not in self.initialized_group_list:
+                        self.initialized_group_list.append(group.id)
+                        if group.id == self.config.test_group:
+                            perm = 3
+                        elif await orm.fetch_one(
+                                select(GroupPerm.group_id).where(
+                                    GroupPerm.perm == 2,
+                                    GroupPerm.group_id == group.id
+                                )
+                        ):
+                            perm = 2
+                        else:
+                            perm = 1
                         await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": admin, "group_id": group.id, "perm": 128},
-                            condition=[
-                                MemberPerm.qq == admin,
-                                MemberPerm.group_id == group.id,
+                            GroupPerm,
+                            {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
+                            [
+                                GroupPerm.group_id == group.id
                             ]
                         )
+                        # 更新Master权限
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                            condition=[
+                                MemberPerm.group_id == group.id
+                            ]
+                        )
+                        # 更新BotAdmin权限
+                        for admin in admin_list:
+                            await orm.insert_or_update(
+                                table=MemberPerm,
+                                data={"qq": admin, "group_id": group.id, "perm": 128},
+                                condition=[
+                                    MemberPerm.group_id == group.id,
+                                ]
+                            )
                 self.initialized_app_list.append(app.account)
             logger.info(f"已初始化{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
@@ -184,8 +184,6 @@ class Umaru(object):
         for account, group_list in self.total_groups.items():
             for group in group_list:
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
-                if group.id not in self.initialized_group_list:
-                    self.initialized_group_list.append(group.id)
         # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
         init_result = f"bot启动初始化完成~耗时:{(time.time() - time_start):.2f}秒" \
@@ -234,14 +232,6 @@ class Umaru(object):
                     MemberPerm.group_id == group.id
                 ]
             )
-        else:
-            await orm.delete(
-                table=MemberPerm,
-                condition=[
-                    MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group.id
-                ]
-            )
         if result := await orm.fetch_all(
                 select(MemberPerm.qq).where(
                     MemberPerm.perm == 128,
@@ -249,29 +239,22 @@ class Umaru(object):
         ):
             admin_list = [item[0] for item in result]
             for admin in admin_list:
-                if admin in member_list:
-                    await orm.insert_or_update(
-                        table=MemberPerm,
-                        data={"qq": admin, "group_id": group.id, "perm": 128},
-                        condition=[
-                            MemberPerm.qq == admin,
-                            MemberPerm.group_id == group.id,
-                        ]
-                    )
-                else:
-                    await orm.delete(
-                        table=MemberPerm,
-                        condition=[
-                            MemberPerm.qq == admin,
-                            MemberPerm.group_id == group.id
-                        ]
-                    )
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={"qq": admin, "group_id": group.id, "perm": 128},
+                    condition=[
+                        MemberPerm.qq == admin,
+                        MemberPerm.group_id == group.id,
+                    ]
+                )
         await response_model.get_acc_controller().init_group(group.id, member_list, app.account)
         if group.id not in self.initialized_group_list:
             self.initialized_group_list.append(group.id)
         if Ariadne.current(self.config.default_account).connection.status.available:
             await Ariadne.current(self.config.default_account).send_message(
-                self.config.test_group, MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})"))
+                await Ariadne.current(self.config.default_account).get_group(self.config.test_group),
+                MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})")
+            )
         logger.success(f"成功初始化群:{group.name}({group.id})")
 
     def set_logger(self):

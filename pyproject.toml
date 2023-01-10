@@ -29,6 +29,7 @@ zhconv = "^1.4.3"
 pillow = "^9.4.0"
 bs4 = "^0.0.1"
 requests = "^2.28.1"
+jieba = "^0.42.1"
 
 
 [build-system]

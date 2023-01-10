@@ -282,7 +282,7 @@ async def FullInventory():
 # 启动时自动获取token
 @listen(SayaModuleInstalled)
 async def init_token(event: SayaModuleInstalled):
-    if event.module == f"modules.bf1战绩":
+    if event.channel == channel:
         logger.info(f"初始化token中")
         try:
             await getPid_byName("shlsan13")

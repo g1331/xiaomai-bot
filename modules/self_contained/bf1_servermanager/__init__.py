@@ -19,7 +19,7 @@ from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as graia_Image
+from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.element import Source, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
     PRESERVE, UnionMatch, WildcardMatch, RegexMatch
@@ -211,7 +211,7 @@ async def search_server(app: Ariadne, group: Group, server_name: RegexResult, so
                 await app.send_message(
                     group,
                     MessageChain(
-                        graia_Image(data_bytes=await md2img(servers))
+                        GraiaImage(data_bytes=await md2img(servers))
                     ),
                     quote=source
                 )
@@ -276,7 +276,7 @@ async def search_server(app: Ariadne, group: Group, server_name: RegexResult, so
                 await app.send_message(
                     group,
                     MessageChain(
-                        graia_Image(data_bytes=await md2img(servers))
+                        GraiaImage(data_bytes=await md2img(servers))
                     ),
                     quote=source
                 )
@@ -1267,7 +1267,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         logger.info(f"查询{bfgroups_name}服务器ing")
     except:
         await app.send_message(group, MessageChain(
-            graia_Image(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
     logger.info(f"查询{bfgroups_name}服务器完成,耗时:{time.time() - time_start}")
@@ -1299,7 +1299,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             servers += 1
     if len(result) == 1:
         await app.send_message(group, MessageChain(
-            graia_Image(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
     result[-1] = result[-1].replace("\n", '')
@@ -1397,7 +1397,7 @@ async def check_server_by_index(app: Ariadne, group: Group,
             raise Exception
     except:
         await app.send_message(group, MessageChain(
-            graia_Image(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18 + "\n", f'{server_index}:{server_info["serverInfo"]["name"]}\n',
@@ -1928,7 +1928,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
             raise Exception
     except:
         await app.send_message(group, MessageChain(
-            graia_Image(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=src)
         return False
     admin_pid_list = []
@@ -2391,7 +2391,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     IMG.save(SavePic, quality=100)
     logger.info(f"玩家列表pic耗时:{time.time() - time_start}")
     message_send = MessageChain(
-        graia_Image(path=SavePic),
+        GraiaImage(path=SavePic),
         "\n回复'-k 序号 原因'可踢出玩家(60秒内有效)"
     )
     bot_message = await app.send_group_message(group, message_send, quote=src)
@@ -4480,7 +4480,7 @@ async def check_ban(app: Ariadne, group: Group, player_name: RegexResult, source
         await tasks
     except:
         await app.send_message(group, MessageChain(
-            graia_Image(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
     send = []
@@ -7314,7 +7314,7 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
     #     f"=" * 20, "\n",
     # ), quote=source)
     await app.send_message(group, MessageChain(
-        graia_Image(path="./data/battlefield/pic/menu/bf1服管.png"),
+        GraiaImage(path="./data/battlefield/pic/menu/bf1服管.png"),
         "注意:\n1.'#'现在已经改为选填\n2.群组ban暂停"
     ), quote=source)
 

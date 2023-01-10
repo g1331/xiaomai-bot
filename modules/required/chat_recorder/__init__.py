@@ -26,12 +26,11 @@ async def chat_record(message: MessageChain, group: Group, member: Member):
     content = "".join(plain.text for plain in message.get(Plain)).strip()
     seg_result = jieba.lcut(content) if content else ""
     await orm.add(
-        ChatRecord,
-        {
-            "time": datetime.datetime.now(),
-            "group_id": group.id,
-            "member_id": member.id,
-            "persistent_string": message.as_persistent_string(),
-            "seg": "|".join(seg_result) if seg_result else "",
-        },
+        ChatRecord(
+            time=datetime.datetime.now(),
+            group_id=group.id,
+            member_id=member.id,
+            persistent_string=message.as_persistent_string(),
+            seg="|".join(seg_result) if seg_result else "",
+        )
     )

@@ -114,21 +114,18 @@ class Umaru(object):
             _ = await orm.create_all()
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
+        admin_list = []
         if result := await orm.fetch_all(
                 select(MemberPerm.qq).where(
                     MemberPerm.perm == 128,
                 )
         ):
-            admin_list = [item[0] for item in result]
-        else:
-            admin_list = []
+            for item in result:
+                if item[0] not in admin_list:
+                    admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
         Timeout = 10 * len(self.config.bot_accounts)
-        while True:
-            if len(self.initialized_app_list) == len(self.apps):
-                break
-            if (time.time() - time_start) >= Timeout:
-                break
+        while (time.time() - time_start) < Timeout and len(self.initialized_app_list) != len(self.apps):
             for app in self.apps:
                 if app.account in self.initialized_app_list:
                     continue
@@ -177,7 +174,7 @@ class Umaru(object):
                                 ]
                             )
                 self.initialized_app_list.append(app.account)
-            logger.info(f"已初始化{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
+                logger.info(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
                 await asyncio.sleep(5)
         logger.info("本次启动活动群组如下：")

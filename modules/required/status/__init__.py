@@ -13,6 +13,8 @@ from graia.ariadne.message.parser.twilight import Twilight, SpacePolicy, FullMat
 from graia.ariadne.model import Group, Friend
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
+from graia.scheduler import timers
+from graia.scheduler.saya import SchedulerSchema
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -39,6 +41,11 @@ channel.description("查询BOT运行状态")
 channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
+message_receive_before = 0
+message_send_before = 0
+Real_time_message_receive = 0
+Real_time_message_send = 0
+
 
 # 接收事件
 @listen(GroupMessage, FriendMessage)
@@ -55,6 +62,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     FullMatch("-bot").space(SpacePolicy.PRESERVE)
 ]))
 async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
+    global Real_time_message_receive, Real_time_message_send
     # 运行时长
     time_start = int(time.mktime(core.launch_time.timetuple()))
     m, s = divmod(int(time.time()) - time_start, 60)
@@ -74,14 +82,12 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
     zb2 = str(psutil.cpu_percent(interval=None, percpu=False)) + "%"
     # 磁盘
     cp = str(psutil.disk_usage('/').percent) + "%"
-    receive_counter = core.received_count
-    send_counter = core.sent_count
     launch_time = datetime.fromtimestamp(core.launch_time.timestamp()).strftime('%Y年%m月%d日%H时%M分%S秒')
     await app.send_message(src_place, MessageChain(
         f"开机时间：{launch_time}\n",
         f"运行时长：{work_time}\n",
-        f"接收消息：{receive_counter}条(%.1f/m)\n" % ((receive_counter / (int(time.time()) - time_start)) * 60),
-        f"发送消息：{send_counter + 1}条(%.1f/m)\n" % ((send_counter + 1) / (int(time.time()) - time_start) * 60),
+        f"接收消息：{core.received_count}条(实时:%.1f/m)\n" % Real_time_message_receive,
+        f"发送消息：{core.sent_count + 1}条(实时:%.1f/m)\n" % Real_time_message_send,
         f"内存使用：%.0fMB" % (ysy / 1024 / 1024),
         f"(%.0f%%)\n" % zb,
         f"CPU占比：{zb2}\n",
@@ -92,3 +98,13 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
         f"爱发电地址:https://afdian.net/a/ss1333\n",
         f"项目地址:https://github.com/g1331/xiaomai-bot"
     ), quote=source)
+
+
+# 自动刷新client
+@channel.use(SchedulerSchema(timers.every_custom_minutes(1)))
+async def message_counter():
+    global message_receive_before, message_send_before, Real_time_message_receive, Real_time_message_send
+    Real_time_message_receive = core.received_count - message_receive_before
+    Real_time_message_send = core.sent_count - message_send_before
+    message_receive_before = core.received_count
+    message_send_before = core.sent_count

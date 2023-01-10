@@ -357,7 +357,7 @@ class FrequencyLimitation(object):
             if frequency_controller.blacklist_judge(group_id, sender_id):
                 if not frequency_controller.blacklist_noticed_judge(group_id, sender_id):
                     await app.send_message(
-                        event.sender.group, MessageChain("检测到大量请求,加入黑名单20分钟!"),
+                        event.sender.group, MessageChain("检测到大量请求,加入黑名单5分钟!"),
                         quote=src
                     )
                     frequency_controller.blacklist_notice(group_id, sender_id)
@@ -366,7 +366,8 @@ class FrequencyLimitation(object):
             if (current_weight + weight) >= total_weights:
                 await app.send_message(
                     event.sender.group,
-                    MessageChain(f"超过频率调用限制!({current_weight}/{total_weights})"),
+                    MessageChain(f"超过频率调用限制!({current_weight + weight}/{total_weights})\n"
+                                 f"休息一下吧~继续高频访问会被加入临时黑名单哦~"),
                     quote=src,
                 )
                 raise ExecutionStop

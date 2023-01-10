@@ -8,6 +8,7 @@ import uuid
 from datetime import date, timedelta
 from pathlib import Path
 
+import aiofiles
 import aiohttp
 import httpx
 import requests
@@ -3145,8 +3146,9 @@ async def report_Interface(player_name, report_reason, report_qq):
 async def get_record_counter(file_path):
     record_counters = 0
     try:
-        with open(file_path, 'r', encoding='utf-8') as file_temp:
-            data = json.load(file_temp)
+        async with aiofiles.open(file_path, 'r', encoding='utf-8') as file_temp:
+            file_content = await file_temp.read()
+            data = json.loads(file_content)
             record_counters += len(data.get("bind", {}).get("history", []))
             record_counters += len(data.get("weapon", {}).get("history", []))
             record_counters += len(data.get("vehicle", {}).get("history", []))
@@ -3161,109 +3163,96 @@ async def get_record_counter(file_path):
 
 
 async def get_record_counters(bind_path):
-    tasks = []
     record_counters = 0
-
-    for item in os.listdir(bind_path):
+    bind_path_list = [item for item in os.listdir(bind_path)]
+    tasks = []
+    for item in bind_path_list:
         file_path = f"{bind_path}/{item}/record.json"
-        tasks = [asyncio.create_task(get_record_counter(file_path)) for item in os.listdir(bind_path) if
-                 os.path.exists(f"{bind_path}/{item}/record.json")]
-
-    results = await asyncio.gather(*tasks)
-    for result in results:
-        record_counters += result
-
+        if os.path.exists(file_path):
+            tasks.append(asyncio.create_task(get_record_counter(file_path)))
+            if len(tasks) >= 100:
+                results = await asyncio.gather(*tasks)
+                for result in results:
+                    record_counters += result
+                tasks = []
+    if tasks:
+        results = await asyncio.gather(*tasks)
+        for result in results:
+            record_counters += result
     return record_counters
 
 
 # bfstat
-# @listen(GroupMessage)
-# @decorate(
-#     Permission.user_require(Permission.GroupAdmin),
-#     Permission.group_require(channel.metadata.level),
-#     FrequencyLimitation.require(channel.module),
-#     Function.require(channel.module),
-#     Distribute.require()
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             FullMatch("-bfstat")
-#         ]
-#     )
-# )
-# async def bf_status(app: Ariadne, group: Group, source: Source):
-#     # 获取绑定玩家数量数量
-#     bind_path = "data/battlefield/binds/players"
-#     bind_counters = len(os.listdir(bind_path))
-#     record_counters = await get_record_counters(bind_path)
-#     # record_counters = 0
-#     # for item in os.listdir(bind_path):
-#     #     file_path = f"{bind_path}/{item}/record.json"
-#     #     if os.path.exists(file_path):
-#     #         try:
-#     #             async with aiofiles.open(file_path, 'r', encoding='utf-8') as file:
-#     #                 data = json.load(await file.read())
-#     #                 record_counters += len(data.get("bind", {}).get("history", []))
-#     #                 record_counters += len(data.get("weapon", {}).get("history", []))
-#     #                 record_counters += len(data.get("vehicle", {}).get("history", []))
-#     #                 record_counters += len(data.get("stat", {}).get("history", []))
-#     #                 record_counters += len(data.get("recent", {}).get("history", []))
-#     #                 record_counters += len(data.get("matches", {}).get("history", []))
-#     #                 record_counters += len(data.get("tyc", {}).get("history", []))
-#     #                 record_counters += len(data.get("report", {}).get("history", []))
-#     #         except Exception as e:
-#     #             continue
-#     url = "https://api.gametools.network/bf1/status/?platform=pc"
-#     head = {
-#         "Connection": "Keep-Alive"
-#     }
-#     # noinspection PyBroadException
-#     try:
-#         # async with httpx.AsyncClient() as client:
-#         response = await client.get(url, headers=head, timeout=5)
-#         html = eval(response.text)
-#         if 'errors' in html:
-#             # {'errors': ['Error connecting to the database']}
-#             await app.send_message(group, MessageChain(
-#                 f"{html['errors'][0]}"
-#             ), quote=source)
-#             return
-#         data: dict = html["regions"][0]
-#     except Exception:
-#         data = None
-#     if data:
-#         await app.send_message(group, MessageChain(
-#             f"当前在线:{data.get('amounts').get('soldierAmount')}\n",
-#             f"服务器数:{data.get('amounts').get('serverAmount')}\n",
-#             f"排队总数:{data.get('amounts').get('queueAmount')}\n",
-#             f"观众总数:{data.get('amounts').get('spectatorAmount')}\n",
-#             f"=" * 13, "\n",
-#             "私服(官服):\n",
-#             f"服务器:{int(data.get('amounts').get('communityServerAmount'))}({int(data.get('amounts').get('diceServerAmount'))})\n",
-#             f"人数:{int(data.get('amounts').get('communitySoldierAmount'))}({int(data.get('amounts').get('diceSoldierAmount'))})\n",
-#             f"排队:{int(data.get('amounts').get('communityQueueAmount'))}({int(data.get('amounts').get('diceQueueAmount'))})\n",
-#             f"观众:{int(data.get('amounts').get('communitySpectatorAmount'))}({int(data.get('amounts').get('diceSpectatorAmount'))})\n",
-#             f"=" * 13, "\n",
-#             f"征服:{data.get('modes').get('Conquest')}\t",
-#             f"行动:{data.get('modes').get('BreakthroughLarge')}\n",
-#             f"前线:{data.get('modes').get('TugOfWar')}\t",
-#             f"突袭:{data.get('modes').get('Rush')}\n",
-#             f"抢攻:{data.get('modes').get('Domination')}\t",
-#             f"闪击行动:{data.get('modes').get('Breakthrough')}\n",
-#             f"团队死斗:{data.get('modes').get('TeamDeathMatch')}\t",
-#             f"战争信鸽:{data.get('modes').get('Possession')}\n",
-#             f"空中突袭:{data.get('modes').get('AirAssault')}\n",
-#             f"空降补给:{data.get('modes').get('ZoneControl')}\n",
-#             f"=" * 13, "\n"
-#                        f"当前绑定玩家数:{bind_counters}\n"
-#                        f"累计查询数:{record_counters}"
-#         ), quote=source)
-#     else:
-#         await app.send_message(group, MessageChain(
-#             f"当前绑定玩家数:{bind_counters}\n"
-#             f"累计查询数:{record_counters}"
-#         ), quote=source)
+@listen(GroupMessage)
+@decorate(
+    Permission.user_require(Permission.GroupAdmin),
+    Permission.group_require(channel.metadata.level),
+    FrequencyLimitation.require(channel.module),
+    Function.require(channel.module),
+    Distribute.require()
+)
+@dispatch(
+    Twilight(
+        [
+            FullMatch("-bfstat")
+        ]
+    )
+)
+async def bf_status(app: Ariadne, group: Group, source: Source):
+    # 获取绑定玩家数量数量
+    bind_path = "data/battlefield/binds/players"
+    bind_counters = len(os.listdir(bind_path))
+    record_counters = await get_record_counters(bind_path)
+    url = "https://api.gametools.network/bf1/status/?platform=pc"
+    head = {
+        "Connection": "Keep-Alive"
+    }
+    # noinspection PyBroadException
+    try:
+        # async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=head, timeout=5)
+        html = eval(response.text)
+        if 'errors' in html:
+            # {'errors': ['Error connecting to the database']}
+            await app.send_message(group, MessageChain(
+                f"{html['errors'][0]}"
+            ), quote=source)
+            return
+        data: dict = html["regions"][0]
+    except Exception:
+        data = None
+    if data:
+        await app.send_message(group, MessageChain(
+            f"当前在线:{data.get('amounts').get('soldierAmount')}\n",
+            f"服务器数:{data.get('amounts').get('serverAmount')}\n",
+            f"排队总数:{data.get('amounts').get('queueAmount')}\n",
+            f"观众总数:{data.get('amounts').get('spectatorAmount')}\n",
+            f"=" * 13, "\n",
+            "私服(官服):\n",
+            f"服务器:{int(data.get('amounts').get('communityServerAmount'))}({int(data.get('amounts').get('diceServerAmount'))})\n",
+            f"人数:{int(data.get('amounts').get('communitySoldierAmount'))}({int(data.get('amounts').get('diceSoldierAmount'))})\n",
+            f"排队:{int(data.get('amounts').get('communityQueueAmount'))}({int(data.get('amounts').get('diceQueueAmount'))})\n",
+            f"观众:{int(data.get('amounts').get('communitySpectatorAmount'))}({int(data.get('amounts').get('diceSpectatorAmount'))})\n",
+            f"=" * 13, "\n",
+            f"征服:{data.get('modes').get('Conquest')}\t",
+            f"行动:{data.get('modes').get('BreakthroughLarge')}\n",
+            f"前线:{data.get('modes').get('TugOfWar')}\t",
+            f"突袭:{data.get('modes').get('Rush')}\n",
+            f"抢攻:{data.get('modes').get('Domination')}\t",
+            f"闪击行动:{data.get('modes').get('Breakthrough')}\n",
+            f"团队死斗:{data.get('modes').get('TeamDeathMatch')}\t",
+            f"战争信鸽:{data.get('modes').get('Possession')}\n",
+            f"空中突袭:{data.get('modes').get('AirAssault')}\n",
+            f"空降补给:{data.get('modes').get('ZoneControl')}\n",
+            f"=" * 13, "\n"
+                       f"当前绑定玩家数:{bind_counters}\n"
+                       f"累计查询数:{record_counters}"
+        ), quote=source)
+    else:
+        await app.send_message(group, MessageChain(
+            f"当前绑定玩家数:{bind_counters}\n"
+            f"累计查询数:{record_counters}"
+        ), quote=source)
 
 
 # TODO: 查询统计

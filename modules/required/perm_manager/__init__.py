@@ -408,9 +408,11 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     """
     perm_list = await Permission.get_users_perm_byID(group_id)
     perm_dict = {}
-    for member in await target_app.get_member_list(group_id):
-        for item in perm_list:
+    member_list = await target_app.get_member_list(group_id)
+    for item in perm_list:
+        if item[1] in [member.id for member in member_list]:
             perm_dict[item[1]] = item[0]
+    for member in member_list:
         if member.id not in perm_dict and Permission.member_permStr_dict[member.permission.name] != 16:
             perm_dict[member.id] = Permission.member_permStr_dict[member.permission.name]
     perm_dict = dict(sorted(perm_dict.items(), key=lambda x: x[1], reverse=True))

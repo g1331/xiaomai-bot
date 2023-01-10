@@ -23,6 +23,7 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import LogConfig, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
@@ -162,8 +163,14 @@ class Umaru(object):
         # 更新成员权限
         await self.update_host_permission()
         await self.update_admins_permission()
-        logger.success(f"bot初始化完成~耗时:{(time.time() - time_start):.2f}秒")
-        logger.info(f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组")
+        init_result = f"bot启动初始化完成~耗时:{(time.time() - time_start):.2f}秒" \
+                      f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组"
+        logger.success(init_result)
+        if Ariadne.current(self.config.default_account).connection.status.available:
+            await Ariadne.current(self.config.default_account).send_friend_message(
+                self.config.Master,
+                MessageChain(init_result)
+            )
 
     async def init_group(self, app: Ariadne, group: Group):
         """
@@ -237,31 +244,23 @@ class Umaru(object):
         await response_model.get_acc_controller().init_group(group.id, member_list, app.account)
         if group.id not in self.initialized_group_list:
             self.initialized_group_list.append(group.id)
+        if Ariadne.current(self.config.default_account).connection.status.available:
+            await Ariadne.current(self.config.default_account).send_message(
+                self.config.test_group, MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})"))
         logger.success(f"成功初始化群:{group.name}({group.id})")
 
     # 更新master权限
     async def update_host_permission(self):
         for bot_account in self.total_groups:
             for group in self.total_groups[bot_account]:
-                member_list = await Ariadne.current(bot_account).get_member_list(group)
-                member_list = [member.id for member in member_list]
-                if self.config.Master in member_list:
-                    await orm.insert_or_update(
-                        table=MemberPerm,
-                        data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                        condition=[
-                            MemberPerm.qq == self.config.Master,
-                            MemberPerm.group_id == group.id
-                        ]
-                    )
-                else:
-                    await orm.delete(
-                        table=MemberPerm,
-                        condition=[
-                            MemberPerm.qq == self.config.Master,
-                            MemberPerm.group_id == group.id
-                        ]
-                    )
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                    condition=[
+                        MemberPerm.qq == self.config.Master,
+                        MemberPerm.group_id == group.id
+                    ]
+                )
 
     # 更新admins权限
     async def update_admins_permission(self, admin_list: list[int] = None):
@@ -276,26 +275,15 @@ class Umaru(object):
                 return
         for bot_account in self.total_groups:
             for group in self.total_groups[bot_account]:
-                member_list = await Ariadne.current(bot_account).get_member_list(group)
-                member_list = [member.id for member in member_list]
                 for admin in admin_list:
-                    if admin in member_list:
-                        await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": admin, "group_id": group.id, "perm": 128},
-                            condition=[
-                                MemberPerm.qq == admin,
-                                MemberPerm.group_id == group.id,
-                            ]
-                        )
-                    else:
-                        await orm.delete(
-                            table=MemberPerm,
-                            condition=[
-                                MemberPerm.qq == admin,
-                                MemberPerm.group_id == group.id
-                            ]
-                        )
+                    await orm.insert_or_update(
+                        table=MemberPerm,
+                        data={"qq": admin, "group_id": group.id, "perm": 128},
+                        condition=[
+                            MemberPerm.qq == admin,
+                            MemberPerm.group_id == group.id,
+                        ]
+                    )
 
     def set_logger(self):
         logger.add(

@@ -4,6 +4,7 @@ from abc import ABC
 from typing import Type
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
+from loguru import logger
 
 frequency_controller_instance = None
 
@@ -92,16 +93,17 @@ class FrequencyController(object):
     def add_blacklist(self, group_id: int, sender_id: int):
         if not self.blacklist[group_id][sender_id].get("time"):
             self.blacklist[group_id][sender_id] = {
-                "time": time.time() + 3600,
+                "time": time.time() + 300,
                 "noticed": False
             }
         elif self.blacklist[group_id][sender_id].get("time") < time.time():
             self.blacklist[group_id][sender_id] = {
-                "time": time.time() + 3600,
+                "time": time.time() + 300,
                 "noticed": False
             }
 
     async def limited(self):
+        logger.success("注意:频率限制运行ing")
         if self.limit_running:
             return
         while True:

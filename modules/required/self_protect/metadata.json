@@ -1,0 +1,16 @@
+{
+  "level": 1,
+  "name": "SelfProtect",
+  "version": "0.1",
+  "display_name": "自我保护",
+  "authors": [
+    "13"
+  ],
+  "description": "bot被禁言时会退出该群",
+  "usage": [
+  ],
+  "example": [
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

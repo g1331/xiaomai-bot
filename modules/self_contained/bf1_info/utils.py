@@ -19,6 +19,10 @@ widths = [
     (120831, 1), (262141, 2), (1114109, 1),
 ]
 
+true = True
+false = False
+null = ''
+
 
 def get_width(o):
     """Return the screen column width for unicode ordinal o."""
@@ -137,7 +141,7 @@ async def download_skin(url):
 
 
 # 下载百科图片
-async def download_baike(url):
+async def download_wiki_pic(url):
     file_name = './data/battlefield/pic/百科/' + url[url.rfind('/') + 1:]
     # noinspection PyBroadException
     try:

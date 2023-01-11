@@ -13,8 +13,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as GraiaImage
-from graia.ariadne.message.element import Source, At
+from graia.ariadne.message.element import Image as GraiaImage, At, Source
 from graia.ariadne.message.parser.twilight import (
     Twilight, FullMatch,
     ParamMatch, RegexResult,
@@ -25,7 +24,6 @@ from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel, Saya
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.saya.event import SayaModuleInstalled
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
@@ -1446,7 +1444,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
             except Exception as e:
                 logger.error(e)
                 await app.send_message(group, MessageChain(
-                    # At(sender.id),
                     "绑定信息过期,请重新绑定!"
                 ), quote=source)
                 return
@@ -1456,9 +1453,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     ), quote=source)
 
     scrape_index_tasks = [
-        # asyncio.ensure_future(get_player_stat_data(str(player_pid))),
-        # asyncio.ensure_future(get_weapon_data(str(player_pid))),
-        # asyncio.ensure_future(get_vehicle_data(str(player_pid)))
         asyncio.ensure_future(InfoCache_stat(str(player_pid)).get_data()),
         asyncio.ensure_future(InfoCache_weapon(str(player_pid)).get_data()),
         asyncio.ensure_future(InfoCache_vehicle(str(player_pid)).get_data()),
@@ -3414,34 +3408,28 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
 
 # 被戳回复小标语
 @listen(NudgeEvent)
-@decorate(
-    Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
-    Function.require(channel.module, notice=False),
-)
 async def NudgeReply(app: Ariadne, event: NudgeEvent):
-    if event.group_id is not None:
-        if event.target == app.account:
-            gl = random.randint(0, 99)
-            if gl > 2:
-                file_path = f"./data/battlefield/小标语/data.json"
-                with open(file_path, 'r', encoding="utf-8") as file1:
-                    data = json.load(file1)['result']
-                    a = random.choice(data)['name']
-                    send = zhconv.convert(a, 'zh-cn')
-            else:
-                bf_dic = [
-                    "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-                    f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
-                ]
-                send = random.choice(bf_dic)
-            return await app.send_group_message(
-                event.group_id, MessageChain(
-                    At(event.supplicant), '\n', send
-                )
+    if event.group_id and event.target == app.account and module_controller.if_module_switch_on(
+            channel.module, event.group_id
+    ):
+        gl = random.randint(0, 99)
+        if gl > 2:
+            file_path = f"./data/battlefield/小标语/data.json"
+            with open(file_path, 'r', encoding="utf-8") as file1:
+                data = json.load(file1)['result']
+                a = random.choice(data)['name']
+                send = zhconv.convert(a, 'zh-cn')
+        else:
+            bf_dic = [
+                "你知道吗,小埋最初的灵感来自于胡桃-by水神",
+                f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+            ]
+            send = random.choice(bf_dic)
+        return await app.send_group_message(
+            event.group_id, MessageChain(
+                At(event.supplicant), '\n', send
             )
+        )
 
 
 # TODO bf1百科
@@ -3462,8 +3450,8 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
         ]
     )
 )
-async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_index: RegexResult,
-                    source: Source):
+async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index: RegexResult,
+                   source: Source):
     resv_message = message.display.replace(" ", '').replace("-bf1百科", "").replace("+", "")
     if resv_message == "":
         await app.send_message(group, MessageChain(
@@ -3511,14 +3499,14 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
         return True
     file_path = f"./data/battlefield/百科/data.json"
     with open(file_path, 'r', encoding="utf-8") as file1:
-        baike_data = json.load(file1)["result"]
+        wiki_data = json.load(file1)["result"]
     item_list = []
     # i = 1
-    for item in baike_data:
+    for item in wiki_data:
         for item2 in item["awards"]:
             item_list.append(item2)
-    baike_item = eval(zhconv.convert(str(item_list[item_index]), 'zh-cn'))
-    item_path = f"./data/battlefield/pic/百科/{baike_item['code']}.png"
+    wiki_item = eval(zhconv.convert(str(item_list[item_index]), 'zh-cn'))
+    item_path = f"./data/battlefield/pic/百科/{wiki_item['code']}.png"
     if os.path.exists(item_path):
         await app.send_message(group, MessageChain(
             GraiaImage(path=item_path)
@@ -3528,11 +3516,11 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
         f"查询ing"
     ), quote=source)
     # 底图选择
-    if len(baike_item["codexEntry"]["description"]) < 500:
+    if len(wiki_item["codexEntry"]["description"]) < 500:
         bg_img_path = f"./data/battlefield/pic/百科/百科短底.png"
         bg2_img_path = f"./data/battlefield/pic/百科/百科短.png"
         n_number = 704
-    elif 900 > len(baike_item["codexEntry"]["description"]) > 500:
+    elif 900 > len(wiki_item["codexEntry"]["description"]) > 500:
         bg_img_path = f"./data/battlefield/pic/百科/百科中底.png"
         bg2_img_path = f"./data/battlefield/pic/百科/百科中.png"
         n_number = 1364
@@ -3544,18 +3532,18 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
     bg2_img = Image.open(bg2_img_path)
     draw = ImageDraw.Draw(bg_img)
     # 百科图片下载
-    baike_pic_path = await download_baike(
-        baike_item['codexEntry']['images']['Png640xANY'].replace("[BB_PREFIX]",
-                                                                 "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+    wiki_pic_path = await download_wiki_pic(
+        wiki_item['codexEntry']['images']['Png640xANY'].replace("[BB_PREFIX]",
+                                                                "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
     )
-    if baike_pic_path is None:
+    if wiki_pic_path is None:
         await app.send_message(group, MessageChain(
             f"图片下载失败,请稍后再试!"
         ), quote=source)
         return True
-    baike_pic = Image.open(baike_pic_path)
+    wiki_pic = Image.open(wiki_pic_path)
     # 拼接百科图片
-    bg_img.paste(baike_pic, (37, 37), baike_pic)
+    bg_img.paste(wiki_pic, (37, 37), wiki_pic)
     # 拼接第二层背景图
     bg_img.paste(bg2_img, (0, 0), bg2_img)
 
@@ -3576,15 +3564,15 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
     # name_font = ImageFont.truetype(font_path, 45)
     # content_font = ImageFont.truetype(font_path, 40)
     # 先制作左下角的文字
-    draw.text((60, 810), baike_item['codexEntry']['category'], (164, 155, 108), font=font1)
-    draw.text((60, 850), baike_item['name'], (164, 155, 108), font=font2)
+    draw.text((60, 810), wiki_item['codexEntry']['category'], (164, 155, 108), font=font1)
+    draw.text((60, 850), wiki_item['name'], (164, 155, 108), font=font2)
     # 右边上面的文字
-    draw.text((730, 40), baike_item['codexEntry']['category'], font=font3)
-    draw.text((730, 75), baike_item['name'], (255, 255, 255), font=font2)
-    draw.text((730, 133), baike_item['criterias'][0]['name'], (195, 150, 60), font=font4)
+    draw.text((730, 40), wiki_item['codexEntry']['category'], font=font3)
+    draw.text((730, 75), wiki_item['name'], (255, 255, 255), font=font2)
+    draw.text((730, 133), wiki_item['criterias'][0]['name'], (195, 150, 60), font=font4)
     new_input = ""
     i = 0
-    for letter in baike_item['codexEntry']['description']:
+    for letter in wiki_item['codexEntry']['description']:
         if letter == "\n":
             new_input += letter
             i = 0
@@ -3593,39 +3581,11 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
             i = 0
         i += get_width(ord(letter))
         new_input += letter
-    # draw.text((730, 160), re.sub(r"(.{32})", "\\1\n", baike_item['codexEntry']['description']), font=font5)
-    # draw.text((730, 160), baike_item['codexEntry']['description'], font=font5)
+    # draw.text((730, 160), re.sub(r"(.{32})", "\\1\n", wiki_item['codexEntry']['description']), font=font5)
+    # draw.text((730, 160), wiki_item['codexEntry']['description'], font=font5)
     draw.text((730, 160), new_input, font=font5)
     bg_img.save(item_path, 'png', quality=100)
     await app.send_message(group, MessageChain(
         GraiaImage(path=item_path)
     ), quote=source)
     return True
-
-
-# TODO 被戳回复小标语
-@channel.use(ListenerSchema(listening_events=[NudgeEvent]))
-async def getup(app: Ariadne, event: NudgeEvent):
-    event_group = await app.get_group(event.group_id)
-    if event_group is not None:
-        if event.target == app.account:
-            if module_controller.if_module_switch_on(channel.module, event_group):
-                gl = random.randint(0, 99)
-                if gl > 2:
-                    file_path = f"./data/battlefield/小标语/data.json"
-                    with open(file_path, 'r', encoding="utf-8") as file1:
-                        data = json.load(file1)['result']
-                        a = random.choice(data)['name']
-                        send = zhconv.convert(a, 'zh-cn')
-                else:
-                    bf_dic = [
-                        "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-                        f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
-                    ]
-                    send = random.choice(bf_dic)
-                await app.send_group_message(
-                    event.group_id, MessageChain(
-                        At(event.supplicant), '\n', send
-                    )
-                )
-                return

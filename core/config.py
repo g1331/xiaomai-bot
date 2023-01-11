@@ -18,12 +18,13 @@ class GlobalConfig(BaseModel):
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
     bf1: dict = {
-        "default_account": 0
+        "default_account": int
     }
     GroupMsg_log: bool
     image_search: dict = {
-        "saucenao_key": ""
+        "saucenao_key": str
     }
+    steamdb_cookie: str
 
 
 def load_config():

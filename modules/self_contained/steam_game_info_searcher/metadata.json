@@ -1,0 +1,18 @@
+{
+  "level": 1,
+  "name": "SteamGameInfoSearch",
+  "version": "0.2",
+  "display_name": "steam游戏信息",
+  "authors": [
+    "SAGIRI-kawaii",
+    "13"
+  ],
+  "description": "一个可以搜索steam游戏信息的插件",
+  "usage": ["在群中发送 `steam {游戏名}` 即可"],
+  "example": [
+    "steam mirror",
+    "steam -n=3 battlefield"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

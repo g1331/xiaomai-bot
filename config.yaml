@@ -26,3 +26,6 @@ bf1:
 # 识图
 image_search:
   saucenao_key: saucenao_key
+
+# steam游戏搜索
+steamdb_cookie: steamdb_cookie

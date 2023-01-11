@@ -1345,6 +1345,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
         draw.text((600, 730 + i * 580), "kpm：%s" % vehicle123[i][2], font=content_font)
         draw.text((210, 780 + i * 580), "摧毁：%s" % vehicle123[i][3], font=content_font)
         draw.text((600, 780 + i * 580), "时长：%s" % vehicle123[i][4], font=content_font)
+    bg_img = bg_img.convert('RGB')
     bytes_io = BytesIO()
     bg_img.save(bytes_io, "JPEG")
     end_time3 = time.time()
@@ -1950,6 +1951,7 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
         draw.text((600, 780 + i * 580), f"时长:{vehicle_data[4]}", font=content_font)
     if if_cheat:
         bg_img = bg_img.convert('L')
+    bg_img = bg_img.convert('RGB')
     bytes_io = BytesIO()
     bg_img.save(bytes_io, "JPEG")
     end_time = time.time()

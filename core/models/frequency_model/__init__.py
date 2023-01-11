@@ -4,7 +4,6 @@ from abc import ABC
 from typing import Type
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
-from loguru import logger
 
 frequency_controller_instance = None
 
@@ -33,7 +32,7 @@ class FrequencyController(object):
     def __init__(self):
         self.frequency_dict = {}
         self.blacklist = {}
-        self.limit_running = True
+        self.limit_running = False
 
     def init_module(self, module_name: str):
         """添加插件"""
@@ -105,6 +104,7 @@ class FrequencyController(object):
     async def limited(self):
         if self.limit_running:
             return
+        self.limit_running = True
         while True:
             await self.set_zero()
             await asyncio.sleep(10)

@@ -157,24 +157,44 @@ class Umaru(object):
                             ]
                         )
                         # 更新Master权限
-                        await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                            condition=[
-                                MemberPerm.qq == self.config.Master,
-                                MemberPerm.group_id == group.id
-                            ]
-                        )
-                        # 更新BotAdmin权限
-                        for admin in admin_list:
+                        try:
+                            await app.get_member(group, self.config.Master)
                             await orm.insert_or_update(
                                 table=MemberPerm,
-                                data={"qq": admin, "group_id": group.id, "perm": 128},
+                                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
                                 condition=[
-                                    MemberPerm.qq == admin,
-                                    MemberPerm.group_id == group.id,
+                                    MemberPerm.qq == self.config.Master,
+                                    MemberPerm.group_id == group.id
                                 ]
                             )
+                        except:
+                            await orm.delete(
+                                table=MemberPerm,
+                                condition=[
+                                    MemberPerm.qq == self.config.Master,
+                                    MemberPerm.group_id == group.id
+                                ]
+                            )
+                        # 更新BotAdmin权限
+                        for admin in admin_list:
+                            try:
+                                await app.get_member(group, admin)
+                                await orm.insert_or_update(
+                                    table=MemberPerm,
+                                    data={"qq": admin, "group_id": group.id, "perm": 128},
+                                    condition=[
+                                        MemberPerm.qq == admin,
+                                        MemberPerm.group_id == group.id
+                                    ]
+                                )
+                            except:
+                                await orm.delete(
+                                    table=MemberPerm,
+                                    condition=[
+                                        MemberPerm.qq == admin,
+                                        MemberPerm.group_id == group.id,
+                                    ]
+                                )
                 self.initialized_app_list.append(app.account)
                 logger.info(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
@@ -189,10 +209,13 @@ class Umaru(object):
                       f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组"
         logger.success(init_result)
         if Ariadne.current(self.config.default_account).connection.status.available:
-            await Ariadne.current(self.config.default_account).send_friend_message(
-                self.config.Master,
-                MessageChain(init_result)
-            )
+            try:
+                await Ariadne.current(self.config.default_account).send_friend_message(
+                    self.config.Master,
+                    MessageChain(init_result)
+                )
+            except:
+                pass
 
     async def init_group(self, app: Ariadne, group: Group):
         """

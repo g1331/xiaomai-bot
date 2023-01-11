@@ -353,16 +353,17 @@ class FrequencyLimitation(object):
                 return
             frequency_controller = frequency_model.get_frequency_controller()
             frequency_controller.add_weight(module_name, group_id, sender_id, weight)
+            current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
             # 如果已经在黑名单则返回
             if frequency_controller.blacklist_judge(group_id, sender_id):
                 if not frequency_controller.blacklist_noticed_judge(group_id, sender_id):
                     await app.send_message(
-                        event.sender.group, MessageChain("检测到大量请求,加入黑名单5分钟!"),
+                        event.sender.group,
+                        MessageChain(f"检测到大量请求,加入黑名单5分钟!({current_weight}/{total_weights})"),
                         quote=src
                     )
                     frequency_controller.blacklist_notice(group_id, sender_id)
                 raise ExecutionStop
-            current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
             if (current_weight + weight) >= total_weights:
                 await app.send_message(
                     event.sender.group,

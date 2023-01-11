@@ -2,6 +2,7 @@ import re
 import time
 import uuid
 from datetime import date, timedelta
+from io import BytesIO
 from pathlib import Path
 
 import requests
@@ -714,13 +715,12 @@ async def bg_check(app: Ariadne, group: Group, sender: Member, source: Source):
             temp.paste(bg_img, (width * i + 1, 0))
             # 背景第几张
             draw.text((width * i + 20, 20), f"{bg_item.replace('.png', '')}", font=title_font, fill=(255, 132, 0))
-        SavePic = f"./data/battlefield/Temp/{time.time()}.png"
         temp = temp.convert('RGB')
-        SavePic = SavePic.replace(".png", ".jpg")
-        temp.save(SavePic, quality=95)
+        bytes_io = BytesIO()
+        temp.save(bytes_io, "PNG")
         message_send = MessageChain(
             f"你当前有{len(bg_list)}张背景:\n",
-            GraiaImage(path=SavePic)
+            GraiaImage(data_bytes=bytes_io.getvalue())
         )
         await app.send_message(group, message_send, quote=source)
         return
@@ -974,7 +974,6 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
     time_font = ImageFont.truetype(font_path, 25)
     name_font = ImageFont.truetype(font_path, 45)
     content_font = ImageFont.truetype(font_path, 40)
-    SavePic = f"./data/battlefield/Temp/{player_pid}.png"
     # 玩家头像获取
     player_img = await playerPicDownload(html["avatar"], html["userName"])
     # 玩家头像打开
@@ -1034,23 +1033,15 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
         draw.text((210, 830 + i * 580), "效率:%s" % weapon123[i][5], font=content_font)
         draw.text((600, 830 + i * 580), "时长:%s" % weapon123[i][7], font=content_font)
     bg_img = bg_img.convert('RGB')
-    SavePic = SavePic.replace(".png", ".jpg")
-    bg_img.save(SavePic, quality=95)
-    # bg_img.save(player_cache_file_path, 'png', quality=100)
-    # logger.warning("缓存成功!")
     end_time3 = time.time()
     logger.info(f'画图耗时:{end_time3 - start_time3}')
     logger.info(f"制图总耗时:{end_time3 - start_time}秒")
-    # if not os.path.exists(player_cache_file_path):
-    #     await app.send_message(group, MessageChain(
-    #         At(sender.id),
-    #         graia_Image(path=SavePic)
-    #     ))
 
     start_time4 = time.time()
+    bytes_io = BytesIO()
+    bg_img.save(bytes_io, "PNG")
 
-    # message_send = MessageChain([At(sender), graia_Image(base64=ls_f)])
-    message_send = MessageChain(GraiaImage(path=SavePic))
+    message_send = MessageChain(GraiaImage(data_bytes=bytes_io.getvalue()))
 
     # logger.info(message_send)
     await app.send_message(group, message_send, quote=source)
@@ -1060,11 +1051,6 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
         await app.send_message(group, MessageChain(
             f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢"
         ), quote=source)
-    # noinspection PyBroadException
-    try:
-        os.remove(SavePic)
-    except Exception as e:
-        logger.warning(e)
     # 武器计数器
     await record.weapon_counter(sender.id, str(player_pid), str(player_name), str(weapon_type.result))
     return True
@@ -1303,7 +1289,6 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
     time_font = ImageFont.truetype(font_path, 25)
     name_font = ImageFont.truetype(font_path, 45)
     content_font = ImageFont.truetype(font_path, 40)
-    SavePic = "./data/battlefield/Temp/" + str(int(time.time())) + ".png"
     # 玩家头像获取
     player_img = await playerPicDownload(html["avatar"], html["userName"])
     # 玩家头像打开
@@ -1361,15 +1346,14 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
         draw.text((600, 730 + i * 580), "kpm：%s" % vehicle123[i][2], font=content_font)
         draw.text((210, 780 + i * 580), "摧毁：%s" % vehicle123[i][3], font=content_font)
         draw.text((600, 780 + i * 580), "时长：%s" % vehicle123[i][4], font=content_font)
-    bg_img = bg_img.convert('RGB')
-    SavePic = SavePic.replace(".png", ".jpg")
-    bg_img.save(SavePic, quality=95)
+    bytes_io = BytesIO()
+    bg_img.save(bytes_io, "PNG")
     end_time3 = time.time()
     logger.info(f'画图耗时:{end_time3 - start_time3}')
     start_time4 = time.time()
     await app.send_message(group, MessageChain(
         # At(sender.id),
-        GraiaImage(path=SavePic)
+        GraiaImage(data_bytes=bytes_io.getvalue())
     ), quote=source)
     end_time4 = time.time()
     logger.info(f"发送耗时:{end_time4 - start_time4}秒")
@@ -1377,7 +1361,6 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
         await app.send_message(group, MessageChain(
             f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢= ="
         ), quote=source)
-    os.remove(SavePic)
     # 调用载具计数器
     await record.vehicle_counter(sender.id, str(player_pid), player_name, str(vehicle_type.result))
     return True
@@ -1787,7 +1770,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     content_font = ImageFont.truetype(font_path, 40)
     # 等级字体
     rank_font = ImageFont.truetype(r'C:\Windows\Fonts\simhei.TTF', 80)
-    SavePic = "./data/battlefield/Temp/" + str(int(time.time())) + ".png"
     # 玩家头像获取
     player_img = await playerPicDownload(html["avatar"], html["userName"])
     # 玩家头像打开
@@ -1967,23 +1949,22 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
         draw.text((600, 730 + i * 580), f"kpm:{vehicle_data[2]}", font=content_font)
         draw.text((210, 780 + i * 580), "摧毁:%s" % vehicle_data[3], font=content_font)
         draw.text((600, 780 + i * 580), f"时长:{vehicle_data[4]}", font=content_font)
-    bg_img = bg_img.convert('RGB')
-    SavePic = SavePic.replace(".png", ".jpg")
     if if_cheat:
         bg_img = bg_img.convert('L')
-    bg_img.save(SavePic, quality=95)
+    bytes_io = BytesIO()
+    bg_img.save(bytes_io, "PNG")
     end_time = time.time()
     logger.info(f"接口+制图耗时:{end_time - start_time}秒")
     start_time4 = time.time()
     if not if_cheat:
         await app.send_message(group, MessageChain(
             # At(sender.id),
-            GraiaImage(path=SavePic)
+            GraiaImage(data_bytes=bytes_io.getvalue())
         ), quote=source)
     else:
         await app.send_message(group, MessageChain(
             # At(sender.id),
-            GraiaImage(path=SavePic),
+            GraiaImage(data_bytes=bytes_io.getvalue()),
             f"案件地址:{bf_url}"
         ), quote=source)
     end_time4 = time.time()
@@ -1992,7 +1973,6 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
             f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢= ="
         ), quote=source)
     logger.info(f"发送耗时:{end_time4 - start_time4}秒")
-    os.remove(SavePic)
     await record.player_stat_counter(sender.id, str(player_pid), str(player_name))
 
 

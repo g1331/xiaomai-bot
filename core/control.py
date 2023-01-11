@@ -63,7 +63,7 @@ class Permission(object):
 
     user_str_dict = {
         256: "Master",
-        128: "Admin",
+        128: "BotAdmin",
         64: "GroupOwner",
         32: "GroupAdmin",
         16: "User",
@@ -98,7 +98,7 @@ class Permission(object):
         admin_list = []
         if result := await orm.fetch_all(
                 select(MemberPerm.qq).where(
-                    MemberPerm.perm == 128,
+                    MemberPerm.perm == Permission.BotAdmin,
                 )
         ):
             for item in result:
@@ -258,9 +258,8 @@ class Function(object):
     """功能判断"""
 
     @classmethod
-    def require(cls, module_name: str):
-        async def judge(app: Ariadne, group: Group or None = None,
-                        source: Source or None = None):
+    def require(cls, module_name: str, notice: bool = True):
+        async def judge(app: Ariadne, group: Group or None = None, source: Source or None = None):
             # 如果module_name不在modules_list里面就添加
             module_controller = saya_model.get_module_controller()
             if module_name not in module_controller.modules:
@@ -273,7 +272,7 @@ class Function(object):
             module_meta = module_controller.get_metadata_from_module_name(module_name)
             # 如果在维护就停止
             if not module_controller.if_module_available(module_name):
-                if module_controller.if_module_notice_on(module_name, group):
+                if notice and module_controller.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
                         f"{module_meta.display_name or module_name}插件正在维护~"
                     ), quote=source)
@@ -281,7 +280,7 @@ class Function(object):
             else:
                 # 如果群未打开开关就停止
                 if not module_controller.if_module_switch_on(module_name, group):
-                    if module_controller.if_module_notice_on(module_name, group):
+                    if notice and module_controller.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
                             f"{module_meta.display_name or module_name}插件已关闭\n请使用‘-开启 插件编号’来打开插件\n插件编号请使用‘帮助’获取"
                         ), quote=source)

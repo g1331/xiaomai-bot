@@ -46,11 +46,11 @@ inc = InterruptControl(saya.broadcast)
 #   未加载插件
 @listen(GroupMessage, FriendMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(AlconnaDispatcher(Alconna(
     "插件列表",
@@ -118,11 +118,11 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
 #   重载插件
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.Master, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -174,11 +174,11 @@ async def change_module_status(
 #   关闭插件
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([

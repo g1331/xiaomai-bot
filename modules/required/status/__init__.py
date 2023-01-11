@@ -51,11 +51,11 @@ Real_time_message_send = 0
 @listen(GroupMessage, FriendMessage)
 # 依赖注入
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 # 消息链处理器
 @dispatch(Twilight([

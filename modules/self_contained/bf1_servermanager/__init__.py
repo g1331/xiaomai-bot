@@ -71,11 +71,11 @@ null = ''
 # TODO: 前置功能: 搜索服务器
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -315,11 +315,11 @@ async def search_server(app: Ariadne, group: Group, server_name: RegexResult, so
 # TODO: 详细服务器
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(

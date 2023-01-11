@@ -65,7 +65,9 @@ async def emoji_mix(
                 assert resp.status == 200, "图片获取失败"
                 image = await resp.read()
                 return await app.send_group_message(
-                    event.sender.group, MessageChain([Image(data_bytes=image)])
+                    event.sender.group,
+                    MessageChain([Image(data_bytes=image)]),
+                    quote=event.source
                 )
     except AssertionError as err:
         err_text = err.args[0]

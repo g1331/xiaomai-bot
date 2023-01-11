@@ -1,0 +1,20 @@
+{
+  "level": 1,
+  "name": "SearchImage",
+  "version": "0.1",
+  "display_name": "识图",
+  "authors": [
+    "13"
+  ],
+  "description": "识图、搜番功能",
+  "usage": [
+    "格式如下:",
+    "-识图(图片)",
+    "-搜图(图片)",
+    "-搜番(图片)"
+  ],
+  "example": [
+  ],
+  "default_switch": false,
+  "default_notice": true
+}

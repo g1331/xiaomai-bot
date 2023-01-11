@@ -1,16 +1,9 @@
-import asyncio
-import json
-import os
-import random
 import re
 import time
 import uuid
 from datetime import date, timedelta
 from pathlib import Path
 
-import aiofiles
-import aiohttp
-import httpx
 import requests
 import zhconv
 from PIL import Image, ImageFont, ImageDraw
@@ -22,8 +15,12 @@ from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.element import Source, At
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
-    PRESERVE, UnionMatch
+from graia.ariadne.message.parser.twilight import (
+    Twilight, FullMatch,
+    ParamMatch, RegexResult,
+    SpacePolicy, PRESERVE,
+    UnionMatch
+)
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -32,7 +29,6 @@ from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.saya.event import SayaModuleInstalled
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
-from loguru import logger
 
 from core.config import GlobalConfig
 from core.control import (
@@ -42,13 +38,12 @@ from core.control import (
     Distribute,
     Config
 )
-from core.models import (
-    saya_model
-)
+from core.models import saya_model
 from .choose_bg_pic import bg_pic
 from .info_cache_manager import InfoCache, InfoCache_weapon, InfoCache_vehicle, InfoCache_stat
 from .main_session_auto_refresh import auto_refresh_account
 from .record_counter import record
+from .utils import *
 
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
@@ -80,8 +75,7 @@ null = ''
 access_token = None
 access_token_time = None
 access_token_expires_time = 0
-pid_temp_dict = {
-}
+pid_temp_dict = {}
 default_account = global_config.bf1.get("default_account", 0)
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
@@ -127,13 +121,14 @@ async def getPid_byName(player_name: str) -> dict:
 
     # ea-api获取pid
     url = f"https://gateway.ea.com/proxy/identity/personas?namespaceName=cem_ea_id&displayName={player_name}"
-    head = {  # 头部信息
+    # 头部信息
+    head = {
         "Host": "gateway.ea.com",
         "Connection": "keep-alive",
         "Accept": "application/json",
         "X-Expand-Results": "true",
         "Authorization": f"Bearer {token}",
-        "Accept-Encoding": "deflate",
+        "Accept-Encoding": "deflate"
     }
     # async with httpx.AsyncClient() as client:
     response = await client.get(url, headers=head, timeout=5)
@@ -294,11 +289,11 @@ async def init_token(event: SayaModuleInstalled):
 # TODO 1.绑定
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
-    Distribute.require()
+    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -362,10 +357,10 @@ async def Bind(app: Ariadne, sender: Member, group: Group, player_name: RegexRes
 # TODO 注册背景
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -397,10 +392,10 @@ async def bg_reg(app: Ariadne, group: Group, qq: RegexResult, player_pid: RegexR
 # 注销背景
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -422,10 +417,10 @@ async def bg_unrg(app: Ariadne, group: Group, player_pid: RegexResult, source: S
 # 删除背景
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -513,10 +508,10 @@ async def bg_del(app: Ariadne, group: Group, sender: Member, bg_rank: RegexResul
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -645,10 +640,10 @@ async def bg_change(app: Ariadne, group: Group, sender: Member, bg_rank: RegexRe
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -740,11 +735,11 @@ async def bg_check(app: Ariadne, group: Group, sender: Member, source: Source):
 # TODO 2:武器
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1080,11 +1075,11 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 # TODO 3:载具
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1390,139 +1385,13 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
     return True
 
 
-# @channel.use(ListenerSchema(listening_events=[GroupMessage],
-#                             decorators=[Perm.require(16),
-#                                         Switch.require("bf1战绩"),
-#                                         DuoQ.require()],
-#                             inline_dispatchers=[
-#                                 Twilight(
-#                                     [
-#                                         "vehicle_type" @ UnionMatch(
-#                                             "-战绩"
-#                                         ).space(SpacePolicy.PRESERVE),
-#                                         "player_name" @ ParamMatch(optional=True).space(PRESERVE)
-#                                         # 示例:-武器 shlsan13
-#                                     ]
-#                                 )
-#                             ]))
-# async def player_stat(app: Ariadne, sender: Member, group: Group, message: MessageChain, player_name: RegexResult):
-#     if player_name.matched:
-#         # 判断玩家名字存不存在
-#         player_name = str(player_name.result).replace("+", "").replace(" ", "")
-#         try:
-#             player_info = await getPid_byName(player_name)
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f"网络出错，请稍后再试"
-#             ), quote=message[Source][0])
-#             return False
-#         if player_info['personas'] == {}:
-#             await app.send_message(group, MessageChain(
-#                 f"玩家{player_name}不存在"
-#             ))
-#             return False
-#         else:
-#             player_pid = player_info['personas']['persona'][0]['personaId']
-#             player_name = player_info['personas']['persona'][0]['displayName']
-#     else:
-#         # 检查绑定没有,没有绑定则终止，绑定了就读缓存的pid
-#         if not record.check_bind(sender.id):
-#             await app.send_message(group, MessageChain(
-#                 f"你还没有绑定\n请先使用'-绑定+你的游戏名字'进行绑定\n例如:-绑定shlsan13"
-#             ))
-#             return False
-#         else:
-#             player_pid = record.get_bind_pid(sender.id)
-#             player_name = record.get_bind_name(sender.id)
-#     await app.send_message(group, MessageChain(
-#         At(sender.id), "查询ing"
-#     ))
-#     start_time = time.time()
-#     try:
-#         player_stat_data = (await get_player_stat_data(str(player_pid)))["result"]
-#
-#     except:
-#         await app.send_message(group, MessageChain(
-#             At(sender.id), "网络出错请稍后再试!"
-#         ))
-#         return False
-#     end_time = time.time()
-#     logger.info(f"接口耗时:{end_time - start_time}s")
-#
-#     rank_data = "获取失败"
-#     try:
-#         start_time2 = time.time()
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get('https://battlefieldtracker.com/bf1/profile/pc/%s' % player_name, timeout=5)
-#         rank_temp = response.text
-#         if rank_temp == 404:
-#             pass
-#         else:
-#             soup = BeautifulSoup(rank_temp, "html.parser")
-#             for item in soup.find_all("div", class_="details"):
-#                 rank_data = re.findall(re.compile(r'<span class="title">Rank (.*?)</span>'), str(item))[0]
-#         end_time2 = time.time()
-#         logger.info(f"接口2耗时:{end_time2 - start_time2}")
-#     except:
-#         pass
-#     class_dict = {"Assault": "突击兵", "Cavalry": "骑兵", "Medic": "医疗兵",
-#                   "Pilot": "飞行员", "Scout": "侦察兵", "Support": "支援兵", "Tanker": "坦克手"}
-#     await app.send_message(group, MessageChain(
-#         f"名字:{player_name}\n"
-#         f"等级:{rank_data}\n",
-#         "时长:{:.2f}小时\n".format(player_stat_data["basicStats"]["timePlayed"] / 3600),
-#         f"KD:{player_stat_data['kdr']}",
-#         f"({player_stat_data['basicStats']['kills']}/{player_stat_data['basicStats']['deaths']})\n",
-#         "胜率:{:.2f}%".format(player_stat_data['basicStats']['wins'] / (
-#                 player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
-#         if (player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) != 0 else "0",
-#         f"({player_stat_data['basicStats']['wins']}/{player_stat_data['basicStats']['losses']})\n"
-#         f"kpm:{player_stat_data['basicStats']['kpm']}\n"
-#         f"spm:{player_stat_data['basicStats']['spm']}\n"
-#         f"技巧值:{player_stat_data['basicStats']['skill']}\n"
-#         f"最佳兵种:{class_dict[player_stat_data['favoriteClass']]}\n"
-#         f"协助击杀:{player_stat_data['killAssists']}\n"
-#         f"最高连杀:{player_stat_data['highestKillStreak']}\n"
-#         f"复活数:{int(player_stat_data['revives'])}\n"
-#         f"治疗数:{int(player_stat_data['heals'])}\n"
-#         f"修理数:{int(player_stat_data['repairs'])}\n"
-#         f"狗牌数:{player_stat_data['dogtagsTaken']}",
-#     ), quote=message[Source][0])
-#
-#     record.player_stat_counter(sender.id, str(player_pid), str(player_name))
-
-
-async def player_stat_bfban_api(player_pid) -> dict:
-    bfban_url = 'https://api.gametools.network/bfban/checkban?personaids=' + str(player_pid)
-    bfban_head = {
-        "Connection": "keep-alive",
-    }
-    # noinspection PyBroadException
-    try:
-        # async with httpx.AsyncClient() as client:
-        response = await client.get(bfban_url, headers=bfban_head, timeout=3)
-    except Exception as e:
-        logger.error(e)
-        # await app.send_message(group, MessageChain(
-        #     # At(sender.id),
-        #     "获取玩家bfban信息出错,请稍后再试!"
-        # ), quote=message[Source][0])
-        return "获取玩家bfban信息出错,请稍后再试!"
-    bf_html = response.text
-    if bf_html == "timed out":
-        return "获取玩家bfban信息出错,请稍后再试!"
-    elif bf_html == {}:
-        return "获取玩家bfban信息出错,请稍后再试!"
-    return eval(bf_html)
-
-
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2136,11 +2005,11 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
 # TODO 5:最近
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2279,11 +2148,11 @@ async def recent(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 # TODO 6:对局
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2531,74 +2400,14 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
     return True
 
 
-async def tyc_waterGod_api(player_pid):
-    url1 = 'https://api.s-wg.net/ServersCollection/getPlayerAll?PersonId=' + str(player_pid)
-    header = {
-        "Connection": "keep-alive"
-    }
-    # async with httpx.AsyncClient() as client:
-    response = await client.get(url1, headers=header, timeout=10)
-    return response
-
-
-async def tyc_record_api(player_pid):
-    record_url = "https://record.ainios.com/getReport"
-    data = {
-        "personaId": player_pid
-    }
-    header = {
-        "Connection": "keep-alive"
-    }
-    # async with httpx.AsyncClient() as client:
-    response = await client.post(record_url, headers=header, data=data, timeout=5)
-    return response
-
-
-async def tyc_bfban_api(player_pid):
-    bfban_url = 'https://api.gametools.network/bfban/checkban?personaids=' + str(player_pid)
-    header = {
-        "Connection": "keep-alive"
-    }
-    # async with httpx.AsyncClient() as client:
-    response = await client.get(bfban_url, headers=header, timeout=3)
-    return response
-
-
-async def tyc_bfeac_api(player_name):
-    check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
-    header = {
-        "Connection": "keep-alive"
-    }
-    # async with httpx.AsyncClient() as client:
-    response = await client.get(check_eacInfo_url, headers=header, timeout=10)
-    return response
-
-
-async def tyc_check_vban(player_pid) -> dict or str:
-    url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
-    head = {
-        'accept': 'application/json',
-        "Connection": "Keep-Alive"
-    }
-    try:
-        # async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=head, timeout=5)
-        try:
-            return eval(response.text)
-        except:
-            return "获取出错!"
-    except:
-        return '网络出错!'
-
-
 # TODO:天眼查
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2835,12 +2644,12 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, player_name: Re
 # TODO: 举报到eac
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
     Config.require("bf1.apikey"),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3076,13 +2885,9 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                     f"提交举报ing"
                 ), quote=source)
                 # 调用接口
-                report_result = eval(await report_Interface(player_name, report_reason, sender.id))
-                # await app.send_message(group, MessageChain(
-                #     f'举报id:{player_name}\n'
-                #     f'举报游戏:{report_type}\n'
-                #     f'举报理由:{report_reason}\n'
-                #     f'举报图片:{list_pic}',
-                # ), quote=message[Source][0])
+                report_result = eval(await report_Interface(
+                    player_name, report_reason, sender.id, global_config.bf1.get("apikey", "")
+                ))
                 if type(report_result["data"]) == int:
                     try:
                         with open(f"./data/battlefield/report_log/data.json", "r", encoding="utf-8") as file1:
@@ -3116,80 +2921,14 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
             return False
 
 
-async def report_Interface(player_name, report_reason, report_qq):
-    report_url = "https://api.bfeac.com/inner_api/case_report"
-    apikey = global_config.bf1.get("apikey", "")
-    headers = {
-        "apikey": apikey
-    }
-    body = {
-        "target_EAID": player_name,
-        "case_body": report_reason,
-        "game_type": 1,
-        "report_by": {
-            "report_platform": "qq",
-            "user_id": report_qq
-        }
-    }
-    try:
-        # response = requests.post(report_url, headers=headers, json=json.dumps(body), files=report_pic, timeout=10)
-        # async with httpx.AsyncClient() as client:
-        response = await client.post(report_url, headers=headers, data=json.dumps(body), timeout=10)
-        # logger.warning(response)
-        logger.warning(response.text)
-        return response.text
-    except Exception as e:
-        logger.error(e)
-        return e
-
-
-async def get_record_counter(file_path):
-    record_counters = 0
-    try:
-        async with aiofiles.open(file_path, 'r', encoding='utf-8') as file_temp:
-            file_content = await file_temp.read()
-            data = json.loads(file_content)
-            record_counters += len(data.get("bind", {}).get("history", []))
-            record_counters += len(data.get("weapon", {}).get("history", []))
-            record_counters += len(data.get("vehicle", {}).get("history", []))
-            record_counters += len(data.get("stat", {}).get("history", []))
-            record_counters += len(data.get("recent", {}).get("history", []))
-            record_counters += len(data.get("matches", {}).get("history", []))
-            record_counters += len(data.get("tyc", {}).get("history", []))
-            record_counters += len(data.get("report", {}).get("history", []))
-    except:
-        pass
-    return record_counters
-
-
-async def get_record_counters(bind_path):
-    record_counters = 0
-    bind_path_list = [item for item in os.listdir(bind_path)]
-    tasks = []
-    for item in bind_path_list:
-        file_path = f"{bind_path}/{item}/record.json"
-        if os.path.exists(file_path):
-            tasks.append(asyncio.create_task(get_record_counter(file_path)))
-            if len(tasks) >= 100:
-                results = await asyncio.gather(*tasks)
-                for result in results:
-                    record_counters += result
-                tasks = []
-    if tasks:
-        results = await asyncio.gather(*tasks)
-        for result in results:
-            record_counters += result
-    return record_counters
-
-
 # bfstat
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3258,11 +2997,11 @@ async def bf_status(app: Ariadne, group: Group, source: Source):
 # TODO: 查询统计
 @listen(GroupMessage)
 @decorate(
-    Permission.user_require(Permission.GroupAdmin),
+    Distribute.require(),
+    Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3399,11 +3138,11 @@ async def refresh_main_account(app: Ariadne, group: Group, source: Source):
 # 手动刷新
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3448,11 +3187,11 @@ async def refresh_main_session(app: Ariadne, group: Group, source: Source):
 # TODO 战役信息
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3512,11 +3251,11 @@ async def op_info(app: Ariadne, group: Group, source: Source):
 # TODO 图片交换
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3530,15 +3269,7 @@ async def op_info(app: Ariadne, group: Group, source: Source):
 )
 async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     global bf_aip_header, bf_aip_url
-    # await app.send_message(group, MessageChain(
-    #     f"查询ing"
-    # ), quote=message[Source][0])
-
     # TODO 1.如果今天不是周一,就获取缓存里的图片,如果是周一且时间在20:00至24:00之间,就制图
-    # jh_time_ = (date.today() + timedelta(days=-1)).strftime("%m月%d日")
-    # jh_time__ = (date.today() + timedelta(days=-1)).strftime("%m月%d日")
-    # 当前时间
-    # n_time = datetime.now()
     i = 0
     file_path = f'./data/battlefield/exchange/{(date.today() + timedelta(days=i)).strftime("%#m月%#d日")}.png'
     while (not os.path.exists(file_path)) and (i >= -31):
@@ -3579,7 +3310,6 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     with open(f'./data/battlefield/exchange/{jh_time}.json', 'w', encoding="utf-8") as file1:
         json.dump(SE_data, file1, indent=4)
     SE_data_list = SE_data["result"]["items"]
-    # print(len(SE_data_list))
     # 创建一个交换物件的列表列表，元素列表的元素有价格，皮肤名字，武器名字，品质，武器图片
     SE_list = []
     for item in SE_data_list:
@@ -3603,7 +3333,6 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     while i < len(SE_list):
         SE_list[i][4] = await download_skin(SE_list[i][4])
         i += 1
-    # print(SE_list)
     # 制作图片,总大小:2351*1322,黑框间隔为8,黑框尺寸220*292，第一张黑框距左边界39，上边界225，武器尺寸为180*45,第一个钱币图片的位置是72*483
     # 交换的背景图
     bg_img = Image.open('./data/battlefield/pic/bg/SE_bg.png')
@@ -3633,18 +3362,20 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
                 # 皮肤名字
                 draw.text((x, y + 79), SE_list[i][1], (255, 255, 255), font=seSkinName_font)
                 # 如果品质为传奇则品质颜色为(255, 132, 0)，精英则为(74, 151, 255)，特殊则为白色
-                XD_skin_list = ["菲姆", "菲姆特", "索得格雷",
-                                "巴赫馬奇", "菲力克斯穆勒", "狼人", "黑貓",
-                                "苟白克", "比利‧米契尔", "在那边", "飞蛾扑火", "佛伦",
-                                "默勒谢什蒂", "奥伊图兹", "埃丹", "滨海努瓦耶勒", "唐登空袭",
-                                "青春誓言", "德塞夫勒", "克拉奥讷之歌", "芙萝山德斯", "死去的君王",
-                                "波佐洛", "奧提加拉山", "奧托‧迪克斯", "保罗‧克利", "阿莫斯‧怀德",
-                                "集合点", "法兰兹‧马克", "风暴", "我的机枪", "加利格拉姆", "多贝尔多",
-                                "茨纳河", "莫纳斯提尔", "科巴丁", "德•奇里诃", "若宫丸", "波珀灵厄",
-                                "K连", "玛德蓉", "巨马", "罗曼诺卡夫", "薩利卡米什", "贝利库尔隧道",
-                                "史特拉姆", "阿道戴", "克里夫兰", "家乡套件", "夏日套件", "监禁者",
-                                "罗曼诺夫卡", "阿涅森", "波珀灵厄", "威玛猎犬", "齐格飞防线",
-                                "华盛顿", "泰罗林猎犬", "怪奇之物", "法兰兹‧马克", "风暴"]
+                XD_skin_list = [
+                    "菲姆", "菲姆特", "索得格雷",
+                    "巴赫馬奇", "菲力克斯穆勒", "狼人", "黑貓",
+                    "苟白克", "比利‧米契尔", "在那边", "飞蛾扑火", "佛伦",
+                    "默勒谢什蒂", "奥伊图兹", "埃丹", "滨海努瓦耶勒", "唐登空袭",
+                    "青春誓言", "德塞夫勒", "克拉奥讷之歌", "芙萝山德斯", "死去的君王",
+                    "波佐洛", "奧提加拉山", "奧托‧迪克斯", "保罗‧克利", "阿莫斯‧怀德",
+                    "集合点", "法兰兹‧马克", "风暴", "我的机枪", "加利格拉姆", "多贝尔多",
+                    "茨纳河", "莫纳斯提尔", "科巴丁", "德•奇里诃", "若宫丸", "波珀灵厄",
+                    "K连", "玛德蓉", "巨马", "罗曼诺卡夫", "薩利卡米什", "贝利库尔隧道",
+                    "史特拉姆", "阿道戴", "克里夫兰", "家乡套件", "夏日套件", "监禁者",
+                    "罗曼诺夫卡", "阿涅森", "波珀灵厄", "威玛猎犬", "齐格飞防线",
+                    "华盛顿", "泰罗林猎犬", "怪奇之物", "法兰兹‧马克", "风暴"
+                ]
                 if SE_list[i][3] == "传奇":
                     if SE_list[i][0] in [270, 300]:
                         draw.text((x, y + 110), f"{SE_list[i][3]}(限定)", (255, 132, 0), font=price_font)
@@ -3681,62 +3412,46 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
     logger.info("更新交换缓存成功!")
 
 
-# # TODO 被戳回复小标语
-# @channel.use(ListenerSchema(listening_events=[NudgeEvent],
-#                             decorators=[
-#                                 # Switch.require("bf1战绩")
-#                             ]))
-# async def getup(app: Ariadne, event: NudgeEvent):
-#     if event.group_id is not None:
-#         if event.target == app.account:
-#             gl = random.randint(0, 99)
-#             if gl > 2:
-#                 file_path = f"./data/battlefield/小标语/data.json"
-#                 with open(file_path, 'r', encoding="utf-8") as file1:
-#                     data = json.load(file1)['result']
-#                     a = random.choice(data)['name']
-#                     send = zhconv.convert(a, 'zh-cn')
-#             else:
-#                 bf_dic = [
-#                     "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-#                     f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
-#                 ]
-#                 send = random.choice(bf_dic)
-#             await app.send_group_message(
-#                 event.group_id, MessageChain(
-#                     At(event.supplicant), '\n', send
-#                 )
-#             )
-#             return
-
-
-# @listen(GroupMessage)
-# @decorate(
-#     Permission.user_require(Permission.User),
-#     Permission.group_require(channel.metadata.level),
-#     FrequencyLimitation.require(channel.module),
-#     Function.require(channel.module),
-#     Distribute.require()
-# )
-# @dispatch(
-#     Twilight(
-#         [FullMatch("-bf1小标语").space(PRESERVE)]
-#     )
-# )
-# async def bf1_help_xiaobiaoyu(app: Ariadne, group: Group, message: MessageChain):
-#     await app.send_message(group, MessageChain(
-#         f"1.当bf1战绩功能开启时,戳一戳bot会随机回复bf1小标语哦"
-#     ), quote=message[Source][0])
+# 被戳回复小标语
+@listen(NudgeEvent)
+@decorate(
+    Distribute.require(),
+    Permission.user_require(Permission.User),
+    Permission.group_require(channel.metadata.level),
+    FrequencyLimitation.require(channel.module),
+    Function.require(channel.module, notice=False),
+)
+async def NudgeReply(app: Ariadne, event: NudgeEvent):
+    if event.group_id is not None:
+        if event.target == app.account:
+            gl = random.randint(0, 99)
+            if gl > 2:
+                file_path = f"./data/battlefield/小标语/data.json"
+                with open(file_path, 'r', encoding="utf-8") as file1:
+                    data = json.load(file1)['result']
+                    a = random.choice(data)['name']
+                    send = zhconv.convert(a, 'zh-cn')
+            else:
+                bf_dic = [
+                    "你知道吗,小埋最初的灵感来自于胡桃-by水神",
+                    f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+                ]
+                send = random.choice(bf_dic)
+            return await app.send_group_message(
+                event.group_id, MessageChain(
+                    At(event.supplicant), '\n', send
+                )
+            )
 
 
 # TODO bf1百科
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3886,161 +3601,6 @@ async def bf1_baike(app: Ariadne, group: Group, message: MessageChain, item_inde
         GraiaImage(path=item_path)
     ), quote=source)
     return True
-
-
-widths = [
-    (126, 1), (159, 0), (687, 1), (710, 0), (711, 1),
-    (727, 0), (733, 1), (879, 0), (1154, 1), (1161, 0),
-    (4347, 1), (4447, 2), (7467, 1), (7521, 0), (8369, 1),
-    (8426, 0), (9000, 1), (9002, 2), (11021, 1), (12350, 2),
-    (12351, 1), (12438, 2), (12442, 0), (19893, 2), (19967, 1),
-    (55203, 2), (63743, 1), (64106, 2), (65039, 1), (65059, 0),
-    (65131, 2), (65279, 1), (65376, 2), (65500, 1), (65510, 2),
-    (120831, 1), (262141, 2), (1114109, 1),
-]
-
-
-def get_width(o):
-    """Return the screen column width for unicode ordinal o."""
-    global widths
-    if o == 0xe or o == 0xf:
-        return 0
-    for num, wid in widths:
-        if o <= num:
-            return wid
-    return 1
-
-
-# 下载武器图片
-async def PicDownload(url):
-    file_name = "./data/battlefield/pic/weapons" + url[url.rfind('/'):]
-    # noinspection PyBroadException
-    try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(e)
-        i = 0
-        while i < 3:
-            async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
-                try:
-                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
-                        pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        return file_name
-                except Exception as e:
-                    logger.error(e)
-                    i += 1
-        return "./data/battlefield/pic/weapons/play.jpg"
-
-
-# 下载头像图片
-async def playerPicDownload(url, name):
-    file_name = "./data/battlefield/pic/avatar" + url[url.rfind('/')] + name + ".jpg"
-    # noinspection PyBroadException
-    try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(f"未找到玩家{name}头像,开始下载:{e}")
-        i = 0
-        while i < 3:
-            async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
-                try:
-                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
-                        pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        return file_name
-                except Exception as e:
-                    logger.error(e)
-                    i += 1
-        return "./data/battlefield/pic/avatar/play.jpg"
-
-
-# 选取背景图
-async def pic_custom(player_id):
-    path = './data/battlefield/pic/bg/'
-    file_name_list = os.listdir(path)
-    for item in file_name_list:
-        if str(player_id) in item:
-            file_nums = len(os.listdir(path + item + '/'))
-            return "./data/battlefield/pic/bg/" + item + "/" + str(random.randint(1, file_nums)) + ".png"
-    else:
-        return "./data/battlefield/pic/bg/" + str(random.randint(1, 10)) + ".png"
-
-
-# 选取背景图2
-async def pic_custom2(player_id):
-    path = './data/battlefield/pic/bg2/'
-    file_name_list = os.listdir(path)
-    for item in file_name_list:
-        if str(player_id) in item:
-            file_nums = len(os.listdir(path + item + '/'))
-            return "./data/battlefield/pic/bg2/" + item + "/" + str(random.randint(1, file_nums)) + ".png"
-    else:
-        return "./data/battlefield/pic/bg2/" + str(random.randint(1, 10)) + ".png"
-
-
-# 下载交换皮肤
-async def download_skin(url):
-    file_name = './data/battlefield/pic/skins/' + url[url.rfind('/') + 1:]
-    # noinspection PyBroadException
-    try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(e)
-        i = 0
-        while i < 3:
-            async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
-                try:
-                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
-                        pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        return file_name
-                except Exception as e:
-                    logger.error(e)
-                    i += 1
-        return None
-
-
-# 下载百科图片
-async def download_baike(url):
-    file_name = './data/battlefield/pic/百科/' + url[url.rfind('/') + 1:]
-    # noinspection PyBroadException
-    try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(e)
-        i = 0
-        while i < 3:
-            async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
-                try:
-                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
-                        pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        return file_name
-                except Exception as e:
-                    logger.error(e)
-                    i += 1
-        return None
 
 
 # TODO 被戳回复小标语

@@ -47,11 +47,11 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 # 查询拥有多个BOT的群，以及BOT列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -113,11 +113,11 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
 # 查询BOT列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -158,11 +158,11 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
 # 设定响应 group_id 随机/指定
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
@@ -199,11 +199,11 @@ async def change_group_responseType(app: Ariadne, group: Group, source: Source,
 # 指定BOT bot_account
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([

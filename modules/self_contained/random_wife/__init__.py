@@ -44,11 +44,11 @@ async def get_wife() -> str:
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -121,11 +121,11 @@ async def add_wife(app: Ariadne, group: Group, source: Source,
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -261,11 +261,11 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -311,11 +311,11 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(

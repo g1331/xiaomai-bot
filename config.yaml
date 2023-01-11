@@ -22,3 +22,7 @@ log_related:
 bf1:
   default_account: default_account
   apikey: apikey
+
+# 识图
+image_search:
+  saucenao_key: saucenao_key

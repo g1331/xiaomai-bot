@@ -8,7 +8,6 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
 from graia.ariadne.message.parser.twilight import (
     Twilight,
-    FullMatch,
     RegexResult, UnionMatch, RegexMatch
 )
 from graia.ariadne.model import Group
@@ -46,15 +45,15 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
-        FullMatch("帮助"),
+        UnionMatch("帮助", "-help", "-帮助"),
         # 示例: 帮助
     ])
 )
@@ -138,15 +137,15 @@ async def helper(app: Ariadne, group: Group, source: Source):
 # 获取功能详情
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([
-        FullMatch("帮助"),
+        UnionMatch("帮助", "-help", "-帮助"),
         RegexMatch("[0-9]+$") @ "index"
         # 示例: 帮助 1
     ])
@@ -200,7 +199,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
             ColumnList(rows=[
                 ColumnListItem(
                     subtitle=module_metadata.display_name or module_metadata.name or
-                    saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
+                             saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
                     content=module_list[index]
                 ),
                 ColumnListItem(
@@ -239,11 +238,11 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
 # 开关功能
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight([

@@ -279,6 +279,29 @@ class Umaru(object):
             )
         logger.success(f"成功初始化群:{group.name}({group.id})")
 
+    # 更新admins权限
+    async def update_admins_permission(self, admin_list: list[int] = None):
+        if not admin_list:
+            if result := await orm.fetch_all(
+                    select(MemberPerm.qq).where(
+                        MemberPerm.perm == 128,
+                    )
+            ):
+                admin_list = [item[0] for item in result]
+            else:
+                return
+        for bot_account in self.total_groups:
+            for group in self.total_groups[bot_account]:
+                for admin in admin_list:
+                    await orm.insert_or_update(
+                        table=MemberPerm,
+                        data={"qq": admin, "group_id": group.id, "perm": 128},
+                        condition=[
+                            MemberPerm.qq == admin,
+                            MemberPerm.group_id == group.id,
+                        ]
+                    )
+
     def set_logger(self):
         logger.add(
             Path.cwd() / "log" / "{time:YYYY-MM-DD}" / "common.log",

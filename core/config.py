@@ -21,6 +21,9 @@ class GlobalConfig(BaseModel):
         "default_account": 0
     }
     GroupMsg_log: bool
+    image_search: dict = {
+        "saucenao_key": ""
+    }
 
 
 def load_config():

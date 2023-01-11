@@ -18,7 +18,8 @@ from core.config import GlobalConfig
 from core.control import (
     Permission,
     Function,
-    FrequencyLimitation
+    FrequencyLimitation,
+    Distribute
 )
 from core.models import saya_model
 
@@ -33,6 +34,7 @@ channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
+# 处理BOT被邀请加群事件
 @listen(BotInvitedJoinGroupRequestEvent)
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """处理邀请
@@ -91,17 +93,21 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
             f'已拒绝 {event.nickname}({event.supplicant}) 的入群邀请'))
 
 
+# 添加群精华消息
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
+    FrequencyLimitation.require(channel.module)
 )
-@dispatch(Twilight([
+@dispatch(
+    Twilight([
         "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         "command" @ UnionMatch("加精", "设精")
-]))
+    ])
+)
 async def set_essence(app: Ariadne, group: Group, event: MessageEvent, src: Source):
     if event.quote:
         quote_id = event.quote.id

@@ -41,3 +41,14 @@ class ImageWaiter(Waiter.create([GroupMessage])):
     async def detected_event(self, group: Group, member: Member, message: MessageChain):
         if group.id == self.group_id and member.id == self.member_id:
             return message[Image][0] if message.has(Image) else None
+
+
+class QuoteWaiter(Waiter.create([GroupMessage])):
+    def __init__(self, group: Group, sender: Member):
+        self.group_id = group.id
+        self.sender_id = sender.id
+
+    async def get_quote_msgChain(self, group: Group, sender: Member, message: MessageChain,
+                                 event: GroupMessage) -> MessageChain:
+        if event.quote and group.id == self.group_id and sender.id == self.sender_id:
+            return message

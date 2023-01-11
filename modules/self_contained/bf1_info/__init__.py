@@ -717,7 +717,7 @@ async def bg_check(app: Ariadne, group: Group, sender: Member, source: Source):
             draw.text((width * i + 20, 20), f"{bg_item.replace('.png', '')}", font=title_font, fill=(255, 132, 0))
         temp = temp.convert('RGB')
         bytes_io = BytesIO()
-        temp.save(bytes_io, "PNG")
+        temp.save(bytes_io, "JPEG")
         message_send = MessageChain(
             f"你当前有{len(bg_list)}张背景:\n",
             GraiaImage(data_bytes=bytes_io.getvalue())
@@ -1039,8 +1039,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 
     start_time4 = time.time()
     bytes_io = BytesIO()
-    bg_img.save(bytes_io, "PNG")
-
+    bg_img.save(bytes_io, "JPEG")
     message_send = MessageChain(GraiaImage(data_bytes=bytes_io.getvalue()))
 
     # logger.info(message_send)
@@ -1347,7 +1346,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
         draw.text((210, 780 + i * 580), "摧毁：%s" % vehicle123[i][3], font=content_font)
         draw.text((600, 780 + i * 580), "时长：%s" % vehicle123[i][4], font=content_font)
     bytes_io = BytesIO()
-    bg_img.save(bytes_io, "PNG")
+    bg_img.save(bytes_io, "JPEG")
     end_time3 = time.time()
     logger.info(f'画图耗时:{end_time3 - start_time3}')
     start_time4 = time.time()
@@ -1952,7 +1951,7 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     if if_cheat:
         bg_img = bg_img.convert('L')
     bytes_io = BytesIO()
-    bg_img.save(bytes_io, "PNG")
+    bg_img.save(bytes_io, "JPEG")
     end_time = time.time()
     logger.info(f"接口+制图耗时:{end_time - start_time}秒")
     start_time4 = time.time()

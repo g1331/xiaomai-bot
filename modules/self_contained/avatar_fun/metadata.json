@@ -1,0 +1,17 @@
+{
+  "level": 1,
+  "name": "AvatarFun",
+  "version": "0.1",
+  "display_name": "头像趣图",
+  "authors": [
+    "SAGIRI-kawaii",
+    "移植by13"
+  ],
+  "description": "一个可以生成头像相关趣味图的插件",
+  "usage": ["在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可"],
+  "example": [
+    "亲@123456"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

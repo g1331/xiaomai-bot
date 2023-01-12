@@ -3922,7 +3922,8 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
                         return False, waiter_member.id, None
 
             try:
-                result, operator, player_matched_kick = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(30)
+                result, operator, player_matched_kick = await FunctionWaiter(waiter, [GroupMessage],
+                                                                             block_propagation=True).wait(30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
                     f'操作超时!已退出换图'), quote=source)
@@ -5817,7 +5818,8 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
                         return False, waiter_member.id, None
 
             try:
-                result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(30)
+                result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
+                    30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
                     f'操作超时!已退出换图'), quote=source)
@@ -5983,18 +5985,20 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
         choices.append(str(i))
         map_list_column.append(
             ColumnUserInfo(
-                name=f"{i}：{item['mapPrettyName']}" + ("●" if (
-                        item['modePrettyName'] == '行動模式'
-                        and
-                        item['mapPrettyName'] in
-                        [
-                            '聖康坦的傷痕', '窩瓦河',
-                            '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
-                            '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
-                            '索姆河', '武普庫夫山口', '龐然闇影'
-                        ]
-                ) else ""),
-                description=f"{item['modePrettyName']}",
+                name=f"{i}:{item['mapPrettyName']}"
+                     +
+                     ("●" if (
+                             item['modePrettyName'] == '行動模式'
+                             and
+                             item['mapPrettyName'] in
+                             [
+                                 '聖康坦的傷痕', '窩瓦河',
+                                 '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
+                                 '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
+                                 '索姆河', '武普庫夫山口', '龐然闇影'
+                             ]
+                     ) else ""),
+                description=f"地图模式:{item['modePrettyName']}",
                 avatar=item["mapImage"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )

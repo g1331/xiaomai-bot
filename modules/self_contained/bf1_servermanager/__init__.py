@@ -5,7 +5,6 @@ import math
 import os
 import shutil
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Union
 
@@ -31,7 +30,6 @@ from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
 from loguru import logger
 
-
 from core.config import GlobalConfig
 from core.control import (
     Permission,
@@ -42,6 +40,7 @@ from core.control import (
 from core.models import (
     saya_model
 )
+from utils.UI import *
 from utils.text2img import md2img
 from .api_gateway import refresh_api_client
 from .bfgroups_log import rsp_log
@@ -390,11 +389,11 @@ async def get_server_detail(app: Ariadne, group: Group, server_gameid: RegexResu
 # 创建bf群组
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -430,11 +429,11 @@ async def bfgroup_create(app: Ariadne, group: Group, group_name: RegexResult, so
 # 删除bf群组
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -468,11 +467,11 @@ async def bfgroup_del(app: Ariadne, group: Group, group_name: RegexResult, sourc
 # bf群组改名 - os.rename(old_name,new_name) name->文件夹路径
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -646,11 +645,11 @@ async def bfgroup_list_info(app: Ariadne, resv_group: Group, source: Source):
 # 群组绑服服务器-增改
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -754,11 +753,11 @@ async def bfgroup_bind_server(app: Ariadne, group: Group,
 # 群组解绑服务器-删
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -811,11 +810,11 @@ async def bfgroup_del_server(app: Ariadne, group: Group,
 # 查询群组服务器-查
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -876,11 +875,11 @@ async def bfgroup_del_server(app: Ariadne, group: Group,
 # 群组创建vban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -932,11 +931,11 @@ async def bfgroup_create_vban(app: Ariadne, group: Group,
 # 群组查询vban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -988,11 +987,11 @@ async def bfgroup_get_vban(app: Ariadne, group: Group,
 # 群组删除vban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1044,11 +1043,11 @@ async def bfgroup_del_vban(app: Ariadne, group: Group,
 # 配置vban的群组id和token
 @listen(GroupMessage, FriendMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1111,11 +1110,11 @@ async def bfgroup_config_vban(app: Ariadne, group: Group,
 # qq群绑定群组
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1198,11 +1197,11 @@ async def auto_update_gameid(group_file_path):
 # 绑定过群组的群-查服务器
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1322,11 +1321,11 @@ async def check_server(app: Ariadne, group: Group, source: Source):
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1455,11 +1454,11 @@ async def get_group_bindList(app: Ariadne, group) -> list:
 # 谁在玩功能
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1699,11 +1698,11 @@ async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union
 # 玩家列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -1874,11 +1873,11 @@ def get_width(o):
 # 图片版玩家列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2405,8 +2404,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
                 return saying
 
     try:
-        result = await FunctionWaiter(waiter, [GroupMessage]).wait(
-            timeout=60)
+        result = await FunctionWaiter(waiter, [GroupMessage]).wait(60)
     except asyncio.exceptions.TimeoutError:
         return
     if not result:
@@ -2515,11 +2513,11 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
 # TODO 3.服管账号相关-查增改、删、绑定到bfgroups-servers里的managerAccount
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2562,11 +2560,11 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
 # 新建一个服管账号 根据账号名字来创建-实际上本地存储的是pid
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2614,11 +2612,11 @@ async def managerAccount_create(app: Ariadne, group: Group,
 # 删除服管账号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2662,11 +2660,11 @@ async def managerAccount_del(app: Ariadne, group: Group,
 # 传入remid和sid信息-登录
 @listen(GroupMessage, FriendMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2727,11 +2725,11 @@ async def managerAccount_login(app: Ariadne, group: Union[Group, Friend],
 # 查询服管账号管理服务器
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2800,11 +2798,11 @@ async def managerAccount_info(app: Ariadne, group: Group,
 # 群组服务器绑定服管账号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2864,11 +2862,11 @@ async def bfgroup_bind_managerAccount(app: Ariadne, group: Group,
 # 群组服务器绑定全部服管账号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2927,11 +2925,11 @@ async def bfgroup_bind_managerAccount_all(app: Ariadne, group: Group,
 # 群组服务器解绑服管账号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -2988,11 +2986,11 @@ async def bfgroup_del_managerAccount(app: Ariadne, group: Group,
 # 解绑全部服管账号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3091,11 +3089,11 @@ async def get_required_log(log: list, action: str, action_object: str) -> list:
 # 查日志
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3247,11 +3245,11 @@ async def bfgroup_search_log(app: Ariadne, sender: Member, group: Group,
 # 刷新session
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3528,11 +3526,11 @@ async def get_bfgroup_ids(app: Ariadne, group: Group, server_rank: int, source: 
 # 踢人
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3631,11 +3629,11 @@ async def kick(app: Ariadne, sender: Member, group: Group, action: RegexResult,
 # 不用指定服务器序号
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3770,11 +3768,11 @@ async def kick_no_need_rank(
 # sk
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -3924,9 +3922,7 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
                         return False, waiter_member.id, None
 
             try:
-                result, operator, player_matched_kick = await FunctionWaiter(waiter, [GroupMessage],
-                                                                             block_propagation=True).wait(
-                    timeout=30)
+                result, operator, player_matched_kick = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
                     f'操作超时!已退出换图'), quote=source)
@@ -3968,11 +3964,11 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
 # 封禁
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -4055,11 +4051,11 @@ async def add_ban(app: Ariadne, sender: Member, group: Group, action: RegexResul
 # 解封
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -4139,11 +4135,11 @@ async def del_ban(app: Ariadne, sender: Member, group: Group, action: RegexResul
 # banall
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -4277,11 +4273,11 @@ async def add_banall(app: Ariadne, sender: Member, group: Group,
 # unbanll
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -4417,11 +4413,11 @@ async def check_vban(player_pid) -> dict or str:
 # checkban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5028,11 +5024,11 @@ async def akbw_check_global_whitelist():
 # 清理ban位
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5144,11 +5140,11 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, server_rank: Reg
 # 加vban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5162,7 +5158,8 @@ async def clear_ban(app: Ariadne, sender: Member, group: Group, server_rank: Reg
         ]
     )
 )
-async def add_vban(app: Ariadne, group: Group, player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult, source: Source):
+async def add_vban(app: Ariadne, group: Group, player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult,
+                   source: Source):
     if not reason.matched:
         reason = "违反规则"
     else:
@@ -5298,11 +5295,11 @@ async def add_vban(app: Ariadne, group: Group, player_name: RegexResult, reason:
 # 减vban
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5446,11 +5443,11 @@ async def del_vban(app: Ariadne, group: Group, player_name: RegexResult, reason:
 # vban列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5601,11 +5598,11 @@ async def get_vban_list(app: Ariadne, group: Group, vban_rank: RegexResult, sour
 # 换边
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5710,11 +5707,11 @@ async def move_player(app: Ariadne, sender: Member, group: Group, action: RegexR
 # 换图
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5820,8 +5817,7 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
                         return False, waiter_member.id, None
 
             try:
-                result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
-                    timeout=30)
+                result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
                     f'操作超时!已退出换图'), quote=source)
@@ -5915,11 +5911,11 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
 # 图池序号换图
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -5953,49 +5949,65 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
 
     # 获取地图池
     result = await api_gateway.get_server_details(server_gameid)
-    if type(result) == str:
+    if isinstance(result, str):
         await app.send_message(group, MessageChain(
             f"获取图池时网络出错!"
         ), quote=source)
         return False
     map_list = []
     choices = []
-    i = 0
-    for item in result["rotation"]:
-        map_list.append(
-            f"{i}#{item['modePrettyName']}-{item['mapPrettyName']}●\n".replace('流血', '流\u200b血')
-            if (
-                    item['modePrettyName'] == '行動模式'
-                    and
-                    item['mapPrettyName'] in
-                    [
-                        '聖康坦的傷痕', '窩瓦河',
-                        '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
-                        '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
-                        '索姆河', '武普庫夫山口', '龐然闇影'
-                    ]
-            )
-            else f"{i}#{item['modePrettyName']}-{item['mapPrettyName']}\n".replace('流血', '流\u200b血')
-        )
-        choices.append(str(i))
-        i += 1
-
-    # if if_blocked(app.account):
-    #     await app.send_message(
-    #         group,
-    #         await MessageChainUtils.messagechain_to_img(
-    #             MessageChain(
-    #                 "获取到图池:\n", map_list, "发送消息的人45秒内发送'#'前面的序号可更换地图,发送其他消息可退出"
-    #             )
-    #         ), quote=source
+    # for item in result["rotation"]:
+    #     map_list.append(
+    #         f"{i}#{item['modePrettyName']}-{item['mapPrettyName']}●\n".replace('流血', '流\u200b血')
+    #         if (
+    #                 item['modePrettyName'] == '行動模式'
+    #                 and
+    #                 item['mapPrettyName'] in
+    #                 [
+    #                     '聖康坦的傷痕', '窩瓦河',
+    #                     '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
+    #                     '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
+    #                     '索姆河', '武普庫夫山口', '龐然闇影'
+    #                 ]
+    #         )
+    #         else f"{i}#{item['modePrettyName']}-{item['mapPrettyName']}\n".replace('流血', '流\u200b血')
     #     )
-    # else:
+    #     choices.append(str(i))
+    #     i += 1
+
+    map_list_column = [
+        ColumnTitle(title="图池")
+    ]
+    for i, item in enumerate(result["rotation"]):
+        map_list.append(f"{item['modePrettyName']}-{item['mapPrettyName']}")
+        choices.append(str(i))
+        map_list_column.append(
+            ColumnUserInfo(
+                name=f"{i}：{item['mapPrettyName']}" + ("●" if (
+                        item['modePrettyName'] == '行動模式'
+                        and
+                        item['mapPrettyName'] in
+                        [
+                            '聖康坦的傷痕', '窩瓦河',
+                            '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
+                            '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
+                            '索姆河', '武普庫夫山口', '龐然闇影'
+                        ]
+                ) else f"{item['modePrettyName']}"),
+                description="",
+                avatar=item["mapImage"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+            )
+        )
+    map_list_column = [Column(elements=map_list_column[i: i + 15]) for i in range(0, len(map_list_column), 15)]
     await app.send_message(
         group,
         MessageChain(
-            "获取到图池:\n", map_list, "发送消息的人45秒内发送'#'前面的序号可更换地图,发送其他消息可退出"
-        ), quote=source
-    )
+            GraiaImage(data_bytes=await OneMockUI.gen(
+                GenForm(columns=map_list_column, color_type=get_color_type_follow_time())
+            )),
+            "\n请在45秒内‘发送’序号来进行换图"
+        ),
+        quote=source)
 
     # await app.send_message(group, MessageChain(
     #     "获取到图池:\n", map_list, "发送消息的人45秒内发送'#'前面的序号可更换地图,发送其他消息可退出"
@@ -6010,12 +6022,9 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
                 return False, waiter_member.id, saying
 
     try:
-        result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(
-            timeout=45)
+        result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(45)
     except asyncio.exceptions.TimeoutError:
-        await app.send_message(group, MessageChain(
-            f'操作超时!已退出换图'), quote=source)
-        return
+        return await app.send_message(group, MessageChain(f'操作超时!已退出换图'), quote=source)
     if result:
         await app.send_message(group, MessageChain(
             f"执行ing"
@@ -6087,11 +6096,11 @@ def vip_file_bak(old_name):
 #  4.写入info的信息到json 5.如果vip玩家在名单内就加时间 6.不在就调用接口
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -6372,11 +6381,11 @@ async def add_vip(app: Ariadne, sender: Member, group: Group, action: RegexResul
 # 移除vip
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -6476,11 +6485,11 @@ async def del_vip(app: Ariadne, sender: Member, group: Group, action: RegexResul
 # 清理过期vip
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -6766,11 +6775,11 @@ async def auto_del_vip_timedOut():
 # 查vip列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -6933,11 +6942,11 @@ async def get_vipList(app: Ariadne, group: Group, server_rank: RegexResult, sour
 # 查ban列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -7025,11 +7034,11 @@ async def get_banList(app: Ariadne, group: Group, server_rank: RegexResult, sour
 # 查管理列表
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -7135,11 +7144,11 @@ def deal_duration(duration: int) -> str:
 # 全场最佳
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight(
@@ -7260,11 +7269,11 @@ async def get_days_diff(time_temp: str):
 # 帮助
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight.from_command("-help bf1服管")
@@ -7321,11 +7330,11 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
 
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
-    Distribute.require()
 )
 @dispatch(
     Twilight.from_command("-help bf群组")

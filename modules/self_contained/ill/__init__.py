@@ -2,7 +2,6 @@ import json
 import random
 from pathlib import Path
 
-from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, MessageEvent
 from graia.ariadne.message.chain import MessageChain
@@ -17,7 +16,6 @@ from graia.ariadne.message.parser.twilight import (
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel
 
-from core.config import GlobalConfig
 from core.control import (
     Permission,
     Function,
@@ -27,14 +25,12 @@ from core.control import (
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
-global_config = create(GlobalConfig)
 channel = Channel.current()
 channel.name("发病")
 channel.description("生成对特定对象的发病文\n在群中发送 `-[发病|发癫] [@target] 内容` 即可，target 未填时默认对自己发病")
 channel.author("nullqwertyuiop")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
-config = create(GlobalConfig)
 
 with Path(Path(__file__).parent, "ill_templates.json").open("r", encoding="UTF-8") as f:
     TEMPLATES = json.loads(f.read())["data"]

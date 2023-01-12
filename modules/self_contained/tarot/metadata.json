@@ -1,0 +1,15 @@
+{
+  "level": 1,
+  "name": "Tarot",
+  "version": "0.2",
+  "display_name": "塔罗牌",
+  "authors": [
+    "SAGIRI-kawaii",
+    "移植by13"
+  ],
+  "description": "可以抽塔罗牌的插件",
+  "usage": ["在群中发送 `-塔罗牌` 即可"],
+  "example": ["-塔罗牌"],
+  "default_switch": true,
+  "default_notice": true
+}

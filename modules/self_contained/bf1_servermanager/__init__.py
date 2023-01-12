@@ -5993,8 +5993,8 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
                             '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
                             '索姆河', '武普庫夫山口', '龐然闇影'
                         ]
-                ) else f"{item['modePrettyName']}"),
-                description="",
+                ) else ""),
+                description=f"{item['modePrettyName']}",
                 avatar=item["mapImage"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )

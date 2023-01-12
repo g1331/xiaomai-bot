@@ -1,7 +1,7 @@
 <div align="center">
  
 <h1>xiaomai-bot</h1>
-<img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt=""/>
+<img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt=""/>
 <div>一个以<a href="https://github.com/GraiaProject/Ariadne">Graia Ariadne</a>框架为基础的 QQ 机器人</div>
 <br>
 <div>若您在使用过程中发现了bug或有一些建议，欢迎提出ISSUE、PR或加入 <a href="https://jq.qq.com/?_wv=1027&k=1YEq9zks">QQ交流群：749094683</a> </div>
@@ -13,8 +13,11 @@
 - 目前支持的主要服务：
     - 战地一战绩查询
     - 战地一服务器管理
+    - 识图
     - 随机老婆
     - emoji融合
+    - steam游戏搜索
+    - 发病
     
 - TODO:
     - 修bug(

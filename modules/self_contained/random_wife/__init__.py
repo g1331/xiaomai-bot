@@ -265,7 +265,7 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
+    FrequencyLimitation.require(channel.module, 3),
 )
 @dispatch(
     Twilight(
@@ -315,7 +315,7 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
+    FrequencyLimitation.require(channel.module, 3),
 )
 @dispatch(
     Twilight(

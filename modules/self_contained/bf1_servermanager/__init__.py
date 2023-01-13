@@ -1294,7 +1294,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
-    result.append(generate_random_str(20))
+    result.append(f"\n{generate_random_str(20)}")
 
     server_list_column = [
         ColumnTitle(title=f"所属群组:{bfgroups_name}")

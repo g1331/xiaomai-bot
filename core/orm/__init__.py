@@ -120,7 +120,7 @@ class AsyncORM:
         :param table: 表
         :param data: 数据
         """
-        await self.execute(insert(table).valuse(**data))
+        await self.execute(insert(table).valuses(**data))
 
     async def delete(self, table, condition):
         """

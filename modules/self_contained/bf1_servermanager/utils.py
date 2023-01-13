@@ -35,7 +35,7 @@ null = ''
 access_token = None
 access_token_time = None
 access_token_expires_time = 0
-blocked_acc_path = Path.cwd().parent / "blocked.yaml"
+blocked_acc_path = Path(__file__).parent / "blocked.yaml"
 
 
 async def getPid_byName(player_name: str) -> dict:

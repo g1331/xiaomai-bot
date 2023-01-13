@@ -48,7 +48,7 @@ from .bfgroups_log import rsp_log
 from .info_cache_manager import InfoCache_stat
 from .main_session_auto_refresh import auto_refresh_account
 from .map_team_info import MapData
-from .utils import getPid_byName, server_playing
+from .utils import getPid_byName, server_playing, app_blocked
 
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
@@ -1271,7 +1271,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         ), quote=source)
         return False
     logger.info(f"查询{bfgroups_name}服务器完成,耗时:{time.time() - time_start}")
-    result = [f"所属群组:{bfgroups_name}\n" + "=" * 18 + "\n"]
+    result = [f"所属群组:{bfgroups_name}\n" + "=" * 18]
     counter = 1
     servers = 0
     for i in scrape_index_tasks:
@@ -1279,22 +1279,14 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         if i == "":
             counter += 1
         else:
-            # logger.warning(i)
-            # result.append(f'{counter}:{i["serverInfo"]["name"][:25]}\n')
-            # result.append(f'地图:{i["serverInfo"]["mapModePretty"]}-{i["serverInfo"]["mapNamePretty"]}\n')
-            # result.append(
-            #     f'人数:{i["serverInfo"]["slots"]["Soldier"]["current"]}/{i["serverInfo"]["slots"]["Soldier"]["max"]}[{i["serverInfo"]["slots"]["Queue"]["current"]}]({i["serverInfo"]["slots"]["Spectator"]["current"]}) ')
-            # result.append(f"收藏:{i['serverInfo']['serverBookmarkCount']}\n")
-            # result.append(f'gameId:{i["serverInfo"]["gameId"]}\n')
-
-            result.append(f'{counter}#:{i["name"][:20]}\n')
+            result.append(f'\n{counter}#:{i["name"][:20]}\n')
             人数 = f'人数:{i["slots"]["Soldier"]["current"]}/{i["slots"]["Soldier"]["max"]}[{i["slots"]["Queue"]["current"]}]({i["slots"]["Spectator"]["current"]})'
             result.append(人数)
             result.append(f"  收藏:{i['serverBookmarkCount']}\n")
             result.append(
                 f'地图:{i["mapModePretty"]}-{i["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"))
             # result.append(f'GameId:{i["gameId"]} ')
-            result.append(f"=" * 18 + "\n")
+            result.append(f"=" * 18)
             counter += 1
             servers += 1
     if len(result) == 1:
@@ -1302,20 +1294,52 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
-    result.append(f"({generate_random_str(30)})")
+    result.append(generate_random_str(20))
 
-    # if if_blocked(app.account):
-    #     await app.send_message(
-    #         group,
-    #         await MessageChainUtils.messagechain_to_img(
-    #             MessageChain(
-    #                 result
-    #             )
-    #         ), quote=message[Source][0]
-    #     )
-    #     return
+    server_list_column = [
+        ColumnTitle(title=f"所属群组:{bfgroups_name}")
+    ]
+    for i, item in enumerate(scrape_index_tasks):
+        item = item.result()
+        if not item:
+            continue
+        server_list_column.append(
+            ColumnUserInfo(
+                name=f"{i+1}#:{item['name']}",
+                avatar=item["mapImageUrl"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+            )
+        )
+        server_list_column.append(
+            ColumnList(
+                rows=[
+                    ColumnListItem(
+                        subtitle=f"人数",
+                        content=f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]'
+                                f'({item["slots"]["Spectator"]["current"]})'
+                    ),
+                    ColumnListItem(
+                        subtitle=f"地图模式",
+                        content=f"{item['mapModePretty']}-{item['mapNamePretty']}"
+                    ),
+                    ColumnListItem(
+                        subtitle=f"收藏",
+                        content=f'{item["serverBookmarkCount"]}'
+                    )
+                ]
+            )
+        )
+    server_list_column = [Column(elements=server_list_column[i: i + 5]) for i in range(0, len(server_list_column), 5)]
+    if app_blocked(app.account):
+        return await app.send_message(
+            group,
+            MessageChain(
+                GraiaImage(data_bytes=await OneMockUI.gen(
+                    GenForm(columns=server_list_column, color_type=get_color_type_follow_time())
+                ))
+            ),
+            quote=source)
 
-    await app.send_message(group, MessageChain(
+    return await app.send_message(group, MessageChain(
         result
     ), quote=source)
 

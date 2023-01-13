@@ -2,9 +2,11 @@
 import json
 import time
 import uuid
+from pathlib import Path
 
 import aiofiles
 import httpx
+import yaml
 from creart import create
 from loguru import logger
 
@@ -33,6 +35,7 @@ null = ''
 access_token = None
 access_token_time = None
 access_token_expires_time = 0
+blocked_acc_path = Path.cwd().parent / "blocked.yaml"
 
 
 async def getPid_byName(player_name: str) -> dict:
@@ -133,3 +136,9 @@ async def server_playing(player_pid: str) -> str:
     except Exception as e:
         logger.error(e)
         return "获取失败!"
+
+
+async def app_blocked(account: int):
+    async with aiofiles.open(blocked_acc_path, "r", encoding="utf-8") as file:
+        acc_data = yaml.safe_load(await file.read())
+        return account in acc_data["accounts"]

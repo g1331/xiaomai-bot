@@ -1297,7 +1297,8 @@ async def check_server(app: Ariadne, group: Group, source: Source):
     result.append(f"\n({generate_random_str(20)})")
 
     server_list_column = [
-        ColumnTitle(title=f"所属群组:{bfgroups_name}")
+        ColumnTitle(title=f"所属群组:{bfgroups_name}"),
+        ColumnTitle(title=f"可使用-f#n获取服务器详细信息"),
     ]
     for i, item in enumerate(scrape_index_tasks):
         item = item.result()
@@ -1328,7 +1329,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
                 ]
             )
         )
-    server_list_column = [Column(elements=server_list_column[i: i + 7]) for i in range(0, len(server_list_column), 7)]
+    server_list_column = [Column(elements=server_list_column[i: i + 6]) for i in range(0, len(server_list_column), 6)]
     if await app_blocked(app.account) or servers > 5:
         return await app.send_message(
             group,

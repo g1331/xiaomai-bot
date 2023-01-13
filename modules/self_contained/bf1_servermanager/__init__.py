@@ -41,6 +41,7 @@ from core.models import (
     saya_model
 )
 from utils.UI import *
+from utils.string import generate_random_str
 from utils.text2img import md2img
 from .api_gateway import refresh_api_client
 from .bfgroups_log import rsp_log
@@ -1301,7 +1302,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
-    result[-1] = result[-1].replace("\n", '')
+    result.append(f"({generate_random_str(30)})")
 
     # if if_blocked(app.account):
     #     await app.send_message(

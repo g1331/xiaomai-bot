@@ -1330,7 +1330,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             )
         )
     server_list_column = [Column(elements=server_list_column[i: i + 7]) for i in range(0, len(server_list_column), 7)]
-    if await app_blocked(app.account):
+    if await app_blocked(app.account) or servers > 5:
         return await app.send_message(
             group,
             MessageChain(

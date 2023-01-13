@@ -1313,18 +1313,16 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             ColumnList(
                 rows=[
                     ColumnListItem(
-                        subtitle=f"人数："
+                        subtitle=f"当前人数："
                                  f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}'
                                  f'[{item["slots"]["Queue"]["current"]}]'
                                  f'({item["slots"]["Spectator"]["current"]})'
                     ),
                     ColumnListItem(
-                        subtitle=f"地图模式："
-                                 f"{item['mapModePretty']}-{item['mapNamePretty']}"
+                        subtitle=f"地图模式：{item['mapNamePretty']}--{item['mapModePretty']}"
                     ),
                     ColumnListItem(
-                        subtitle=f"收藏"
-                                 f'{item["serverBookmarkCount"]}'
+                        subtitle=f"当前收藏：{item['serverBookmarkCount']}"
                     )
                 ]
             )

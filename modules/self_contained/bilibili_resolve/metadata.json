@@ -2,7 +2,7 @@
   "level": 1,
   "name": "BilibiliResolve",
   "version": "0.1",
-  "display_name": "哔哩哔哩",
+  "display_name": "哔哩哔哩链接解析",
   "authors": [
     "13",
     "移植from Bbot"

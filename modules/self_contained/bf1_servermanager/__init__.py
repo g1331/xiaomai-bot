@@ -1305,7 +1305,8 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             continue
         server_list_column.append(
             ColumnUserInfo(
-                name=f"{i+1}#:{item['name'][:30]}",
+                name=f"{i+1}：{item['name'][:20]}",
+                description=f"{item['name']}",
                 avatar=item["mapImageUrl"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )

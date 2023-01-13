@@ -1,0 +1,19 @@
+{
+  "level": 1,
+  "name": "BilibiliResolve",
+  "version": "0.1",
+  "display_name": "哔哩哔哩",
+  "authors": [
+    "13",
+    "移植from Bbot"
+  ],
+  "description": "自动解析群消息b站链接",
+  "usage": [
+    "自动解析群消息b站链接"
+  ],
+  "example": [
+    "1日内新番"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

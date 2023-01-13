@@ -1,0 +1,31 @@
+﻿# bot基本配置
+Master: 填写主人的qq号
+bot_accounts: [填写你bot的qq号]
+default_account: 默认bot的qq账号
+GroupMsg_log: true # 是否开启群消息日志
+test_group: 测试群 # 用于接收bot反馈信息等
+proxy: proxy
+
+# mah配置
+mirai_host: http://localhost:8080
+verify_key: verify_key
+
+# 数据库连接地址
+db_link: sqlite+aiosqlite:///data.db
+
+# 日志信息
+log_related:
+  common_retention: 7
+  error_retention: 14
+
+# 其他功能配置信息
+bf1:
+  default_account: default_account
+  apikey: apikey
+
+# 识图
+image_search:
+  saucenao_key: saucenao_key
+
+# steam游戏搜索 steamdb.info/app/app_id 的cookie
+steamdb_cookie: steamdb_cookie

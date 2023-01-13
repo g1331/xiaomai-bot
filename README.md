@@ -13,11 +13,13 @@
 - 目前支持的主要服务：
     - 战地一战绩查询
     - 战地一服务器管理
+    - 发病
     - 识图
+    - 塔罗牌
     - 随机老婆
     - emoji融合
     - steam游戏搜索
-    - 发病
+    - 哔哩哔哩链接解析
     
 - TODO:
     - 修bug(
@@ -33,8 +35,8 @@
    ``` 
    poetry install
    ```
-3. 在config.yaml文件内填写配置信息
-4. 启动bot:poetry run python main.py
+3. 打开config_demo.yaml文件填写配置信息,填写好后请改名为config.yaml再启动
+4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~
 
 

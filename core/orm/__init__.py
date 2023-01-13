@@ -114,15 +114,13 @@ class AsyncORM:
             result = await conn.execute(sql, parameters)
             return result.rowcount
 
-    async def add(self, instance):
+    async def add(self, table, data):
         """
         插入数据
-        :param instance: 实例化的对象
+        :param table: 表
+        :param data: 数据
         """
-        async with self.async_session() as session:
-            async with session.begin():
-                session.add(instance)
-            await session.commit()
+        await self.execute(insert(table).valuse(**data))
 
     async def delete(self, table, condition):
         """

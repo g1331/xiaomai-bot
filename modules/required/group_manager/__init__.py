@@ -65,8 +65,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
                      event_waiter: GroupMessage):
         if await Permission.require_user_perm(waiter_group.id, waiter_member.id,
                                               Permission.GroupAdmin) and group.id == waiter_group.id \
-                and eval(event_waiter.json())['message_chain'][1]['type'] == "Quote" and \
-                eval(event_waiter.json())['message_chain'][1]['id'] == bot_message.id:
+                and event_waiter.quote and event_waiter.quote.id == bot_message.id:
             saying = waiter_message.display
             if saying == 'y':
                 return True, waiter_member.id
@@ -75,8 +74,6 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
             elif saying.startswith("n"):
                 saying.replace("n", "")
                 return False, waiter_member.id
-            else:
-                pass
 
     try:
         result, admin = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=3600)
@@ -142,8 +139,6 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     return True, waiter_member.id, None
                 else:
                     return False, waiter_member.id, saying
-        else:
-            return None
 
     # 接收回复消息，如果为y则同意，如果不为y则以该消息拒绝
     try:

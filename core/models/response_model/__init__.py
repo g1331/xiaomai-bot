@@ -91,11 +91,22 @@ class AccountController:
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
 
-    async def get_app_from_total_groups(self, group_id: int) -> (Ariadne, Group):
-        if not (group_id in self.total_groups):
-            return None, None
+    async def get_app_from_total_groups(self, group_id: int, require_perm: str = None) -> (Ariadne, Group):
         app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
         group = await app.get_group(group_id)
+        if not (group_id in self.total_groups):
+            return None, None
+        if require_perm:
+            member_list = await app.get_member_list(group_id)
+            bot_member = await app.get_member(group_id, app.account)
+            if bot_member.permission.name == require_perm:
+                return self.total_groups[group_id][app.account], group
+            for member in member_list:
+                member: Member
+                if member.id in self.total_groups[group_id] and member.permission.name == require_perm:
+                    group = await Ariadne.current(member.id).get_group(group_id)
+                    return self.total_groups[group_id][member.id], group
+            return None, None
         return app, group
 
     def check_initialization(self, group_id: int, bot_account: int):

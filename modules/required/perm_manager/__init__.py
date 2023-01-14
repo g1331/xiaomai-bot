@@ -147,6 +147,29 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
         return await app.send_message(group, f"已自动删除退群成员{member.name}({member.id})的权限")
 
 
+# 自动添加进群的Master/admins
+@listen(MemberJoinEvent)
+async def auto_add_perm(event: MemberJoinEvent):
+    if event.member.id == config.Master:
+        return await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.Master},
+            condition=[
+                MemberPerm.qq == event.member.id,
+                MemberPerm.group_id == event.member.group.id
+            ]
+        )
+    elif event.member.id in await Permission.get_BotAdminsList():
+        await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.BotAdmin},
+            condition=[
+                MemberPerm.qq == event.member.id,
+                MemberPerm.group_id == event.member.group.id,
+            ]
+        )
+
+
 # >=128可修改群权限
 @listen(GroupMessage)
 @decorate(

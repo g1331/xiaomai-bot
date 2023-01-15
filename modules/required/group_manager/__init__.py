@@ -42,7 +42,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """处理邀请
     """
-    if Permission.require_user_perm(event.source_group, event.supplicant, Permission.BotAdmin):
+    if await Permission.require_user_perm(event.source_group, event.supplicant, Permission.BotAdmin):
         await event.accept('已同意您的邀请~')
         return await app.send_message(await app.get_group(global_config.test_group), MessageChain(
             f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
@@ -105,24 +105,15 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     application_message = event.message
     application_answer = application_message[application_message.find("答案：") + 3:] \
         if application_message.find("答案：") != -1 else application_message
-    # 然后发送消息到群里,如果bot有群管理权限则用waiter，超时时间为20分钟，没有权限则return发送申请消息
-    target_app, target_group = await account_controller.get_app_from_total_groups(event.source_group, "Administrator")
-    if not (target_app and target_group):
-        return await app.send_message(
-            group,
-            MessageChain(f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
-                         f"\n{application_message}\n管理员快去看看吧~")
-        )
-    else:
-        app = target_app
-        bot_msg = await app.send_message(
-            group,
-            MessageChain(f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
-                         f"\n{application_message}"
-                         f"\n‘回复’本消息‘y’可同意该申请"
-                         f"\n‘回复’本消息其他文字可作为理由拒绝"
-                         f"\n请在十分钟内处理")
-        )
+    # 然后发送消息到群里,如果bot有群管理权限则用waiter，超时时间为20分钟，发送申请消息
+    bot_msg = await app.send_message(
+        group,
+        MessageChain(f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
+                     f"\n{application_message}"
+                     f"\n‘回复’本消息‘y’可同意该申请"
+                     f"\n‘回复’本消息其他文字可作为理由拒绝"
+                     f"\n请在十分钟内处理")
+    )
 
     async def waiter(waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
                      event_waiter: GroupMessage):

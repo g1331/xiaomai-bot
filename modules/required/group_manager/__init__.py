@@ -136,31 +136,35 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     and await Permission.require_user_perm(waiter_group.id, waiter_member.id, Permission.GroupAdmin):
                 saying = waiter_message.replace(At(app.account), "").display.strip()
                 if saying == 'y':
-                    return True, waiter_member.id, None
+                    return True,  None
                 else:
-                    return False, waiter_member.id, saying
+                    return False, saying
 
     # 接收回复消息，如果为y则同意，如果不为y则以该消息拒绝
     try:
-        result, admin, reason = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=600)
+        return_info = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=600)
     except asyncio.exceptions.TimeoutError:
         try:
             return await app.get_member(group, event.supplicant)
         except:
-            return await app.send_message(group, MessageChain(
-                f'注意:由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群请求已失效'), )
+            return await app.send_message(
+                group,
+                MessageChain(f'注意:由于超时未审核，处理 {event.nickname}({event.supplicant}) 的入群请求已失效')
+            )
 
+    if return_info:
+        result, reason = return_info
+    else:
+        result = reason = None
     if result:
         await event.accept()  # 同意入群
         return await app.send_message(group, MessageChain(
             f'已同意 {event.nickname}({event.supplicant}) 的入群请求'), )
     elif result is False:
-        await event.reject(reason)  # 拒绝好友请求
+        await event.reject(reason if reason else "")  # 拒绝入群
         return await app.send_message(group, MessageChain(
             f'已拒绝 {event.nickname}({event.supplicant}) 的入群请求'
         ))
-    elif result is None:
-        pass
     else:
         pass
 

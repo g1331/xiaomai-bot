@@ -6052,9 +6052,15 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
                 return False, waiter_member.id, saying
 
     try:
-        result, operator, map_index = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(45)
+        return_result = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(45)
     except asyncio.exceptions.TimeoutError:
         return await app.send_message(group, MessageChain(f'操作超时!已退出换图'), quote=source)
+    if not return_result:
+        return await app.send_message(group, MessageChain(
+            f"未识别到有效图池序号,退出换图"
+        ), quote=source)
+    else:
+        result, operator, map_index = return_result
     if result:
         await app.send_message(group, MessageChain(
             f"执行ing"
@@ -6086,7 +6092,7 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
             ), quote=source)
             return False
     else:
-        await app.send_message(group, MessageChain(
+        return await app.send_message(group, MessageChain(
             f"未识别到有效图池序号,退出换图"
         ), quote=source)
 

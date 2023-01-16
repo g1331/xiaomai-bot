@@ -92,6 +92,12 @@ class AccountController:
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
 
     async def get_app_from_total_groups(self, group_id: int, require_perm: str = None) -> (Ariadne, Group):
+        """
+        从指定群号和bot权限获取对应Ariadne实例和Group
+        @param group_id: 群号
+        @param require_perm: 权限名字: Member、Administrator、Owner
+        @return: (Ariadne, Group) 或者(None, None)
+        """
         app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
         group = await app.get_group(group_id)
         if not (group_id in self.total_groups):
@@ -124,6 +130,9 @@ class AccountController:
         self.account_dict[group_id] = {}
         self.account_dict[group_id][0] = bot_account
         self.deterministic_account[group_id] = 0
+        if group_id not in self.total_groups:
+            self.total_groups[group_id] = {}
+        self.total_groups[group_id][bot_account] = Ariadne.current(bot_account)
         for member in member_list:
             if self.check_account_available(member.id):
                 self.account_dict[group_id][len(self.account_dict[group_id])] = member.id

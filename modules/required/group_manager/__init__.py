@@ -7,7 +7,8 @@ from graia.ariadne.event.message import GroupMessage, MessageEvent
 from graia.ariadne.event.mirai import BotInvitedJoinGroupRequestEvent, MemberJoinRequestEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, ElementMatch
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, ElementMatch, FullMatch, \
+    ElementResult
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -19,7 +20,8 @@ from core.control import (
     Permission,
     Function,
     FrequencyLimitation,
-    Distribute
+    Distribute,
+    QuoteReply
 )
 from core.models import (
     saya_model,
@@ -66,7 +68,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
         if await Permission.require_user_perm(waiter_group.id, waiter_member.id,
                                               Permission.GroupAdmin) and group.id == waiter_group.id \
                 and event_waiter.quote and event_waiter.quote.id == bot_message.id:
-            saying = waiter_message.display
+            saying = waiter_message.replace(At(app.account), "").display.strip()
             if saying == 'y':
                 return True, waiter_member.id
             elif saying == 'n':
@@ -127,7 +129,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     and await Permission.require_user_perm(waiter_group.id, waiter_member.id, Permission.GroupAdmin):
                 saying = waiter_message.replace(At(app.account), "").display.strip()
                 if saying == 'y':
-                    return True,  None
+                    return True, None
                 else:
                     return False, saying
 
@@ -164,6 +166,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
+    QuoteReply.require(),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
@@ -172,30 +175,112 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 @dispatch(
     Twilight([
         "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
-        "command" @ UnionMatch("加精", "设精")
+        UnionMatch("加精", "设精")
     ])
 )
-async def set_essence(app: Ariadne, group: Group, event: MessageEvent, src: Source):
-    if event.quote:
-        quote_id = event.quote.id
-        bot_member = await app.get_member(group, app.account)
-        if bot_member.permission.name == "Member":
-            await app.send_message(group, MessageChain(
-                f"bot权限不足!"
-            ), quote=src)
-            return
+async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: Source):
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, "Administrator")
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!/获取群权限信息失败!"
+        ), quote=source)
+    app = target_app
+    group = target_group
+    quote_id = event.quote.id
+    try:
+        await app.set_essence(quote_id)
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"出错力!"
+        ), quote=source)
+
+    return await app.send_message(group, MessageChain(
+        f"加精成功"
+    ), quote=source)
+
+
+# TODO 撤回 quote.id   recall
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    QuoteReply.require(),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module)
+)
+@dispatch(
+    Twilight([
+        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
+        FullMatch("撤回")
+    ])
+)
+async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source):
+    quote_id = event.quote.id
+    bot_member = await app.get_member(group, app.account)
+    if bot_member.permission.name == "Member" and event.quote.sender_id != bot_member.id:
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!"
+        ), quote=source)
+    try:
+        await app.recall_message(quote_id)
+        return await app.send_message(group, MessageChain(
+            f"撤回成功"
+        ), quote=source)
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"撤回出错啦,找管理员看看吧~"
+        ), quote=source)
+
+
+# TODO 禁言 @qq 禁言
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module)
+)
+@dispatch(
+    Twilight([
+        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
+        FullMatch("禁言")
+    ])
+)
+async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, at: ElementResult):
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, "Administrator")
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!/获取群权限信息失败!"
+        ), quote=source)
+    target_perm = await Permission.get_user_perm_byID(group.id, event.quote.sender_id)
+    bot_perm = await Permission.get_user_perm_byID(group.id, event.quote.sender_id)
+    if target_perm >= bot_perm:
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!(target_perm:{target_perm}/bot_perm:{bot_perm})"
+        ), quote=source)
+    app: Ariadne = target_app
+    group: Group = target_group
+    if at.matched:
+        _target: At = at.result
+        _target = _target.target
         try:
-            await app.set_essence(quote_id)
+            await app.mute_member(group, _target, 120)
+            return await app.send_message(group, MessageChain(f"已设置{_target}2分钟的禁言!"))
         except Exception as e:
             logger.error(e)
             return await app.send_message(group, MessageChain(
-                f"出错力!"
-            ), quote=src)
-
-        return await app.send_message(group, MessageChain(
-            f"加精成功"
-        ), quote=src)
-
-# TODO 禁言 @qq 禁言
-
-# TODO 撤回 quote.id   recall
+                f"设置禁言出错啦!"
+            ), quote=source)
+    if event.quote:
+        try:
+            await app.mute_member(group, event.quote.sender_id, 120)
+            return await app.send_message(group, MessageChain(f"已设置{event.quote.sender_id}2分钟的禁言!"))
+        except Exception as e:
+            logger.error(e)
+            return await app.send_message(group, MessageChain(
+                f"设置禁言出错啦!"
+            ), quote=source)

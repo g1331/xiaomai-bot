@@ -55,6 +55,10 @@ class Permission(object):
     VipGroup = 2
     TestGroup = 3
 
+    Member = 16
+    Administrator = 32
+    Owner = 64
+
     member_permStr_dict = {
         "Member": 16,  # 普通成员
         "Administrator": 32,  # 管理员
@@ -413,3 +417,13 @@ class Config(object):
             raise ExecutionStop
 
         return Depend(check_config)
+
+
+class QuoteReply(object):
+    @classmethod
+    def require(cls):
+        async def wrapper(event: GroupMessage):
+            if not event.quote:
+                raise ExecutionStop
+
+        return Depend(wrapper)

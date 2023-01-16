@@ -4,6 +4,7 @@ from aiohttp import ClientSession
 from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Plain
 from graia.ariadne.message.parser.twilight import (
@@ -48,13 +49,13 @@ proxy = config.proxy if config.proxy != "proxy" else ""
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module),
+    FrequencyLimitation.require(channel.module, 4),
     Function.require(channel.module),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
 )
 async def emoji_mix(
-        app: Ariadne, event: GroupMessage, emoji1: RegexResult, emoji2: RegexResult
+        app: Ariadne, event: GroupMessage, emoji1: RegexResult, emoji2: RegexResult, source: Source
 ):
     emoji1 = emoji1.result.display
     emoji2 = emoji2.result.display
@@ -74,5 +75,5 @@ async def emoji_mix(
     except Exception as err:
         err_text = str(err)
     return await app.send_group_message(
-        event.sender.group, MessageChain([Plain(err_text)])
+        event.sender.group, MessageChain([Plain(err_text)]), source
     )

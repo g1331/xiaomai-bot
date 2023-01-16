@@ -65,10 +65,10 @@ async def emoji_mix(
             async with session.get(link, proxy=proxy) as resp:
                 assert resp.status == 200, "图片获取失败"
                 image = await resp.read()
-                return await app.send_group_message(
+                return await app.send_message(
                     event.sender.group,
                     MessageChain([Image(data_bytes=image)]),
-                    quote=event.source
+                    quote=source
                 )
     except AssertionError as err:
         err_text = err.args[0]

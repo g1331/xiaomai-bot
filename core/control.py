@@ -7,7 +7,7 @@ from graia.amnesia.message import MessageChain
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message import Source
-from graia.ariadne.model import Group
+from graia.ariadne.model import Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
 from sqlalchemy import select
@@ -303,7 +303,9 @@ class Distribute(object):
         :return: Depend
         """
 
-        async def wrapper(group: Group, app: Ariadne):
+        async def wrapper(group: Group or Friend, app: Ariadne):
+            if isinstance(group, Friend):
+                return Depend(wrapper)
             group_id = group.id
             account_controller = response_model.get_acc_controller()
             bot_account = app.account

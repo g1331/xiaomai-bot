@@ -263,7 +263,9 @@ class Function(object):
 
     @classmethod
     def require(cls, module_name: str, notice: bool = True):
-        async def judge(app: Ariadne, group: Group or None = None, source: Source or None = None):
+        async def judge(app: Ariadne, group: Union[Group, Friend], source: Source or None = None):
+            if isinstance(group, Friend):
+                return Depend(judge)
             # 如果module_name不在modules_list里面就添加
             module_controller = saya_model.get_module_controller()
             if module_name not in module_controller.modules:

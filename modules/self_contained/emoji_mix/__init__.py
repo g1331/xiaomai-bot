@@ -74,6 +74,6 @@ async def emoji_mix(
         err_text = err.args[0]
     except Exception as err:
         err_text = str(err)
-    return await app.send_group_message(
-        event.sender.group, MessageChain([Plain(err_text)]), source
+    return await app.send_message(
+        event.sender.group, MessageChain([Plain(err_text)]), quote=source
     )

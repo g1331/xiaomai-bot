@@ -303,7 +303,7 @@ class Distribute(object):
         :return: Depend
         """
 
-        async def wrapper(group: Union[Group or Friend], app: Ariadne):
+        async def wrapper(group: Union[Group, Friend], app: Ariadne):
             if isinstance(group, Friend):
                 return Depend(wrapper)
             group_id = group.id

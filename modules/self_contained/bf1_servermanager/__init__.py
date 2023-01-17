@@ -1046,7 +1046,6 @@ async def bfgroup_del_vban(app: Ariadne, group: Group,
 @decorate(
     Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
 )
@@ -2688,7 +2687,6 @@ async def managerAccount_del(app: Ariadne, group: Group,
 @decorate(
     Distribute.require(),
     Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
 )

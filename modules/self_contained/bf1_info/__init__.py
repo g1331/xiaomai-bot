@@ -3586,7 +3586,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     application_answer = application_message[application_message.find("答案：") + 3:] \
         if application_message.find("答案：") != -1 else None
     verify = ""
-    if application_answer:
+    if application_answer and (application_answer < u'\u4e00' or application_answer > u'\u9fff'):
         player_info = await getPid_byName(application_answer)
         if player_info['personas'] == {}:
             verify = "无效ID"

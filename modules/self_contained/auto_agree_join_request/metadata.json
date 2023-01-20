@@ -4,9 +4,9 @@
   "version": "0.1",
   "display_name": "自动过审",
   "authors": [
-    "移植by13"
+    "13"
   ],
-  "description": "自动通过有效橘子id",
+  "description": "自动通过有效橘子ID",
   "usage": [],
   "example": [],
   "default_switch": false,

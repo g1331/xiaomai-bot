@@ -1,0 +1,14 @@
+{
+  "level": 1,
+  "name": "AutoAgreeJoinRequest",
+  "version": "0.1",
+  "display_name": "自动过审",
+  "authors": [
+    "移植by13"
+  ],
+  "description": "自动通过有效橘子id",
+  "usage": [],
+  "example": [],
+  "default_switch": false,
+  "default_notice": false
+}

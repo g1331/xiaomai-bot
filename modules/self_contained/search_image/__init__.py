@@ -6,8 +6,8 @@ from PicImageSearch import Network, SauceNAO, TraceMoe, Ascii2D, Iqdb, Google, E
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
-from graia.ariadne.message.element import Image, At, ForwardNode, Forward, Source
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, At, ForwardNode, Forward, Source
 from graia.ariadne.message.parser.twilight import (
     Twilight, FullMatch,
     ElementMatch, ElementResult,
@@ -261,7 +261,6 @@ async def fun_saucenao(file_url: str) -> MessageChain:
         else:
             return MessageChain(
                 f"saucenao结果:\n"
-                # f"剩余访问额度: {resp.long_remaining}\n"
                 f"相似度: {resp.raw[0].similarity}\n"
                 f"标题: {resp.raw[0].title}\n"
                 f"作者: {resp.raw[0].author}\n"
@@ -324,7 +323,6 @@ async def fun_ascii2d(file_url: str) -> MessageChain:
                 f"作者地址: {resp.raw[1].author_url}\n"
                 f"作品地址: {resp.raw[1].url}\n"
                 f"原图长宽，类型，大小: {resp.raw[1].detail}\n"
-                # f"来源: {resp.raw[1].mark}\n"
                 f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
             )
 
@@ -449,10 +447,11 @@ async def fun_baidu(file_url: str) -> MessageChain:
                     f"baidu结果:\n"
                     f"标题: {resp.raw[0].title}\n"
                     f"图片所在网页地址: {resp.raw[0].url}\n"
-                    f"缩略图:\n", Image(url=resp.raw[0].url)
+                    f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
                 )
             else:
-                message = MessageChain(
-                    f"相似结果返回值: {resp.raw[0].similarity}"
+                return MessageChain(
+                    f"baidu结果:\n"
+                    f"未搜索到!"
                 )
             return message

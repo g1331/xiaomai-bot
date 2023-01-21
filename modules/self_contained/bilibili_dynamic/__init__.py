@@ -143,7 +143,7 @@ def delete_uid(uid):
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
-async def init(app: Ariadne):
+async def init():
     global NONE
 
     subid_list = get_subid_list()
@@ -190,6 +190,7 @@ async def init(app: Ariadne):
         logger.info(msg)
 
     image = await md2img(info_msg)
+    app = Ariadne.current(global_config.default_account)
     master = await app.get_friend(bot_master)
     await app.send_message(
         master,

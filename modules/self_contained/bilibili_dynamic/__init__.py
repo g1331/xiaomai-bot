@@ -234,23 +234,24 @@ async def update_scheduled():
                     if not (target_app and target_group):
                         remove_list = []
                         for subid in get_group_sublist(groupid):
-                            await remove_uid(subid, groupid)
+                            # await remove_uid(subid, groupid)
                             remove_list.append(subid)
                         logger.info(
-                            f"[BiliBili推送] 推送失败，找不到该群 {groupid}，已删除该群订阅的 {len(remove_list)} 个UP"
+                            f"[BiliBili推送] 推送失败，找不到该群 {groupid}，已跳过该群订阅的 {len(remove_list)} 个UP"
                         )
                     else:
-                        await target_app.send_group_message(
-                            target_group,
-                            MessageChain(
-                                Plain(
-                                    f"本群订阅的UP {up_name}（{up_id}）在 {room_area} 区开播啦 ！\n"
+                        if module_controller.if_module_switch_on(channel.module, target_group):
+                            await target_app.send_group_message(
+                                target_group,
+                                MessageChain(
+                                    Plain(
+                                        f"本群订阅的UP {up_name}（{up_id}）在 {room_area} 区开播啦 ！\n"
+                                    ),
+                                    Plain(title),
+                                    Image(url=cover_from_user),
+                                    Plain(f"\nhttps://live.bilibili.com/{room_id}"),
                                 ),
-                                Plain(title),
-                                Image(url=cover_from_user),
-                                Plain(f"\nhttps://live.bilibili.com/{room_id}"),
-                            ),
-                        )
+                            )
                         await asyncio.sleep(1)
 
         elif LIVE_STATUS[up_id]:
@@ -267,10 +268,11 @@ async def update_scheduled():
                         f"[BiliBili推送] 推送失败，找不到该群 {groupid}，已跳过该群订阅的 {len(remove_list)} 个UP"
                     )
                 else:
-                    await target_app.send_group_message(
-                        target_group,
-                        MessageChain(f"本群订阅的UP {up_name}（{up_id}）已下播！"),
-                    )
+                    if module_controller.if_module_switch_on(channel.module, target_group):
+                        await target_app.send_group_message(
+                            target_group,
+                            MessageChain(f"本群订阅的UP {up_name}（{up_id}）已下播！"),
+                        )
 
     logger.info("[BiliBili推送] 正在检测动态更新")
     for up_id in sub_list:
@@ -295,16 +297,17 @@ async def update_scheduled():
                             )
                             continue
                         try:
-                            await target_app.send_group_message(
-                                target_group,
-                                MessageChain(
-                                    [
-                                        Plain(f"本群订阅的UP {up_name}（{up_id}）更新动态啦！"),
-                                        Image(data_bytes=shot_image),
-                                        Plain(f"https://t.bilibili.com/{up_last_dynid}"),
-                                    ]
-                                ),
-                            )
+                            if module_controller.if_module_switch_on(channel.module, target_group):
+                                await target_app.send_group_message(
+                                    target_group,
+                                    MessageChain(
+                                        [
+                                            Plain(f"本群订阅的UP {up_name}（{up_id}）更新动态啦！"),
+                                            Image(data_bytes=shot_image),
+                                            Plain(f"https://t.bilibili.com/{up_last_dynid}"),
+                                        ]
+                                    ),
+                                )
                             await asyncio.sleep(1)
                         except Exception as e:
                             logger.info(f"[BiliBili推送] 推送失败，未知错误 {type(e)}")

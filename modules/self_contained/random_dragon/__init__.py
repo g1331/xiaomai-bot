@@ -36,7 +36,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Twilight([RegexMatch(r"^(随机|来[点张])[龙🐉][图]|[Ll]ong[！!]?$")])
 )
 async def main(app: Ariadne, group: Group, source: Source):
-    pic_path = Path(__file__) / "imgs"
+    pic_path = Path(__file__).parent / "imgs"
     if not pic_path.exists():
         return await app.send_message(group, MessageChain(
             "未找到图库"

@@ -440,6 +440,9 @@ async def vive_dyn(group: Group, anything: RegexResult, app: Ariadne, src: Sourc
 
     res = await grpc_dyn_get(uid)
     if res:
+        await app.send_message(
+            group, MessageChain("查询ing"), quote=src
+        )
         shot_image = await get_dynamic_screenshot(res["list"][0]["extend"]["dyn_id_str"])
         await app.send_message(
             group, MessageChain([Image(data_bytes=shot_image)]), quote=src

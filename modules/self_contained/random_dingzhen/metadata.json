@@ -1,0 +1,19 @@
+{
+  "level": 1,
+  "name": "随机丁真",
+  "version": "0.1",
+  "display_name": "随机丁真",
+  "authors": [
+  "十三"
+  ],
+  "description": "发送随机丁真的插件",
+  "usage": [
+    "发送(随机|一眼|来[点张])[顶丁钉][真针]"
+  ],
+  "example": [
+    "随机丁真",
+    "一眼丁真"
+  ],
+  "default_switch": false,
+  "default_notice": false
+}

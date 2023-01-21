@@ -1,0 +1,18 @@
+{
+  "level": 1,
+  "name": "RandomDragon",
+  "version": "0.1",
+  "display_name": "随机龙图",
+  "authors": [
+    "十三"
+  ],
+  "description": "发送随机龙图的插件",
+  "usage": [
+    "发送随机/来张/来点龙图"
+  ],
+  "example": [
+    "随机龙图"
+  ],
+  "default_switch": false,
+  "default_notice": false
+}

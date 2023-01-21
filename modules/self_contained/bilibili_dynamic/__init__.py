@@ -394,6 +394,7 @@ async def get_sub_list(group: Group, app: Ariadne):
         live_status = " > 已开播" if LIVE_STATUS.get(up_id, False) else ""
         info_msg.append(f"    ● {si}  ---->  {up_name}({up_id}){live_status}" if len(info_msg) == 0 else
                         f"\n    ● {si}  ---->  {up_name}({up_id}){live_status}")
+        i += 1
     if sublist_count == 0:
         await app.send_message(group, MessageChain([Plain("本群未订阅任何 UP")]))
     else:

@@ -3581,6 +3581,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     :return:
     """
     group = await app.get_group(event.source_group)
+    if not module_controller.if_module_switch_on(channel.module, group):
+        return
     # 先解析加群信息
     application_message = event.message
     application_answer = application_message[application_message.find("答案：") + 3:] \

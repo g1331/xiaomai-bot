@@ -32,7 +32,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model, response_model
-from utils.text2img import html2img
+from utils.text2img import md2img
 from .bilibili_request import get_status_info_by_uids
 from .dynamic_shot import get_dynamic_screenshot
 from .grpc.req import grpc_dyn_get
@@ -176,7 +176,7 @@ async def init(app: Ariadne):
         else:
             si = i
         live_status = " > 已开播" if LIVE_STATUS.get(up_id, False) else ""
-        info_msg.append(f"    ● {si}  ---->  {up_name}({up_id}){live_status}")
+        info_msg.append(f"\n    ● {si}  ---->  {up_name}({up_id}){live_status}")
         logger.info(f"[BiliBili推送] 正在初始化  ● {si}  ---->  {up_name}({up_id}){live_status}")
         i += 1
         await asyncio.sleep(1)
@@ -189,7 +189,7 @@ async def init(app: Ariadne):
     for msg in info_msg:
         logger.info(msg)
 
-    image = await html2img("\n".join(info_msg))
+    image = await md2img(info_msg)
     master = await app.get_friend(bot_master)
     await app.send_message(
         master,

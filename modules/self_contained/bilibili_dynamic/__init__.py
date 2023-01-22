@@ -189,7 +189,7 @@ async def init():
     for msg in info_msg:
         logger.info(msg)
 
-    image = await md2img("\n".join(info_msg))
+    image = await md2img("\n\n".join(info_msg))
     app = Ariadne.current(global_config.default_account)
     master = await app.get_friend(bot_master)
     await app.send_message(
@@ -198,7 +198,7 @@ async def init():
     )
 
 
-@channel.use(SchedulerSchema(every_custom_seconds(30)))
+@channel.use(SchedulerSchema(every_custom_seconds(45)))
 async def update_scheduled():
     if not NONE:
         logger.info("[BiliBili推送] 初始化未完成，终止本次更新")

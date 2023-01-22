@@ -57,7 +57,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module),
+    FrequencyLimitation.require(channel.module, 3),
     Function.require(channel.module),
     Permission.user_require(Permission.User),
     Permission.group_require(channel.metadata.level),

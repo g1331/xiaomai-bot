@@ -39,6 +39,9 @@ LEFT_TEXT_COLOR = "#FFFFFF"
 RIGHT_TEXT_COLOR = "#000000"
 FONT_SIZE = 50
 
+upper_font_path = str(Path.cwd() / "statics" / "fonts" / "NotoSansCJKSC-Black.ttf")
+downer_font_path = str(Path.cwd() / "statics" / "fonts" / "NotoSerifCJKSC-Black.ttf")
+
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
 channel.name("StylePictureGenerator")
@@ -304,16 +307,12 @@ class GoSenChoEnHoShiStyleUtils:
             default_base=None,
     ):
         # width = max_width
+        k = 0.8
         alpha = (0, 0, 0, 0)
         leftmargin = 50
-        k = 0.8
         upmargin = 20
-        font_upper = ImageFont.truetype(
-            str(Path.cwd() / "statics" / "fonts" / "NotoSansCJKSC-Black.ttf"), _round(height * 0.35 * k) + upmargin
-        )
-        font_downer = ImageFont.truetype(
-            str(Path.cwd() / "statics" / "fonts" / "NotoSerifCJKSC-Black.ttf"), _round(height * 0.35 * k) + upmargin
-        )
+        font_upper = ImageFont.truetype(upper_font_path, _round(height * 0.35 * k) + upmargin)
+        font_downer = ImageFont.truetype(downer_font_path, _round(height * 0.35 * k) + upmargin)
 
         # Prepare Width
         upper_width = (
@@ -346,24 +345,24 @@ class GoSenChoEnHoShiStyleUtils:
             upper_base = default_base
         else:
             upper_base = GoSenChoEnHoShiStyleUtils.genBaseImage(
-                width=upper_width, height=_round(height / 2)
+                width=upper_width + leftmargin, height=_round(height / 2) + upmargin
             )
 
         # Prepare base - Downer (if required)
         downer_base = GoSenChoEnHoShiStyleUtils.genBaseImage(
-            width=downer_width + leftmargin, height=_round(height / 2)
+            width=downer_width + leftmargin, height=_round(height / 2) + upmargin
         )
         # if default_width == downer_width:
         #     downer_base = default_base
         # else:
 
         # Prepare mask - Upper
-        upper_mask_base = PIL.Image.new("L", (upper_width, _round(height / 2)), 0)
+        upper_mask_base = PIL.Image.new("L", (upper_width + leftmargin, _round(height / 2) + upmargin), 0)
 
         mask_img_upper = list()
         upper_data = [
-            [(4, 4), (4, 4), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
-            [22, 20, 16, 10, 6, 6, 4, 0],
+            [(4, 4), (4, 4), (0, 0), (0, 0), (2, -3), (0, -3), (0, -3), (0, -3)],
+            [22, 20, 16, 10, 6, 6, 3, 0],
             [
                 "baseStrokeBlack",
                 "downerSilver",
@@ -388,7 +387,7 @@ class GoSenChoEnHoShiStyleUtils:
 
         # Prepare mask - Downer
         downer_mask_base = PIL.Image.new(
-            "L", (downer_width + leftmargin, _round(height / 2)), 0
+            "L", (downer_width + leftmargin, _round(height / 2) + upmargin), 0
         )
         mask_img_downer = list()
         downer_data = [
@@ -450,11 +449,14 @@ class GoSenChoEnHoShiStyleUtils:
         # finish
         previmg = PIL.Image.new(
             "RGBA",
-            (max([upper_width, downer_width]) + leftmargin + 300 + 100, height + 100),
-            (255, 255, 255, 0),
+            (max([upper_width, downer_width]) + leftmargin + subset + 100, height + upmargin + 100),
+            (255, 255, 255, 0)
         )
         previmg.alpha_composite(tiltres[0], (0, 50), (0, 0))
-        previmg.alpha_composite(tiltres[1], (subset, _round(height / 2) + 50), (0, 0))
+        if upper_width > downer_width + subset:
+            previmg.alpha_composite(tiltres[1], (upper_width + subset - downer_width, _round(height / 2) + 50), (0, 0))
+        else:
+            previmg.alpha_composite(tiltres[1], (subset, _round(height / 2) + 50), (0, 0))
         croprange = previmg.getbbox()
         img = previmg.crop(croprange)
         final_image = PIL.Image.new("RGB", (img.size[0] + 100, img.size[1] + 100), bg)

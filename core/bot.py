@@ -105,7 +105,7 @@ class Umaru(object):
         self.initialized = True
         self.set_logger()
         logger.debug(f"等待账号初始化")
-        await asyncio.sleep(5)
+        await asyncio.sleep(len(self.apps) if len(self.apps) <= 5 else 5)
         logger.debug("BOT初始化开始...")
         logger.debug(f"预计初始化{len(self.apps)}个账号")
         bcc = create(Broadcast)

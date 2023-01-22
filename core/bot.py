@@ -107,6 +107,7 @@ class Umaru(object):
         logger.debug(f"等待账号初始化")
         await asyncio.sleep(5)
         logger.debug("BOT初始化开始...")
+        logger.debug(f"预计初始化{len(self.apps)}个账号")
         bcc = create(Broadcast)
         saya = create(Saya)
         saya.install_behaviours(BroadcastBehaviour(bcc))
@@ -126,7 +127,7 @@ class Umaru(object):
                 if item[0] not in admin_list:
                     admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
-        Timeout = 10 * len(self.config.bot_accounts)
+        Timeout = 30 * len(self.config.bot_accounts)
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
                 logger.debug(f"账号{app.account}初始化ing")

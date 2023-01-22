@@ -64,9 +64,9 @@ async def helper(app: Ariadne, group: Group, source: Source):
     二、正常插件
     三、维护插件
     """
-    required_module_list = sorted(module_controller.get_required_modules())
-    normal_module_list = sorted(module_controller.get_available_modules())
-    unavailable_module_list = sorted(module_controller.get_unavailable_modules())
+    required_module_list = module_controller.get_required_modules()
+    normal_module_list = module_controller.get_available_modules()
+    unavailable_module_list = module_controller.get_unavailable_modules()
 
     # 菜单信息
     usage = [ColumnListItem(
@@ -154,7 +154,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
     if not index.result.display.isdigit():
         return
     index = int(index.result.display) - 1
-    required_module_list = sorted(module_controller.get_required_modules())
+    required_module_list = module_controller.get_required_modules()
     normal_module_list = []
     for module in module_controller.get_installed_channels():
         if module not in required_module_list:
@@ -257,7 +257,7 @@ async def change_module_switch(app: Ariadne,
     """
     operation = operation.result.display.replace("-", "")
     index = int(index.result.display) - 1
-    required_module_list = sorted(module_controller.get_required_modules())
+    required_module_list = module_controller.get_required_modules()
     normal_module_list = []
     for module in module_controller.get_installed_channels():
         if module not in required_module_list:

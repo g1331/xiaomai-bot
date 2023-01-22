@@ -338,25 +338,25 @@ class ModulesController:
                     modules.append(str(module).replace("/", "."))
                 else:
                     modules.append(str(module).split(".")[0].replace("/", "."))
-        return modules
+        return sorted(modules)
 
     @staticmethod
     def get_installed_channels() -> list[str]:
-        return list(saya.channels.keys())
+        return sorted(list(saya.channels.keys()))
 
     @staticmethod
     def get_not_installed_channels() -> list[str]:
-        return [c for c in ModulesController.get_all_channels() if c not in saya.channels]
+        return sorted([c for c in ModulesController.get_all_channels() if c not in saya.channels])
 
     @staticmethod
     def get_required_modules() -> list[str]:
-        return [c for c in saya.channels.keys() if c.startswith("modules.required")]
+        return sorted([c for c in saya.channels.keys() if c.startswith("modules.required")])
 
     def get_available_modules(self) -> list[str]:
-        return [module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()]
+        return sorted([module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()])
 
     def get_unavailable_modules(self) -> list[str]:
-        return [module for module in self.get_all_channels() if not self.if_module_available(module)]
+        return sorted([module for module in self.get_all_channels() if not self.if_module_available(module)])
 
 
 def get_module_controller() -> ModulesController:

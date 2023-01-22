@@ -100,8 +100,6 @@ async def helper(app: Ariadne, group: Group, source: Source):
             ColumnListItem(
                 # 副标题
                 subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-                # 开关指示
-                right_element=ColumnListItemSwitch(switch=module_controller.if_module_available(channel_temp))
             )
         ]))
     required_columns = [Column(elements=required_columns[i: i + 20]) for i in range(0, len(required_columns), 20)]

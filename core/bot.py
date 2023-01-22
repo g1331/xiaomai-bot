@@ -212,7 +212,7 @@ class Umaru(object):
         init_result = f"BOT启动初始化完成!\n" \
                       f"耗时:{(time.time() - time_start):.2f}秒\n" \
                       f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
-        logger.success(init_result)
+        logger.success(init_result.replace("\n", "\\n"))
         # 向主人发送启动完成的信息
         if Ariadne.current(self.config.default_account).connection.status.available:
             try:

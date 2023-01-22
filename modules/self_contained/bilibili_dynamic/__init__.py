@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+import time
 from pathlib import Path
 
 from creart import create
@@ -206,8 +207,9 @@ async def init():
     )
 
 
+# 主动推送主程序
 @channel.use(SchedulerSchema(every_custom_seconds(45)))
-async def update_scheduled():
+async def main_update_scheduled():
     if not NONE:
         logger.info("[BiliBili推送] 初始化未完成，终止本次更新")
         return
@@ -218,6 +220,8 @@ async def update_scheduled():
     sub_list = dynamic_list["subscription"].copy()
     sub_id_list = get_subid_list()
     post_data = {"uids": sub_id_list}
+    logger.info(f"[BiliBili推送] 开始本轮检测,预计检测{len(sub_list)}位UP主")
+    time_start = time.time()
     logger.info("[BiliBili推送] 正在检测直播更新")
     live_status = await get_status_info_by_uids(post_data)
     # 推送直播
@@ -329,7 +333,7 @@ async def update_scheduled():
             break
     logger.info("[BiliBili推送] 动态检测完成")
 
-    logger.info("[BiliBili推送] 本轮检测完成")
+    logger.info(f"[BiliBili推送] 本轮检测完成,耗时{(time.time()-time_start):.2f}秒")
 
 
 @listen(GroupMessage)

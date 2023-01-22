@@ -198,7 +198,7 @@ class Umaru(object):
                 self.initialized_app_list.append(app.account)
                 logger.info(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
-                await asyncio.sleep(5)
+                await asyncio.sleep(3)
         logger.info("本次启动活动群组如下：")
         for account, group_list in self.total_groups.items():
             for group in group_list:

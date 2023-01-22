@@ -189,7 +189,12 @@ async def init():
     for msg in info_msg:
         logger.info(msg)
 
-    image = await md2img("\n\n".join(info_msg))
+    image = await md2img("\n\n".join(info_msg), page_option={
+                "viewport": {
+                    "width": 600,
+                    "height": 10},
+                "device_scale_factor": 1.5,
+                "color_scheme": "dark"})
     app = Ariadne.current(global_config.default_account)
     master = await app.get_friend(bot_master)
     await app.send_message(
@@ -377,7 +382,7 @@ async def get_sub_list(group: Group, app: Ariadne):
     sublist = list(get_group_sublist(group.id))
     sublist_count = len(sublist)
     i = 1
-    info_msg = []
+    info_msg = [f"本群共订阅 {sublist_count} 个 UP"]
     for up_id in sublist:
         res = await grpc_dyn_get(up_id)
         if not res:
@@ -393,8 +398,7 @@ async def get_sub_list(group: Group, app: Ariadne):
         else:
             si = i
         live_status = " > 已开播" if LIVE_STATUS.get(up_id, False) else ""
-        info_msg.append(f"    ● {si}  ---->  {up_name}({up_id}){live_status}" if len(info_msg) == 0 else
-                        f"\n    ● {si}  ---->  {up_name}({up_id}){live_status}")
+        info_msg.append(f"    ● {si}  ---->  {up_name}({up_id}){live_status}")
         i += 1
     if sublist_count == 0:
         await app.send_message(group, MessageChain([Plain("本群未订阅任何 UP")]))
@@ -402,7 +406,7 @@ async def get_sub_list(group: Group, app: Ariadne):
         await app.send_message(
             group,
             MessageChain(
-                [Plain(f"本群共订阅 {sublist_count} 个 UP\n"), info_msg]
+                "\n".join(info_msg)
             ),
         )
 

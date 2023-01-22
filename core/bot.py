@@ -104,9 +104,9 @@ class Umaru(object):
             return
         self.initialized = True
         self.set_logger()
-        logger.info(f"等待账户初始化")
+        logger.debug(f"等待账号初始化")
         await asyncio.sleep(5)
-        logger.info("bot初始化中...")
+        logger.debug("BOT初始化开始...")
         bcc = create(Broadcast)
         saya = create(Saya)
         saya.install_behaviours(BroadcastBehaviour(bcc))
@@ -127,8 +127,9 @@ class Umaru(object):
                     admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
         Timeout = 10 * len(self.config.bot_accounts)
-        while (time.time() - time_start) < Timeout and len(self.initialized_app_list) != len(self.apps):
+        while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
+                logger.debug(f"账号{app.account}初始化ing")
                 if app.account in self.initialized_app_list:
                     continue
                 if not app.connection.status.available:
@@ -139,7 +140,6 @@ class Umaru(object):
                 # 更新群组权限
                 for group in group_list:
                     if group.id not in self.initialized_group_list:
-                        self.initialized_group_list.append(group.id)
                         if group.id == self.config.test_group:
                             perm = 3
                         elif await orm.fetch_one(
@@ -197,8 +197,9 @@ class Umaru(object):
                                         MemberPerm.group_id == group.id,
                                     ]
                                 )
+                        self.initialized_group_list.append(group.id)
                 self.initialized_app_list.append(app.account)
-                logger.info(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
+            logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
                 await asyncio.sleep(3)
         logger.info("本次启动活动群组如下：")
@@ -207,9 +208,11 @@ class Umaru(object):
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
         # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
-        init_result = f"bot启动初始化完成~耗时:{(time.time() - time_start):.2f}秒" \
-                      f"成功初始化{len(self.initialized_app_list)}个账户、{len(self.initialized_group_list)}个群组"
+        init_result = f"BOT启动初始化完成!\n" \
+                      f"耗时:{(time.time() - time_start):.2f}秒\n" \
+                      f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
         logger.success(init_result)
+        # 向主人发送启动完成的信息
         if Ariadne.current(self.config.default_account).connection.status.available:
             try:
                 await Ariadne.current(self.config.default_account).send_friend_message(

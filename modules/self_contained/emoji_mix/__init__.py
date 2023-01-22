@@ -1,19 +1,22 @@
+from datetime import datetime
 from pathlib import Path
 
 from aiohttp import ClientSession
 from creart import create
 from graia.ariadne import Ariadne
+from graia.ariadne.event.lifecycle import ApplicationLaunch
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image, Plain
+from graia.ariadne.message.element import Image, Forward, ForwardNode
 from graia.ariadne.message.parser.twilight import (
     Twilight,
     UnionMatch,
-    RegexResult,
+    RegexResult, FullMatch, RegexMatch,
 )
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel
+from graia.saya.builtins.broadcast import ListenerSchema
 
 from core.config import GlobalConfig
 from core.control import (
@@ -23,7 +26,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
-from .util import ALL_EMOJI, get_mix_emoji_url
+from .util import _ALL_EMOJI, get_mix_emoji_url, get_available_pairs, _download_update
 
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
@@ -42,38 +45,79 @@ proxy = config.proxy if config.proxy != "proxy" else ""
 
 @listen(GroupMessage)
 @dispatch(
-    Twilight([
-        UnionMatch(*ALL_EMOJI) @ "emoji1",
-        UnionMatch(*ALL_EMOJI) @ "emoji2",
-    ])
+    Twilight(
+        [
+            UnionMatch(*_ALL_EMOJI) @ "left",
+            UnionMatch(*_ALL_EMOJI) @ "right",
+        ]
+    )
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module, 4),
+    FrequencyLimitation.require(channel.module, 3),
     Function.require(channel.module),
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
 )
 async def emoji_mix(
-        app: Ariadne, event: GroupMessage, emoji1: RegexResult, emoji2: RegexResult, source: Source
+        app: Ariadne, event: GroupMessage, left: RegexResult, right: RegexResult, source: Source
 ):
-    emoji1 = emoji1.result.display
-    emoji2 = emoji2.result.display
+    left: str = left.result.display
+    right: str = right.result.display
     try:
         async with ClientSession() as session:
-            assert (link := get_mix_emoji_url(emoji1, emoji2)), "无法获取合成链接"
-            async with session.get(link, proxy=proxy) as resp:
-                assert resp.status == 200, "图片获取失败"
-                image = await resp.read()
-                return await app.send_message(
-                    event.sender.group,
-                    MessageChain([Image(data_bytes=image)]),
-                    quote=source
+            assert (
+                url := get_mix_emoji_url(left, right)
+            ), f'不存在该 Emoji 组合，可以发送 "查看 emoji 组合：{left}" 查找可用组合'
+            async with session.get(url, proxy=proxy) as resp:
+                assert resp.status == 200, "图片下载失败"
+                image: bytes = await resp.read()
+                return await app.send_group_message(
+                    event.sender.group, MessageChain(Image(data_bytes=image)), quote=source
                 )
     except AssertionError as err:
         err_text = err.args[0]
     except Exception as err:
         err_text = str(err)
-    return await app.send_message(
-        event.sender.group, MessageChain([Plain(err_text)]), quote=source
+    return await app.send_group_message(event.sender.group, MessageChain(err_text), quote=source)
+
+
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        FullMatch("查看"),
+        RegexMatch(r"[eE][mM][oO][jJ][iI]"),
+        FullMatch("组合"),
+        RegexMatch(r"[:：] ?\S+") @ "keyword",
     )
+)
+@decorate(
+    Distribute.require(),
+    FrequencyLimitation.require(channel.module, 3),
+    Function.require(channel.module),
+    Permission.user_require(Permission.User, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+)
+async def get_emoji_pair(app: Ariadne, event: GroupMessage, keyword: RegexResult, source: Source):
+    keyword = keyword.result.display[1:].strip()
+    if pairs := get_available_pairs(keyword):
+        return app.send_message(
+            event.sender.group,
+            MessageChain(
+                Forward(
+                    ForwardNode(
+                        target=app.account,
+                        time=datetime.now(),
+                        message=MessageChain(f"可用 Emoji 组合：\n{', '.join(pairs)}"),
+                        name="SAGIRI-BOT",
+                    )
+                )
+            ),
+            quote=source
+        )
+    return app.send_message(event.sender.group, MessageChain("没有可用的 Emoji 组合"), quote=source)
+
+
+@channel.use(ListenerSchema(listening_events=[ApplicationLaunch]))
+async def fetch_emoji_update():
+    await _download_update()

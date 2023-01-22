@@ -281,7 +281,7 @@ async def delete_keyword(
         decorators=[
             Distribute.require(),
             Function.require(channel.module),
-            Permission.user_require(Permission.GroupAdmin, if_noticed=False),
+            Permission.user_require(Permission.User, if_noticed=False),
             Permission.group_require(channel.metadata.level, if_noticed=False),
         ],
     )

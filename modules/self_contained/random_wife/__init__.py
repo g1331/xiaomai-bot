@@ -286,7 +286,7 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
         await app.send_message(
             group,
             MessageChain(
-                f"你还没有抽到老婆,请先使用'-随机老婆'抽一个哦~"
+                f"你还没有抽到老婆,请先使用'抽老婆'抽一个哦~"
             ),
             quote=source
         )
@@ -320,7 +320,7 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
 @dispatch(
     Twilight(
         ["message" @ UnionMatch(
-            "-随机老婆", "-随机wife", "-抽老婆"
+            "随机老婆", "随机wife", "抽老婆"
         ).space(SpacePolicy.PRESERVE)]
     )
 )

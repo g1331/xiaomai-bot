@@ -15,3 +15,6 @@ config.yaml
 
 # 数据库
 data.db
+
+# 数据文件
+/modules/self_contained/bilibili_dynamic/dynamic_list.json

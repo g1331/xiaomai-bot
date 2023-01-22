@@ -306,8 +306,13 @@ class GoSenChoEnHoShiStyleUtils:
         # width = max_width
         alpha = (0, 0, 0, 0)
         leftmargin = 50
-        font_upper = font_downer = ImageFont.truetype(
-            str(Path.cwd() / "statics" / "fonts" / "STKAITI.TTF"), _round(height / 3)
+        k = 0.8
+        upmargin = 20
+        font_upper = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "NotoSansCJKSC-Black.ttf"), _round(height * 0.35 * k) + upmargin
+        )
+        font_downer = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "NotoSerifCJKSC-Black.ttf"), _round(height * 0.35 * k) + upmargin
         )
 
         # Prepare Width

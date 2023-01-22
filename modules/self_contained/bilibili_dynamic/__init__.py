@@ -386,7 +386,7 @@ async def remove_sub(group: Group, anything: RegexResult, app: Ariadne):
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module)
 )
-async def get_sub_list(group: Group, app: Ariadne):
+async def get_sub_list(group: Group, app: Ariadne, source: Source):
     sublist = list(get_group_sublist(group.id))
     sublist_count = len(sublist)
     i = 1
@@ -408,6 +408,7 @@ async def get_sub_list(group: Group, app: Ariadne):
         live_status = " > 已开播" if LIVE_STATUS.get(up_id, False) else ""
         info_msg.append(f"{si}. {up_name}({up_id}){live_status}")
         i += 1
+    sorted(info_msg)
     if sublist_count == 0:
         await app.send_message(group, MessageChain([Plain("本群未订阅任何 UP")]))
     else:
@@ -416,6 +417,7 @@ async def get_sub_list(group: Group, app: Ariadne):
             MessageChain(
                 "\n".join(info_msg)
             ),
+            quote=source
         )
 
 

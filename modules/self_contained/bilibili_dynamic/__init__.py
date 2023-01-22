@@ -129,7 +129,7 @@ async def remove_uid(uid, groupid):
     dynamic_list["subscription"][uid].remove(groupid)
     if not dynamic_list["subscription"][uid]:
         del dynamic_list["subscription"][uid]
-    with open(str(Path(__file__).parent/"dynamic_list.json"), "w", encoding="utf-8") as file:
+    with open(str(Path(__file__).parent / "dynamic_list.json"), "w", encoding="utf-8") as file:
         json.dump(dynamic_list, file, indent=2)
     r = await grpc_dyn_get(uid)
     up_name = r["list"][0]["modules"][0]["module_author"]["author"]["name"] if r else ""
@@ -138,7 +138,7 @@ async def remove_uid(uid, groupid):
 
 def delete_uid(uid):
     del dynamic_list["subscription"][uid]
-    with open(str(Path(__file__).parent/"dynamic_list.json"), "w", encoding="utf-8") as file:
+    with open(str(Path(__file__).parent / "dynamic_list.json"), "w", encoding="utf-8") as file:
         json.dump(dynamic_list, file, indent=2)
 
 
@@ -189,12 +189,15 @@ async def init():
     for msg in info_msg:
         logger.info(msg)
 
-    image = await md2img("\n\n".join(info_msg), page_option={
-                "viewport": {
-                    "width": 600,
-                    "height": 10},
-                "device_scale_factor": 1.5,
-                "color_scheme": "dark"})
+    image = await md2img(
+        "\n\n".join(info_msg),
+        page_option={
+            "viewport": {
+                "width": 600,
+                "height": 10},
+            "device_scale_factor": 1.5,
+            "color_scheme": "dark"}
+    )
     app = Ariadne.current(global_config.default_account)
     master = await app.get_friend(bot_master)
     await app.send_message(
@@ -213,23 +216,23 @@ async def update_scheduled():
         return
 
     sub_list = dynamic_list["subscription"].copy()
-    subid_list = get_subid_list()
-    post_data = {"uids": subid_list}
+    sub_id_list = get_subid_list()
+    post_data = {"uids": sub_id_list}
     logger.info("[BiliBili推送] 正在检测直播更新")
-    live_statu = await get_status_info_by_uids(post_data)
-    logger.info("[BiliBili推送] 直播更新成功")
-    for up_id in live_statu["data"]:
-        title = live_statu["data"][up_id]["title"]
-        room_id = live_statu["data"][up_id]["room_id"]
+    live_status = await get_status_info_by_uids(post_data)
+    # 推送直播
+    for up_id in live_status["data"]:
+        title = live_status["data"][up_id]["title"]
+        room_id = live_status["data"][up_id]["room_id"]
         room_area = (
-                live_statu["data"][up_id]["area_v2_parent_name"]
+                live_status["data"][up_id]["area_v2_parent_name"]
                 + " / "
-                + live_statu["data"][up_id]["area_v2_name"]
+                + live_status["data"][up_id]["area_v2_name"]
         )
-        up_name = live_statu["data"][up_id]["uname"]
-        cover_from_user = live_statu["data"][up_id]["cover_from_user"]
+        up_name = live_status["data"][up_id]["uname"]
+        cover_from_user = live_status["data"][up_id]["cover_from_user"]
 
-        if live_statu["data"][up_id]["live_status"] == 1:
+        if live_status["data"][up_id]["live_status"] == 1:
             if up_id not in LIVE_STATUS:
                 LIVE_STATUS[up_id] = False
             if not LIVE_STATUS[up_id]:
@@ -250,10 +253,9 @@ async def update_scheduled():
                             await target_app.send_group_message(
                                 target_group,
                                 MessageChain(
-                                    Plain(
-                                        f"本群订阅的UP {up_name}（{up_id}）在 {room_area} 区开播啦 ！\n"
-                                    ),
-                                    Plain(title),
+                                    f"本群订阅的UP:{up_name}(UID:{up_id})开播啦 ！\n"
+                                    f"分区:{room_area}\n"
+                                    f"标题:{title}\n",
                                     Image(url=cover_from_user),
                                     Plain(f"\nhttps://live.bilibili.com/{room_id}"),
                                 ),
@@ -279,14 +281,15 @@ async def update_scheduled():
                             target_group,
                             MessageChain(f"本群订阅的UP {up_name}（{up_id}）已下播！"),
                         )
+    logger.info("[BiliBili推送] 直播检测完成")
 
+    # 推送动态
     logger.info("[BiliBili推送] 正在检测动态更新")
     for up_id in sub_list:
-        r = await grpc_dyn_get(up_id)
-        if r:
+        if r := await grpc_dyn_get(up_id):
             up_name = r["list"][0]["modules"][0]["module_author"]["author"]["name"]
             up_last_dynid = r["list"][0]["extend"]["dyn_id_str"]
-            logger.debug(f"[BiliBili推送] {up_name}（{up_id}）检测完成")
+            # logger.debug(f"[BiliBili推送] {up_name}(UID:{up_id})检测完成")
             if int(up_last_dynid) > DYNAMIC_OFFSET[up_id]:
                 logger.info(f"[BiliBili推送] {up_name} 更新了动态 {up_last_dynid}")
                 shot_image = await get_dynamic_screenshot(up_last_dynid)
@@ -308,9 +311,9 @@ async def update_scheduled():
                                     target_group,
                                     MessageChain(
                                         [
-                                            Plain(f"本群订阅的UP {up_name}（{up_id}）更新动态啦！"),
+                                            Plain(f"本群订阅的UP {up_name}（{up_id}）更新动态啦！\n"),
                                             Image(data_bytes=shot_image),
-                                            Plain(f"https://t.bilibili.com/{up_last_dynid}"),
+                                            Plain(f"\nhttps://t.bilibili.com/{up_last_dynid}"),
                                         ]
                                     ),
                                 )
@@ -324,6 +327,7 @@ async def update_scheduled():
         else:
             logger.warning("动态更新失败超过 3 次，已终止本次更新")
             break
+    logger.info("[BiliBili推送] 动态检测完成")
 
     logger.info("[BiliBili推送] 本轮检测完成")
 

@@ -106,10 +106,9 @@ async def get_emoji_pair(app: Ariadne, event: GroupMessage, keyword: RegexResult
             MessageChain(
                 Forward(
                     ForwardNode(
-                        target=app.account,
+                        target=event.sender,
                         time=datetime.now(),
                         message=MessageChain(f"可用 Emoji 组合：\n{', '.join(pairs)}"),
-                        name="SAGIRI-BOT",
                     )
                 )
             ),

@@ -3,7 +3,7 @@ from pathlib import Path
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
-from graia.ariadne.event.mirai import MemberLeaveEventQuit, MemberJoinEvent
+from graia.ariadne.event.mirai import MemberLeaveEventQuit, MemberJoinEvent, MemberPermissionChangeEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
 from graia.ariadne.message.parser.twilight import (
@@ -17,6 +17,7 @@ from graia.ariadne.message.parser.twilight import (
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
+from loguru import logger
 from sqlalchemy import select
 
 from core.bot import Umaru
@@ -130,44 +131,6 @@ async def change_user_perm(
         for i in error_targets:
             response_text += f"\n{i[0]}-{i[1]}"
     await app.send_message(group, response_text, quote=source)
-
-
-# 自动删除退群的权限
-@listen(MemberLeaveEventQuit)
-async def auto_del_perm(app: Ariadne, group: Group, member: Member):
-    target_perm = await Permission.get_user_perm_byID(group.id, member.id)
-    await orm.delete(
-        table=MemberPerm,
-        condition=[
-            MemberPerm.qq == member.id,
-            MemberPerm.group_id == group.id
-        ]
-    )
-    if Permission.GroupOwner >= target_perm >= Permission.GroupAdmin:
-        return await app.send_message(group, f"已自动删除退群成员{member.name}({member.id})的权限")
-
-
-# 自动添加进群的Master/admins
-@listen(MemberJoinEvent)
-async def auto_add_perm(event: MemberJoinEvent):
-    if event.member.id == config.Master:
-        return await orm.insert_or_update(
-            table=MemberPerm,
-            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.Master},
-            condition=[
-                MemberPerm.qq == event.member.id,
-                MemberPerm.group_id == event.member.group.id
-            ]
-        )
-    elif event.member.id in await Permission.get_BotAdminsList():
-        await orm.insert_or_update(
-            table=MemberPerm,
-            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.BotAdmin},
-            condition=[
-                MemberPerm.qq == event.member.id,
-                MemberPerm.group_id == event.member.group.id,
-            ]
-        )
 
 
 # >=128可修改群权限
@@ -315,26 +278,6 @@ async def change_group_perm(
     return await app.send_message(group, MessageChain(
         f"已修改群{target_group.name}({target_group.id})权限类型为{permission_type}"
     ), quote=source)
-
-
-# 自动添加管理群的权限
-@listen(MemberJoinEvent)
-async def auto_del_perm(app: Ariadne, group: Group, member: Member):
-    permission_type = "default"
-    if result := await orm.fetch_one(
-            select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)
-    ):
-        permission_type = result[0]
-    if permission_type == "admin":
-        await orm.insert_or_update(
-            table=MemberPerm,
-            data={"qq": member.id, "group_id": group.id, "perm": 32},
-            condition=[
-                MemberPerm.qq == member.id,
-                MemberPerm.group_id == group.id
-            ]
-        )
-        return await app.send_message(group, f"已自动修改成员{member.name}({member.id})的权限为32")
 
 
 # 查询VIP群
@@ -557,3 +500,102 @@ async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
             GenForm(columns=perm_list_column, color_type=get_color_type_follow_time())
         ))
     ), quote=source)
+
+
+# 自动删除退群的权限
+@listen(MemberLeaveEventQuit)
+async def auto_del_perm(app: Ariadne, group: Group, member: Member):
+    target_perm = await Permission.get_user_perm_byID(group.id, member.id)
+    await orm.delete(
+        table=MemberPerm,
+        condition=[
+            MemberPerm.qq == member.id,
+            MemberPerm.group_id == group.id
+        ]
+    )
+    if Permission.GroupOwner >= target_perm >= Permission.GroupAdmin:
+        return await app.send_message(group, f"已自动删除退群成员{member.name}({member.id})的权限")
+
+
+# 自动添加进群的Master/admins
+@listen(MemberJoinEvent)
+async def auto_add_perm(event: MemberJoinEvent):
+    if event.member.id == config.Master:
+        return await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.Master},
+            condition=[
+                MemberPerm.qq == event.member.id,
+                MemberPerm.group_id == event.member.group.id
+            ]
+        )
+    elif event.member.id in await Permission.get_BotAdminsList():
+        await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": event.member.id, "group_id": event.member.group.id, "perm": Permission.BotAdmin},
+            condition=[
+                MemberPerm.qq == event.member.id,
+                MemberPerm.group_id == event.member.group.id,
+            ]
+        )
+
+
+# 自动添加管理群的权限
+@listen(MemberJoinEvent)
+async def auto_del_perm(app: Ariadne, group: Group, member: Member):
+    permission_type = "default"
+    if result := await orm.fetch_one(
+            select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)
+    ):
+        permission_type = result[0]
+    if permission_type == "admin":
+        await orm.insert_or_update(
+            table=MemberPerm,
+            data={"qq": member.id, "group_id": group.id, "perm": 32},
+            condition=[
+                MemberPerm.qq == member.id,
+                MemberPerm.group_id == group.id
+            ]
+        )
+        return await app.send_message(group, f"已自动修改成员{member.name}({member.id})的权限为32")
+
+
+# 自动修改群管理权限
+@listen(MemberPermissionChangeEvent)
+async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEvent):
+    target_member = event.member
+    target_group = event.member.group
+    admin_list = await Permission.get_BotAdminsList()
+    # 跳过bot管理和master
+    if (target_member.id in admin_list) or target_member.id == config.Master:
+        return
+    # 跳过管理组
+    permission_type = "default"
+    if result := await orm.fetch_one(
+            select(GroupSetting.permission_type).where(GroupSetting.group_id == target_group.id)
+    ):
+        permission_type = result[0]
+    if permission_type == "admin":
+        return
+    target_perm = None
+    if event.current.name == "Member":
+        target_perm = Permission.User
+    if event.current.name == "Administrator":
+        target_perm = Permission.GroupAdmin
+    if not target_perm:
+        return logger.error(f"未识别到正确的权限变更:\n"
+                            f"{event.origin}->{event.current}\n"
+                            f"群:{event.member.group.id}\n"
+                            f"成员:{event.member.name}({event.member.id})")
+    await orm.insert_or_update(
+        table=MemberPerm,
+        data={"qq": event.member.id, "group_id": event.member.group.id, "perm": target_perm},
+        condition=[
+            MemberPerm.qq == event.member.id,
+            MemberPerm.group_id == event.member.group.id
+        ]
+    )
+    return await app.send_message(
+        target_group,
+        MessageChain(f"检测到群管理权限变动\n已自动修改{target_member.name}({target_member.id})权限为{target_perm}")
+    )

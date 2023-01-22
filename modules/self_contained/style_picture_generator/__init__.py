@@ -307,7 +307,7 @@ class GoSenChoEnHoShiStyleUtils:
         alpha = (0, 0, 0, 0)
         leftmargin = 50
         font_upper = font_downer = ImageFont.truetype(
-            str(Path.cwd() / "resources" / "fonts" / "STKAITI.TTF"), _round(height / 3)
+            str(Path.cwd() / "statics" / "fonts" / "STKAITI.TTF"), _round(height / 3)
         )
 
         # Prepare Width

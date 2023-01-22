@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, BIGINT
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, BIGINT, Text
 
 from core.orm import orm
 
@@ -61,3 +61,15 @@ class ChatRecord(orm.Base):
     member_id = Column(BIGINT, nullable=False)
     persistent_string = Column(String(length=4000), nullable=False)
     seg = Column(String(length=4000), nullable=False)
+
+
+class KeywordReply(orm.Base):
+    """关键词回复"""
+
+    __tablename__ = "keyword_reply"
+
+    keyword = Column(String(length=200), primary_key=True)
+    group = Column(BIGINT, default=-1)
+    reply_type = Column(String(length=10), nullable=False)
+    reply = Column(Text, nullable=False)
+    reply_md5 = Column(String(length=32), primary_key=True)

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, MessageEvent
+from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At
 from graia.ariadne.message.parser.twilight import (
@@ -53,7 +54,7 @@ with Path(Path(__file__).parent, "ill_templates.json").open("r", encoding="UTF-8
     Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True)
 )
-async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexResult):
+async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexResult, source: Source):
     if at.matched:
         _target: At = at.result
         _target = _target.target
@@ -68,4 +69,5 @@ async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexR
     await app.send_message(
         event.sender.group if isinstance(event, GroupMessage) else event.sender,
         MessageChain(random.choice(TEMPLATES).format(target=target)),
+        quote=source
     )

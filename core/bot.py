@@ -104,6 +104,8 @@ class Umaru(object):
             return
         self.initialized = True
         self.set_logger()
+        logger.info(f"等待账户初始化")
+        await asyncio.sleep(5)
         logger.info("bot初始化中...")
         bcc = create(Broadcast)
         saya = create(Saya)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import asyncio
 from pathlib import Path
 
 import httpx
@@ -110,8 +109,6 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 
 @bcc.receiver(AccountLaunch)
 async def init():
-    logger.info("等待Ariadne账户初始化ing")
-    await asyncio.sleep(5)
     await core.initialize()
     await frequency_model.get_frequency_controller().limited()
 

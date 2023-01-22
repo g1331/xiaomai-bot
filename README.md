@@ -35,12 +35,15 @@
     
 ## 简易搭建:
 
-1. python3.10+环境, Mirai:[MCL](https://docs.mirai.mamoe.net/ConsoleTerminal.html) + 配置[MAH](https://docs.mirai.mamoe.net/mirai-api-http/)
+1. python3.10+环境, Mirai:[MCL2.1.0](https://docs.mirai.mamoe.net/ConsoleTerminal.html) + 配置[MAH](https://docs.mirai.mamoe.net/mirai-api-http/)
 
-2. 安装环境依赖(请先安装poetry)在bot根目录下使用
+2. 安装环境依赖(请用推荐方式安装[poetry](https://python-poetry.org/docs/#installation) )
+   
+   使用poetry的虚拟环境请直接在bot根目录终端执行:
    ``` 
    poetry install
    ```
+   或者其他虚拟环境(关闭poetry的创建虚拟环境:```poetry config virtualenvs.create false```)
 3. 打开config_demo.yaml文件填写配置信息,填写好后请改名为config.yaml再启动
 4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~

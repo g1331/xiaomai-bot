@@ -333,7 +333,7 @@ async def main_update_scheduled():
             break
     logger.info("[BiliBili推送] 动态检测完成")
 
-    logger.info(f"[BiliBili推送] 本轮检测完成,耗时{(time.time()-time_start):.2f}秒")
+    logger.info(f"[BiliBili推送] 本轮检测完成,耗时{(time.time() - time_start):.2f}秒")
 
 
 @listen(GroupMessage)
@@ -459,7 +459,11 @@ async def vive_dyn(group: Group, anything: RegexResult, app: Ariadne, src: Sourc
         )
         shot_image = await get_dynamic_screenshot(res["list"][0]["extend"]["dyn_id_str"])
         await app.send_message(
-            group, MessageChain([Image(data_bytes=shot_image)]), quote=src
+            group, MessageChain(
+                Image(data_bytes=shot_image),
+                Plain(f'\nhttps://t.bilibili.com/{res["list"][0]["extend"]["dyn_id_str"]}')
+            ),
+            quote=src
         )
     else:
         await app.send_message(group, MessageChain([Plain("该UP未发布任何动态")]), quote=src)

@@ -124,7 +124,7 @@ async def add_keyword(
 ):
     if (not group_only.matched) and (not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin)):
         return await app.send_group_message(group, MessageChain(
-            f"添加全局关键词需要权限:{Permission.BotAdmin}/你的权限:{Permission.get_user_perm_byID(group.id, sender.id)}\n"
+            f"添加全局关键词需要权限:{Permission.BotAdmin}/你的权限:{await Permission.get_user_perm_byID(group.id, sender.id)}\n"
             f"添加群关键词请用:添加群回复关键词#关键词#回复"
         ), quote=source)
     op_type = (
@@ -200,7 +200,7 @@ async def delete_keyword(
 ):
     if (not group_only.matched) and (not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin)):
         return await app.send_group_message(group, MessageChain(
-            f"删除全局关键词需要权限:{Permission.BotAdmin}/你的权限:{Permission.get_user_perm_byID(group.id, sender.id)}\n"
+            f"删除全局关键词需要权限:{Permission.BotAdmin}/你的权限:{await Permission.get_user_perm_byID(group.id, sender.id)}\n"
             f"删除群关键词请用:删除群回复关键词#关键词"
         ), quote=source)
     op_type = (

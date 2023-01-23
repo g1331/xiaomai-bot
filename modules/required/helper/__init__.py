@@ -120,7 +120,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
         module_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题
-                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                subtitle=f"{i + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
 
             )
         ]))
@@ -196,8 +196,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
             ColumnTitle(title="插件详情"),
             ColumnList(rows=[
                 ColumnListItem(
-                    subtitle=module_metadata.display_name or module_metadata.name or
-                             saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
+                    subtitle=module_metadata.display_name or module_metadata.name or saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
                     content=module_list[index]
                 ),
                 ColumnListItem(

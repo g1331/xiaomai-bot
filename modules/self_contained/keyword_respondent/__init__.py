@@ -172,7 +172,7 @@ async def add_keyword(
                 group.id if group_only else -1,
             )
         )
-    await app.send_group_message(group, MessageChain("关键词添加成功！"), quote=source)
+    await app.send_group_message(group, MessageChain(f"{'群关键词回复' if group_only.matched else '全局关键词回复'}添加成功！"), quote=source)
 
 
 @channel.use(
@@ -278,7 +278,7 @@ async def delete_keyword(
                     continue
                 temp_list.append(i)
             regex_list = temp_list
-            await app.send_group_message(group, MessageChain("删除成功"), quote=source)
+            await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"), quote=source)
         else:
             await app.send_group_message(
                 group, MessageChain("非预期回复，进程退出"), quote=source

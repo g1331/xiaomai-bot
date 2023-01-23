@@ -79,7 +79,7 @@ class NumberWaiter(Waiter.create([GroupMessage])):
 add_keyword_twilight = Twilight(
     [
         FullMatch(r"添加"),
-        FullMatch("群组", optional=True) @ "group_only",
+        FullMatch("群", optional=True) @ "group_only",
         RegexMatch(r"(模糊|正则)", optional=True) @ "op_type",
         FullMatch("回复关键词#"),
         RegexMatch(r"[^\s]+") @ "keyword",
@@ -91,7 +91,7 @@ add_keyword_twilight = Twilight(
 delete_keyword_twilight = Twilight(
     [
         FullMatch(r"删除"),
-        FullMatch("群组", optional=True) @ "group_only",
+        FullMatch("群", optional=True) @ "group_only",
         RegexMatch(r"(模糊|正则)", optional=True) @ "op_type",
         FullMatch("回复关键词#"),
         RegexMatch(r"[^\s]+") @ "keyword",
@@ -115,12 +115,18 @@ delete_keyword_twilight = Twilight(
 async def add_keyword(
         app: Ariadne,
         group: Group,
+        sender: Member,
         source: Source,
         group_only: RegexResult,
         op_type: RegexResult,
         keyword: RegexResult,
         response: RegexResult,
 ):
+    if (not group_only.matched) and (not Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin)):
+        return await app.send_group_message(group, MessageChain(
+            f"添加全局关键词需要权限:{Permission.BotAdmin}/你的权限:{Permission.get_user_perm_byID(group.id, sender.id)}\n"
+            f"添加群关键词请用:添加群回复关键词#关键词#回复"
+        ), quote=source)
     op_type = (
         ("regex" if op_type.result.display == "正则" else "fuzzy")
         if op_type.matched
@@ -185,12 +191,18 @@ async def add_keyword(
 async def delete_keyword(
         app: Ariadne,
         group: Group,
+        sender: Member,
         member: Member,
         source: Source,
         group_only: RegexResult,
         op_type: RegexResult,
         keyword: RegexResult,
 ):
+    if (not group_only.matched) and (not Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin)):
+        return await app.send_group_message(group, MessageChain(
+            f"删除全局关键词需要权限:{Permission.BotAdmin}/你的权限:{Permission.get_user_perm_byID(group.id, sender.id)}\n"
+            f"删除群关键词请用:删除群回复关键词#关键词"
+        ), quote=source)
     op_type = (
         ("regex" if op_type.result.display == "正则" else "fuzzy")
         if op_type.matched

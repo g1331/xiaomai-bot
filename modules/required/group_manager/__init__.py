@@ -215,8 +215,8 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
         try:
             await app.mute_member(group, _target, expire_time)
             return await app.send_message(group, MessageChain(
-                f"已设置{_target}{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
-                f"已设置{_target}{expire_time}秒的禁言!"
+                f"已设置【{_target}】{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
+                f"已设置【{_target}】{expire_time}秒的禁言!"
             ))
         except Exception as e:
             logger.error(e)
@@ -236,8 +236,8 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
         try:
             await app.mute_member(group, event.quote.sender_id, expire_time)
             return await app.send_message(group, MessageChain(
-                f"已设置{target_id}{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
-                f"已设置{target_id}{expire_time}秒的禁言!"
+                f"已设置【{target_id}】{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
+                f"已设置【{target_id}】{expire_time}秒的禁言!"
             ), quote=source)
         except Exception as e:
             logger.error(e)
@@ -276,21 +276,21 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
         _target = _target.target
         try:
             await app.unmute_member(group, _target)
-            return await app.send_message(group, MessageChain(f"已设置{_target}2分钟的禁言!"))
+            return await app.send_message(group, MessageChain(f"已解禁{_target}!"), quote=source)
         except Exception as e:
             logger.error(e)
             return await app.send_message(group, MessageChain(
                 f"设置禁言出错啦!"
             ), quote=source)
     if event.quote:
-        sender_id = event.quote.sender_id
+        target_id = event.quote.sender_id
         try:
-            await app.mute_member(group, sender_id, 120)
-            return await app.send_message(group, MessageChain(f"已设置{event.quote.sender_id}2分钟的禁言!"), quote=source)
+            await app.unmute_member(group, target_id)
+            return await app.send_message(group, MessageChain(f"已解禁{target_id}!"), quote=source)
         except Exception as e:
             logger.error(e)
             return await app.send_message(group, MessageChain(
-                f"设置禁言出错啦!"
+                f"处理禁言出错啦!"
             ), quote=source)
     return await app.send_message(group, MessageChain(
         f"没有正确识别到目标!"

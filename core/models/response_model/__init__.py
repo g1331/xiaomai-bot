@@ -98,6 +98,8 @@ class AccountController:
         @param require_perm: 权限名字: Member、Administrator、Owner或列表
         @return: (Ariadne, Group) 或者(None, None)
         """
+        if group_id not in self.total_groups:
+            return None, None
         app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
         group = await app.get_group(group_id)
         if not (group_id in self.total_groups):

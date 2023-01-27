@@ -583,11 +583,12 @@ async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEven
         permission_type = result[0]
     if permission_type == "admin":
         return
-    target_perm = None
     if event.current.name == "Member":
         target_perm = Permission.User
-    if event.current.name == "Administrator":
+    elif event.current.name == "Administrator":
         target_perm = Permission.GroupAdmin
+    else:
+        target_perm = Permission.Owner
     if not target_perm:
         return logger.error(f"未识别到正确的权限变更:\n"
                             f"{event.origin}->{event.current}\n"

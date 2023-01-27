@@ -244,9 +244,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
             return await app.send_message(group, MessageChain(
                 f"设置禁言出错啦!"
             ), quote=source)
-    return await app.send_message(group, MessageChain(
-        f"没有正确识别到目标!"
-    ), quote=source)
+    return
 
 
 @listen(GroupMessage)
@@ -292,9 +290,7 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
             return await app.send_message(group, MessageChain(
                 f"处理禁言出错啦!"
             ), quote=source)
-    return await app.send_message(group, MessageChain(
-        f"没有正确识别到目标!"
-    ), quote=source)
+    return
 
 
 @listen(GroupMessage)

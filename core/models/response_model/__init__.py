@@ -91,11 +91,11 @@ class AccountController:
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
 
-    async def get_app_from_total_groups(self, group_id: int, require_perm: str = None) -> (Ariadne, Group):
+    async def get_app_from_total_groups(self, group_id: int, require_perm=None) -> (Ariadne, Group):
         """
         从指定群号和bot权限获取对应Ariadne实例和Group
         @param group_id: 群号
-        @param require_perm: 权限名字: Member、Administrator、Owner
+        @param require_perm: 权限名字: Member、Administrator、Owner或列表
         @return: (Ariadne, Group) 或者(None, None)
         """
         app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
@@ -105,11 +105,11 @@ class AccountController:
         if require_perm:
             member_list = await app.get_member_list(group_id)
             bot_member = await app.get_member(group_id, app.account)
-            if bot_member.permission.name == require_perm:
+            if bot_member.permission.name in require_perm:
                 return self.total_groups[group_id][app.account], group
             for member in member_list:
                 member: Member
-                if member.id in self.total_groups[group_id] and member.permission.name == require_perm:
+                if member.id in self.total_groups[group_id] and member.permission.name in require_perm:
                     group = await Ariadne.current(member.id).get_group(group_id)
                     return self.total_groups[group_id][member.id], group
             return None, None

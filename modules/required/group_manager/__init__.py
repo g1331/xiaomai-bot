@@ -7,8 +7,14 @@ from graia.ariadne.event.message import GroupMessage, MessageEvent
 from graia.ariadne.event.mirai import BotInvitedJoinGroupRequestEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, ElementMatch, FullMatch, \
-    ElementResult
+from graia.ariadne.message.parser.twilight import (
+    Twilight,
+    UnionMatch,
+    SpacePolicy,
+    ElementMatch,
+    FullMatch,
+    ElementResult, ArgumentMatch, MatchResult
+)
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -44,7 +50,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     """处理邀请
     """
-    if await Permission.require_user_perm(event.source_group, event.supplicant, Permission.BotAdmin):
+    if (event.supplicant in await Permission.get_BotAdminsList()) or event.supplicant == global_config.Master:
         await event.accept('已同意您的邀请~')
         return await app.send_message(await app.get_group(global_config.test_group), MessageChain(
             f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
@@ -106,12 +112,11 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
 )
 @dispatch(
     Twilight([
-        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         UnionMatch("加精", "设精")
     ])
 )
 async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: Source):
-    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, "Administrator")
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
             f"bot权限不足!/获取群权限信息失败!"
@@ -144,7 +149,6 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
 )
 @dispatch(
     Twilight([
-        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         FullMatch("撤回")
     ])
 )
@@ -179,20 +183,91 @@ async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source
 @dispatch(
     Twilight([
         "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
-        FullMatch("禁言")
+        FullMatch("禁言"),
+        "expire_time" @ ArgumentMatch("-t", "--time", type=int, default=2, optional=True)
     ])
 )
-async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, at: ElementResult):
-    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, "Administrator")
+async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, at: ElementResult,
+               expire_time: MatchResult):
+    expire_time = expire_time.result * 60
+    if expire_time > 30 * 24 * 60 * 60 or expire_time <= 0:
+        return await app.send_message(group, MessageChain(
+            f"时间非法!范围(分钟): `0 < time <= 43200`"
+        ), quote=source)
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
-            f"bot权限不足!/获取群权限信息失败!"
+            f"bot权限不足!"
         ), quote=source)
-    target_perm = await Permission.get_user_perm_byID(group.id, event.quote.sender_id)
-    bot_perm = await Permission.get_user_perm_byID(group.id, event.quote.sender_id)
-    if target_perm >= bot_perm:
+    app: Ariadne = target_app
+    group: Group = target_group
+    if at.matched:
+        _target: At = at.result
+        _target = _target.target
+        if await Permission.require_user_perm(group.id, _target, 32):
+            return await app.send_message(group, MessageChain(
+                f"bot无法禁言大于等于32权限的成员哦~"
+            ), quote=source)
+        if _target == app.account:
+            return await app.send_message(group, MessageChain(
+                f"禁言bot?给你一棒槌!"
+            ), quote=source)
+        try:
+            await app.mute_member(group, _target, expire_time)
+            return await app.send_message(group, MessageChain(
+                f"已设置{_target}{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
+                f"已设置{_target}{expire_time}秒的禁言!"
+            ))
+        except Exception as e:
+            logger.error(e)
+            return await app.send_message(group, MessageChain(
+                f"设置禁言出错啦!"
+            ), quote=source)
+    if event.quote:
+        target_id = event.quote.sender_id
+        if target_id == app.account:
+            return await app.send_message(group, MessageChain(
+                f"禁言bot?给你一棒槌!"
+            ), quote=source)
+        if await Permission.require_user_perm(group.id, target_id, 32):
+            return await app.send_message(group, MessageChain(
+                f"bot无法禁言大于等于32权限的成员哦~"
+            ), quote=source)
+        try:
+            await app.mute_member(group, event.quote.sender_id, expire_time)
+            return await app.send_message(group, MessageChain(
+                f"已设置{target_id}{expire_time // 60}分钟的禁言!" if expire_time >= 60 else
+                f"已设置{target_id}{expire_time}秒的禁言!"
+            ), quote=source)
+        except Exception as e:
+            logger.error(e)
+            return await app.send_message(group, MessageChain(
+                f"设置禁言出错啦!"
+            ), quote=source)
+    return await app.send_message(group, MessageChain(
+        f"没有正确识别到目标!"
+    ), quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module)
+)
+@dispatch(
+    Twilight([
+        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
+        FullMatch("解禁")
+    ])
+)
+async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source, at: ElementResult):
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
+    if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
-            f"bot权限不足!(target_perm:{target_perm}/bot_perm:{bot_perm})"
+            f"bot权限不足!"
         ), quote=source)
     app: Ariadne = target_app
     group: Group = target_group
@@ -200,7 +275,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
         _target: At = at.result
         _target = _target.target
         try:
-            await app.mute_member(group, _target, 120)
+            await app.unmute_member(group, _target)
             return await app.send_message(group, MessageChain(f"已设置{_target}2分钟的禁言!"))
         except Exception as e:
             logger.error(e)
@@ -208,11 +283,89 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
                 f"设置禁言出错啦!"
             ), quote=source)
     if event.quote:
+        sender_id = event.quote.sender_id
         try:
-            await app.mute_member(group, event.quote.sender_id, 120)
-            return await app.send_message(group, MessageChain(f"已设置{event.quote.sender_id}2分钟的禁言!"))
+            await app.mute_member(group, sender_id, 120)
+            return await app.send_message(group, MessageChain(f"已设置{event.quote.sender_id}2分钟的禁言!"), quote=source)
         except Exception as e:
             logger.error(e)
             return await app.send_message(group, MessageChain(
                 f"设置禁言出错啦!"
             ), quote=source)
+    return await app.send_message(group, MessageChain(
+        f"没有正确识别到目标!"
+    ), quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module)
+)
+@dispatch(
+    Twilight([
+        FullMatch("全体禁言")
+    ])
+)
+async def mute_all(app: Ariadne, group: Group, sender: Member, source: Source):
+    if sender.permission.name == "Member":
+        return await app.send_message(group, MessageChain(
+            f"只有群管理员/群主才能操作哦~"
+        ), quote=source)
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!"
+        ), quote=source)
+    app: Ariadne = target_app
+    group: Group = target_group
+    try:
+        await app.mute_all(group)
+        return await app.send_message(group, MessageChain(
+            "开启全体禁言成功!"
+        ), quote=source)
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"设置禁言出错啦!"
+        ), quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module)
+)
+@dispatch(
+    Twilight([
+        FullMatch("关闭全体禁言")
+    ])
+)
+async def unmute_all(app: Ariadne, group: Group, sender: Member, source: Source):
+    if sender.permission.name == "Member":
+        return await app.send_message(group, MessageChain(
+            f"只有群管理员/群主才能操作哦~"
+        ), quote=source)
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"bot权限不足!"
+        ), quote=source)
+    app: Ariadne = target_app
+    group: Group = target_group
+    try:
+        await app.unmute_all(group)
+        return await app.send_message(group, MessageChain(
+            "关闭全体禁言成功!"
+        ), quote=source)
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"处理出错啦!"
+        ), quote=source)

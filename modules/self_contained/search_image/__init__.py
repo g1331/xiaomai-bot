@@ -246,7 +246,7 @@ async def souFan_waiter(app: Ariadne, group: Group, sender: Member, source: Sour
 
 
 async def fun_saucenao(file_url: str) -> MessageChain:
-    if not global_config.image_search.get("saucenao_key"):
+    if not global_config.functions.get("image_search", {}).get("saucenao_key"):
         return MessageChain("未填写saucenao_apikey")
     async with Network() as client:
         # saucenao搜图

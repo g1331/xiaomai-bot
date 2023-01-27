@@ -48,7 +48,7 @@ true = True
 false = False
 null = ''
 global_config = create(GlobalConfig)
-default_account = global_config.bf1.get("default_account")
+default_account = global_config.functions.get("bf1").get("default_account", 0)
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json") or \

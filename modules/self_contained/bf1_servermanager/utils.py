@@ -13,7 +13,7 @@ from loguru import logger
 from core.config import GlobalConfig
 
 global_config = create(GlobalConfig)
-default_account = global_config.bf1.get("default_account", 0)
+default_account = global_config.functions.get("bf1").get("default_account", 0)
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 bf_aip_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'

@@ -17,14 +17,17 @@ class GlobalConfig(BaseModel):
     proxy: str
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
-    bf1: dict = {
-        "default_account": int
+    functions: dict = {
+        "bf1": {
+            "default_account": int,
+            "apikey": str
+        },
+        "image_search": {
+            "saucenao_key": str
+        },
+        "steamdb_cookie": str
     }
     GroupMsg_log: bool
-    image_search: dict = {
-        "saucenao_key": str
-    }
-    steamdb_cookie: str
 
 
 def load_config():

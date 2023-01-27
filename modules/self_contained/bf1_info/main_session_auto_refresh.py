@@ -12,7 +12,7 @@ false = False
 null = ''
 client = httpx.AsyncClient()
 global_config = create(GlobalConfig)
-default_account = global_config.bf1.get("default_account")
+default_account = global_config.functions.get("bf1").get("default_account", 0)
 
 
 async def auto_refresh_account(player_pid: str = f"{default_account}"):

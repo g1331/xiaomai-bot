@@ -8,7 +8,7 @@ from creart import create
 from core.config import GlobalConfig
 
 global_config = create(GlobalConfig)
-default_account = global_config.bf1.get("default_account")
+default_account = global_config.functions.get("bf1").get("default_account", 0)
 
 
 class record(object):

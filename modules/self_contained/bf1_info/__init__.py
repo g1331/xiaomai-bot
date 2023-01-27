@@ -75,7 +75,7 @@ access_token = None
 access_token_time = None
 access_token_expires_time = 0
 pid_temp_dict = {}
-default_account = global_config.bf1.get("default_account", 0)
+default_account = global_config.functions.get("bf1").get("default_account", 0)
 limits = httpx.Limits(max_keepalive_connections=None, max_connections=None)
 client = httpx.AsyncClient(limits=limits)
 if not os.path.exists(f"./data/battlefield/managerAccount/{default_account}/account.json") or \
@@ -2624,7 +2624,7 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, player_name: Re
     Permission.group_require(channel.metadata.level),
     FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
-    Config.require("bf1.apikey"),
+    Config.require("functions.bf1.apikey"),
 )
 @dispatch(
     Twilight(

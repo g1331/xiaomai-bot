@@ -98,7 +98,7 @@ async def get_steam_game_info(game_id: int) -> tuple:
         'Accept-Language': ' zh-CN:zh;q=0.8',
         'Alt-Used': ' steamdb.info',
         'Connection': ' keep-alive',
-        'Cookie': config.steamdb_cookie,
+        'Cookie': config.functions.get("steamdb_cookie", ""),
         'Upgrade-Insecure-Requests': ' 1',
         'Sec-Fetch-Dest': ' document',
         'Sec-Fetch-Mode': ' navigate',

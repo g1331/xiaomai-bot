@@ -2820,7 +2820,7 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                     tc_url = "https://api.bfeac.com/inner_api/upload_image"
                     tc_files = {'file': open(file_path, 'rb')}
                     # tc_data = {'file': tc_files}
-                    apikey = global_config.bf1.get("apikey", "")
+                    apikey = global_config.functions.get("bf1", {}).get("apikey", "")
                     tc_headers = {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
                         "apikey": apikey
@@ -2861,7 +2861,7 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                 ), quote=source)
                 # 调用接口
                 report_result = eval(await report_Interface(
-                    player_name, report_reason, sender.id, global_config.bf1.get("apikey", "")
+                    player_name, report_reason, sender.id, global_config.functions.get("bf1", {}).get("apikey", "")
                 ))
                 if type(report_result["data"]) == int:
                     try:

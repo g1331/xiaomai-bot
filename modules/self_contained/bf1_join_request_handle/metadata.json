@@ -1,0 +1,16 @@
+{
+  "level": 1,
+  "name": "Bf1JoinRequestHandle",
+  "version": "0.1",
+  "display_name": "战地一入群审核",
+  "authors": [
+    "十三"
+  ],
+  "description": "自动审核加群人员的id有效性",
+  "usage": [
+  ],
+  "example": [
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

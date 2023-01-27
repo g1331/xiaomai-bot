@@ -18,8 +18,13 @@ class GlobalConfig(BaseModel):
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
     functions: dict = {
-        "bf1": {},
-        "image_search": {},
+        "bf1": {
+            "default_account": int,
+            "apikey": str
+        },
+        "image_search": {
+            "saucenao_key": str
+        },
         "steamdb_cookie": str
     }
     GroupMsg_log: bool

@@ -17,7 +17,6 @@ from graia.ariadne.message.parser.twilight import (
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
-from loguru import logger
 from sqlalchemy import select
 
 from core.bot import Umaru
@@ -566,9 +565,8 @@ async def auto_add_perm(event: MemberJoinEvent):
 
 # 自动修改群管理权限
 @listen(MemberPermissionChangeEvent)
+@decorate(Distribute.require())
 async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEvent):
-    # TODO
-    #   多个app处理事件分发
     target_member = event.member
     target_group = event.member.group
     admin_list = await Permission.get_BotAdminsList()
@@ -583,17 +581,12 @@ async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEven
         permission_type = result[0]
     if permission_type == "admin":
         return
-    if event.current.name == "Member":
-        target_perm = Permission.User
+    if event.current.name == "Owner":
+        target_perm = Permission.Owner
     elif event.current.name == "Administrator":
         target_perm = Permission.GroupAdmin
     else:
-        target_perm = Permission.Owner
-    if not target_perm:
-        return logger.error(f"未识别到正确的权限变更:\n"
-                            f"{event.origin}->{event.current}\n"
-                            f"群:{event.member.group.id}\n"
-                            f"成员:{event.member.name}({event.member.id})")
+        target_perm = Permission.User
     await orm.insert_or_update(
         table=MemberPerm,
         data={"qq": event.member.id, "group_id": event.member.group.id, "perm": target_perm},

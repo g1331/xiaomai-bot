@@ -503,9 +503,8 @@ async def get_botAdmins_list(app: Ariadne, group: Group, source: Source):
 
 # 自动删除退群的权限
 @listen(MemberLeaveEventQuit)
+@decorate(Distribute.require())
 async def auto_del_perm(app: Ariadne, group: Group, member: Member):
-    # TODO
-    #   多个app处理事件分发
     target_perm = await Permission.get_user_perm_byID(group.id, member.id)
     await orm.delete(
         table=MemberPerm,
@@ -520,9 +519,8 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
 
 # 自动添加管理群的权限
 @listen(MemberJoinEvent)
+@decorate(Distribute.require())
 async def auto_del_perm(app: Ariadne, group: Group, member: Member):
-    # TODO
-    #   多个app处理事件分发
     permission_type = "default"
     if result := await orm.fetch_one(
             select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)

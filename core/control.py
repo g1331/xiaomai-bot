@@ -335,7 +335,7 @@ class FrequencyLimitation(object):
             cls,
             module_name: str,
             weight: int = 2,
-            total_weights: int = 15,
+            total_weights: int = 12,
             override_perm: int = Permission.GroupAdmin
     ):
         """

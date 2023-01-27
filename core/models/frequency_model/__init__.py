@@ -107,7 +107,7 @@ class FrequencyController(object):
         self.limit_running = True
         while True:
             await self.set_zero()
-            await asyncio.sleep(15)
+            await asyncio.sleep(12)
 
     async def set_zero(self):
         for module in self.frequency_dict:

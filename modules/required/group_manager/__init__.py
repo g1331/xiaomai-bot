@@ -206,7 +206,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
         _target = _target.target
         if await Permission.require_user_perm(group.id, _target, 32):
             return await app.send_message(group, MessageChain(
-                f"bot无法禁言大于等于32权限的成员哦~"
+                f"bot权限不足!(目标权限>=32)"
             ), quote=source)
         if _target == app.account:
             return await app.send_message(group, MessageChain(
@@ -231,7 +231,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
             ), quote=source)
         if await Permission.require_user_perm(group.id, target_id, 32):
             return await app.send_message(group, MessageChain(
-                f"bot无法禁言大于等于32权限的成员哦~"
+                f"bot权限不足!(目标权限>=32)"
             ), quote=source)
         try:
             await app.mute_member(group, event.quote.sender_id, expire_time)

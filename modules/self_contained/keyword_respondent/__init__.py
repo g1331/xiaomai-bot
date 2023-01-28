@@ -218,7 +218,8 @@ async def delete_keyword(
     if results := await orm.fetch_all(
             select(
                 KeywordReply.reply_type, KeywordReply.reply, KeywordReply.reply_md5,
-            ).where(KeywordReply.keyword == keyword, KeywordReply.group.in_((group.id if group_only.matched else -1)))
+            ).where(KeywordReply.keyword == keyword,
+                    KeywordReply.group.in_([group.id if group_only.matched else -1]))
     ):
         replies = list()
         for result in results:
@@ -286,7 +287,8 @@ async def delete_keyword(
                         continue
                     temp_list.append(i)
                 regex_list = temp_list
-                await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
+                await app.send_group_message(group,
+                                             MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
                                              quote=source)
             else:
                 await app.send_group_message(

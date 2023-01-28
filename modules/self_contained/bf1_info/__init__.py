@@ -3574,7 +3574,7 @@ async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index
 
 
 @listen(MemberJoinEvent)
-async def auto_modify(event: MemberJoinEvent):
+async def auto_modify(app:Ariadne, event: MemberJoinEvent):
     member = event.member
     group = event.member.group
     if not module_controller.if_module_switch_on(channel.module, group):
@@ -3582,12 +3582,14 @@ async def auto_modify(event: MemberJoinEvent):
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
         return
+    if app.account != target_app.account:
+        return
     app = target_app
     group = target_group
     bind_result = record.check_bind(member.id)
     if bind_result:
-        player_name_bind = await record.get_bind_name(member.id)
         try:
+            player_name_bind = await record.get_bind_name(member.id)
             await app.modify_member_info(member, MemberInfo(name=player_name_bind))
             return await app.send_message(group, MessageChain(
                 At(member), f"已自动将你的名片修改为:{player_name_bind}!"

@@ -56,8 +56,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 4: "自证中",
                 5: "刷枪",
             }
+            player_name = player_info['personas']['persona'][0]['displayName']
             try:
-                player_name = player_info['personas']['persona'][0]['displayName']
                 eac_response = eval((await tyc_bfeac_api(player_name)).text)
                 if eac_response["data"] != "":
                     data = eac_response["data"][0]
@@ -69,7 +69,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 else:
                     verify = "有效ID" if player_name else "无效ID"
             except:
-                verify = "无效ID"
+                verify = "有效ID" if player_name else "查询失败"
         application_answer = f"{application_message}({verify})"
 
     # 如果有application_answer且verify为有效ID且开启了自动过审则自动同意

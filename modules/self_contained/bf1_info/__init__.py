@@ -3574,12 +3574,11 @@ async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index
 
 
 @listen(MemberJoinEvent)
-@decorate(
-    Function.require(channel.module)
-)
 async def auto_modify(event: MemberJoinEvent):
     member = event.member
     group = event.member.group
+    if not module_controller.if_module_switch_on(channel.module, group):
+        return
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
         return

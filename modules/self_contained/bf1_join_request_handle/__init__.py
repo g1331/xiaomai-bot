@@ -13,7 +13,6 @@ from graia.saya import Channel
 
 from core.control import (
     Permission,
-    Function,
     Distribute
 )
 from core.models import saya_model
@@ -30,7 +29,6 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 @listen(MemberJoinRequestEvent)
 @decorate(
     Distribute.require(),
-    Function.require(channel.module)
 )
 async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     """

@@ -390,7 +390,9 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
             if t:
                 message.append(f"  {reply_type}:")
                 message.extend(t)
-        return await app.send_group_message(group, "\n".join(message[:-1]), quote=source)
+        if message == ["本群启用："]:
+            return await app.send_group_message(group, "群回复关键词为空!", quote=source)
+        return await app.send_group_message(group, "\n".join(message), quote=source)
     else:
         message = ["全局启用："]
         for reply_type in reply_type_set:
@@ -400,7 +402,9 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
             if t:
                 message.append(f"  {reply_type}:")
                 message.extend(t)
-        return await app.send_group_message(group, "\n".join(message[:-1]), quote=source)
+        if message == ["全局启用："]:
+            return await app.send_group_message(group, "全局回复关键词为空!", quote=source)
+        return await app.send_group_message(group, "\n".join(message), quote=source)
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))

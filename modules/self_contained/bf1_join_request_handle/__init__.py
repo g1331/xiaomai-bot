@@ -66,11 +66,13 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                 player_name = player_stat.get("userName")
                 try:
                     eac_response = eval((await tyc_bfeac_api(player_name)).text)
-                    if eac_response["data"] != "":
+                    if eac_response.get("data"):
                         data = eac_response["data"][0]
                         eac_status = eac_stat_dict[data["current_status"]]
                         if eac_status == "已封禁":
-                            verify = "该ID已被实锤"
+                            case_id = data["case_id"]
+                            case_url = f"https://bfeac.com/#/case/{case_id}"
+                            verify = f"该ID已被实锤:{case_url}"
                         else:
                             verify = "有效ID" if player_name else "无效ID"
                     else:

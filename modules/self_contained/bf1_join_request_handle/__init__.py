@@ -25,6 +25,9 @@ channel.name("BF1入群审核")
 channel.description("处理群加群审核")
 channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
+true = True
+false = False
+null = ''
 
 
 @listen(MemberJoinRequestEvent)

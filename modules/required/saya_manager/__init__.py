@@ -148,11 +148,9 @@ async def change_module_status(
     else:
         operation_type = saya_model.ModuleOperationType.UNINSTALL if operation == "卸载" else saya_model.ModuleOperationType.RELOAD
     modules = sorted(module_controller.get_installed_channels() + module_controller.get_not_installed_channels())
-    if (index-1) not in range(len(modules)):
-        return await app.send_message(group, MessageChain(f"编号不在范围内!{index-1}/{len(modules)}"), quote=source)
-    module = modules[index - 1]
     if index == 0 or index > len(modules):
-        return await app.send_message(group, MessageChain(f"当前只有{len(modules)}(index:{index})个插件~"), quote=source)
+        return await app.send_message(group, MessageChain(f"当前只有{len(modules)}个插件哦~\n(index:{index})"), quote=source)
+    module = modules[index - 1]
     await app.send_message(group, MessageChain(f"你确定要{operation}插件`{module}`吗?(是/否)"), quote=source)
     try:
         if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):

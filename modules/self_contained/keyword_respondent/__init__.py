@@ -383,26 +383,24 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
     local_keywords = filter(lambda x: x[2] == group.id, keywords)
     if group_only.matched:
         message = ["本群启用："]
-        for ks in local_keywords:
-            for reply_type in reply_type_set:
-                t = set()
-                for keyword in filter(lambda x: x[1] == reply_type, ks):
-                    t.add(f"    {keyword[0]}")
-                if t:
-                    message.append(f"  {reply_type}:")
-                    message.extend(t)
-        return await app.send_group_message(group, "\n".join(message[:-1]))
+        for reply_type in reply_type_set:
+            t = set()
+            for keyword in filter(lambda x: x[1] == reply_type, local_keywords):
+                t.add(f"    {keyword[0]}")
+            if t:
+                message.append(f"  {reply_type}:")
+                message.extend(t)
+        return await app.send_group_message(group, "\n".join(message[:-1]), quote=source)
     else:
         message = ["全局启用："]
-        for ks in global_keywords:
-            for reply_type in reply_type_set:
-                t = set()
-                for keyword in filter(lambda x: x[1] == reply_type, ks):
-                    t.add(f"    {keyword[0]}")
-                if t:
-                    message.append(f"  {reply_type}:")
-                    message.extend(t)
-        return await app.send_group_message(group, "\n".join(message[:-1]))
+        for reply_type in reply_type_set:
+            t = set()
+            for keyword in filter(lambda x: x[1] == reply_type, global_keywords):
+                t.add(f"    {keyword[0]}")
+            if t:
+                message.append(f"  {reply_type}:")
+                message.extend(t)
+        return await app.send_group_message(group, "\n".join(message[:-1]), quote=source)
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))

@@ -3025,11 +3025,14 @@ async def bf_checkCounter(app: Ariadne, sender: Member, group: Group, source: So
     ), quote=source)
 
 
+notice_counter = 0
+
+
 # TODO 9:自动刷新session
 @channel.use(SchedulerSchema(timers.every_custom_minutes(10)))  # 每10分钟执行一次
 async def auto_refresh_session(app: Ariadne):
     logger.info("定时检测session开始")
-    global bf_aip_header, bf_aip_url
+    global bf_aip_header, bf_aip_url, notice_counter
     session = await record.get_session()
     bf_aip_header["X-Gatewaysession"] = session
     body = {
@@ -3065,9 +3068,11 @@ async def auto_refresh_session(app: Ariadne):
                     logger.error(f"session刷新失败:{e}")
                     i += 1
             else:
-                await app.send_friend_message(await app.get_friend(global_config.Master), MessageChain(
-                    "session更新失败，请检查账号信息"
-                ))
+                if notice_counter <= 3:
+                    await app.send_friend_message(await app.get_friend(global_config.Master), MessageChain(
+                        "战地一默认查询账号session更新失败,请检查账号信息"
+                    ))
+                    notice_counter += 1
     except Exception as e:
         logger.warning(f"自动刷新session网络请求失败:{e}")
 
@@ -3574,7 +3579,7 @@ async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index
 
 
 @listen(MemberJoinEvent)
-async def auto_modify(app:Ariadne, event: MemberJoinEvent):
+async def auto_modify(app: Ariadne, event: MemberJoinEvent):
     member = event.member
     group = event.member.group
     if not module_controller.if_module_switch_on(channel.module, group):

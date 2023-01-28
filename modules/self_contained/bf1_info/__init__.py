@@ -133,7 +133,7 @@ async def getPid_byName(player_name: str) -> dict:
     # async with httpx.AsyncClient() as client:
     response = await client.get(url, headers=head, timeout=5)
     response = response.text
-    logger.info(f"获取pid耗时:{time.time() - time_start}")
+    logger.info(f"获取pid耗时:{(time.time() - time_start):.2f}秒")
     return eval(response)
 
 
@@ -823,7 +823,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
         ), quote=source)
         return False
     end_time = time.time()
-    logger.info(f"接口耗时:{end_time - start_time}s")
+    logger.info(f"接口耗时:{(end_time - start_time):.2f}秒")
     weapon_temp = {}
     start_time2 = time.time()
     if str(weapon_type.result) in ["-武器", "-weapon"]:
@@ -941,7 +941,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                 'userName': player_name
             }
     end_time2 = time.time()
-    logger.info(f'接口2耗时:{end_time2 - start_time2}')
+    logger.info(f'接口2耗时:{(end_time2 - start_time2):.2f}秒')
     start_time3 = time.time()
 
     # 底图选择
@@ -1035,8 +1035,8 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
         draw.text((600, 830 + i * 580), "时长:%s" % weapon123[i][7], font=content_font)
     bg_img = bg_img.convert('RGB')
     end_time3 = time.time()
-    logger.info(f'画图耗时:{end_time3 - start_time3}')
-    logger.info(f"制图总耗时:{end_time3 - start_time}秒")
+    logger.info(f'画图耗时:{(end_time3 - start_time3):.2f}m秒')
+    logger.info(f"制图总耗时:{(end_time3 - start_time):.2f}秒")
 
     start_time4 = time.time()
     bytes_io = BytesIO()
@@ -1046,10 +1046,10 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
     # logger.info(message_send)
     await app.send_message(group, message_send, quote=source)
     end_time4 = time.time()
-    logger.info(f"发送耗时:{end_time4 - start_time4}秒")
+    logger.info(f"发送耗时:{(end_time4 - start_time4):.2f}秒")
     if end_time4 - start_time4 > 60:
         await app.send_message(group, MessageChain(
-            f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢"
+            f"发送耗时:{(end_time4 - start_time4):.2f}秒,似乎被腾讯限制了呢"
         ), quote=source)
     # 武器计数器
     await record.weapon_counter(sender.id, str(player_pid), str(player_name), str(weapon_type.result))
@@ -1145,7 +1145,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
         ), quote=source)
         return False
     end_time = time.time()
-    logger.info(f"接口耗时:{end_time - start_time}s")
+    logger.info(f"接口耗时:{(end_time - start_time):.2f}秒")
     vehicle_temp = {}
     start_time2 = time.time()
     if str(vehicle_type.result) in ["-载具", "-vehicle"]:
@@ -1257,7 +1257,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
             ), quote=source)
             return False
     end_time2 = time.time()
-    logger.info(f'接口2耗时:{end_time2 - start_time2}')
+    logger.info(f'接口2耗时:{(end_time2 - start_time2):.2f}秒')
     start_time3 = time.time()
     # 底图选择
     # bg_img = Image.open(await pic_custom(player_pid))
@@ -1350,17 +1350,17 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
     bytes_io = BytesIO()
     bg_img.save(bytes_io, "JPEG")
     end_time3 = time.time()
-    logger.info(f'画图耗时:{end_time3 - start_time3}')
+    logger.info(f'画图耗时:{(end_time3 - start_time3):.2f}秒')
     start_time4 = time.time()
     await app.send_message(group, MessageChain(
         # At(sender.id),
         GraiaImage(data_bytes=bytes_io.getvalue())
     ), quote=source)
     end_time4 = time.time()
-    logger.info(f"发送耗时:{end_time4 - start_time4}秒")
+    logger.info(f"发送耗时:{(end_time4 - start_time4):.2f}秒")
     if end_time4 - start_time4 > 60:
         await app.send_message(group, MessageChain(
-            f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢= ="
+            f"发送耗时:{(end_time4 - start_time4):.2f}秒,似乎被腾讯限制了呢= ="
         ), quote=source)
     # 调用载具计数器
     await record.vehicle_counter(sender.id, str(player_pid), player_name, str(vehicle_type.result))
@@ -1956,7 +1956,7 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     bytes_io = BytesIO()
     bg_img.save(bytes_io, "JPEG")
     end_time = time.time()
-    logger.info(f"接口+制图耗时:{end_time - start_time}秒")
+    logger.info(f"接口+制图耗时:{(end_time - start_time):.2f}秒")
     start_time4 = time.time()
     if not if_cheat:
         await app.send_message(group, MessageChain(
@@ -1972,9 +1972,9 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     end_time4 = time.time()
     if end_time4 - start_time4 > 60:
         await app.send_message(group, MessageChain(
-            f"发送耗时:{int(end_time4 - start_time4)}秒,似乎被腾讯限制了呢= ="
+            f"发送耗时:{(end_time4 - start_time4):.2f}秒,似乎被腾讯限制了呢= ="
         ), quote=source)
-    logger.info(f"发送耗时:{end_time4 - start_time4}秒")
+    logger.info(f"发送耗时:{(end_time4 - start_time4):.2f}秒")
     await record.player_stat_counter(sender.id, str(player_pid), str(player_name))
 
 
@@ -2108,7 +2108,7 @@ async def recent(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                 data_list
             ), quote=source)
             await record.recent_counter(sender.id, str(player_pid), str(player_name))
-            logger.info(f'查询最近耗时:{end_time - start_time}')
+            logger.info(f'查询最近耗时:{(end_time - start_time):.2f}秒')
             return True
         await app.send_message(group, MessageChain(
             "没有查询到最近记录哦~"
@@ -2205,7 +2205,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
         return False
 
     end_time = time.time()
-    logger.info(f"获取对局列表耗时:{end_time - start_time}")
+    logger.info(f"获取对局列表耗时:{(end_time - start_time):.2f}秒")
     html1 = response.text
     # 处理网页超时
     if html1 == "timed out":
@@ -2246,7 +2246,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
         ), quote=src)
         return False
     end_time2 = time.time()
-    logger.info(f"对局耗时:{end_time2 - start_time2}")
+    logger.info(f"对局耗时:{(end_time2 - start_time2):.2f}秒")
     start_time3 = time.time()
     for result in scrape_index_tasks:
         response = result.result()
@@ -2357,7 +2357,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
         ), quote=src)
         return
     end_time3 = time.time()
-    logger.info(f"解析对局数据耗时:{end_time3 - start_time3}")
+    logger.info(f"解析对局数据耗时:{(end_time3 - start_time3):.2f}秒")
     player_data[-1] = player_data[-1].replace("\n", "")
 
     # await app.send_message(

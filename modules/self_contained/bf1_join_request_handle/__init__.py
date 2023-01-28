@@ -16,7 +16,7 @@ from core.control import (
     Permission
 )
 from core.models import saya_model, response_model
-from .utils import getPid_byName, tyc_bfeac_api
+from .utils import get_stat_by_name, tyc_bfeac_api
 
 account_controller = response_model.get_acc_controller()
 module_controller = saya_model.get_module_controller()
@@ -48,33 +48,36 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         if application_message.find("答案：") != -1 else None
     verify = ""
     if application_answer and (application_answer < u'\u4e00' or application_answer > u'\u9fff'):
-        player_info = await getPid_byName(application_answer)
-        if player_info['personas'] == {}:
+        player_stat = await get_stat_by_name(application_answer)
+        if player_stat.get("errors"):
             verify = "无效ID"
         else:
-            eac_stat_dict = {
-                0: "未处理",
-                1: "已封禁",
-                2: "证据不足",
-                3: "自证通过",
-                4: "自证中",
-                5: "刷枪",
-            }
-            player_name = player_info['personas']['persona'][0]['displayName']
-            try:
-                eac_response = eval((await tyc_bfeac_api(player_name)).text)
-                if eac_response["data"] != "":
-                    data = eac_response["data"][0]
-                    eac_status = eac_stat_dict[data["current_status"]]
-                    if eac_status == "已封禁":
-                        verify = "该ID已被实锤"
+            if player_stat.get("timePlayed") == "0:00:00":
+                verify = "无效ID"
+            else:
+                eac_stat_dict = {
+                    0: "未处理",
+                    1: "已封禁",
+                    2: "证据不足",
+                    3: "自证通过",
+                    4: "自证中",
+                    5: "刷枪",
+                }
+                player_name = player_stat.get("userName")
+                try:
+                    eac_response = eval((await tyc_bfeac_api(player_name)).text)
+                    if eac_response["data"] != "":
+                        data = eac_response["data"][0]
+                        eac_status = eac_stat_dict[data["current_status"]]
+                        if eac_status == "已封禁":
+                            verify = "该ID已被实锤"
+                        else:
+                            verify = "有效ID" if player_name else "无效ID"
                     else:
                         verify = "有效ID" if player_name else "无效ID"
-                else:
-                    verify = "有效ID" if player_name else "无效ID"
-            except Exception as e:
-                logger.error(f"查询eac信息时出错!{e}")
-                verify = "有效ID" if player_name else "查询失败"
+                except Exception as e:
+                    logger.error(f"查询eac信息时出错!{e}")
+                    verify = "有效ID" if player_name else "查询失败"
         application_answer = f"{application_message}({verify})"
 
     # 如果有application_answer且verify为有效ID且开启了自动过审则自动同意

@@ -49,9 +49,10 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(create(Broadcast))
 regex_list = []
-parse_big_bracket = "\\{"
-parse_mid_bracket = "\\["
-parse_bracket = "\\("
+parse_big_bracket = r"\{"
+parse_mid_bracket = r"\["
+parse_bracket = r"\("
+reply_type_set = ["fullmatch", "regex", "fuzzy"]
 
 
 class NumberWaiter(Waiter.create([GroupMessage])):
@@ -172,7 +173,8 @@ async def add_keyword(
                 group.id if group_only else -1,
             )
         )
-    await app.send_group_message(group, MessageChain(f"{'群关键词回复' if group_only.matched else '全局关键词回复'}添加成功！"), quote=source)
+    await app.send_group_message(group, MessageChain(f"{'群关键词回复' if group_only.matched else '全局关键词回复'}添加成功！"),
+                                 quote=source)
 
 
 @channel.use(
@@ -278,7 +280,8 @@ async def delete_keyword(
                     continue
                 temp_list.append(i)
             regex_list = temp_list
-            await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"), quote=source)
+            await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
+                                         quote=source)
         else:
             await app.send_group_message(
                 group, MessageChain("非预期回复，进程退出"), quote=source
@@ -292,7 +295,7 @@ async def delete_keyword(
         listening_events=[GroupMessage],
         decorators=[
             Distribute.require(),
-            Function.require(channel.module),
+            Function.require(channel.module, notice=False),
             Permission.user_require(Permission.User, if_noticed=False),
             Permission.group_require(channel.metadata.level, if_noticed=False),
         ],
@@ -344,6 +347,62 @@ async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
                             )[0]
                         ),
                     )
+
+
+@channel.use(
+    ListenerSchema(
+        listening_events=[GroupMessage],
+        inline_dispatchers=[Twilight([
+            FullMatch("查询"),
+            FullMatch("群", optional=True) @ "group_only",
+            FullMatch("回复关键词"),
+        ])],
+        decorators=[
+            Distribute.require(),
+            FrequencyLimitation.require(channel.module),
+            Function.require(channel.module),
+            Permission.user_require(Permission.GroupAdmin),
+            Permission.group_require(channel.metadata.level),
+        ],
+    )
+)
+async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: RegexResult, source: Source):
+    if (not group_only.matched) and (not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin)):
+        return await app.send_group_message(group, MessageChain(
+            f"查询全局关键词需要权限:{Permission.BotAdmin}/你的权限:{await Permission.get_user_perm_byID(group.id, sender.id)}\n"
+            f"查询群关键词请用:查询群回复关键词"
+        ), quote=source)
+    keywords = await orm.fetchall(
+        select(
+            KeywordReply.keyword,
+            KeywordReply.reply_type,
+            KeywordReply.group,
+        ).where(KeywordReply.group.in_((-1, group.id)))
+    )
+    global_keywords = filter(lambda x: x[2] == -1, keywords)
+    local_keywords = filter(lambda x: x[2] == group.id, keywords)
+    if group_only.matched:
+        message = ["本群启用："]
+        for ks in local_keywords:
+            for reply_type in reply_type_set:
+                t = set()
+                for keyword in filter(lambda x: x[1] == reply_type, ks):
+                    t.add(f"    {keyword[0]}")
+                if t:
+                    message.append(f"  {reply_type}:")
+                    message.extend(t)
+        return await app.send_group_message(group, "\n".join(message[:-1]))
+    else:
+        message = ["全局启用："]
+        for ks in global_keywords:
+            for reply_type in reply_type_set:
+                t = set()
+                for keyword in filter(lambda x: x[1] == reply_type, ks):
+                    t.add(f"    {keyword[0]}")
+                if t:
+                    message.append(f"  {reply_type}:")
+                    message.extend(t)
+        return await app.send_group_message(group, "\n".join(message[:-1]))
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))

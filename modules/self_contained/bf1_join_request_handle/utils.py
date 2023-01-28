@@ -9,6 +9,7 @@ true = True
 false = False
 null = ''
 
+
 async def tyc_bfeac_api(player_name):
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {

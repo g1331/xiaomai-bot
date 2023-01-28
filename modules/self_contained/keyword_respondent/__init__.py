@@ -217,8 +217,8 @@ async def delete_keyword(
     keyword = keyword.as_persistent_string()
     if results := await orm.fetch_all(
             select(
-                KeywordReply.reply_type, KeywordReply.reply, KeywordReply.reply_md5
-            ).where(KeywordReply.keyword == keyword)
+                KeywordReply.reply_type, KeywordReply.reply, KeywordReply.reply_md5,
+            ).where(KeywordReply.keyword == keyword, KeywordReply.group == group.id if group_only.matched else -1)
     ):
         replies = list()
         for result in results:
@@ -241,7 +241,12 @@ async def delete_keyword(
         msg.append(Plain(text="请发送你要删除的回复编号"))
         await app.send_group_message(group, MessageChain(msg))
 
-        number = await inc.wait(NumberWaiter(group, member, len(replies)), timeout=30)
+        try:
+            number = await inc.wait(NumberWaiter(group, member, len(replies)), timeout=30)
+        except:
+            return await app.send_group_message(
+                group, MessageChain("非预期回复，进程退出"), quote=source
+            )
         if number == -1:
             await app.send_group_message(
                 group, MessageChain("非预期回复，进程退出"), quote=source
@@ -257,32 +262,37 @@ async def delete_keyword(
                 ]
             ).extend(json_to_message_chain(replies[number - 1][1])),
         )
-        if await inc.wait(ConfirmWaiter(group, member), timeout=30):
-            await orm.delete(
-                KeywordReply,
-                [
-                    KeywordReply.keyword == keyword,
-                    KeywordReply.reply_md5 == replies[number - 1][2],
-                    KeywordReply.reply_type == replies[number - 1][0],
-                    KeywordReply.group == (group.id if group_only.matched else -1),
-                ],
-            )
-            temp_list = []
-            global regex_list
-            for i in regex_list:
-                if all([
-                    i[0] == keyword
-                    if op_type == "regex"
-                    else f"(.*){keyword.replace('[', parse_mid_bracket).replace('{', parse_big_bracket).replace('(', parse_bracket)}(.*)",
-                    i[1] == replies[number - 1][2],
-                    i[2] == (-1 if group_only.matched else group.id),
-                ]):
-                    continue
-                temp_list.append(i)
-            regex_list = temp_list
-            await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
-                                         quote=source)
-        else:
+        try:
+            if await inc.wait(ConfirmWaiter(group, member), timeout=30):
+                await orm.delete(
+                    KeywordReply,
+                    [
+                        KeywordReply.keyword == keyword,
+                        KeywordReply.reply_md5 == replies[number - 1][2],
+                        KeywordReply.reply_type == replies[number - 1][0],
+                        KeywordReply.group == (group.id if group_only.matched else -1),
+                    ],
+                )
+                temp_list = []
+                global regex_list
+                for i in regex_list:
+                    if all([
+                        i[0] == keyword
+                        if op_type == "regex"
+                        else f"(.*){keyword.replace('[', parse_mid_bracket).replace('{', parse_big_bracket).replace('(', parse_bracket)}(.*)",
+                        i[1] == replies[number - 1][2],
+                        i[2] == (-1 if group_only.matched else group.id),
+                    ]):
+                        continue
+                    temp_list.append(i)
+                regex_list = temp_list
+                await app.send_group_message(group, MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
+                                             quote=source)
+            else:
+                await app.send_group_message(
+                    group, MessageChain("非预期回复，进程退出"), quote=source
+                )
+        except:
             await app.send_group_message(
                 group, MessageChain("非预期回复，进程退出"), quote=source
             )
@@ -379,13 +389,11 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
             KeywordReply.group,
         ).where(KeywordReply.group.in_((-1, group.id)))
     )
-    global_keywords = filter(lambda x: x[2] == -1, keywords)
-    local_keywords = filter(lambda x: x[2] == group.id, keywords)
     if group_only.matched:
         message = ["本群启用："]
         for reply_type in reply_type_set:
             t = set()
-            for keyword in filter(lambda x: x[1] == reply_type, local_keywords):
+            for keyword in filter(lambda x: x[1] == reply_type, filter(lambda x: x[2] == group.id, keywords)):
                 t.add(f"    {keyword[0]}")
             if t:
                 message.append(f"  {reply_type}:")
@@ -397,7 +405,7 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
         message = ["全局启用："]
         for reply_type in reply_type_set:
             t = set()
-            for keyword in filter(lambda x: x[1] == reply_type, global_keywords):
+            for keyword in filter(lambda x: x[1] == reply_type, filter(lambda x: x[2] == -1, keywords)):
                 t.add(f"    {keyword[0]}")
             if t:
                 message.append(f"  {reply_type}:")

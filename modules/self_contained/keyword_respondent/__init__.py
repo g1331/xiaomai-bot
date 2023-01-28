@@ -218,7 +218,7 @@ async def delete_keyword(
     if results := await orm.fetch_all(
             select(
                 KeywordReply.reply_type, KeywordReply.reply, KeywordReply.reply_md5,
-            ).where(KeywordReply.keyword == keyword, KeywordReply.group == group.id if group_only.matched else -1)
+            ).where(KeywordReply.keyword == keyword, KeywordReply.group.in_((group.id if group_only.matched else -1)))
     ):
         replies = list()
         for result in results:

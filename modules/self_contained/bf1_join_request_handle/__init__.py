@@ -10,6 +10,7 @@ from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen
 from graia.saya import Channel
+from loguru import logger
 
 from core.control import (
     Permission
@@ -68,7 +69,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                         verify = "有效ID" if player_name else "无效ID"
                 else:
                     verify = "有效ID" if player_name else "无效ID"
-            except:
+            except Exception as e:
+                logger.error(f"查询eac信息时出错!{e}")
                 verify = "有效ID" if player_name else "查询失败"
         application_answer = f"{application_message}({verify})"
 

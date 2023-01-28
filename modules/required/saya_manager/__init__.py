@@ -147,7 +147,9 @@ async def change_module_status(
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
         operation_type = saya_model.ModuleOperationType.UNINSTALL if operation == "卸载" else saya_model.ModuleOperationType.RELOAD
-    modules = module_controller.get_installed_channels() + module_controller.get_not_installed_channels()
+    modules = sorted(module_controller.get_installed_channels() + module_controller.get_not_installed_channels())
+    if (index-1) not in range(len(modules)):
+        return await app.send_message(group, MessageChain(f"编号不在范围内!{index-1}/{len(modules)}"), quote=source)
     module = modules[index - 1]
     if index == 0 or index > len(modules):
         return await app.send_message(group, MessageChain(f"当前只有{len(modules)}(index:{index})个插件~"), quote=source)

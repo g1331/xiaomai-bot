@@ -1269,7 +1269,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
-    logger.info(f"查询{bfgroups_name}服务器完成,耗时:{time.time() - time_start}")
+    logger.info(f"查询{bfgroups_name}服务器完成,耗时:{(time.time() - time_start):.2f}秒")
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18]
     counter = 1
     servers = 0
@@ -2413,7 +2413,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     SavePic = f"./data/battlefield/Temp/{time.time()}.png"
     SavePic = SavePic.replace(".png", ".jpg")
     IMG.save(SavePic, quality=100)
-    logger.info(f"玩家列表pic耗时:{time.time() - time_start}")
+    logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     message_send = MessageChain(
         GraiaImage(path=SavePic),
         "\n回复'-k 序号 原因'可踢出玩家(60秒内有效)"
@@ -3631,7 +3631,7 @@ async def kick(app: Ariadne, sender: Member, group: Group, action: RegexResult,
     star_time = time.time()
     result = await api_gateway.rsp_kickPlayer(server_gameid, session, player_pid, reason)
     end_time = time.time()
-    logger.info(f"踢人耗时:{end_time - star_time}秒")
+    logger.info(f"踢人耗时:{(end_time - star_time):.2f}秒")
     if type(result) == str:
         await app.send_message(group, MessageChain(
             f"{result}"

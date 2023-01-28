@@ -5,7 +5,9 @@ from core.config import GlobalConfig
 
 global_config = create(GlobalConfig)
 default_account = global_config.functions.get("bf1").get("default_account", 0)
-
+true = True
+false = False
+null = ''
 
 async def tyc_bfeac_api(player_name):
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"

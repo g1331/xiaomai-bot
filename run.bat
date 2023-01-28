@@ -1,0 +1,1 @@
+start cmd /k  "poetry run py main.py"

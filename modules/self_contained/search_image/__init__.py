@@ -263,10 +263,9 @@ async def fun_saucenao(file_url: str) -> MessageChain:
                 f"saucenao结果:\n"
                 f"相似度: {resp.raw[0].similarity}\n"
                 f"标题: {resp.raw[0].title}\n"
-                f"作者: {resp.raw[0].author}\n"
                 f"地址:{resp.raw[0].url}\n"
-                f"pixiv作品id: {resp.raw[0].index_id}\n"
-                f"画师id: {resp.raw[0].index_name}\n"
+                f"作者: {resp.raw[0].author}\n"
+                f"作者地址: {resp.raw[0].author_url}\n"
                 f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
             )
 

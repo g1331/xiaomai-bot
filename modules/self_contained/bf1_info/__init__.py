@@ -767,7 +767,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                 f"网络出错，请稍后再试"
             ), quote=source)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=source)

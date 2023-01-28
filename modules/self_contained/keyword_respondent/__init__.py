@@ -372,7 +372,7 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
             f"查询全局关键词需要权限:{Permission.BotAdmin}/你的权限:{await Permission.get_user_perm_byID(group.id, sender.id)}\n"
             f"查询群关键词请用:查询群回复关键词"
         ), quote=source)
-    keywords = await orm.fetchall(
+    keywords = await orm.fetch_all(
         select(
             KeywordReply.keyword,
             KeywordReply.reply_type,

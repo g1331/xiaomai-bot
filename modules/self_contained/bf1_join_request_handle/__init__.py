@@ -8,16 +8,16 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
-from graia.ariadne.util.saya import listen, decorate
+from graia.ariadne.util.saya import listen
 from graia.saya import Channel
 
 from core.control import (
-    Permission,
-    Distribute
+    Permission
 )
-from core.models import saya_model
+from core.models import saya_model, response_model
 from .utils import getPid_byName, tyc_bfeac_api
 
+account_controller = response_model.get_acc_controller()
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
 channel.name("BF1入群审核")
@@ -27,9 +27,6 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 @listen(MemberJoinRequestEvent)
-@decorate(
-    Distribute.require(),
-)
 async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     """
     :param app: 实例
@@ -38,6 +35,8 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     """
     group = await app.get_group(event.source_group)
     if not module_controller.if_module_switch_on(channel.module, group):
+        return
+    if app.account != await account_controller.get_response_account(group.id):
         return
     # 先解析加群信息
     application_message = event.message

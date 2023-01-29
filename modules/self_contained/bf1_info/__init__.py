@@ -3602,7 +3602,7 @@ async def auto_modify(app: Ariadne, event: MemberJoinEvent):
             player_name_bind = player_stat.get("userName")
             await app.modify_member_info(member, MemberInfo(name=player_name_bind))
             return await app.send_message(group, MessageChain(
-                At(member), f"已自动将你的名片修改为:{player_name_bind}!"
+                At(member), f"已自动将你的名片修改为{player_name_bind}"
             ))
         except Exception as e:
             logger.error(e)

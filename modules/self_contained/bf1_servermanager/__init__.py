@@ -1305,9 +1305,10 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             continue
         server_list_column.append(
             ColumnUserInfo(
-                name=f"{i+1}:{item['name'][:15]}",
+                name=f"{i + 1}:{item['name'][:15]}",
                 description=f"{item['name']}",
-                avatar=item["mapImageUrl"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+                avatar=item["mapImageUrl"].replace("[BB_PREFIX]",
+                                                   "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )
         server_list_column.append(
@@ -6002,7 +6003,13 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
     #     i += 1
 
     map_list_column = [
-        ColumnTitle(title="图池")
+        ColumnUserInfo(
+            name=f"服务器:{result['name'][:15]}",
+            description=f"当前地图:{result['mapNamePretty']}——{result['mapModePretty']}",
+            avatar=result["mapImageUrl"].replace("[BB_PREFIX]",
+                                                 "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+        ),
+        ColumnTitle(title="图池如下:")
     ]
     for i, item in enumerate(result["rotation"]):
         map_list.append(f"{item['modePrettyName']}-{item['mapPrettyName']}")

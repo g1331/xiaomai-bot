@@ -311,3 +311,17 @@ async def get_record_counters(bind_path):
         for result in results:
             record_counters += result
     return record_counters
+
+
+async def get_stat_by_name(player_name: str) -> dict:
+    url = f"https://api.gametools.network/bf1/stats/?format_values=true&name={player_name}&platform=pc"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.json()
+
+
+async def get_stat_by_pid(player_pid: str) -> dict:
+    url = f"https://api.gametools.network/bf1/stats/?format_values=true&playerid={player_pid}&platform=pc"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.json()

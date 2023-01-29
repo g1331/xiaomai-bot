@@ -143,7 +143,6 @@ async def add_keyword(
     if await orm.fetch_one(
             select(KeywordReply).where(
                 KeywordReply.keyword == keyword.strip(),
-                KeywordReply.reply_type == op_type,
                 KeywordReply.reply_md5 == reply_md5,
                 KeywordReply.group == (group.id if group_only.matched else -1),
             )
@@ -346,19 +345,20 @@ async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
                     )
                 ]
                 if response_md5:
-                    await app.send_group_message(
-                        group,
-                        json_to_message_chain(
-                            (
-                                await orm.fetch_one(
-                                    select(KeywordReply.reply).where(
-                                        KeywordReply.reply_md5
-                                        == random.choice(response_md5)
-                                    )
+                    if reply := (
+                            await orm.fetch_one(
+                                select(KeywordReply.reply).where(
+                                    KeywordReply.reply_md5
+                                    == random.choice(response_md5)
                                 )
-                            )[0]
-                        ),
-                    )
+                            )
+                    ):
+                        await app.send_group_message(
+                            group,
+                            json_to_message_chain(
+                                reply[0]
+                            ),
+                        )
 
 
 @channel.use(

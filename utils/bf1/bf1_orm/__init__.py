@@ -20,8 +20,24 @@ class bf1_account(bf1_orm.Base):
     sid = Column(String)
     session = Column(String)
 
+    @property
+    def pid(self):
+        return self.personaId
 
-# 绑定表
+    @pid.setter
+    def pid(self, value):
+        self.personaId = value
+
+    @property
+    def uid(self):
+        return self.userId
+
+    @uid.setter
+    def uid(self, value):
+        self.userId = value
+
+
+# 用户绑定表
 class bf1_player_bind(bf1_orm.Base):
     """bf1账号绑定信息"""
 
@@ -31,6 +47,7 @@ class bf1_player_bind(bf1_orm.Base):
     qq = Column(BIGINT, primary_key=True)
 
 
+# 群组绑定表
 class bf1_group_bind(bf1_orm.Base):
     """bf1群组绑定信息"""
 
@@ -47,22 +64,20 @@ class bf1_server(bf1_orm.Base):
     __tablename__ = "bf1_server"
     id = Column(Integer, primary_key=True)
     serverId = Column(BIGINT, nullable=False, primary_key=True)
-    guid = Column(String, nullable=False, primary_key=True)
+    persistedGameId = Column(String, nullable=False, primary_key=True)
     gameId = Column(BIGINT, nullable=False)
     createdDate = Column(BIGINT, nullable=False)
     expirationDate = Column(BIGINT, nullable=False)
     updatedDate = Column(BIGINT, nullable=False)
     time = Column(DateTime, nullable=False)
-    _persistedGameId = Column("persistedGameId", String, nullable=False)
 
-    # 使用计算属性的方法,将persistedGameId的值绑定到guid上
     @property
-    def persistedGameId(self):
-        return self.guid
+    def guid(self):
+        return self.persistedGameId
 
-    @persistedGameId.setter
-    def persistedGameId(self, value):
-        self._persistedGameId = value
+    @guid.setter
+    def guid(self, value):
+        self.persistedGameId = value
 
 # TODO:
 #  BF1账号相关

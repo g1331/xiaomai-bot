@@ -1,4 +1,10 @@
 import random
+import uuid
+
+
+async def get_a_uuid() -> str:
+    """返回一个uuid"""
+    return str(uuid.uuid4())
 
 
 def generate_random_str(random_length=16):

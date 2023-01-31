@@ -6006,8 +6006,8 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
 
     map_list_column = [
         ColumnUserInfo(
-            name=f"服务器:{result['name'][:15]}",
-            description=f"当前地图:{result['mapNamePretty']}——{result['mapModePretty']}",
+            name=f"服务器:{result['name'][:17]}",
+            description=f"当前地图:{result['mapNamePretty']}—{result['mapModePretty']}",
             avatar=result["mapImageUrl"].replace("[BB_PREFIX]",
                                                  "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
         ),
@@ -6018,7 +6018,7 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
         choices.append(str(i))
         map_list_column.append(
             ColumnUserInfo(
-                name=f"{i}:{item['mapPrettyName']}"
+                name=f"{i}:{item['mapPrettyName']}-{item['modePrettyName']}"
                      +
                      ("●" if (
                              item['modePrettyName'] == '行動模式'
@@ -6031,7 +6031,6 @@ async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: 
                                  '索姆河', '武普庫夫山口', '龐然闇影'
                              ]
                      ) else ""),
-                description=f"地图模式:{item['modePrettyName']}",
                 avatar=item["mapImage"].replace("[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )

@@ -22,6 +22,6 @@
     "删除群模糊回复关键词#想问一下",
     "删除模糊回复关键词#想问一下"
   ],
-  "default_switch": true,
+  "default_switch": false,
   "default_notice": false
 }

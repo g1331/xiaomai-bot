@@ -318,7 +318,7 @@ async def Bind(app: Ariadne, sender: Member, group: Group, player_name: RegexRes
             f"网络出错，请稍后再试"
         ), quote=source)
         return False
-    if player_info['personas'] == {}:
+    if player_info.get("personas", {}) == {}:
         await app.send_message(group, MessageChain(
             f"玩家[{player_name}]不存在"
         ), quote=source)
@@ -808,12 +808,14 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
             logger.error(e)
             await InfoCache_weapon(str(player_pid)).update_cache()
             weapon_data = await InfoCache_weapon(str(player_pid)).get_data()
-        item_temp = weapon_data["result"][11]["weapons"].pop()
-        weapon_data["result"][11]["weapons"].pop()
-        weapon_data["result"][3]["weapons"].append(item_temp)
-        item_temp2 = weapon_data["result"][5]["weapons"].pop()
-        weapon_data["result"][5]["weapons"].pop()
-        weapon_data["result"][3]["weapons"].append(item_temp2)
+        # 0：战场装备 1：装备 2：半自动 3：霰弹 4：佩枪 5：轻机枪
+        # 6：近战 7：步枪 8：手榴弹 9：制式步枪 10：坦克/驾驶员 11：冲锋枪
+        item_temp = weapon_data["result"][4]["weapons"].pop()
+        weapon_data["result"][4]["weapons"].pop()
+        weapon_data["result"][7]["weapons"].append(item_temp)
+        item_temp2 = weapon_data["result"][2]["weapons"].pop()
+        weapon_data["result"][2]["weapons"].pop()
+        weapon_data["result"][7]["weapons"].append(item_temp2)
         weapon_data = weapon_data["result"]
     except Exception as e:
         logger.error(e)
@@ -850,11 +852,11 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                         ]
     else:
         weapon_type_temp = int(str(weapon_type.result)
-                               .replace("-精英兵", "0").replace("-轻机枪", "1").replace("-机枪", "1")
-                               .replace("-近战", "2").replace("-步枪", "3").replace("-装备", "4").replace("-配备", "4")
-                               .replace("-半自动", "5").replace("-手榴弹", "6").replace("-手雷", "6")
-                               .replace("-霰弹枪", "8").replace("-驾驶员", "9").replace("-冲锋枪", "10")
-                               .replace("-佩枪", "11").replace("-手枪", "11").replace("-副武器", "11"))
+                               .replace("-精英兵", "0").replace("-轻机枪", "5").replace("-机枪", "5")
+                               .replace("-近战", "6").replace("-步枪", "7").replace("-装备", "1").replace("-配备", "1")
+                               .replace("-半自动", "2").replace("-手榴弹", "8").replace("-手雷", "8")
+                               .replace("-霰弹枪", "3").replace("-驾驶员", "10").replace("-冲锋枪", "11")
+                               .replace("-佩枪", "4").replace("-手枪", "4").replace("-副武器", "4"))
         for item2 in weapon_data[weapon_type_temp]["weapons"]:
             if item2["stats"]["values"] != {}:
                 weapon_temp[zhconv.convert(item2["name"], 'zh-cn')] = [
@@ -1092,7 +1094,7 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
                 f"网络出错，请稍后再试"
             ), quote=source)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=source)
@@ -1405,7 +1407,7 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
                 f"网络出错，请稍后再试"
             ), quote=source)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=source)
@@ -2012,7 +2014,7 @@ async def recent(app: Ariadne, sender: Member, group: Group, player_name: RegexR
                 f"网络出错，请稍后再试!"
             ), quote=source)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=source)
@@ -2155,7 +2157,7 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
                 f"网络出错，请稍后再试!"
             ), quote=src)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=src)
@@ -2410,7 +2412,7 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, player_name: Re
                 f"网络出错，请稍后再试"
             ), quote=source)
             return False
-        if player_info['personas'] == {}:
+        if player_info.get("personas", {}) == {}:
             await app.send_message(group, MessageChain(
                 f"玩家[{player_name}]不存在"
             ), quote=source)
@@ -2651,7 +2653,7 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
             f"网络出错，请稍后再试"
         ), quote=source)
         return False
-    if player_info['personas'] == {}:
+    if player_info.get("personas", {}) == {}:
         await app.send_message(group, MessageChain(
             f"玩家[{player_name}]不存在"
         ), quote=source)

@@ -1037,7 +1037,7 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
         draw.text((600, 830 + i * 580), "时长:%s" % weapon123[i][7], font=content_font)
     bg_img = bg_img.convert('RGB')
     end_time3 = time.time()
-    logger.info(f'画图耗时:{(end_time3 - start_time3):.2f}m秒')
+    logger.info(f'画图耗时:{(end_time3 - start_time3):.2f}秒')
     logger.info(f"制图总耗时:{(end_time3 - start_time):.2f}秒")
 
     start_time4 = time.time()

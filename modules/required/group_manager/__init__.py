@@ -105,10 +105,10 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
 @decorate(
     Distribute.require(),
     QuoteReply.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -142,10 +142,10 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
 @decorate(
     Distribute.require(),
     QuoteReply.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -175,10 +175,10 @@ async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -250,10 +250,10 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -296,10 +296,10 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([
@@ -333,10 +333,10 @@ async def mute_all(app: Ariadne, group: Group, sender: Member, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
 )
 @dispatch(
     Twilight([

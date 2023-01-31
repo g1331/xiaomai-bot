@@ -29,9 +29,9 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
-    Permission.user_require(Permission.User),
+    FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module)
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight([RegexMatch(r"^(随机|一眼|来[点张])[顶丁钉][真针]|[Dd]ing[！!]?$")])

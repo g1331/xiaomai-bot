@@ -54,10 +54,10 @@ proxy = config.proxy if config.proxy != "proxy" else ""
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module, 3),
     Function.require(channel.module),
-    Permission.user_require(Permission.User, if_noticed=True),
+    FrequencyLimitation.require(channel.module, 3),
     Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 async def emoji_mix(
         app: Ariadne, event: GroupMessage, left: RegexResult, right: RegexResult, source: Source
@@ -95,8 +95,8 @@ async def emoji_mix(
     Distribute.require(),
     FrequencyLimitation.require(channel.module, 3),
     Function.require(channel.module),
-    Permission.user_require(Permission.User, if_noticed=True),
     Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 async def get_emoji_pair(app: Ariadne, event: GroupMessage, keyword: RegexResult, source: Source):
     keyword = keyword.result.display[1:].strip()

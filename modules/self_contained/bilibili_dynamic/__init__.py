@@ -342,10 +342,10 @@ async def main_update_scheduled():
 )
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 async def add_sub(group: Group, anything: RegexResult, app: Ariadne):
     if anything.matched:
@@ -362,10 +362,10 @@ async def add_sub(group: Group, anything: RegexResult, app: Ariadne):
 )
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 async def remove_sub(group: Group, anything: RegexResult, app: Ariadne):
     if anything.matched:
@@ -381,10 +381,10 @@ async def remove_sub(group: Group, anything: RegexResult, app: Ariadne):
 )
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 async def get_sub_list(group: Group, app: Ariadne, source: Source):
     sublist = list(get_group_sublist(group.id))
@@ -438,10 +438,10 @@ async def bot_leave(group: Group):
 )
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 async def vive_dyn(group: Group, anything: RegexResult, app: Ariadne, src: Source):
     if not anything.matched:

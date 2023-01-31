@@ -248,7 +248,7 @@ class Permission(object):
             group = event.sender.group
             group_perm = await cls.get_group_perm(group)
             if group_perm < perm:
-                if if_noticed:
+                if if_noticed and group_perm != 0:
                     await app.send_message(group, MessageChain(
                         f"权限不足!(当前群权限:{group_perm}/需要权限:{perm})"
                     ), quote=src)

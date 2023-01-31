@@ -49,10 +49,10 @@ with Path(Path(__file__).parent, "ill_templates.json").open("r", encoding="UTF-8
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
     Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True)
 )
 async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexResult, source: Source):
     if at.matched:

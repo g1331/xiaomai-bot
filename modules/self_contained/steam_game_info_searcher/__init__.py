@@ -47,10 +47,10 @@ proxy = config.proxy if config.proxy != "proxy" else ""
 )
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 async def steam_game_info_searcher(
         app: Ariadne, group: Group, keyword: RegexResult, source: Source, sender: Member,

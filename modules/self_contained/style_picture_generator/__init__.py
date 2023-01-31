@@ -60,10 +60,10 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module, 3),
     Function.require(channel.module),
-    Permission.user_require(Permission.User),
+    FrequencyLimitation.require(channel.module, 3),
     Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 async def style_picture_generator(
         app: Ariadne,

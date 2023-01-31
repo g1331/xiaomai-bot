@@ -290,10 +290,10 @@ async def init_token(event: SayaModuleInstalled):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -735,10 +735,10 @@ async def bg_check(app: Ariadne, group: Group, sender: Member, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -1062,10 +1062,10 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -1372,10 +1372,10 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -1984,10 +1984,10 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -2127,10 +2127,10 @@ async def recent(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -2382,10 +2382,10 @@ async def matches(app: Ariadne, sender: Member, group: Group, player_name: Regex
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -2623,10 +2623,10 @@ async def player_tyc(app: Ariadne, sender: Member, group: Group, player_name: Re
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin),
     Config.require("functions.bf1.apikey"),
 )
 @dispatch(
@@ -2903,10 +2903,10 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin),
 )
 @dispatch(
     Twilight(
@@ -2976,10 +2976,10 @@ async def bf_status(app: Ariadne, group: Group, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -3122,10 +3122,10 @@ async def refresh_main_account(app: Ariadne, group: Group, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin),
 )
 @dispatch(
     Twilight(
@@ -3171,10 +3171,10 @@ async def refresh_main_session(app: Ariadne, group: Group, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -3235,10 +3235,10 @@ async def op_info(app: Ariadne, group: Group, source: Source):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(
@@ -3425,10 +3425,10 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(

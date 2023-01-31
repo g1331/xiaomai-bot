@@ -106,10 +106,10 @@ delete_keyword_twilight = Twilight(
         inline_dispatchers=[add_keyword_twilight],
         decorators=[
             Distribute.require(),
-            FrequencyLimitation.require(channel.module),
             Function.require(channel.module),
-            Permission.user_require(Permission.GroupAdmin),
+            FrequencyLimitation.require(channel.module),
             Permission.group_require(channel.metadata.level),
+            Permission.user_require(Permission.GroupAdmin),
         ],
     )
 )
@@ -182,10 +182,10 @@ async def add_keyword(
         inline_dispatchers=[delete_keyword_twilight],
         decorators=[
             Distribute.require(),
-            FrequencyLimitation.require(channel.module),
             Function.require(channel.module),
-            Permission.user_require(Permission.GroupAdmin),
+            FrequencyLimitation.require(channel.module),
             Permission.group_require(channel.metadata.level),
+            Permission.user_require(Permission.GroupAdmin),
         ],
     )
 )
@@ -307,8 +307,8 @@ async def delete_keyword(
         decorators=[
             Distribute.require(),
             Function.require(channel.module, notice=False),
-            Permission.user_require(Permission.User, if_noticed=False),
             Permission.group_require(channel.metadata.level, if_noticed=False),
+            Permission.user_require(Permission.User, if_noticed=False),
         ],
     )
 )
@@ -371,10 +371,10 @@ async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
         ])],
         decorators=[
             Distribute.require(),
-            FrequencyLimitation.require(channel.module),
             Function.require(channel.module),
-            Permission.user_require(Permission.GroupAdmin),
+            FrequencyLimitation.require(channel.module),
             Permission.group_require(channel.metadata.level),
+            Permission.user_require(Permission.GroupAdmin),
         ],
     )
 )

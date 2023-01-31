@@ -14,7 +14,6 @@ from loguru import logger
 from core.control import (
     Permission,
     Function,
-    FrequencyLimitation,
     Distribute
 )
 from core.models import saya_model
@@ -35,8 +34,8 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
+    Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User, if_noticed=False),
-    Permission.group_require(channel.metadata.level)
 )
 async def bilibili_main(
         app: Ariadne, group: Group, message: MessageChain

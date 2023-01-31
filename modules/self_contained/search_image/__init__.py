@@ -44,10 +44,10 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -95,10 +95,10 @@ async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, 
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -155,10 +155,10 @@ async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Sourc
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -196,10 +196,10 @@ async def souFan(app: Ariadne, group: Group, sender: Member, img: ElementResult,
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module)
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(

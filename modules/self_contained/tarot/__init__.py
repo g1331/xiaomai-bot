@@ -38,10 +38,10 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
-    Permission.group_require(channel.metadata.level)
 )
 async def tarot(app: Ariadne, group: Group, source: Source):
     await app.send_group_message(group, Tarot.get_tarot(), quote=source)

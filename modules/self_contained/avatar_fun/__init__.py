@@ -76,10 +76,10 @@ frames = tuple([rf"{os.getcwd()}\statics\PetPetFrames\frame{i}.png" for i in ran
 )
 @decorate(
     Distribute.require(),
-    FrequencyLimitation.require(channel.module),
     Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
     Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True)
 )
 async def avatar_fun_pic(
         app: Ariadne,

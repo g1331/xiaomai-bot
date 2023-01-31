@@ -47,10 +47,10 @@ inc = InterruptControl(saya.broadcast)
 @listen(GroupMessage, FriendMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 @dispatch(AlconnaDispatcher(Alconna(
     "插件列表",
@@ -119,10 +119,10 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.Master, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.Master, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -175,10 +175,10 @@ async def change_module_status(
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight([

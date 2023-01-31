@@ -55,10 +55,10 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupOwner, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupOwner, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -136,10 +136,10 @@ async def change_user_perm(
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -212,10 +212,10 @@ async def change_group_perm(
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -283,10 +283,10 @@ async def change_group_perm(
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -335,10 +335,10 @@ async def get_vg_list(
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -422,10 +422,10 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.Master),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.Master),
 )
 @dispatch(
     Twilight([
@@ -468,10 +468,10 @@ async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, membe
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 @dispatch(Twilight([
     FullMatch("BOT管理列表"),

@@ -153,12 +153,14 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
     ])
 )
 async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source):
-    quote_id = event.quote.id
-    bot_member = await app.get_member(group, app.account)
-    if bot_member.permission.name == "Member" and event.quote.sender_id != bot_member.id:
+    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
+    if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
             f"bot权限不足!"
         ), quote=source)
+    quote_id = event.quote.id
+    app = target_app
+    group = target_group
     try:
         await app.recall_message(quote_id)
         return await app.send_message(group, MessageChain(

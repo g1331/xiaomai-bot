@@ -1,5 +1,5 @@
 import contextlib
-from typing import Union, Dict
+from typing import Union
 
 import sqlalchemy.exc
 from creart import create
@@ -10,6 +10,7 @@ from graia.ariadne.message import Source
 from graia.ariadne.model import Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
+from loguru import logger
 from sqlalchemy import select
 
 from core.config import GlobalConfig
@@ -387,40 +388,45 @@ class Config(object):
     """配置检查"""
 
     @classmethod
-    def require(cls, key_string):
-        async def check_config(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
-            paths = key_string.split(".")
-            current: GlobalConfig = global_config
+    def require(cls, config: str | None = None):
+        async def config_available(app: Ariadne, event: GroupMessage):
+            if not config:
+                return
+            config_instance = global_config
+            paths = config.split(".")
+            send_msg = "缺少配置{config}"
+            msg = MessageChain(send_msg.format(config=config)) if isinstance(send_msg, str) else send_msg
+            if len(paths) == 1 and hasattr(config_instance, paths[0]) and not getattr(config_instance, paths[0]):
+                await app.send_group_message(event.sender.group, msg)
+                raise ExecutionStop()
+            current = config_instance
             for path in paths:
-                if isinstance(current, (GlobalConfig, Dict)):
-                    if isinstance(current, Dict):
-                        # 如果 current 是字典类型，则尝试使用 current.get 获取值
-                        current = current.get(path, "缺少配置:{}".format(key_string))
-                        if isinstance(current, Dict):
-                            continue
-                        elif (not isinstance(current, Dict)) and current != path:
-                            return
-                    elif isinstance(current, GlobalConfig):
-                        # 如果 current 不是字典类型，则尝试使用 getattr 获取属性值
-                        current = getattr(current, path, "缺少配置:{}".format(key_string))
-                        if isinstance(current, Dict):
-                            continue
-                        elif (not isinstance(current, Dict)) and current != path:
-                            return
-                    elif (not isinstance(current, Dict)) and current != path:
-                        return
+                if isinstance(current, GlobalConfig):
+                    if hasattr(current, path) and not getattr(current, path):
+                        await app.send_group_message(event.sender.group, msg)
+                        raise ExecutionStop()
+                    elif not hasattr(current, paths[0]):
+                        return logger.error(f"不存在的config：{config}")
                     else:
-                        return
+                        current = getattr(current, path)
+                        if isinstance(current, str) and current == path:
+                            await app.send_group_message(event.sender.group, msg)
+                            raise ExecutionStop()
+                elif isinstance(current, dict):
+                    if path not in current:
+                        return logger.error(f"不存在的config：{config}")
+                    elif not current.get(path):
+                        await app.send_group_message(event.sender.group, msg)
+                        raise ExecutionStop()
+                    else:
+                        current = current.get(path)
+                        if isinstance(current, str) and current == path:
+                            await app.send_group_message(event.sender.group, msg)
+                            raise ExecutionStop()
                 else:
-                    # 如果 current 既不是 GlobalConfig 也不是字典，则说明已经遍历到了最后一个 key
                     return
-            # 如果遍历完所有的 key 后 current 仍然不是值类型，说明配置信息不存在，返回 "缺少配置: {}"
-            await app.send_message(event.sender.group, MessageChain(
-                "缺少配置:{}".format(key_string)
-            ), quote=source)
-            raise ExecutionStop
 
-        return Depend(check_config)
+        return Depend(config_available)
 
 
 class QuoteReply(object):

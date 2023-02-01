@@ -74,7 +74,7 @@ class bf1_api(object):
             "RspErrUserIsAlreadyVip()": "玩家已经是VIP了",
         }
 
-    async def api_call(self, body: dict) -> dict:
+    async def api_call(self, body: dict) -> Union[dict, str]:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(

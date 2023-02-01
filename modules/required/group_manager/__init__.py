@@ -112,6 +112,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
 )
 @dispatch(
     Twilight([
+        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         UnionMatch("加精", "设精")
     ])
 )
@@ -149,6 +150,7 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
 )
 @dispatch(
     Twilight([
+        "at" @ ElementMatch(At, optional=True).space(SpacePolicy.PRESERVE),
         FullMatch("撤回")
     ])
 )

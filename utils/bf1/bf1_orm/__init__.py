@@ -56,3 +56,11 @@ class bf1_db:
     #  根据serverid/guid获取对应信息如gameid、
     #  写:
     #  从getFullServerDetails获取并写入服务器信息
+
+    # TODO:
+    #   bf群组相关
+    #   读:
+    #   根据qq来获取对应绑定的群组和guids
+    #   根据对应guid获取服务器信息
+    #   写:
+    #   绑定qq群和群组名

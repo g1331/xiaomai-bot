@@ -18,3 +18,6 @@ data.db
 
 # 数据文件
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
+
+# 第三方插件
+/modules/third_party/

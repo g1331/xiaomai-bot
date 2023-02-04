@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from utils.bf1.bf1_orm.tables import bf1_orm, bf1_player_bind
+from utils.bf1.bf1_orm.tables import bf1_orm, Bf1PlayerBind
 
 
 class bf1_db:
@@ -25,14 +25,14 @@ class bf1_db:
 
     @staticmethod
     async def get_pid_by_qq(qq):
-        if bind := await bf1_orm.fetch_one(select(bf1_player_bind.personaId).where(bf1_player_bind.qq == qq)):
+        if bind := await bf1_orm.fetch_one(select(Bf1PlayerBind.personaId).where(Bf1PlayerBind.qq == qq)):
             return bind[0]
         else:
             return None
 
     @staticmethod
     async def get_qq_by_pid(pid):
-        if bind := await bf1_orm.fetch_all(select(bf1_player_bind.qq).where(bf1_player_bind.personaId == pid)):
+        if bind := await bf1_orm.fetch_all(select(Bf1PlayerBind.qq).where(Bf1PlayerBind.personaId == pid)):
             return bind
         else:
             return None
@@ -40,13 +40,13 @@ class bf1_db:
     @staticmethod
     async def bind_player_qq(qq, pid):
         await bf1_orm.insert_or_update(
-            table=bf1_player_bind,
+            table=Bf1PlayerBind,
             data={
                 "personaId": pid,
                 "qq": qq
             },
             condition=[
-                bf1_player_bind.qq == qq
+                Bf1PlayerBind.qq == qq
             ]
         )
 

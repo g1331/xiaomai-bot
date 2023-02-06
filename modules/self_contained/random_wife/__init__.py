@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 import time
@@ -8,10 +9,11 @@ from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image, Source
+from graia.ariadne.message.element import Image, Source, At
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, UnionMatch, SpacePolicy, ElementMatch, \
     ElementResult, ParamMatch, RegexResult
 from graia.ariadne.model import Member
+from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Saya, Channel
 from loguru import logger
@@ -23,8 +25,9 @@ from core.control import (
     FrequencyLimitation,
     Distribute
 )
-from core.models import saya_model
+from core.models import saya_model, response_model
 
+account_controller = response_model.get_acc_controller()
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
 
@@ -37,18 +40,41 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 async def get_wife() -> str:
-    wife_list = os.listdir(str(Path(__file__).parent/"wife"))
+    wife_list = os.listdir(str(Path(__file__).parent / "wife"))
     wife = random.choice(wife_list)
-    return str(Path(__file__).parent/"wife")+f"/{wife}"
+    return str(Path(__file__).parent / "wife") + f"/{wife}"
+
+
+async def add_wife(file_name: str, img_url: str) -> bool:
+    # noinspection PyBroadException
+    try:
+        fp = open(file_name, 'rb')
+        fp.close()
+        return file_name
+    except Exception as e:
+        logger.warning(e)
+        for i in range(3):
+            async with aiohttp.ClientSession() as session:
+                # noinspection PyBroadException
+                try:
+                    async with session.get(img_url, timeout=5, verify_ssl=False) as resp:
+                        pic = await resp.read()
+                        fp = open(file_name, 'wb')
+                        fp.write(pic)
+                        fp.close()
+                        return True
+                except Exception as e:
+                    logger.error(e)
+    return False
 
 
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -60,72 +86,114 @@ async def get_wife() -> str:
         ]
     )
 )
-async def add_wife(app: Ariadne, group: Group, source: Source,
-                   img: ElementResult,
-                   wife_name: RegexResult):
+async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Member,
+                          img: ElementResult,
+                          wife_name: RegexResult):
     img: Image = img.result
     img_url = img.url
     img_name = wife_name.result.display.replace("\n", '')
     img_type = img.dict()['imageId'][img.dict()['imageId'].rfind(".") + 1:]
     if img_name in ["\n", '']:
-        await app.send_message(
+        return await app.send_message(
             group,
             MessageChain(f"请输入名字!"),
             quote=source
         )
-        return
-    path = os.listdir(str(Path(__file__).parent/"wife"))
+    path = str(Path(__file__).parent / "wife")
     file_name = f'{path}/{img_name}.{img_type}'
     wife_list = os.listdir(path)
     for item in wife_list:
         if img_name in item:
-            await app.send_message(
+            return await app.send_message(
                 group,
                 MessageChain(f"{img_name}已存在!"),
                 quote=source
             )
-            return
-    # noinspection PyBroadException
-    try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(e)
-        i = 0
-        while i < 3:
-            async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
-                try:
-                    async with session.get(img_url, timeout=5, verify_ssl=False) as resp:
-                        pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        await app.send_message(
-                            group,
-                            MessageChain(f"添加成功!"),
-                            quote=source
-                        )
-                        return
-                except Exception as e:
-                    logger.error(e)
-                    i += 1
-    await app.send_message(
-        group,
-        MessageChain(f"添加失败!"),
-        quote=source
+
+    if await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
+        result = await add_wife(file_name, img_url)
+        if result:
+            return await app.send_message(
+                group,
+                MessageChain(f"添加成功!"),
+                quote=source
+            )
+        else:
+            return await app.send_message(
+                group,
+                MessageChain(f"添加失败!"),
+                quote=source
+            )
+
+    target_app, target_group = await account_controller.get_app_from_total_groups(group_id=global_config.test_group)
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"发送添加请求失败!"
+        ), quote=source)
+    else:
+        await app.send_message(
+            group,
+            MessageChain(f"您的添加申请已经提交给管理员,审核通过后将会增加到老婆库中!")
+        )
+
+    app = target_app
+    bot_msg = await app.send_group_message(
+        target_group,
+        MessageChain(
+            f"收到来自群{group.name}({group.id})成员{sender.name}({sender.id})添加老婆{wife_name.result.display}的申请",
+            Image(url=img_url),
+            f"请在1小时内回复 y 可同意该请求,回复其他消息可拒绝"
+        )
     )
-    return
+    group = target_group
+
+    async def waiter(
+            waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
+            event_waiter: GroupMessage
+    ):
+        if waiter_group.id == global_config.test_group and event_waiter.quote and event_waiter.quote.id == bot_msg.id \
+                and await Permission.require_user_perm(waiter_group.id, waiter_member.id,
+                                                       Permission.GroupAdmin):
+            saying = waiter_message.replace(At(app.account), "").display.strip()
+            if saying == 'y':
+                return True
+            else:
+                return False
+
+    # 接收回复消息，如果为y则同意，如果不为y则以该消息拒绝
+    try:
+        return_info = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=3600)
+    except asyncio.exceptions.TimeoutError:
+        return await app.send_message(
+            group,
+            MessageChain(
+                f'注意:由于超时未审核，处理{sender.name}({sender.id})添加老婆{wife_name.result.display}的申请已失效'
+            )
+        )
+
+    if return_info:
+        result = await add_wife(file_name, img_url)
+        if result:
+            return await app.send_message(group, MessageChain(
+                f'已同意{sender.name}({sender.id})添加老婆{wife_name.result.display}'), )
+        else:
+            return await app.send_message(
+                group,
+                MessageChain(f"添加失败!"),
+                quote=source
+            )
+    else:
+        return await app.send_message(group, MessageChain(
+            f'已拒绝{sender.name}({sender.id})添加老婆{wife_name.result.display}'), )
 
 
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -138,7 +206,7 @@ async def add_wife(app: Ariadne, group: Group, source: Source,
 async def del_wife(app: Ariadne, group: Group, source: Source,
                    wife_name: RegexResult):
     img_name = wife_name.result.display
-    path = os.listdir(str(Path(__file__).parent/"wife"))
+    path = os.listdir(str(Path(__file__).parent / "wife"))
     wife_list = os.listdir(path)
     for item in wife_list:
         if img_name in item:
@@ -262,10 +330,10 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module, 3),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -312,10 +380,10 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
-    Permission.user_require(Permission.User, if_noticed=True),
-    Permission.group_require(channel.metadata.level, if_noticed=True),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module, 3),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -328,7 +396,7 @@ async def random_wife(app: Ariadne, sender: Member, group: Group, source: Source
     """
     TODO:1.抽到没人要的就建立所属权力 2.抽到别人就返回:你抽到了xxx是xxx的老婆哦~ 3.连续抽到两次别人的wife就变成你的了
     """
-    wife_list = os.listdir(str(Path(__file__).parent/"wife"))
+    wife_list = os.listdir(str(Path(__file__).parent / "wife"))
     if len(wife_list) != 0:
         wife = await get_wife()
         await app.send_message(

@@ -42,7 +42,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def get_wife() -> str:
     wife_list = os.listdir(str(Path(__file__).parent / "wife"))
     wife = random.choice(wife_list)
-    return str(Path(__file__).parent / "wife") + f"/{wife}"
+    return str(Path(__file__).parent / "wife" / wife)
 
 
 async def add_wife(file_name: str, img_url: str) -> bool:
@@ -99,8 +99,8 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             MessageChain(f"请输入名字!"),
             quote=source
         )
-    path = str(Path(__file__).parent / "wife")
-    file_name = f'{path}/{img_name}.{img_type}'
+    path = Path(__file__).parent / "wife"
+    file_name = str(path / f"{img_name}.{img_type}")
     wife_list = os.listdir(path)
     for item in wife_list:
         if img_name in item:

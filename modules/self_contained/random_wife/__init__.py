@@ -42,30 +42,27 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def get_wife() -> str:
     wife_list = os.listdir(str(Path(__file__).parent / "wife"))
     wife = random.choice(wife_list)
-    return str(Path(__file__).parent/"wife")+f"/{wife}"
+    return str(Path(__file__).parent / "wife") + f"/{wife}"
 
 
 async def add_wife(file_name: str, img_url: str) -> bool:
-    # noinspection PyBroadException
     try:
-        fp = open(file_name, 'rb')
-        fp.close()
-        return file_name
-    except Exception as e:
-        logger.warning(e)
+        # 检查文件是否已存在
+        with open(file_name, 'rb'):
+            return True
+    except FileNotFoundError:
         for i in range(3):
             async with aiohttp.ClientSession() as session:
-                # noinspection PyBroadException
                 try:
                     async with session.get(img_url, timeout=5, verify_ssl=False) as resp:
+                        # 读取图片数据
                         pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
-                        return True
+                        with open(file_name, 'wb') as fp:
+                            fp.write(pic)
+                            return True
                 except Exception as e:
                     logger.error(e)
-    return False
+                    return False
 
 
 @listen(GroupMessage)
@@ -137,7 +134,6 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             quote=source
         )
 
-    app = target_app
     bot_msg = await app.send_group_message(
         target_group,
         MessageChain(
@@ -146,7 +142,6 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             f"请在1小时内回复 y 可同意该请求,回复其他消息可拒绝"
         )
     )
-    group = target_group
 
     async def waiter(
             waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
@@ -165,8 +160,8 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
     try:
         return_info = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=3600)
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(
-            group,
+        return await target_app.send_message(
+            target_group,
             MessageChain(
                 f'注意:由于超时未审核，处理{sender.name}({sender.id})添加老婆{wife_name.result.display}的申请已失效'
             )
@@ -175,17 +170,42 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
     if return_info:
         result = await add_wife(file_name, img_url)
         if result:
-            return await app.send_message(group, MessageChain(
-                f'已同意{sender.name}({sender.id})添加老婆{wife_name.result.display}'), )
-        else:
-            return await app.send_message(
+            await app.send_group_message(
                 group,
+                MessageChain(
+                    At(sender), f"您添加老婆{wife_name.result.display}的申请已通过!"
+                ),
+                quote=source
+            )
+            return await target_app.send_message(
+                target_group,
+                MessageChain(f'已同意{sender.name}({sender.id})添加老婆{wife_name.result.display}')
+            )
+        else:
+            await app.send_group_message(
+                group,
+                MessageChain(
+                    At(sender), f"您添加老婆{wife_name.result.display}的申请失败了!"
+                ),
+                quote=source
+            )
+            return await target_app.send_message(
+                target_group,
                 MessageChain(f"添加失败!"),
                 quote=source
             )
     else:
-        return await app.send_message(group, MessageChain(
-            f'已拒绝{sender.name}({sender.id})添加老婆{wife_name.result.display}'), )
+        await app.send_group_message(
+            group,
+            MessageChain(
+                At(sender), f"您添加老婆{wife_name.result.display}的申请未通过!"
+            ),
+            quote=source
+        )
+        return await target_app.send_message(
+            target_group,
+            MessageChain(f'已拒绝{sender.name}({sender.id})添加老婆{wife_name.result.display}')
+        )
 
 
 @listen(GroupMessage)

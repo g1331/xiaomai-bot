@@ -26,6 +26,8 @@ class Bf1Account(bf1_orm.Base):
     sid = Column(String)
     session = Column(String)
 
+    player_bind = relationship("Bf1PlayerBind", back_populates="bf1_account")
+
     @property
     def pid(self):
         return self.persona_id
@@ -52,7 +54,15 @@ class Bf1PlayerBind(bf1_orm.Base):
     id = Column(Integer, primary_key=True)
     qq = Column(BIGINT, primary_key=True, unique=True)
     persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
-    bf1_account = relationship("Bf1Account", back_populates="bind_records")
+    bf1_account = relationship("Bf1Account", back_populates="player_bind")
+
+    @property
+    def pid(self):
+        return self.persona_id
+
+    @pid.setter
+    def pid(self, value):
+        self.persona_id = value
 
 
 # 群组信息

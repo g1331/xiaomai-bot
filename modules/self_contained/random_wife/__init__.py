@@ -131,9 +131,10 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             f"发送添加请求失败!"
         ), quote=source)
     else:
-        await app.send_message(
+        await app.send_group_message(
             group,
-            MessageChain(f"您的添加申请已经提交给管理员,审核通过后将会增加到老婆库中!")
+            MessageChain(f"您的添加申请已经提交给管理员,审核通过后将会增加到老婆库中!"),
+            quote=source
         )
 
     app = target_app

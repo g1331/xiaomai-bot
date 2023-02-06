@@ -79,9 +79,16 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
             rows=example
         ),
     ])
+    required_module_list = module_controller.get_required_modules()
+    normal_module_list = []
+    for module in module_controller.get_installed_channels():
+        if module not in required_module_list:
+            normal_module_list.append(module)
+    normal_module_list = sorted(normal_module_list)
+    module_list = required_module_list + normal_module_list
     # 已加载插件
     loaded_columns = [ColumnTitle(title="已加载插件")]
-    for i, channel_temp in enumerate(saya.channels):
+    for i, channel_temp in enumerate(sorted(module_list)):
         loaded_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题

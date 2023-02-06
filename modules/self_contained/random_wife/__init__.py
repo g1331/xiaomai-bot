@@ -42,7 +42,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 async def get_wife() -> str:
     wife_list = os.listdir(str(Path(__file__).parent / "wife"))
     wife = random.choice(wife_list)
-    return str(Path(__file__).parent / "wife" / wife)
+    return str(Path(__file__).parent/"wife")+f"/{wife}"
 
 
 async def add_wife(file_name: str, img_url: str) -> bool:

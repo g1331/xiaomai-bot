@@ -21,3 +21,5 @@ data.db
 
 # 第三方插件
 /modules/third_party/
+auto_get_server.py
+core/models/saya_model/modules_data.json

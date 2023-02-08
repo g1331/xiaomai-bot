@@ -419,7 +419,7 @@ async def random_wife(app: Ariadne, sender: Member, group: Group, source: Source
     TODO:1.抽到没人要的就建立所属权力 2.抽到别人就返回:你抽到了xxx是xxx的老婆哦~ 3.连续抽到两次别人的wife就变成你的了
     """
     wife_list = os.listdir(str(Path(__file__).parent / "wife"))
-    wife_list = wife_list.remove("__init__.py")
+    wife_list.remove("__init__.py")
     if len(wife_list) != 0:
         wife = await get_wife()
         await app.send_message(

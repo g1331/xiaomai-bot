@@ -62,6 +62,25 @@ async def get_a_uuid() -> str:
     return uuid_result
 
 
+# 获取玩家战报
+async def get_player_stat_data(player_pid: str) -> dict:
+    global bf_aip_header, bf_aip_url, client
+    session = await get_main_session()
+    bf_aip_header["X-Gatewaysession"] = session
+    body = {
+        "jsonrpc": "2.0",
+        "method": "Stats.detailedStatsByPersonaId",
+        "params": {
+            "game": "tunguska",
+            "personaId": str(player_pid)
+        },
+        "id": await get_a_uuid()
+    }
+    response = await client.post(bf_aip_url, headers=bf_aip_header, data=json.dumps(body), timeout=5)
+    response = eval(response.text)
+    return response
+
+
 # 检查一个字符串是否是uuid
 def check_uuid4(test_uuid: str, version=4) -> bool:
     """

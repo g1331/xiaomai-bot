@@ -20,8 +20,9 @@ from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.element import Source, ForwardNode, Forward
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, \
-    PRESERVE, UnionMatch, WildcardMatch, RegexMatch
+from graia.ariadne.message.parser.twilight import (
+    Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy,
+    PRESERVE, UnionMatch, WildcardMatch, RegexMatch)
 from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -37,15 +38,12 @@ from core.control import (
     FrequencyLimitation,
     Distribute
 )
-from core.models import (
-    saya_model
-)
+from core.models import saya_model
 from utils.UI import *
 from utils.string import generate_random_str
 from utils.text2img import md2img
-from .api_gateway import refresh_api_client
+from .api_gateway import refresh_api_client, get_player_stat_data
 from .bfgroups_log import rsp_log
-from .info_cache_manager import InfoCache_stat
 from .main_session_auto_refresh import auto_refresh_account
 from .map_team_info import MapData
 from .utils import getPid_byName, server_playing, app_blocked
@@ -2014,7 +2012,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
 
     # 获取玩家生涯战绩
     # 队伍1
-    scrape_index_tasks_t1 = [asyncio.ensure_future(InfoCache_stat(str(player_item['pid'])).get_data()) for
+    scrape_index_tasks_t1 = [asyncio.ensure_future(get_player_stat_data(player_item['pid'])) for
                              player_item in playerlist_data["teams"][0]]
     tasks = asyncio.gather(*scrape_index_tasks_t1)
     try:
@@ -2023,7 +2021,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         pass
 
     # 队伍2
-    scrape_index_tasks_t2 = [asyncio.ensure_future(InfoCache_stat(str(player_item['pid'])).get_data()) for
+    scrape_index_tasks_t2 = [asyncio.ensure_future(get_player_stat_data(player_item['pid'])) for
                              player_item in playerlist_data["teams"][1]]
     tasks = asyncio.gather(*scrape_index_tasks_t2)
     try:

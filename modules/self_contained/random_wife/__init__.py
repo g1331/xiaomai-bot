@@ -41,7 +41,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 async def get_wife() -> str:
     wife_list = os.listdir(str(Path(__file__).parent / "wife"))
-    wife_list = wife_list.remove("__init__.py")
+    wife_list.remove("__init__.py")
     wife = random.choice(wife_list)
     return str(Path(__file__).parent / "wife") + f"/{wife}"
 

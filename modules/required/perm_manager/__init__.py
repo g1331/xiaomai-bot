@@ -420,6 +420,7 @@ async def change_globalBlack(app: Ariadne, group: Group, action: RegexResult, me
         if action == "添加":
             if target in await Permission.get_BotAdminsList() or target == config.Master:
                 error_targets.append((target, f"无法修改BOT管理/Master的权限哦~"))
+                continue
             if target in global_black_list:
                 error_targets.append((target, f"{target}已经在全局黑名单内!"))
             else:

@@ -184,30 +184,6 @@ async def change_group_perm(
     ), quote=source)
 
 
-"""
-    # 更新管理群权限
-    async def update_admin_group_permission(self):
-        for bot_account in self.total_groups:
-            for group in self.total_groups[bot_account]:
-                permission_type = "default"
-                if result := await orm.fetch_one(
-                        select(GroupSetting.permission_type).where(GroupSetting.group_id == group.id)
-                ):
-                    permission_type = result[0]
-                if permission_type == "admin":
-                    app = Ariadne.current(bot_account)
-                    for member in await app.get_member_list(group):
-                        await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": member.id, "group_id": group.id, "perm": 32},
-                            condition=[
-                                MemberPerm.qq == member.id,
-                                MemberPerm.group_id == group.id
-                            ]
-                        )
-"""
-
-
 # >=128可修改群权限类型
 @listen(GroupMessage)
 @decorate(
@@ -407,6 +383,99 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
                 name=f"{member_item.name}({member_id})" if member_item else member_id,
                 description=f"{perm_dict[member_id]}——"
                             f"{Permission.user_str_dict[perm_dict[member_id]]}",
+                avatar=await get_user_avatar_url(member_id)
+            )
+        )
+    perm_list_column = [Column(elements=perm_list_column[i: i + 20]) for i in range(0, len(perm_list_column), 20)]
+    return await app.send_message(group, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=perm_list_column, color_type=get_color_type_follow_time())
+        ))
+    ), quote=source)
+
+
+# 增删全局黑名单
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin),
+)
+@dispatch(
+    Twilight([
+        "action" @ UnionMatch("添加", "删除"),
+        FullMatch("全局黑"),
+        WildcardMatch() @ "member_id"
+        # 示例: 添加/删除 全局黑 000
+    ])
+)
+async def change_globalBlack(app: Ariadne, group: Group, action: RegexResult, member_id: RegexResult, source: Source):
+    action = action.result.display
+    targets = get_targets(member_id.result)
+    global_black_list = await Permission.get_GlobalBlackList()
+    error_targets = []
+    for target in targets:
+        if action == "添加":
+            if target in global_black_list:
+                error_targets.append((target, f"{target}已经在全局黑名单内!"))
+            else:
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={
+                        "qq": target,
+                        "group_id": 0,
+                        "perm": -1
+                    },
+                    condition=[
+                        MemberPerm.qq == target
+                    ]
+                )
+        else:
+            if target not in global_black_list:
+                error_targets.append((target, f"{target}不在全局黑名单内!"))
+            else:
+                await orm.delete(
+                    table=MemberPerm,
+                    condition=[
+                        MemberPerm.qq == target,
+                        MemberPerm.group_id == 0
+                    ]
+                )
+    response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
+    if error_targets:
+        response_text += "\n\n失败目标:"
+        for i in error_targets:
+            response_text += f"\n{i[0]}-{i[1]}"
+    return await app.send_message(group, response_text, quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+)
+@dispatch(Twilight([
+    FullMatch("全局黑名单列表"),
+    # 示例: 全局黑名单列表
+]))
+async def get_globalBlack_list(app: Ariadne, group: Group, source: Source):
+    perm_list_column = [ColumnTitle(title="全局黑名单列表")]
+    global_black_list = await Permission.get_GlobalBlackList()
+    if len(global_black_list) == 0:
+        return await app.send_message(group, MessageChain("全局黑名单为空哦~"), quote=source)
+    for member_id in global_black_list:
+        try:
+            member_item = await app.get_member(group, member_id)
+        except:
+            member_item = None
+        perm_list_column.append(
+            ColumnUserInfo(
+                name=f"{member_item.name}({member_id})" if member_item else member_id,
                 avatar=await get_user_avatar_url(member_id)
             )
         )

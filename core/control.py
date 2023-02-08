@@ -112,6 +112,20 @@ class Permission(object):
         return admin_list
 
     @staticmethod
+    async def get_GlobalBlackList() -> list[int]:
+        global_black_list = []
+        if result := await orm.fetch_all(
+                select(MemberPerm.qq).where(
+                    MemberPerm.perm == Permission.GlobalBlack,
+                    MemberPerm.group_id == 0
+                )
+        ):
+            for item in result:
+                if item[0] not in global_black_list:
+                    global_black_list.append(item[0])
+        return global_black_list
+
+    @staticmethod
     async def get_group_perm_type(group_id: int) -> str:
         if result := await orm.fetch_one(
                 select(GroupSetting.permission_type).where(GroupSetting.group_id == group_id)
@@ -198,7 +212,7 @@ class Permission(object):
             # 获取并判断用户的权限等级
             user_level = await cls.get_user_perm(event)
             if user_level < perm:
-                if user_level == Permission.GlobalBlack:
+                if user_level in [Permission.GlobalBlack, Permission.GroupBlack]:
                     raise ExecutionStop
                 if if_noticed:
                     await app.send_message(event.sender.group, MessageChain(

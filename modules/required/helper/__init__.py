@@ -196,7 +196,8 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
             ColumnTitle(title="插件详情"),
             ColumnList(rows=[
                 ColumnListItem(
-                    subtitle=module_metadata.display_name or module_metadata.name or saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
+                    subtitle=module_metadata.display_name or module_metadata.name or
+                             saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
                     content=module_list[index]
                 ),
                 ColumnListItem(
@@ -247,11 +248,13 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
         RegexMatch("[0-9]+") @ "index"
     ])
 )
-async def change_module_switch(app: Ariadne,
-                               group: Group,
-                               source: Source,
-                               operation: RegexResult,
-                               index: RegexResult):
+async def change_module_switch(
+        app: Ariadne,
+        group: Group,
+        source: Source,
+        operation: RegexResult,
+        index: RegexResult
+):
     """开关
     """
     operation = operation.result.display.replace("-", "")

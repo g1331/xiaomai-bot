@@ -66,8 +66,8 @@ async def wandering_earth_counting_down(
     bottom = bottom.result.display.strip("\"").strip("'")
     if gif.matched and not count.isnumeric():
         return await app.send_group_message(group, MessageChain("生成 gif 时 count 必须为数字！"))
-    elif gif.matched and int(count) > 100:
-        return await app.send_group_message(group, MessageChain("生成 gif 时 count 最大仅支持100！"))
+    elif gif.matched and int(count) > 114:
+        return await app.send_group_message(group, MessageChain("生成 gif 时 count 最大仅支持114！"))
     content = await asyncio.to_thread(
         gen_gif if gif.matched else gen_counting_down, top, start, count, end, bottom, rgba.matched
     )

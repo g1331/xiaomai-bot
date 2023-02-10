@@ -390,7 +390,7 @@ class FrequencyLimitation(object):
                 await app.send_message(
                     event.sender.group,
                     MessageChain(f"超过频率调用限制!({current_weight + weight}/{total_weights})\n"
-                                 f"休息一下吧~继续高频访问会被加入临时黑名单哦~"),
+                                 f"休息一会儿吧~继续高频访问会被加入临时黑名单哦~"),
                     quote=src,
                 )
                 raise ExecutionStop

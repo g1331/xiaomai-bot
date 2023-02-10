@@ -134,7 +134,7 @@ async def add_keyword(
         if op_type.matched
         else "fullmatch"
     )
-    if response.result.display.encode("utf-8") > 300:
+    if len(response.result.display.encode("utf-8")) > 300:
         return await app.send_group_message(
             group,
             MessageChain(f"响应内容不能超过100字!"),

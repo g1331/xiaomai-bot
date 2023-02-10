@@ -1,3 +1,4 @@
+import asyncio
 import re
 import random
 import hashlib
@@ -133,6 +134,12 @@ async def add_keyword(
         if op_type.matched
         else "fullmatch"
     )
+    if response.result.display.encode("utf-8") > 300:
+        return await app.send_group_message(
+            group,
+            MessageChain(f"响应内容不能超过100字!"),
+            quote=source
+        )
     response = await message_chain_to_json(response.result)
     keyword: MessageChain = keyword.result.copy()
     for i in keyword.content:
@@ -172,8 +179,11 @@ async def add_keyword(
                 group.id if group_only else -1,
             )
         )
-    await app.send_group_message(group, MessageChain(f"{'群关键词回复' if group_only.matched else '全局关键词回复'}添加成功！"),
-                                 quote=source)
+    await app.send_group_message(
+        group,
+        MessageChain(f"{'群关键词回复' if group_only.matched else '全局关键词回复'}添加成功！"),
+        quote=source
+    )
 
 
 @channel.use(
@@ -301,6 +311,31 @@ async def delete_keyword(
         await app.send_group_message(group, MessageChain("未检测到此关键词数据"), quote=source)
 
 
+FrequencyLimitationDict = {}
+limit_running = False
+
+
+async def limit():
+    global limit_running, FrequencyLimitationDict
+    limit_running = True
+    if limit_running:
+        return
+    while True:
+        FrequencyLimitationDict = {}
+        await asyncio.sleep(30)
+
+
+def FrequencyJudge(sender_id) -> bool:
+    global FrequencyLimitationDict
+    if sender_id not in FrequencyLimitationDict:
+        FrequencyLimitationDict[sender_id] = 3
+    if FrequencyLimitationDict[sender_id] > 12:
+        return False
+    else:
+        FrequencyLimitationDict[sender_id] += 3
+        return True
+
+
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
@@ -312,7 +347,9 @@ async def delete_keyword(
         ],
     )
 )
-async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
+async def keyword_detect(app: Ariadne, message: MessageChain, group: Group, sender: Member):
+    if not limit_running:
+        await limit()
     try:
         add_keyword_twilight.generate(message)
     except ValueError:
@@ -332,6 +369,9 @@ async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
                     )
             ):
                 reply = random.choice(result)
+                if not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
+                    if not FrequencyJudge(sender.id):
+                        return
                 await app.send_group_message(
                     group, json_to_message_chain(str(reply[0]))
                 )
@@ -353,6 +393,9 @@ async def keyword_detect(app: Ariadne, message: MessageChain, group: Group):
                                 )
                             )
                     ):
+                        if not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
+                            if not FrequencyJudge(sender.id):
+                                return
                         await app.send_group_message(
                             group,
                             json_to_message_chain(

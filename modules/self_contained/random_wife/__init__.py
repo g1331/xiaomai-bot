@@ -228,7 +228,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
 async def del_wife(app: Ariadne, group: Group, source: Source,
                    wife_name: RegexResult):
     img_name = wife_name.result.display
-    path = os.listdir(str(Path(__file__).parent / "wife"))
+    path = str(Path(__file__).parent / "wife")
     wife_list = os.listdir(path)
     for item in wife_list:
         if img_name in item:

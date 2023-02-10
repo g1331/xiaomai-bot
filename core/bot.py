@@ -127,7 +127,7 @@ class Umaru(object):
                 if item[0] not in admin_list:
                     admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
-        Timeout = 30 * len(self.config.bot_accounts)
+        Timeout = 60
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
                 logger.debug(f"账号{app.account}初始化ing")

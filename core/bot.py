@@ -130,12 +130,12 @@ class Umaru(object):
         Timeout = 60
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
-                logger.debug(f"账号{app.account}初始化ing")
                 if app.account in self.initialized_app_list:
                     continue
                 if not app.connection.status.available:
                     logger.warning(f"{app.account}失去连接,已跳过初始化")
                     continue
+                logger.debug(f"账号{app.account}初始化ing")
                 group_list = await app.get_group_list()
                 self.total_groups[app.account] = group_list
                 # 更新群组权限

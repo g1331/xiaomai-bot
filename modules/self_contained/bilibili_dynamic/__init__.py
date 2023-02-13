@@ -163,12 +163,13 @@ async def init():
         LIVE_STATUS[uid_statu] = r["data"][uid_statu]["live_status"] == 1
     i = 1
     for up_id in subid_list:
+        res = None
         for _ in range(3):
             res = await grpc_dyn_get(up_id)
-            if not res:
-                logger.error("[BiliBili推送] 寄！")
-                return
-            break
+            if res:
+                break
+        if not res:
+            return logger.error("[BiliBili推送] 寄！")
         last_dynid = res["list"][0]["extend"]["dyn_id_str"]
         DYNAMIC_OFFSET[up_id] = int(last_dynid)
         up_name = res["list"][0]["modules"][0]["module_author"]["author"]["name"]

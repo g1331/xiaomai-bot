@@ -168,6 +168,7 @@ async def init():
             res = await grpc_dyn_get(up_id)
             if res:
                 break
+            await asyncio.sleep(10)
         if not res:
             return logger.error("[BiliBili推送] 寄！")
         last_dynid = res["list"][0]["extend"]["dyn_id_str"]

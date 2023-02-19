@@ -55,9 +55,9 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 )
 @dispatch(
     Twilight([
-        FullMatch("在线BOT"),
+        FullMatch("BOT列表"),
         "group_id" @ ParamMatch(optional=True),
-        # 示例: 在线BOT 000
+        # 示例: BOT列表 000
     ])
 )
 async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, source: Source):
@@ -121,13 +121,13 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
 )
 @dispatch(
     Twilight([
-        FullMatch("BOT列表"),
-        # 示例: BOT列表
+        FullMatch("在线BOT"),
+        # 示例: 在线BOT
     ])
 )
 async def get_bot_list(app: Ariadne, group: Group, source: Source):
     bot_list_column = [ColumnTitle(
-        title=f"BOT列表:"
+        title=f"在线BOT列表:"
               f"{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}"
               f"/"
               f"{len(config.bot_accounts)}"

@@ -3935,8 +3935,6 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
             ), quote=source)
 
             async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
-                # 之所以把这个 waiter 放在 new_friend 里面，是因为我们需要用到 app
-                # 假如不需要 app 或者 打算通过传参等其他方式获取 app，那也可以放在外面
                 if waiter_member.id == sender.id and waiter_group.id == group.id:
                     saying = waiter_message.display
                     if saying in choices:
@@ -3944,17 +3942,17 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
                         _player_matched_kick = player_pid_dict[_player_matched_kick.lower()]
                         return True, waiter_member.id, _player_matched_kick
                     else:
-                        return False, waiter_member.id, None
+                        return False, waiter_member.id, False
 
             try:
-                result, operator, player_matched_kick = await FunctionWaiter(waiter, [GroupMessage],
-                                                                             block_propagation=True).wait(30)
+                result = await FunctionWaiter(waiter, [GroupMessage],  block_propagation=True).wait(30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
-                    f'操作超时!已退出换图'), quote=source)
+                    f'操作超时!已退出踢出'), quote=source)
                 return
 
             if result:
+                _, operator, player_matched_kick = result
                 await app.send_message(group, MessageChain(
                     f"执行ing"
                 ), quote=source)
@@ -3962,26 +3960,23 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
                 result = await api_gateway.rsp_kickPlayer(info_dict[key]["gameid"], info_dict[key]["session"],
                                                           player_matched_kick, reason)
                 if type(result) == str:
-                    await app.send_message(group, MessageChain(
+                    return await app.send_message(group, MessageChain(
                         f"{result}"
                     ), quote=source)
-                    return False
                 elif type(result) == dict:
                     await app.send_message(group, MessageChain(
                         f"踢出成功!原因:{reason}"
                     ), quote=source)
                     rsp_log.kick_logger(sender.id, group.id, player_name, info_dict[key]["serverid"], reason)
-                    return True
+                    return
                 else:
-                    await app.send_message(group, MessageChain(
+                    return await app.send_message(group, MessageChain(
                         f"收到指令:({action.result})({player_name})({reason})\n但执行出错了"
                     ), quote=source)
-                    return False
             else:
-                await app.send_message(group, MessageChain(
+                return await app.send_message(group, MessageChain(
                     f"未识别到有效序号,取消踢出"
                 ), quote=source)
-                return
     await app.send_message(group, MessageChain(
         f"未搜索到玩家~"
     ), quote=source)
@@ -5836,8 +5831,7 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
                 if waiter_member.id == sender.id and waiter_group.id == group.id:
                     saying = waiter_message.display
                     if saying in choices:
-                        map_index_temp = map_list.index(
-                            map_index_list[int(saying)].replace('#', '').replace(saying, '').replace('\n', ''))
+                        map_index_temp = map_list.index(map_index_list[int(saying)].replace('#', '').replace(saying, '').replace('\n', '').replace("●", ""))
                         return True, waiter_member.id, map_index_temp
                     else:
                         return False, waiter_member.id, None
@@ -5862,11 +5856,10 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
                     return False
                 elif type(result) == dict:
                     await app.send_message(group, MessageChain(
-                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}".replace(
-                            "\n", "").replace('流血', '流\u200b血')
+                        f"已更换服务器{server_rank + 1}地图为{map_list[int(map_index)][map_list[int(map_index)].find('-') + 1:]}"
+                        f"".replace("\n", "").replace('流血', '流\u200b血')
                     ), quote=source)
-                    rsp_log.map_logger(sender.id, group.id,
-                                       map_list[int(map_index)].replace("-", " "), server_id)
+                    rsp_log.map_logger(sender.id, group.id, map_list[int(map_index)].replace("-", " "), server_id)
                     return True
                 else:
                     await app.send_message(group, MessageChain(
@@ -5954,7 +5947,7 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
         ]
     )
 )
-async def change_map_bylist(app: Ariadne, sender: Member, group: Group, action: RegexResult,
+async def change_map_byList(app: Ariadne, sender: Member, group: Group, action: RegexResult,
                             server_rank: RegexResult, source: Source):
     # 服务器序号检测
     try:

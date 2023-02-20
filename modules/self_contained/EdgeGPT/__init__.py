@@ -55,7 +55,7 @@ parser.add_argument("--no-stream", action="store_true")
 parser.add_argument(
     "--cookie-file",
     type=str,
-    default="cookies.json",
+    default=str(cookie_path),
 )
 args = parser.parse_args()
 os.environ["COOKIE_FILE"] = args.cookie_file

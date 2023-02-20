@@ -43,8 +43,8 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None
-cookie_path = Path("./cookies.json")
-if not cookie_path.exists():
+cookie_path = Path(__file__).parent / "cookies.json"
+if not cookie_path.is_file():
     enable = False
     logger.error("EdgeGPT未识别到cookie文件,请将cookies.json放在插件目录下!")
 else:

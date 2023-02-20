@@ -1,0 +1,18 @@
+{
+  "level": 2,
+  "name": "EdgeGPT",
+  "version": "0.1",
+  "display_name": "EdgeGPT",
+  "authors": [
+    "十三"
+  ],
+  "description": "一个生成与必应AI对话的插件,请将cookies.json放在插件目录下",
+  "usage": [
+    "在群中发送 `-bing 内容` 即可开启对话，之后默认为同一轮对话",
+    "在群中发送 `-bing -n 内容` 即可开启新一轮对话",
+    "在群中发送 `-bing -t 内容` 即可以文字形式返回结果（默认为图片）"
+  ],
+  "example": ["-bing -t 微软你真该死啊"],
+  "default_switch": false,
+  "default_notice": false
+}

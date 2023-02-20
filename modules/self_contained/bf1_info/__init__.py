@@ -2906,7 +2906,7 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.GroupAdmin),
+    Permission.user_require(Permission.User),
 )
 @dispatch(
     Twilight(

@@ -379,7 +379,7 @@ manager = ConversationManager()
             Distribute.require(),
             Function.require(channel.module),
             FrequencyLimitation.require(channel.module, 5),
-            Permission.group_require(channel.metadata.level),
+            Permission.group_require(channel.metadata.level, if_noticed=True),
             Permission.user_require(Permission.User),
         ],
     )

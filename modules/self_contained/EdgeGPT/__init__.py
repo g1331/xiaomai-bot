@@ -353,7 +353,8 @@ class ConversationManager(object):
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
         self.data[group][member]["running"] = True
         try:
-            result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]
+            result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0][
+                "body"][0]["text"]
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:
@@ -397,6 +398,8 @@ async def chat_gpt(
         return await app.send_group_message(group, MessageChain("当前EdgeGPT没有配置cookie无法使用哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
+    if not manager.data[group][member]["running"]:
+        await app.send_group_message(group, MessageChain("请等待,必应解答ing"), quote=source)
     response = await manager.send_message(group, member, content.result.display.strip())
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

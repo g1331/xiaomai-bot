@@ -1955,18 +1955,14 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=src)
         return False
-    admin_pid_list = []
+    admin_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["adminList"]]
     admin_counter = 0
-    admin_color = (117, 213, 87)
-    for item in server_info["rspInfo"]["adminList"]:
-        admin_pid_list.append(str(item['personaId']))
-    vip_pid_list = []
+    admin_color = (78, 213, 123)
+    vip_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["vipList"]]
     vip_counter = 0
-    vip_color = (227, 23, 13)
-    for item in server_info["rspInfo"]["vipList"]:
-        vip_pid_list.append(str(item['personaId']))
+    vip_color = (244, 207, 199)
     bind_pid_list = await get_group_bindList(app, group)
-    bind_color = (65, 105, 225)
+    bind_color = (157, 191, 216)
     bind_counter = 0
     max_level_counter = 0
 
@@ -3945,7 +3941,7 @@ async def kick_by_searched(app: Ariadne, sender: Member, group: Group,
                         return False, waiter_member.id, False
 
             try:
-                result = await FunctionWaiter(waiter, [GroupMessage],  block_propagation=True).wait(30)
+                result = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(30)
             except asyncio.exceptions.TimeoutError:
                 await app.send_message(group, MessageChain(
                     f'操作超时!已退出踢出'), quote=source)
@@ -5831,7 +5827,9 @@ async def change_map(app: Ariadne, sender: Member, group: Group, action: RegexRe
                 if waiter_member.id == sender.id and waiter_group.id == group.id:
                     saying = waiter_message.display
                     if saying in choices:
-                        map_index_temp = map_list.index(map_index_list[int(saying)].replace('#', '').replace(saying, '').replace('\n', '').replace("●", ""))
+                        map_index_temp = map_list.index(
+                            map_index_list[int(saying)].replace('#', '').replace(saying, '').replace('\n', '').replace(
+                                "●", ""))
                         return True, waiter_member.id, map_index_temp
                     else:
                         return False, waiter_member.id, None

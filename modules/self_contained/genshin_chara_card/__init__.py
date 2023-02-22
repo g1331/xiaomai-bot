@@ -61,6 +61,8 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
     uid = uid.result.display
     chara = chara.result.display.strip()
     chara_pinyin = "".join(pypinyin.lazy_pinyin(chara))
+    if not uid.isdigit():
+        return await app.send_message(group, MessageChain("非法uid"), quote=source)
     if not characters:
         await app.send_message(group, MessageChain("正在初始化角色列表"), quote=source)
         _ = await init_chara_list()

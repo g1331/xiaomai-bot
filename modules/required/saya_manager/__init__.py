@@ -82,7 +82,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     module_list = module_controller.get_all_modules()
     # 已加载插件
     loaded_columns = [ColumnTitle(title="已加载插件")]
-    for i, channel_temp in enumerate(sorted(module_list)):
+    for i, channel_temp in enumerate(module_list):
         loaded_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题

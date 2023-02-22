@@ -11,6 +11,6 @@
   "example": [
     "-原神角色卡 1234567890 芭芭拉"
   ],
-  "default_switch": true,
+  "default_switch": false,
   "default_notice": false
 }

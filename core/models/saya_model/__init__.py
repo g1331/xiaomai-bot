@@ -356,7 +356,7 @@ class ModulesController:
         return sorted([module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()])
 
     def get_unavailable_modules(self) -> list[str]:
-        return sorted([module for module in self.get_all_channels() if not self.if_module_available(module)])
+        return sorted([module for module in self.get_all_channels() if not self.if_module_available(module) and module not in self.get_not_installed_channels()])
 
     def get_all_modules(self) -> list[str]:
         required_module_list = self.get_required_modules()

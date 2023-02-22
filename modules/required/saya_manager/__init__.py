@@ -148,7 +148,7 @@ async def change_module_status(
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
         operation_type = saya_model.ModuleOperationType.UNINSTALL if operation == "卸载" else saya_model.ModuleOperationType.RELOAD
-    modules = module_controller.get_all_modules()
+    modules = module_controller.get_all_modules() + module_controller.get_not_installed_channels()
     if index == 0 or index > len(modules):
         return await app.send_message(group, MessageChain(f"当前只有{len(modules)}个插件哦~\n(index:{index})"), quote=source)
     module = modules[index - 1]

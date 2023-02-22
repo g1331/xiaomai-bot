@@ -121,7 +121,7 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
             )
         except Exception as e:
             logger.error(e)
-            await app.send_message(group, MessageChain("查询出粗!"), quote=source)
+            await app.send_message(group, MessageChain("查询出错!"), quote=source)
 
 
 async def init_chara_list():

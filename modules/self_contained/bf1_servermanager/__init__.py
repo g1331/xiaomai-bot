@@ -2075,7 +2075,7 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
     title_font = ImageFont.truetype(font_path, 40)
     team_font = ImageFont.truetype(font_path, 25)
     title_font_small = ImageFont.truetype(font_path, 22)
-    player_font = ImageFont.truetype(font_path, 18)
+    player_font = ImageFont.truetype(font_path, 20)
     rank_font = ImageFont.truetype(font_path, 15)
     info_font = ImageFont.truetype(font_path, 22)
     # 服务器名字

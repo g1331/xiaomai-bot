@@ -185,7 +185,7 @@ async def init():
         logger.info(f"[BiliBili推送] 正在初始化  ● {si}  ---->  {up_name}({up_id}){live_status}")
         i += 1
         if len(subid_list) >= 30:
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
         else:
             await asyncio.sleep(1)
 

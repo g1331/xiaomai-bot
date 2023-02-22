@@ -87,6 +87,8 @@ class AccountController:
             )
 
     async def get_response_account(self, group_id: int) -> int:
+        if group_id not in self.account_dict:
+            return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]

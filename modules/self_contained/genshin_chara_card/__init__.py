@@ -1,22 +1,22 @@
+import asyncio
 import re
 import time
 from pathlib import Path
 
 import aiohttp
-import asyncio
 import pypinyin
 from bs4 import BeautifulSoup
-from playwright._impl._api_types import TimeoutError
-
-from graia.saya import Channel
 from graia.ariadne.app import Ariadne
-from graiax.playwright import PlaywrightBrowser
+from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, Image
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch
-from graia.ariadne.event.message import Group, GroupMessage
+from graia.ariadne.message.parser.twilight import RegexResult
+from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePolicy, ParamMatch
+from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.message.parser.twilight import RegexMatch, RegexResult
+from graiax.playwright import PlaywrightBrowser
+from playwright._impl._api_types import TimeoutError
+
 from core.control import (
     Permission,
     Function,
@@ -42,8 +42,8 @@ characters = {}
         inline_dispatchers=[
             Twilight([
                 FullMatch("-原神角色卡"),
-                RegexMatch(r"[12][0-9]{8}") @ "uid",
-                RegexMatch(r".*") @ "chara",
+                "uid" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
+                "chara" @ ParamMatch(optional=False)
             ])
         ],
         decorators=[

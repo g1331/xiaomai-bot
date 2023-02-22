@@ -2375,6 +2375,23 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "pypinyin"
+version = "0.48.0"
+description = "汉字拼音转换模块/工具."
+category = "main"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, <4"
+files = [
+    {file = "pypinyin-0.48.0-py2.py3-none-any.whl", hash = "sha256:38b8a478b4af17c5b4211482ea35c68eb0ca3a81661e5fb2abe6f9cc66d1634b"},
+    {file = "pypinyin-0.48.0.tar.gz", hash = "sha256:63d18b8f10dd38a3e57f26b6833a983d9176f2e9c4a53157c23e1343d0b3dbf8"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "pypng"
 version = "0.20220715.0"
 description = "Pure Python library for saving and loading PNG images"
@@ -3111,4 +3128,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "97fc3cab920a5ada6984422a3e4d0b464f558d7c910cea8c6c5e31574d79d15b"
+content-hash = "1bca25f5672c3724e4bf3d272b083ffdeebd22ed14cb3601915c912c60f42602"

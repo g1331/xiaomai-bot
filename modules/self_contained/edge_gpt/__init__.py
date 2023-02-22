@@ -389,7 +389,7 @@ manager = ConversationManager()
         ],
     )
 )
-async def chat_gpt(
+async def edge_gpt(
         app: Ariadne,
         group: Group,
         member: Member,

@@ -15,6 +15,7 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePoli
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
+from loguru import logger
 from playwright._impl._api_types import TimeoutError
 
 from core.control import (
@@ -70,51 +71,55 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
     url = f"https://enka.shinshin.moe/u/{uid}"
     browser = Ariadne.current().launch_manager.get_interface(PlaywrightBrowser)
     async with browser.page() as page:
-        await page.goto(url, wait_until="networkidle", timeout=100000)
-        await page.set_viewport_size({"width": 2560, "height": 1080})
-        await page.evaluate(
-            "document.getElementsByClassName('Dropdown-list')[0].children[13].dispatchEvent(new Event('click'));"
-        )
-        html = await page.inner_html(".CharacterList")
-        soup = BeautifulSoup(html, "html.parser")
-        styles = [figure["style"] for figure in soup.find_all("figure")]
-        if all(characters[chara_pinyin] not in style.lower() for style in styles):
-            return await app.send_message(
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=100000)
+            await page.set_viewport_size({"width": 2560, "height": 1080})
+            await page.evaluate(
+                "document.getElementsByClassName('Dropdown-list')[0].children[13].dispatchEvent(new Event('click'));"
+            )
+            html = await page.inner_html(".CharacterList")
+            soup = BeautifulSoup(html, "html.parser")
+            styles = [figure["style"] for figure in soup.find_all("figure")]
+            if all(characters[chara_pinyin] not in style.lower() for style in styles):
+                return await app.send_message(
+                    group,
+                    MessageChain(
+                        f"未找到角色{chara} | {chara_pinyin}！只查询到这几个呢（只能查到展柜里有的呢）："
+                        f"{'、'.join([k for k, v in characters.items() if any(v in style.lower() for style in styles)])}"
+                    ),
+                    quote=source,
+                )
+            index = -1
+            chara_src = ""
+            for i, style in enumerate(styles):
+                if characters[chara_pinyin] in style.lower():
+                    index = i
+                    chara_src = style
+                    break
+            if index == -1 or not chara_src:
+                return await app.send_message(group, MessageChain("获取角色头像div失败！"), quote=source)
+            await page.locator(f"div.avatar.svelte-jlfv30 >> nth={index}").click()
+            await asyncio.sleep(1)
+            await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click()
+            await page.evaluate("document.getElementsByClassName('toolbar')[0].remove()")
+            async with page.expect_download() as download_info:
+                for _ in range(3):
+                    try:
+                        await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click(timeout=10000)
+                    except TimeoutError:
+                        pass
+            path = await (await download_info.value).path()
+            await app.send_message(
                 group,
-                MessageChain(
-                    f"未找到角色{chara} | {chara_pinyin}！只查询到这几个呢（只能查到展柜里有的呢）："
-                    f"{'、'.join([k for k, v in characters.items() if any(v in style.lower() for style in styles)])}"
-                ),
+                MessageChain([
+                    f"use: {round(time.time() - start_time, 2)}s\n",
+                    Image(path=path)
+                ]),
                 quote=source,
             )
-        index = -1
-        chara_src = ""
-        for i, style in enumerate(styles):
-            if characters[chara_pinyin] in style.lower():
-                index = i
-                chara_src = style
-                break
-        if index == -1 or not chara_src:
-            return await app.send_message(group, MessageChain("获取角色头像div失败！"), quote=source)
-        await page.locator(f"div.avatar.svelte-jlfv30 >> nth={index}").click()
-        await asyncio.sleep(1)
-        await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click()
-        await page.evaluate("document.getElementsByClassName('toolbar')[0].remove()")
-        async with page.expect_download() as download_info:
-            for _ in range(3):
-                try:
-                    await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click(timeout=10000)
-                except TimeoutError:
-                    pass
-        path = await (await download_info.value).path()
-        await app.send_message(
-            group,
-            MessageChain([
-                f"use: {round(time.time() - start_time, 2)}s\n",
-                Image(path=path)
-            ]),
-            quote=source,
-        )
+        except Exception as e:
+            logger.error(e)
+            await app.send_message(group, MessageChain("查询出粗!"), quote=source)
 
 
 async def init_chara_list():

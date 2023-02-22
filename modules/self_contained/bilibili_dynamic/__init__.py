@@ -162,7 +162,7 @@ async def init():
     for uid_statu in r["data"]:
         LIVE_STATUS[uid_statu] = r["data"][uid_statu]["live_status"] == 1
     i = 1
-    for up_id in subid_list:
+    for counter, up_id in enumerate(subid_list):
         res = None
         for _ in range(3):
             res = await grpc_dyn_get(up_id)
@@ -190,8 +190,8 @@ async def init():
         info_msg.append(f"    ● {si}  ---->  {up_name}({up_id}){live_status}")
         logger.info(f"[BiliBili推送] 正在初始化  ● {si}  ---->  {up_name}({up_id}){live_status}")
         i += 1
-        if len(subid_list) >= 30:
-            await asyncio.sleep(10)
+        if (counter+1) % 30 == 0:
+            await asyncio.sleep(60)
         else:
             await asyncio.sleep(1)
 

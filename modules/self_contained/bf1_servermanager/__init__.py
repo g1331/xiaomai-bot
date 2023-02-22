@@ -1957,12 +1957,12 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         return False
     admin_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["adminList"]]
     admin_counter = 0
-    admin_color = (78, 213, 123)
+    admin_color = (0,255,127)
     vip_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["vipList"]]
     vip_counter = 0
-    vip_color = (244, 207, 199)
+    vip_color = (255,99,71)
     bind_pid_list = await get_group_bindList(app, group)
-    bind_color = (157, 191, 216)
+    bind_color = (100,149,237)
     bind_counter = 0
     max_level_counter = 0
 

@@ -61,11 +61,12 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
     chara = chara.result.display.strip()
     chara_pinyin = "".join(pypinyin.lazy_pinyin(chara))
     if not characters:
-        await app.send_group_message(group, MessageChain("正在初始化角色列表"), quote=source)
+        await app.send_message(group, MessageChain("正在初始化角色列表"), quote=source)
         _ = await init_chara_list()
-        await app.send_group_message(group, MessageChain("初始化完成"), quote=source)
+        await app.send_message(group, MessageChain("初始化完成"), quote=source)
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
     if chara_pinyin not in characters:
-        return await app.send_group_message(group, MessageChain(f"角色列表中未找到角色：{chara}，请检查拼写"), quote=source)
+        return await app.send_message(group, MessageChain(f"角色列表中未找到角色：{chara}，请检查拼写"), quote=source)
     url = f"https://enka.shinshin.moe/u/{uid}"
     browser = Ariadne.current().launch_manager.get_interface(PlaywrightBrowser)
     async with browser.page() as page:
@@ -78,7 +79,7 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
         soup = BeautifulSoup(html, "html.parser")
         styles = [figure["style"] for figure in soup.find_all("figure")]
         if all(characters[chara_pinyin] not in style.lower() for style in styles):
-            return await app.send_group_message(
+            return await app.send_message(
                 group,
                 MessageChain(
                     f"未找到角色{chara} | {chara_pinyin}！只查询到这几个呢（只能查到展柜里有的呢）："
@@ -94,7 +95,7 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
                 chara_src = style
                 break
         if index == -1 or not chara_src:
-            return await app.send_group_message(group, MessageChain("获取角色头像div失败！"), quote=source)
+            return await app.send_message(group, MessageChain("获取角色头像div失败！"), quote=source)
         await page.locator(f"div.avatar.svelte-jlfv30 >> nth={index}").click()
         await asyncio.sleep(1)
         await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click()
@@ -106,7 +107,7 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
                 except TimeoutError:
                     pass
         path = await (await download_info.value).path()
-        await app.send_group_message(
+        await app.send_message(
             group,
             MessageChain([
                 f"use: {round(time.time() - start_time, 2)}s\n",

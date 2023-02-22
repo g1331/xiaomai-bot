@@ -170,6 +170,12 @@ async def init():
                 break
             await asyncio.sleep(10)
         if not res:
+            app = Ariadne.current(global_config.default_account)
+            master = await app.get_friend(bot_master)
+            await app.send_message(
+                master,
+                MessageChain("哔哩哔哩推送初始化失败!"),
+            )
             return logger.error("[BiliBili推送] 寄！")
         last_dynid = res["list"][0]["extend"]["dyn_id_str"]
         DYNAMIC_OFFSET[up_id] = int(last_dynid)

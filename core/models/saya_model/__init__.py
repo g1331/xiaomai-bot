@@ -358,6 +358,13 @@ class ModulesController:
     def get_unavailable_modules(self) -> list[str]:
         return sorted([module for module in self.get_all_channels() if not self.if_module_available(module)])
 
+    def get_all_modules(self) -> list[str]:
+        required_module_list = self.get_required_modules()
+        normal_module_list = self.get_available_modules()
+        unavailable_modules = self.get_unavailable_modules()
+        module_list = required_module_list + normal_module_list + unavailable_modules
+        return module_list
+
 
 def get_module_controller() -> ModulesController:
     global module_controller_instance

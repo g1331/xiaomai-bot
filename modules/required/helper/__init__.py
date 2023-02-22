@@ -192,8 +192,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
             ColumnTitle(title="插件详情"),
             ColumnList(rows=[
                 ColumnListItem(
-                    subtitle=module_metadata.display_name or module_metadata.name or
-                             saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
+                    subtitle=module_metadata.display_name or module_metadata.name or saya.channels[module_list[index]].meta['name'] or module_list[index].split('.')[-1],
                     content=module_list[index]
                 ),
                 ColumnListItem(

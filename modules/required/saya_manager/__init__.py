@@ -79,9 +79,7 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
             rows=example
         ),
     ])
-    required_module_list = module_controller.get_required_modules()
-    normal_module_list = module_controller.get_available_modules()
-    module_list = required_module_list + normal_module_list
+    module_list = module_controller.get_all_modules()
     # 已加载插件
     loaded_columns = [ColumnTitle(title="已加载插件")]
     for i, channel_temp in enumerate(sorted(module_list)):
@@ -150,7 +148,7 @@ async def change_module_status(
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
         operation_type = saya_model.ModuleOperationType.UNINSTALL if operation == "卸载" else saya_model.ModuleOperationType.RELOAD
-    modules = sorted(module_controller.get_installed_channels() + module_controller.get_not_installed_channels())
+    modules = module_controller.get_all_modules()
     if index == 0 or index > len(modules):
         return await app.send_message(group, MessageChain(f"当前只有{len(modules)}个插件哦~\n(index:{index})"), quote=source)
     module = modules[index - 1]
@@ -200,7 +198,7 @@ async def switch_module(
 ):
     operation = operation.result.display
     index = int(index.result.display)
-    modules = module_controller.get_installed_channels() + module_controller.get_not_installed_channels()
+    modules = module_controller.get_all_modules()
     module = modules[index - 1]
     if index == 0 or index > len(modules):
         return await app.send_message(group, MessageChain(f"当前只有{len(modules)}(index:{index})个插件~"), quote=source)

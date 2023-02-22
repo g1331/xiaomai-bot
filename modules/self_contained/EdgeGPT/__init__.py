@@ -18,7 +18,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, Image
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch
 from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, ArgResult, ArgumentMatch
-from graia.saya import Channel, Saya
+from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from loguru import logger
 
@@ -37,18 +37,21 @@ account_controller = response_model.get_acc_controller()
 
 channel = Channel.current()
 channel.name("EdgeGPT")
-channel.description("一个生成与必应AI对话的插件")
+channel.description("一个与必应AI对话的插件")
 channel.author("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None
 cookie_path = Path(__file__).parent / "cookies.json"
-if not cookie_path.is_file():
-    enable = False
-    logger.error("EdgeGPT未识别到cookie文件,请将cookies.json放在插件目录下!")
-else:
-    enable = True
+
+
+def enable() -> bool:
+    if not cookie_path.is_file():
+        logger.error("EdgeGPT未识别到cookie信息,请将cookies.json放在插件目录下!")
+        return False
+    return True
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--no-stream", action="store_true")
@@ -353,8 +356,9 @@ class ConversationManager(object):
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
         self.data[group][member]["running"] = True
         try:
-            result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0][
-                "body"][0]["text"]
+            result = \
+                (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0][
+                    "body"][0]["text"]
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:
@@ -394,7 +398,7 @@ async def chat_gpt(
         text: ArgResult,
         content: RegexResult
 ):
-    if not enable:
+    if not enable():
         return await app.send_group_message(group, MessageChain("当前EdgeGPT没有配置cookie无法使用哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)

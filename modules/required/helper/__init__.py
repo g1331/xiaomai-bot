@@ -155,11 +155,7 @@ async def module_helper(app: Ariadne, group: Group, source: Source, index: Regex
         return
     index = int(index.result.display) - 1
     required_module_list = module_controller.get_required_modules()
-    normal_module_list = []
-    for module in module_controller.get_installed_channels():
-        if module not in required_module_list:
-            normal_module_list.append(module)
-    normal_module_list = sorted(normal_module_list)
+    normal_module_list = module_controller.get_available_modules()
     module_list = required_module_list + normal_module_list
     if not (0 <= index < len(module_list)):
         return await app.send_message(group, MessageChain("编号不在范围内~"), quote=source)
@@ -260,11 +256,7 @@ async def change_module_switch(
     operation = operation.result.display.replace("-", "")
     index = int(index.result.display) - 1
     required_module_list = module_controller.get_required_modules()
-    normal_module_list = []
-    for module in module_controller.get_installed_channels():
-        if module not in required_module_list:
-            normal_module_list.append(module)
-    normal_module_list = sorted(normal_module_list)
+    normal_module_list = module_controller.get_available_modules()
     module_list = required_module_list + normal_module_list
     if not (0 <= index < len(module_list)):
         return await app.send_message(group, MessageChain("编号不在运行插件范围内~"), quote=source)

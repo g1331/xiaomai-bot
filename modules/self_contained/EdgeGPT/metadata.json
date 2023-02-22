@@ -6,7 +6,7 @@
   "authors": [
     "十三"
   ],
-  "description": "一个生成与必应AI对话的插件,请将cookies.json放在插件目录下",
+  "description": "一个与必应AI对话的插件,请将cookies.json放在插件目录下",
   "usage": [
     "在群中发送 `-bing 内容` 即可开启对话，之后默认为同一轮对话",
     "在群中发送 `-bing -n 内容` 即可开启新一轮对话",

@@ -2916,10 +2916,6 @@ async def report(app: Ariadne, sender: Member, group: Group, player_name: RegexR
     )
 )
 async def bf_status(app: Ariadne, group: Group, source: Source):
-    # 获取绑定玩家数量数量
-    bind_path = "data/battlefield/binds/players"
-    bind_counters = len(os.listdir(bind_path))
-    record_counters = await get_record_counters(bind_path)
     url = "https://api.gametools.network/bf1/status/?platform=pc"
     head = {
         "Connection": "Keep-Alive"
@@ -2938,6 +2934,10 @@ async def bf_status(app: Ariadne, group: Group, source: Source):
         data: dict = html["regions"][0]
     except Exception:
         data = None
+    # 获取绑定玩家数量数量
+    bind_path = "data/battlefield/binds/players"
+    bind_counters = len(os.listdir(bind_path))
+    record_counters = await get_record_counters(bind_path)
     if data:
         await app.send_message(group, MessageChain(
             f"当前在线:{data.get('amounts').get('soldierAmount')}\n",

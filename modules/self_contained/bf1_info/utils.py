@@ -301,7 +301,7 @@ async def get_record_counters(bind_path):
         file_path = f"{bind_path}/{item}/record.json"
         if os.path.exists(file_path):
             tasks.append(asyncio.create_task(get_record_counter(file_path)))
-            if len(tasks) >= 1000:
+            if len(tasks) >= 4000:
                 results = await asyncio.gather(*tasks)
                 for result in results:
                     record_counters += result

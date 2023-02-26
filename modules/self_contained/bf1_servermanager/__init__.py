@@ -38,7 +38,7 @@ from core.control import (
     FrequencyLimitation,
     Distribute
 )
-from core.models import saya_model
+from core.models import saya_model, response_model
 from utils.UI import *
 from utils.string import generate_random_str
 from utils.text2img import md2img
@@ -49,6 +49,7 @@ from .map_team_info import MapData
 from .utils import getPid_byName, server_playing, app_blocked
 
 module_controller = saya_model.get_module_controller()
+account_controller = response_model.get_acc_controller()
 global_config = create(GlobalConfig)
 saya = Saya.current()
 channel = Channel.current()
@@ -1138,11 +1139,11 @@ async def bfgroup_bind_qqgroup(app: Ariadne, group: Group,
         ), quote=source)
         return False
     # 检查qq群是否正确
-    if await app.get_group(int(qqgroup_id)) is None:
-        await app.send_message(group, MessageChain(
-            f"bot没有找到群{qqgroup_id}"
+    target_app, target_group = account_controller.get_app_from_total_groups(int(qqgroup_id))
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"没有找到目标群:{qqgroup_id}"
         ), quote=source)
-        return False
     # 检查qq群文件是否存在
     group_path = f'./data/battlefield/binds/groups/{qqgroup_id}'
     file_path = group_path + "/bfgroups.yaml"
@@ -1957,12 +1958,12 @@ async def get_server_playerList_pic(app: Ariadne, sender: Member, group: Group, 
         return False
     admin_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["adminList"]]
     admin_counter = 0
-    admin_color = (0,255,127)
+    admin_color = (0, 255, 127)
     vip_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["vipList"]]
     vip_counter = 0
-    vip_color = (255,99,71)
+    vip_color = (255, 99, 71)
     bind_pid_list = await get_group_bindList(app, group)
-    bind_color = (100,149,237)
+    bind_color = (100, 149, 237)
     bind_counter = 0
     max_level_counter = 0
 

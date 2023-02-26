@@ -1139,7 +1139,7 @@ async def bfgroup_bind_qqgroup(app: Ariadne, group: Group,
         ), quote=source)
         return False
     # 检查qq群是否正确
-    target_app, target_group = account_controller.get_app_from_total_groups(int(qqgroup_id))
+    target_app, target_group = await account_controller.get_app_from_total_groups(int(qqgroup_id))
     if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
             f"没有找到目标群:{qqgroup_id}"

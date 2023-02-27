@@ -215,9 +215,14 @@ class Permission(object):
                 if user_level in [Permission.GlobalBlack, Permission.GroupBlack]:
                     raise ExecutionStop
                 if if_noticed:
-                    await app.send_message(event.sender.group, MessageChain(
-                        f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
-                    ), quote=source)
+                    if isinstance(event, GroupMessage):
+                        await app.send_message(event.sender.group, MessageChain(
+                            f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+                        ), quote=source)
+                    else:
+                        await app.send_message(event.sender, MessageChain(
+                            f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+                        ), quote=source)
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -258,7 +263,9 @@ class Permission(object):
         :param if_noticed: 是否通知
         """
 
-        async def wrapper(app: Ariadne, event: GroupMessage, src: Source):
+        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
+            if isinstance(event, FriendMessage):
+                return
             # 获取并判断群的权限等级
             group = event.sender.group
             group_perm = await cls.get_group_perm(group)

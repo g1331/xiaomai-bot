@@ -3336,7 +3336,7 @@ async def bfgroup_refresh(app: Ariadne, group: Group, source: Source, server_ran
                 ), quote=source)
             else:
                 server_rank = int(server_rank)-1
-            if server_rank not in pid_list:
+            if server_rank not in len(pid_list):
                 return await app.send_message(group, MessageChain(
                     f"请检查服务器序号!"
                 ), quote=source)

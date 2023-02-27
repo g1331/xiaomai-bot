@@ -114,14 +114,14 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
             await app.send_message(
                 group,
                 MessageChain([
-                    f"use: {round(time.time() - start_time, 2)}s\n",
-                    Image(path=path)
+                    f"耗时:{round(time.time() - start_time, 2)}秒\n",
+                    Image(path=path),
                 ]),
                 quote=source,
             )
         except Exception as e:
             logger.error(e)
-            await app.send_message(group, MessageChain("查询出错!"), quote=source)
+            await app.send_message(group, MessageChain("没有查询到数据哦qwq"), quote=source)
 
 
 async def init_chara_list():

@@ -17,6 +17,7 @@ class GlobalConfig(BaseModel):
     proxy: str
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
+    auto_upgrade: bool = False
     functions: dict = {
         "bf1": {
             "default_account": int,

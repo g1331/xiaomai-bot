@@ -41,6 +41,7 @@ from core.orm.tables import (
     GroupPerm,
     MemberPerm
 )
+from utils.self_upgrade import UpdaterService
 
 non_log = {
     GroupMessage,
@@ -95,6 +96,7 @@ class Umaru(object):
                 proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None
             )
         )
+        Ariadne.launch_manager.add_service(UpdaterService())
         self.config_check()
         self.initialized_app_list: list[int] = []
         self.initialized_group_list: list[int] = []

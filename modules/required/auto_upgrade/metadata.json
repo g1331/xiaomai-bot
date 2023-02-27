@@ -1,0 +1,13 @@
+{
+  "level": 1,
+  "name": "AutoUpgrade",
+  "version": "0.1",
+  "display_name": "自动更新",
+  "authors": [
+    "十三"
+  ],
+  "description": "自动读取git仓库并pull",
+  "usage": ["自动触发"],
+  "default_switch": true,
+  "default_notice": false
+}

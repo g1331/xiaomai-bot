@@ -38,6 +38,7 @@ grpcio = "^1.51.1"
 grpcio-status = "1.49.0"
 edgegpt = "^0.0.51"
 pypinyin = "^0.48.0"
+gitpython = "^3.1.31"
 
 
 [build-system]

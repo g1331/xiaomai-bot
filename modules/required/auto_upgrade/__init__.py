@@ -20,7 +20,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 init_noticed = False
 
 
-@channel.use(SchedulerSchema(timers.every_custom_seconds(180)))
+@channel.use(SchedulerSchema(timers.every_custom_seconds(120)))
 async def auto_upgrade_handle():
     if not has_git:
         return
@@ -77,4 +77,3 @@ async def auto_upgrade_handle():
         except Exception as e:
             logger.error(e)
             return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新失败,请手动更新!{e}"))
-

@@ -17,8 +17,6 @@ channel.author("十三")
 channel.description("自动更新")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
-init_noticed = False
-
 
 @channel.use(SchedulerSchema(timers.every_custom_seconds(120)))
 async def auto_upgrade_handle():

@@ -69,11 +69,10 @@ async def auto_upgrade_handle():
             )
         )
         logger.opt(colors=True).info("<cyan>【自动更新】正在自动更新</cyan>")
-        await target_app.send_message(target_group, MessageChain(f"【自动更新】正在自动更新ing"))
         try:
             await asyncio.to_thread(perform_update)
-            logger.success("【自动更新】更新完成，将在重新启动后生效")
-            return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新完成，将在重新启动后生效"))
+            logger.success("【自动更新】更新完成,将在重新启动后生效")
+            return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新完成,将在重新启动后生效"))
         except Exception as e:
             logger.error(e)
             return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新失败,请手动更新!{e}"))

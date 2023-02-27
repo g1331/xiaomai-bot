@@ -93,7 +93,8 @@ class Umaru(object):
         Ariadne.launch_manager.add_service(
             PlaywrightService(
                 "chromium",
-                proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None
+                proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None,
+                headless=False
             )
         )
         Ariadne.launch_manager.add_service(UpdaterService())

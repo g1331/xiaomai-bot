@@ -3276,12 +3276,13 @@ async def bfgroup_search_log(app: Ariadne, sender: Member, group: Group,
 @dispatch(
     Twilight(
         [
-            FullMatch("-refresh").space(SpacePolicy.PRESERVE)
+            FullMatch("-refresh"),
+            "server_rank" @ ParamMatch(optional=True),
             # 示例: -refresh
         ]
     )
 )
-async def bfgroup_refresh(app: Ariadne, group: Group, source: Source):
+async def bfgroup_refresh(app: Ariadne, group: Group, source: Source, server_rank: RegexResult):
     # 先检查绑定群组没
     # 检查qq群文件是否存在
     group_path = f'./data/battlefield/binds/groups/{group.id}'
@@ -3327,7 +3328,17 @@ async def bfgroup_refresh(app: Ariadne, group: Group, source: Source):
         ), quote=source)
         return False
     else:
-        account_pid = pid_list[0]
+        if server_rank.matched:
+            server_rank = server_rank.result.display.strip()
+            if not server_rank.isdigit():
+                return await app.send_message(group, MessageChain(
+                    f"请检查服务器序号!"
+                ), quote=source)
+            else:
+                server_rank = int(server_rank)
+            account_pid = pid_list[server_rank]
+        else:
+            account_pid = pid_list[0]
         file_path = f'./data/battlefield/managerAccount'
         account_list = os.listdir(file_path)
         if account_pid not in account_list:
@@ -3562,7 +3573,7 @@ async def get_bfgroup_ids(app: Ariadne, group: Group, server_rank: int, source: 
             "server_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
             "player_name" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
             "reason" @ WildcardMatch(optional=True),
-            # 示例: -k#1 xiaoxiao test
+            # 示例: -k#1 xiao7xiao test
         ]
     )
 )

@@ -15,11 +15,11 @@ async def get_a_uuid() -> str:
 
 class bf1_api(object):
 
-    def __init__(self, pid: int):
+    def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
         self.pid = pid
-        self.remid = None
-        self.sid = None
-        self.session = None
+        self.remid = remid
+        self.sid = sid
+        self.session = session
         self.check_login = False
         self.access_token = None
         self.authcode = None
@@ -228,7 +228,8 @@ class bf1_api(object):
                 return True
             else:
                 return False
-        if (not self.check_login) or (self.access_token is None) or ((time.time() - self.access_token_time) >= int(self.access_token_expires_time)):
+        if (not self.check_login) or (self.access_token is None) or (
+                (time.time() - self.access_token_time) >= int(self.access_token_expires_time)):
             return True
         return False
 
@@ -1583,8 +1584,8 @@ bf1_account_dict = {}
 
 
 class api_instance(bf1_api):
-    def __init__(self, pid):
-        super().__init__(pid=pid)
+    def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
+        super().__init__(pid=pid, remid=remid, sid=sid, session=session)
         self.Game = Game(self)
         self.Progression = Progression(self)
         self.Stats = Stats(self)

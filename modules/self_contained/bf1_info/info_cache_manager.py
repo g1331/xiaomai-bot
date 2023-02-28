@@ -73,11 +73,18 @@ class InfoCache(object):
             return False
 
     async def get_data(self) -> dict:
-        if await self.check_if_need_api():
-            await self.update_cache()
-            return await self.read_cache()
-        else:
-            return await self.read_cache()
+        from modules.self_contained.bf1_info import get_weapon_data, get_vehicle_data, get_player_stat_data
+        try:
+            if self.player_cache_type == "weapon":
+                data = await get_weapon_data(self.pid)
+            elif self.player_cache_type == "vehicle":
+                data = await get_vehicle_data(self.pid)
+            else:
+                data = await get_player_stat_data(self.pid)
+            return data
+        except Exception as e:
+            logger.warning(f"获取{self.pid}-{self.player_cache_type}数据失败:{e}")
+            return None
 
     async def get_cache_data(self) -> dict:
         return await self.read_cache()

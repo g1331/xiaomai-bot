@@ -61,7 +61,7 @@ class FrequencyController(object):
             self.frequency_dict[module_name][group_id][sender_id] = weight
         else:
             self.frequency_dict[module_name][group_id][sender_id] += weight
-        if self.frequency_dict[module_name][group_id][sender_id] > 15:
+        if self.frequency_dict[module_name][group_id][sender_id] > 12:
             self.add_blacklist(group_id, sender_id)
 
     def get_weight(self, module_name: str, group_id: int, sender_id: int):

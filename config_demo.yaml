@@ -35,4 +35,4 @@ functions:
 
   #ChatGPT
   ChatGPT:
-    sesion_token: sesion_token
+    session_token: session_token

@@ -138,7 +138,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
     bot_msg = await app.send_group_message(
         target_group,
         MessageChain(
-            f"收到来自群{group.name}({group.id})成员{sender.name}({sender.id})添加老婆{wife_name.result.display}的申请",
+            f"收到来自群{group.name}({group.id})成员{sender.name}({sender.id})添加老婆【{wife_name.result.display}】的申请",
             Image(url=img_url),
             f"请在1小时内回复 y 可同意该请求,回复其他消息可拒绝"
         )
@@ -164,7 +164,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
         return await target_app.send_message(
             target_group,
             MessageChain(
-                f'注意:由于超时未审核，处理{sender.name}({sender.id})添加老婆{wife_name.result.display}的申请已失效'
+                f'注意:由于超时未审核，处理{sender.name}({sender.id})添加老婆【{wife_name.result.display}】的申请已失效'
             )
         )
 
@@ -174,19 +174,19 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             await app.send_group_message(
                 group,
                 MessageChain(
-                    At(sender), f"您添加老婆{wife_name.result.display}的申请已通过!"
+                    At(sender), f"您添加老婆【{wife_name.result.display}】的申请已通过!"
                 ),
                 quote=source
             )
             return await target_app.send_message(
                 target_group,
-                MessageChain(f'已同意{sender.name}({sender.id})添加老婆{wife_name.result.display}')
+                MessageChain(f'已同意{sender.name}({sender.id})添加老婆【{wife_name.result.display}】')
             )
         else:
             await app.send_group_message(
                 group,
                 MessageChain(
-                    At(sender), f"您添加老婆{wife_name.result.display}的申请失败了!"
+                    At(sender), f"您添加老婆【{wife_name.result.display}】的申请失败了!"
                 ),
                 quote=source
             )
@@ -199,13 +199,13 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
         await app.send_group_message(
             group,
             MessageChain(
-                At(sender), f"您添加老婆{wife_name.result.display}的申请未通过!"
+                At(sender), f"您添加老婆【{wife_name.result.display}】的申请未通过!"
             ),
             quote=source
         )
         return await target_app.send_message(
             target_group,
-            MessageChain(f'已拒绝{sender.name}({sender.id})添加老婆{wife_name.result.display}')
+            MessageChain(f'已拒绝{sender.name}({sender.id})添加老婆【{wife_name.result.display}】')
         )
 
 

@@ -26,7 +26,10 @@ class GlobalConfig(BaseModel):
         "image_search": {
             "saucenao_key": str
         },
-        "steamdb_cookie": str
+        "steamdb_cookie": str,
+        "ChatGPT": {
+            "session_token": str
+        }
     }
     GroupMsg_log: bool
 

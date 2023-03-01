@@ -32,3 +32,7 @@ functions:
 
   # steam游戏搜索 steamdb.info/app/app_id 的cookie
   steamdb_cookie: steamdb_cookie
+
+  #ChatGPT
+  ChatGPT:
+    sesion_token: sesion_token

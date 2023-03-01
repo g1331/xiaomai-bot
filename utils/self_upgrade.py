@@ -108,7 +108,7 @@ class UpdaterService(Launchable):
     async def check_update():
         if not has_git:
             return
-        logger.info("【自动更新】正在检查更新...")
+        logger.debug("【自动更新】正在检查更新...")
         try:
             if not (update := await check_update()):
                 logger.opt(colors=True).success("<green>【自动更新】当前版本已是最新</green>")

@@ -23,7 +23,7 @@ async def auto_upgrade_handle():
     if not has_git:
         return
     target_app, target_group = await account_controller.get_app_from_total_groups(config.test_group)
-    logger.info("【自动更新】自动检测更新运行ing")
+    logger.debug("【自动更新】自动检测更新运行ing")
     try:
         if not (update := await check_update()):
             logger.opt(colors=True).success("<green>【自动更新】当前版本已是最新</green>")
@@ -54,23 +54,27 @@ async def auto_upgrade_handle():
         sha = update[0].get("sha", "")[:7]
         message = update[0].get("commit", {}).get("message", "").replace("<", r"\<").splitlines()[0]
         url = f'{update[0].get("html_url")}'
-        await target_app.send_message(
-            target_group,
-            MessageChain(
-                f"【自动更新】发现新的提交!\n",
-                f"提交时间：{committer_time}\n",
-                f"提交信息：{message}\n",
-                Image(url=committer_avatar_url) + "\n" if committer_avatar_url else "",
-                f"提交者：{committer_name}\n",
-                f"sha：{sha}\n",
-                f"链接：{url}\n",
+        if target_app and target_group:
+            await target_app.send_message(
+                target_group,
+                MessageChain(
+                    f"【自动更新】发现新的提交!\n",
+                    f"提交时间：{committer_time}\n",
+                    f"提交信息：{message}\n",
+                    Image(url=committer_avatar_url) + "\n" if committer_avatar_url else "",
+                    f"提交者：{committer_name}\n",
+                    f"sha：{sha}\n",
+                    f"链接：{url}\n",
+                )
             )
-        )
         logger.opt(colors=True).info("<cyan>【自动更新】正在自动更新</cyan>")
         try:
             await asyncio.to_thread(perform_update)
             logger.success("【自动更新】更新完成,将在重新启动后生效")
-            return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新完成,将在重新启动后生效"))
+            if target_app and target_group:
+                await target_app.send_message(target_group, MessageChain(f"【自动更新】更新完成,将在重新启动后生效"))
         except Exception as e:
             logger.error(e)
-            return await target_app.send_message(target_group, MessageChain(f"【自动更新】更新失败,请手动更新!{e}"))
+            if target_app and target_group:
+                await target_app.send_message(target_group, MessageChain(f"【自动更新】更新失败,请手动更新!{e}"))
+            return

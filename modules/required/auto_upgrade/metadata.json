@@ -6,8 +6,9 @@
   "authors": [
     "十三"
   ],
-  "description": "自动读取git仓库并pull",
-  "usage": ["自动触发"],
+  "description": "自动读取git仓库获取更新",
+  "usage": ["-upgrade"],
+  "example": [],
   "default_switch": true,
   "default_notice": false
 }

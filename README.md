@@ -10,26 +10,31 @@
 
 ----
 ## 功能简览:
-- 目前支持的主要服务：
-    - 战地一战绩查询
-    - 战地一服务器管理
+### 注意！当前BOT还有许多不完善的地方，处于持续开发更新的状态~
+
+- #### 目前支持的功能：
+    - 战地一 战绩查询
+    - 战地一 服务器管理
     - 发病
     - 识图
     - 塔罗牌
+    - ChatGPT  
+    - EdgeGPT  
     - 随机老婆
     - 随机丁真
     - 随机龙图
     - emoji融合
     - 关键词回复
+    - 原神角色卡
     - 恶臭数字转换
     - 风格图片生成
     - steam游戏搜索
+    - LoliconAPI图片
     - 哔哩哔哩链接解析
     - 哔哩哔哩订阅推送
+    - 流浪地球倒计时生成
     
-- TODO:
-    - 修bug(
-    - 移植v2的功能
+- #### TODO:
     - 分群组的alias自定义指令前缀处理
     - ~~抄其他bot的功能~~
     
@@ -48,32 +53,9 @@
 4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~
 
-
-
-## 鸣谢 & 相关项目
-- [`mirai`](https://github.com/mamoe/mirai) & [`mirai-console`](https://github.com/mamoe/mirai-console): 一个在全平台下运行，提供 QQ Android 和 TIM PC 协议支持的高效率机器人框架
-
-
-感谢 [`GraiaProject`](https://github.com/GraiaProject) 带来的这些项目:
-
-- [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 高性能, 高可扩展性，设计简洁，基于 asyncio 的事件系统
-- [`Ariadne`](https://github.com/GraiaProject/Ariadne): 一个设计精巧, 协议实现完备的, 基于 mirai-api-http v2 的即时聊天软件自动化框架
-- [`Saya`](https://github.com/GraiaProject/Saya) 简洁的模块管理系统
-- [`Scheduler`](https://github.com/GraiaProject/Scheduler): 简洁的基于 `asyncio` 的定时任务实现
-- [`Application`](https://github.com/GraiaProject/Application): Ariadne 的前身，一个设计精巧, 协议实现完备的, 基于 mirai-api-http 的即时聊天软件自动化框架
-
-本BOT在开发中参考了如下项目:
-- [`SAGIRI BOT`](https://github.com/SAGIRI-kawaii/sagiri-bot): 一个基于 Mirai 和 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne) 的QQ机器人
-- [`ABot`](https://github.com/djkcyl/ABot-Graia/): 一个使用 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne) 搭建的 QQ 功能性~~究极缝合怪~~机器人
-- [`redbot`](https://github.com/Redlnn/redbot): 一个以 [Graia Ariadne](https://github.com/GraiaProject/Ariadne) 框架为基础的 QQ 机器人
-
-## Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/g1331/xiaomai-bot.svg)](https://starchart.cc/g1331/xiaomai-bot)
-
 ---
 
-# V3重构PJ
+# V3项目结构与核心内容
 
 
 项目结构:
@@ -269,3 +251,26 @@ modules = {
 
 ### status(运行状态):
 - [x] 查询bot运行状态
+
+---
+
+## 鸣谢 & 相关项目
+- [`mirai`](https://github.com/mamoe/mirai) & [`mirai-console`](https://github.com/mamoe/mirai-console): 一个在全平台下运行，提供 QQ Android 和 TIM PC 协议支持的高效率机器人框架
+
+
+感谢 [`GraiaProject`](https://github.com/GraiaProject) 带来的这些项目:
+
+- [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 高性能, 高可扩展性，设计简洁，基于 asyncio 的事件系统
+- [`Ariadne`](https://github.com/GraiaProject/Ariadne): 一个设计精巧, 协议实现完备的, 基于 mirai-api-http v2 的即时聊天软件自动化框架
+- [`Saya`](https://github.com/GraiaProject/Saya) 简洁的模块管理系统
+- [`Scheduler`](https://github.com/GraiaProject/Scheduler): 简洁的基于 `asyncio` 的定时任务实现
+- [`Application`](https://github.com/GraiaProject/Application): Ariadne 的前身，一个设计精巧, 协议实现完备的, 基于 mirai-api-http 的即时聊天软件自动化框架
+
+本BOT在开发中参考了如下项目:
+- [`SAGIRI BOT`](https://github.com/SAGIRI-kawaii/sagiri-bot): 一个基于 Mirai 和 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne) 的QQ机器人
+- [`ABot`](https://github.com/djkcyl/ABot-Graia/): 一个使用 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne) 搭建的 QQ 功能性~~究极缝合怪~~机器人
+- [`redbot`](https://github.com/Redlnn/redbot): 一个以 [Graia Ariadne](https://github.com/GraiaProject/Ariadne) 框架为基础的 QQ 机器人
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/g1331/xiaomai-bot.svg)](https://starchart.cc/g1331/xiaomai-bot)

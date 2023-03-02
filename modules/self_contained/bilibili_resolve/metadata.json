@@ -4,15 +4,15 @@
   "version": "0.1",
   "display_name": "哔哩哔哩链接解析",
   "authors": [
-    "13",
-    "移植from Bbot"
+    "十三",
+    "From Bbot、SAGIRI-BOT"
   ],
   "description": "自动解析群消息b站链接",
   "usage": [
     "自动解析群消息b站链接"
   ],
   "example": [
-    "1日内新番"
+    "自动触发"
   ],
   "default_switch": true,
   "default_notice": false

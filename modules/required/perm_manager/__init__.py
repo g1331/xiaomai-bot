@@ -661,6 +661,14 @@ async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEven
         target_perm = Permission.GroupAdmin
     else:
         target_perm = Permission.User
+        return await app.send_message(
+            target_group,
+            MessageChain(
+                f"检测到群管理权限变动\n"
+                f"{target_member.name}({target_member.id})->{target_perm}\n"
+                f"如需修改权限请使用指令 ’修改权限16 {target_member.id}‘"
+            )
+        )
     await orm.insert_or_update(
         table=MemberPerm,
         data={"qq": event.member.id, "group_id": event.member.group.id, "perm": target_perm},
@@ -671,5 +679,7 @@ async def auto_change_admin_perm(app: Ariadne, event: MemberPermissionChangeEven
     )
     return await app.send_message(
         target_group,
-        MessageChain(f"检测到群管理权限变动\n已自动修改{target_member.name}({target_member.id})权限为{target_perm}")
+        MessageChain(
+            f"检测到群管理权限变动\n已自动修改{target_member.name}({target_member.id})权限为{target_perm}"
+        )
     )

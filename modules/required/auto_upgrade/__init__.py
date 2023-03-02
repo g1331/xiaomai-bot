@@ -86,6 +86,7 @@ async def auto_upgrade_handle():
     try:
         if not (update := await check_update()):
             logger.opt(colors=True).success("<green>【Upgrade】当前版本已是最新</green>")
+            upgrade_dict = {}
             return
     except ClientError:
         logger.opt(colors=True).error("<red>【Upgrade】无法连接到 GitHub</red>")
@@ -102,8 +103,6 @@ async def auto_upgrade_handle():
             output.append(f"<red>{sha}</red> <yellow>{message}</yellow>")
             if sha not in upgrade_dict:
                 upgrade_dict[sha] = message
-            else:
-                return
         history = "\n".join(["", *output, ""])
         logger.opt(colors=True).warning(f"<yellow>【Upgrade】发现新版本</yellow>\n{history}")
         if not config.auto_upgrade:

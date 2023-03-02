@@ -345,11 +345,13 @@ class ConversationManager(object):
         if group in self.data and member in self.data[group]:
             self.data[group][member]["gpt"].close()
 
-    async def send_message(self, group: Group | int, member: Member | int, content: str) -> str:
+    async def send_message(self, group: Group | int, member: Member | int, content: str, app: Ariadne,
+                           source: Source) -> str:
         if isinstance(group, Group):
             group = group.id
         if isinstance(member, Member):
             member = member.id
+        await app.send_group_message(group, MessageChain("请等待,EdgeGPT解答ing"), quote=source)
         if group not in self.data or member not in self.data[group]:
             _ = await self.new(group, member)
         if self.data[group][member]["running"]:
@@ -402,10 +404,7 @@ async def edge_gpt(
         return await app.send_group_message(group, MessageChain("当前EdgeGPT没有配置cookie无法使用哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
-    if manager.data[group][member]["running"]:
-        return await app.send_group_message(group, MessageChain("我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"), quote=source)
-    await app.send_group_message(group, MessageChain("请等待,必应解答ing"), quote=source)
-    response = await manager.send_message(group, member, content.result.display.strip())
+    response = await manager.send_message(group, member, content.result.display.strip(), app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)
     else:

@@ -47,6 +47,7 @@ inc = InterruptControl(saya.broadcast)
     ])
 )
 async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Source):
+    global upgrade_dict
     upgrade_info = [f"SHA: {sha}:\n {upgrade_dict[sha]}" for sha in upgrade_dict]
     logger.debug(f"【Upgrade】更新信息\n{upgrade_info}")
     if not upgrade_info:
@@ -65,6 +66,7 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
             logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
             try:
                 await asyncio.to_thread(perform_update)
+                upgrade_dict = {}
                 logger.success("【Upgrade】更新完成,将在重新启动后生效")
                 await app.send_message(group, MessageChain(f"【Upgrade】更新完成!\n⚪将在重新启动后生效"), quote=source)
             except Exception as e:

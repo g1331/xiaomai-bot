@@ -47,7 +47,7 @@ inc = InterruptControl(saya.broadcast)
     ])
 )
 async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Source):
-    upgrade_info = [f"【{sha}】\n⚪{upgrade_dict[sha]}" for sha in upgrade_dict]
+    upgrade_info = [f"SHA: {sha}:\n {upgrade_dict[sha]}" for sha in upgrade_dict]
     logger.debug(f"【Upgrade】更新信息\n{upgrade_info}")
     if not upgrade_info:
         return await app.send_message(group, MessageChain(f"当前Github仓库还没有更新信息!"), quote=source)

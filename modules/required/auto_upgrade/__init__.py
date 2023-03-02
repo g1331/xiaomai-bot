@@ -54,7 +54,7 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
     await app.send_message(
         group,
         MessageChain(
-            f"获取到更新信息如下:",
+            f"【Upgrade】获取到更新信息如下:\n",
             "\n".join(upgrade_info[:3]),
             f"\n你确定要更新吗?(y/n)"
         ),
@@ -66,10 +66,10 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
             try:
                 await asyncio.to_thread(perform_update)
                 logger.success("【Upgrade】更新完成,将在重新启动后生效")
-                await app.send_message(group, MessageChain(f"更新完成!\n⚪将在重新启动后生效"), quote=source)
+                await app.send_message(group, MessageChain(f"【Upgrade】更新完成!\n⚪将在重新启动后生效"), quote=source)
             except Exception as e:
                 logger.error(e)
-                return await app.send_message(group, MessageChain(f"更新失败!\n⚪请手动更新!{e}"), quote=source)
+                return await app.send_message(group, MessageChain(f"【Upgrade】更新失败!\n⚪请手动更新!{e}"), quote=source)
         else:
             return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
     except asyncio.TimeoutError:

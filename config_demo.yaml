@@ -36,3 +36,4 @@ functions:
   #ChatGPT
   ChatGPT:
     session_token: session_token
+    api_key: api_key

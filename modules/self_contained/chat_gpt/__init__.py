@@ -1,3 +1,4 @@
+import asyncio
 import re
 from pathlib import Path
 from typing import TypedDict
@@ -12,6 +13,7 @@ from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, Ar
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from revChatGPT.V1 import AsyncChatbot
+from revChatGPT.V3 import Chatbot
 
 from core.config import GlobalConfig
 from core.control import (
@@ -35,24 +37,22 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None
 session_token = config.functions.get("ChatGPT", {}).get("session_token")
-
-
-def enable():
-    if session_token:
-        return True
-    return False
+api_key = config.functions.get("ChatGPT", {}).get("api_key")
 
 
 def get_gpt():
-    chatbot = AsyncChatbot(config={
-        "session_token": session_token
-    })
-    return chatbot
+    return Chatbot(
+        api_key=api_key,
+        system_prompt="你的名字叫小埋，是由十三开发的一个服务于战地一QQ群的智能聊天机器人，内核是由OpenAI开发的一个大型语音模型ChatGPT。"
+    )
+    # return AsyncChatbot(config={
+    #     "session_token": session_token
+    # })
 
 
 class MemberGPT(TypedDict):
     running: bool
-    gpt: AsyncChatbot
+    gpt: Chatbot
 
 
 class ConversationManager(object):
@@ -66,7 +66,8 @@ class ConversationManager(object):
             member = member.id
         if group in self.data:
             if member in self.data[group]:
-                self.data[group][member]["gpt"].reset_chat()
+                # self.data[group][member]["gpt"].reset_chat()
+                self.data[group][member]["gpt"] = get_gpt()
             else:
                 self.data[group][member] = {"running": False, "gpt": get_gpt()}
         else:
@@ -79,7 +80,8 @@ class ConversationManager(object):
         if isinstance(member, Member):
             member = member.id
         if group in self.data and member in self.data[group]:
-            self.data[group][member]["gpt"].reset_chat()
+            # self.data[group][member]["gpt"].reset_chat()
+            self.data[group][member]["gpt"] = get_gpt()
 
     async def send_message(self, group: Group | int, member: Member | int, content: str, app: Ariadne,
                            source: Source) -> str:
@@ -94,9 +96,10 @@ class ConversationManager(object):
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
         self.data[group][member]["running"] = True
         try:
-            result = "获取回复消息为空!"
-            async for response in self.data[group][member]["gpt"].ask(prompt=content):
-                result = response["message"]
+            result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
+            # result = "获取回复消息为空!"
+            # async for response in self.data[group][member]["gpt"].ask(prompt=content):
+            #     result = response["message"]
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:
@@ -136,8 +139,6 @@ async def chat_gpt(
         text: ArgResult,
         content: RegexResult
 ):
-    if not enable():
-        return await app.send_group_message(group, MessageChain("当前ChatGPT没有配置token无法使用哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
     response = await manager.send_message(group, member, content.result.display.strip(), app, source)

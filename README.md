@@ -26,6 +26,7 @@
     - emoji融合
     - 关键词回复
     - 原神角色卡
+    - AV种子搜素
     - 恶臭数字转换
     - 风格图片生成
     - steam游戏搜索
@@ -212,6 +213,10 @@ modules = {
 
 
 ## 内置插件(modules.required):
+
+### auto_upgrade(自动检测更新):
+- [x] 自动检测Github仓库的更新
+- [x] 手动指令执行git pull
 
 
 ### saya_manager(插件管理):

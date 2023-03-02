@@ -6,25 +6,30 @@ from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image
 from graia.ariadne.message.parser.twilight import UnionMatch, Twilight
-from graia.ariadne.model import Group
+from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import dispatch, decorate, listen
-from graia.saya import Channel
+from graia.broadcast.interrupt import InterruptControl
+from graia.saya import Channel, Saya
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
 
 from core.control import Permission, FrequencyLimitation, Function, Distribute
 from core.models import saya_model, response_model
 from utils.self_upgrade import *
+from utils.waiter import ConfirmWaiter
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 channel = Channel.current()
+saya = Saya.current()
 channel.name("AutoUpgrade")
 channel.author("十三")
 channel.description("自动更新")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 upgrade_dict = {}
+
+inc = InterruptControl(saya.broadcast)
 
 
 @listen(GroupMessage)
@@ -41,24 +46,31 @@ upgrade_dict = {}
         # 示例: -upgrade
     ])
 )
-async def upgrade_handle(app: Ariadne, group: Group, source: Source):
+async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Source):
+    upgrade_info = [f"【{sha}】\n⚪{upgrade_dict[sha]}" for sha in upgrade_dict]
+    await app.send_message(
+        group,
+        MessageChain(
+            f"获取到更新信息如下:",
+            "\n".join(upgrade_info[:3])
+        ),
+        quote=source
+    )
+    await app.send_message(group, MessageChain(f"你确定要更新吗?(y/n)"), quote=source)
     try:
-        upgrade_info = [f"【{sha}】\n⚪{upgrade_dict[sha]}" for sha in upgrade_dict]
-        await app.send_message(
-            group,
-            MessageChain(
-                f"正在自动更新!更新信息如下:",
-                "\n".join(upgrade_info[:3])
-            ),
-            quote=source
-        )
-        logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
-        await asyncio.to_thread(perform_update)
-        logger.success("【Upgrade】更新完成,将在重新启动后生效")
-        await app.send_message(group, MessageChain(f"更新完成!\n⚪将在重新启动后生效"), quote=source)
-    except Exception as e:
-        logger.error(e)
-        return await app.send_message(group, MessageChain(f"更新失败!\n⚪请手动更新!{e}"), quote=source)
+        if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
+            logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
+            try:
+                await asyncio.to_thread(perform_update)
+                logger.success("【Upgrade】更新完成,将在重新启动后生效")
+                await app.send_message(group, MessageChain(f"更新完成!\n⚪将在重新启动后生效"), quote=source)
+            except Exception as e:
+                logger.error(e)
+                return await app.send_message(group, MessageChain(f"更新失败!\n⚪请手动更新!{e}"), quote=source)
+        else:
+            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+    except asyncio.TimeoutError:
+        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
 
 @channel.use(SchedulerSchema(timers.every_custom_seconds(120)))

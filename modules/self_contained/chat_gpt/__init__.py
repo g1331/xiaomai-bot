@@ -93,14 +93,13 @@ class ConversationManager(object):
             group = group.id
         if isinstance(member, Member):
             member = member.id
-        await app.send_group_message(group, MessageChain("请等待,ChatGPT解答ing"), quote=source)
         if group not in self.data or member not in self.data[group]:
             _ = await self.new(group, member)
         if self.data[group][member]["running"]:
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
+        await app.send_group_message(group, MessageChain("请等待,ChatGPT解答ing"), quote=source)
         self.data[group][member]["running"] = True
         try:
-            content = await web_handle(content)
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
             # result = "获取回复消息为空!"
             # async for response in self.data[group][member]["gpt"].ask(prompt=content):
@@ -123,8 +122,9 @@ async def web_handle(content):
                 f"Content:{item['body']}\n"
                 f"Url:{item['href']}\n"
             )
-        web_result_handle += f"\nCurrent date:{datetime.date.today().strftime('%y%m%d')}\n"
-        web_result_handle += f"Instructions: Please try to write a comprehensive reply first. If you think the message involves real-time content, use the provided web search results to write a comprehensive reply to the given query. If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. If your reply uses web search results, please use the [[number] (URL)] symbol at the end to reference the results." \
+        Current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
+        web_result_handle += f"\nCurrent date:{Current_time}\n"
+        web_result_handle += f"Instructions:Please give priority not to use online search to answer. If you do not have relevant knowledge, then answer in combination with online search results. Please answer with your own understanding.If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the article." \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle
@@ -134,7 +134,7 @@ async def web_handle(content):
 
 
 async def web_api(content):
-    api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results=5&region=cn-zh"
+    api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results=4&region=cn-zh"
     async with aiohttp.ClientSession() as session:
         async with session.get(
                 url=api_url,
@@ -154,6 +154,7 @@ manager = ConversationManager()
                 FullMatch("-chat"),
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
+                ArgumentMatch("-w", "-web", action="store_true", optional=True) @ "web",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])
         ],
@@ -173,10 +174,13 @@ async def chat_gpt(
         source: Source,
         new_thread: ArgResult,
         text: ArgResult,
+        web: ArgResult,
         content: RegexResult
 ):
     if new_thread.matched:
         _ = await manager.new(group, member)
+    if web.matched:
+        content = await web_handle(content)
     response = await manager.send_message(group, member, content.result.display.strip(), app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

@@ -124,7 +124,7 @@ async def web_handle(content):
                 f"Url:{item['href']}\n"
             )
         web_result_handle += f"\nCurrent date:{datetime.date.today().strftime('%y%m%d')}\n"
-        web_result_handle += f"Instructions: Using the provided web search results, write a comprehensive reply to the given query. Make sure to cite results using [[number](URL)] notation after the reference. If the provided search results refer to multiple subjects with the same name, write separate answers for each subject." \
+        web_result_handle += f"Note: Please try to write a comprehensive reply first. If you think the message involves real-time content, use the provided web search results to write a comprehensive reply to the given query. If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately." \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle

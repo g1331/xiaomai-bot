@@ -1,5 +1,8 @@
 import asyncio
+import datetime
 import re
+import aiohttp
+
 from pathlib import Path
 from typing import TypedDict
 
@@ -12,6 +15,7 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch
 from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, ArgResult, ArgumentMatch
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from loguru import logger
 from revChatGPT.V1 import AsyncChatbot
 from revChatGPT.V3 import Chatbot
 
@@ -96,6 +100,7 @@ class ConversationManager(object):
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
         self.data[group][member]["running"] = True
         try:
+            content = await web_handle(content)
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
             # result = "获取回复消息为空!"
             # async for response in self.data[group][member]["gpt"].ask(prompt=content):
@@ -105,6 +110,37 @@ class ConversationManager(object):
         finally:
             self.data[group][member]["running"] = False
         return result
+
+
+async def web_handle(content):
+    try:
+        web_result = await web_api(content)
+        web_result_handle = "Web search results:\n"
+        for i, item in enumerate(web_result):
+            web_result_handle += (
+                f"[{i + 1}]"
+                f"Title:{item['title']}\n"
+                f"Content:{item['body']}\n"
+                f"Url:{item['href']}\n"
+            )
+        web_result_handle += f"\nCurrent date:{datetime.date.today().strftime('%y%m%d')}\n"
+        web_result_handle += f"Instructions: Using the provided web search results, write a comprehensive reply to the given query. Make sure to cite results using [[number](URL)] notation after the reference. If the provided search results refer to multiple subjects with the same name, write separate answers for each subject." \
+                             f"\nQuery: {content}" \
+                             f"\nReply in 中文"
+        return web_result_handle
+    except Exception as e:
+        logger.warning(f"GPT网络搜索出错!{e}")
+        return content
+
+
+async def web_api(content):
+    api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results=3&region=cn-zh"
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+                url=api_url,
+                timeout=10
+        ) as response:
+            return await response.json()
 
 
 manager = ConversationManager()

@@ -179,9 +179,10 @@ async def chat_gpt(
 ):
     if new_thread.matched:
         _ = await manager.new(group, member)
+    content = content.result.display.strip()
     if web.matched:
         content = await web_handle(content)
-    response = await manager.send_message(group, member, content.result.display.strip(), app, source)
+    response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)
     else:

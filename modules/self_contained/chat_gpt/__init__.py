@@ -136,7 +136,7 @@ async def web_handle(content):
 async def web_api(content):
     api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results=3&region=cn-zh"
     async with aiohttp.ClientSession() as session:
-        async with session.post(
+        async with session.get(
                 url=api_url,
                 timeout=10
         ) as response:

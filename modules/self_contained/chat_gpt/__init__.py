@@ -124,7 +124,7 @@ async def web_handle(content):
             )
         Current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
         web_result_handle += f"\nCurrent date:{Current_time}\n"
-        web_result_handle += f"Instructions:Please give priority not to use online search to answer. If you do not have relevant knowledge, then answer in combination with online search results. Please answer with your own understanding.If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the article." \
+        web_result_handle += f"Instructions:Please give priority not to use online search to answer. If you do not have relevant knowledge, then answer in combination with online search results. Please answer with your own understanding.If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the reference." \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle

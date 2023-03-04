@@ -591,9 +591,9 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
         return await app.send_message(group, f"已自动删除退群成员{member.name}({member.id})的权限")
 
 
-# 自动添加管理群的权限
+# 自动添加管理群的权限/Master/admins
 @listen(MemberJoinEvent)
-async def auto_del_perm(app: Ariadne, group: Group, member: Member):
+async def auto_add_perm(app: Ariadne, group: Group, member: Member, event: MemberJoinEvent):
     if app.account != await account_controller.get_response_account(group.id):
         return
     permission_type = "default"
@@ -610,12 +610,7 @@ async def auto_del_perm(app: Ariadne, group: Group, member: Member):
                 MemberPerm.group_id == group.id
             ]
         )
-        return await app.send_message(group, f"已自动修改成员{member.name}({member.id})的权限为32")
-
-
-# 自动添加进群的Master/admins
-@listen(MemberJoinEvent)
-async def auto_add_perm(event: MemberJoinEvent):
+        await app.send_message(group, f"已自动修改成员{member.name}({member.id})的权限为32")
     if event.member.id == config.Master:
         return await orm.insert_or_update(
             table=MemberPerm,

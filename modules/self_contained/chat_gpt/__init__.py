@@ -173,7 +173,7 @@ async def web_handle(content):
                              f"If you do not have relevant knowledge, then answer in combination with online search results. " \
                              f"Please answer with your own understanding." \
                              f"If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. " \
-                             f"If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the reference." \
+                             f"Make sure to cite results using [[number](URL)] notation after the reference. " \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle
@@ -233,7 +233,7 @@ async def chat_gpt(
         content = await web_handle(await kw_getter(content))
     kw = await kw_getter(content)
     if kw:
-        # print(f"kw:{kw}")
+        print(f"content: {content}\nkw:{kw}")
         content = await web_handle(content)
         # print(content)
     # else:

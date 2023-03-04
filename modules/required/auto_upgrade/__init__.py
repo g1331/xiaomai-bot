@@ -28,6 +28,7 @@ channel.description("自动更新")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 upgrade_dict = {}
+noticed_list = []
 
 inc = InterruptControl(saya.broadcast)
 
@@ -80,7 +81,7 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
 
 @channel.use(SchedulerSchema(timers.every_custom_seconds(60)))
 async def auto_upgrade_handle():
-    global upgrade_dict
+    global upgrade_dict, noticed_list
     if not has_git:
         return
     target_app, target_group = await account_controller.get_app_from_total_groups(config.test_group)
@@ -119,17 +120,19 @@ async def auto_upgrade_handle():
         message = update[0].get("commit", {}).get("message", "").replace("<", r"\<").splitlines()[0]
         url = f'{update[0].get("html_url")}'
         if target_app and target_group:
-            await target_app.send_message(
-                target_group,
-                MessageChain(
-                    f"【自动更新】发现新的提交!\n",
-                    f"提交时间：{committer_time}\n",
-                    f"提交信息：{message}\n",
-                    Image(url=committer_avatar_url),
-                    "\n" if committer_avatar_url else "",
-                    f"提交者：{committer_name}\n",
-                    f"sha：{sha}\n",
-                    f"链接：{url}\n"
-                    f"请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
+            if sha not in noticed_list:
+                await target_app.send_message(
+                    target_group,
+                    MessageChain(
+                        f"【自动更新】发现新的提交!\n",
+                        f"提交时间：{committer_time}\n",
+                        f"提交信息：{message}\n",
+                        Image(url=committer_avatar_url),
+                        "\n" if committer_avatar_url else "",
+                        f"提交者：{committer_name}\n",
+                        f"sha：{sha}\n",
+                        f"链接：{url}\n"
+                        f"请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
+                    )
                 )
-            )
+                noticed_list.append(sha)

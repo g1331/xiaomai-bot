@@ -78,7 +78,7 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
         return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
 
-@channel.use(SchedulerSchema(timers.every_custom_seconds(120)))
+@channel.use(SchedulerSchema(timers.every_custom_seconds(60)))
 async def auto_upgrade_handle():
     global upgrade_dict
     if not has_git:

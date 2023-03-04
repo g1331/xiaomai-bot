@@ -128,7 +128,7 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
 async def get_bot_list(app: Ariadne, group: Group, source: Source):
     bot_list_column = [ColumnTitle(
         title=f"在线BOT列表:"
-              f"{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}"
+              f"{len([app_item for app_item in core.apps if account_controller.check_account_available(app_item.account)])}"
               f"/"
               f"{len(config.bot_accounts)}"
     )]

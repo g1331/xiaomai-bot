@@ -214,7 +214,7 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight([
@@ -276,8 +276,10 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
         "target_type" @ UnionMatch("随机", "指定"),
     ])
 )
-async def change_group_responseType(app: Ariadne, group: Group, source: Source,
-                                    target_type: RegexResult, group_id: RegexResult):
+async def change_group_responseType(
+        app: Ariadne, group: Group, source: Source,
+        target_type: RegexResult, group_id: RegexResult
+):
     target_type = target_type.result.display
     if target_type == "随机":
         target_type = "random"
@@ -317,8 +319,10 @@ async def change_group_responseType(app: Ariadne, group: Group, source: Source,
         "bot_account" @ ParamMatch(),
     ])
 )
-async def choose_response_bot(app: Ariadne, group: Group, source: Source,
-                              group_id: RegexResult, bot_account: RegexResult):
+async def choose_response_bot(
+        app: Ariadne, group: Group, source: Source,
+        group_id: RegexResult, bot_account: RegexResult
+):
     group_id = int(group_id.result.display) if group_id.matched else group.id
     try:
         bot_account = int(bot_account.result.display)

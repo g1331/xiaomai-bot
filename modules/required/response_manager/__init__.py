@@ -138,20 +138,20 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
             )
         else:
             account = int(account)
-        bot_app = Ariadne.current(account)
-        if account in config.bot_accounts and (not bot_app.connection.status.available):
-            return await app.send_message(
-                group,
-                MessageChain(
-                    "指定BOT未在线"
-                ),
-                quote=source
-            )
-        elif account not in config.bot_accounts:
+        if account not in config.bot_accounts:
             return await app.send_message(
                 group,
                 MessageChain(
                     f"没有找到指定BOT：{account}"
+                ),
+                quote=source
+            )
+        bot_app = Ariadne.current(account)
+        if not bot_app.connection.status.available:
+            return await app.send_message(
+                group,
+                MessageChain(
+                    "指定BOT未在线"
                 ),
                 quote=source
             )

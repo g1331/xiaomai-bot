@@ -54,6 +54,29 @@ def get_gpt():
     # })
 
 
+kw_gpt = None
+
+
+def get_kw_gpt():
+    global kw_gpt
+    if not kw_gpt:
+        kw_gpt = Chatbot(
+            api_key=api_key,
+            system_prompt="用户输入一句话，如果这句话是带有搜索性质的，你就提取出要搜索的关键词。"
+                          "关键词应该是你数据库中缺乏的信息。"
+                          "关键词应该带有实时效应。"
+                          "关键词应该用[]括起来。"
+                          "[]应该包含一个或者多个关键词。"
+                          "关键词之间用的逗号隔开。"
+                          "多个关键词之间应该有很强的相互联系。"
+                          "关键词的定语也要酌情提取。"
+                          "如果没有关键词就输出一个[]。"
+                          "回答不应该包含其他辅助提示词。"
+                          "回答应该简洁明了如：[关键词1，关键词2]"
+        )
+    return kw_gpt
+
+
 class MemberGPT(TypedDict):
     running: bool
     gpt: Chatbot
@@ -111,6 +134,26 @@ class ConversationManager(object):
         return result
 
 
+async def kw_getter(content):
+    result = await asyncio.to_thread(
+        get_kw_gpt().ask,
+        "用户输入一句话，如果这句话是带有搜索性质的，你就提取出要搜索的关键词。"
+        "关键词应该是你数据库中缺乏的信息。"
+        "关键词应该带有实时效应。"
+        "关键词应该用[]括起来。"
+        "[]应该包含一个或者多个关键词。"
+        "关键词之间用的逗号隔开。"
+        "多个关键词之间应该有很强的相互联系。"
+        "关键词的定语也要酌情提取。"
+        "如果没有关键词就输出一个[]。"
+        "回答不应该包含其他辅助提示词。"
+        "回答应该简洁明了如：[关键词1，关键词2]"
+        f"这里是输入的句子：”{content}“"
+    )
+    kw = re.findall(r"\[(.*?)\]", result)
+    return kw[0]
+
+
 async def web_handle(content):
     try:
         web_result = await web_api(content)
@@ -118,13 +161,17 @@ async def web_handle(content):
         for i, item in enumerate(web_result):
             web_result_handle += (
                 f"[{i + 1}]"
-                f"Title:{item['title']}\n"
                 f"Content:{item['body']}\n"
                 f"Url:{item['href']}\n"
             )
         Current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
         web_result_handle += f"\nCurrent date:{Current_time}\n"
-        web_result_handle += f"Instructions:Please give priority not to use online search to answer. If you do not have relevant knowledge, then answer in combination with online search results. Please answer with your own understanding.If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the reference." \
+        web_result_handle += f"Instructions:" \
+                             f"Please give priority to the context rather than using Web search results. " \
+                             f"If you do not have relevant knowledge, then answer in combination with online search results. " \
+                             f"Please answer with your own understanding." \
+                             f"If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. " \
+                             f"If your reply uses web search results, make sure to cite results using [[number](URL)] notation after the reference." \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle
@@ -133,8 +180,8 @@ async def web_handle(content):
         return content
 
 
-async def web_api(content):
-    api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results=4&region=cn-zh"
+async def web_api(content, result_nums: int = 3):
+    api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results={result_nums}&region=cn-zh"
     async with aiohttp.ClientSession() as session:
         async with session.get(
                 url=api_url,
@@ -161,7 +208,7 @@ manager = ConversationManager()
         decorators=[
             Distribute.require(),
             Function.require(channel.module),
-            FrequencyLimitation.require(channel.module, 5),
+            FrequencyLimitation.require(channel.module, 7),
             Permission.group_require(channel.metadata.level, if_noticed=True),
             Permission.user_require(Permission.User),
         ],
@@ -181,7 +228,14 @@ async def chat_gpt(
         _ = await manager.new(group, member)
     content = content.result.display.strip()
     if web.matched:
+        content = await web_handle(await kw_getter(content))
+    kw = await kw_getter(content)
+    if kw:
+        # print(f"kw:{kw}")
         content = await web_handle(content)
+        # print(content)
+    # else:
+    #     print("no kw")
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

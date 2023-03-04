@@ -147,6 +147,14 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
                 ),
                 quote=source
             )
+        elif account not in config.bot_accounts:
+            return await app.send_message(
+                group,
+                MessageChain(
+                    f"没有找到指定BOT：{account}"
+                ),
+                quote=source
+            )
         group_list = await bot_app.get_group_list()
         group_list_column = [
             ColumnUserInfo(

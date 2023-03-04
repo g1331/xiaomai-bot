@@ -85,7 +85,7 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
             description=f"响应类型:{type_now}",
             avatar=get_img_base64_str(await target_group.get_avatar())
         ),
-        ColumnTitle(title="BOT列表"),
+        ColumnTitle(title="当前群运行BOT列表"),
         ColumnUserInfo(
             name=f"{bot_member.name}({bot_member.id})",
             description=f"{bot_member.permission}",
@@ -128,6 +128,16 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
 async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, source: Source):
     if account.matched:
         account = account.result.display.strip()
+        if not account.isdigit():
+            return await app.send_message(
+                group,
+                MessageChain(
+                    "请检查输入的BOT账号"
+                ),
+                quote=source
+            )
+        else:
+            account = int(account)
         bot_app = Ariadne.current(account)
         if account in config.bot_accounts and (not bot_app.connection.status.available):
             return await app.send_message(

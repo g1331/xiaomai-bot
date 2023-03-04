@@ -164,12 +164,12 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
             )
         ]
         member_counter = 0
-        for group in group_list:
-            member_list = await bot_app.get_member_list(group)
+        for group_temp in group_list:
+            member_list = await bot_app.get_member_list(group_temp)
             group_list_column.append(
                 ColumnUserInfo(
-                    name=f"{group.name}({group.id})",
-                    avatar=get_img_base64_str(await group.get_avatar()),
+                    name=f"{group_temp.name}({group_temp.id})",
+                    avatar=get_img_base64_str(await group_temp.get_avatar()),
                     description=f"人数:{len(member_list)}"
                 )
             )
@@ -186,8 +186,8 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
                 continue
             group_list = await bot_app.get_group_list()
             member_counter = 0
-            for group in group_list:
-                member_list = await bot_app.get_member_list(group)
+            for group_temp in group_list:
+                member_list = await bot_app.get_member_list(group_temp)
                 member_counter += len(member_list)
             group_list_column.append(
                 ColumnUserInfo(

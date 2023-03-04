@@ -174,14 +174,16 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
                 )
             )
             member_counter += len(member_list)
-        group_list_column[0] = ColumnUserInfo(
-            name=f"{(await bot_app.get_bot_profile()).nickname}({account})",
-            description=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter/len(group_list))}人",
-            avatar=await get_user_avatar_url(account)
+        group_list_column.index(
+            1,
+            ColumnTitle(
+                title=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter / len(group_list))}人"
+            )
         )
     else:
         group_list_column = []
         for bot_app in core.apps:
+            bot_app = Ariadne.current(bot_app.account)
             if not bot_app.connection.status.available:
                 continue
             group_list = await bot_app.get_group_list()

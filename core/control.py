@@ -337,6 +337,8 @@ class Distribute(object):
             bot_account = app.account
             if len(Ariadne.service.connections.keys()) == 1:
                 return
+            if bot_account not in account_controller.initialized_bot_list:
+                await account_controller.init_account(bot_account)
             if not account_controller.check_initialization(group_id, bot_account):
                 await account_controller.init_group(group_id, await app.get_member_list(group_id), bot_account)
                 raise ExecutionStop

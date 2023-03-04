@@ -161,13 +161,13 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
             group_list_column.append(
                 ColumnUserInfo(
                     name=f"{group.name}({group.id})",
-                    avatar=await group.get_avatar(),
+                    avatar=get_img_base64_str(await group.get_avatar()),
                     description=f"人数:{len(member_list)}"
                 )
             )
             member_counter += len(member_list)
         group_list_column[0] = ColumnUserInfo(
-            name=f"{(await Ariadne.current(account).get_bot_profile()).nickname}({account})",
+            name=f"{(await bot_app.get_bot_profile()).nickname}({account})",
             description=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter/len(group_list))}人",
             avatar=await get_user_avatar_url(account)
         )
@@ -183,7 +183,7 @@ async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, sou
                 member_counter += len(member_list)
             group_list_column.append(
                 ColumnUserInfo(
-                    name=f"{(await Ariadne.current(account).get_bot_profile()).nickname}({account})",
+                    name=f"{(await bot_app.get_bot_profile()).nickname}({account})",
                     description=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter / len(group_list))}人",
                     avatar=await get_user_avatar_url(account)
                 )

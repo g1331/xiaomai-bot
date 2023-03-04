@@ -57,7 +57,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Twilight([
         FullMatch("BOT列表"),
         "group_id" @ ParamMatch(optional=True),
-        # 示例: BOT列表 000
+        # 示例: BOT列表 群号
     ])
 )
 async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, source: Source):
@@ -106,6 +106,84 @@ async def get_response_BOT(app: Ariadne, group: Group, group_id: RegexResult, so
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
             GenForm(columns=[Column(elements=bot_list_column)], color_type=get_color_type_follow_time())
+        ))
+    ), quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight([
+        FullMatch("BOT群列表"),
+        "account" @ ParamMatch(optional=True),
+        # 示例: BOT群列表 bot账号
+    ])
+)
+async def get_joined_group(app: Ariadne, group: Group, account: RegexResult, source: Source):
+    if account.matched:
+        account = account.result.display.strip()
+        bot_app = Ariadne.current(account)
+        if account in config.bot_accounts and (not bot_app.connection.status.available):
+            return await app.send_message(
+                group,
+                MessageChain(
+                    "指定BOT未在线"
+                ),
+                quote=source
+            )
+        group_list = await bot_app.get_group_list()
+        group_list_column = [
+            ColumnUserInfo(
+                name=f"{(await Ariadne.current(account).get_bot_profile()).nickname}({account})",
+                description=f"已加入{len(group_list)}个群",
+                avatar=await get_user_avatar_url(account)
+            )
+        ]
+        member_counter = 0
+        for group in group_list:
+            member_list = await bot_app.get_member_list(group)
+            group_list_column.append(
+                ColumnUserInfo(
+                    name=f"{group.name}({group.id})",
+                    avatar=await group.get_avatar(),
+                    description=f"人数:{len(member_list)}"
+                )
+            )
+            member_counter += len(member_list)
+        group_list_column[0] = ColumnUserInfo(
+            name=f"{(await Ariadne.current(account).get_bot_profile()).nickname}({account})",
+            description=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter/len(group_list))}人",
+            avatar=await get_user_avatar_url(account)
+        )
+    else:
+        group_list_column = []
+        for bot_app in core.apps:
+            if not bot_app.connection.status.available:
+                continue
+            group_list = await bot_app.get_group_list()
+            member_counter = 0
+            for group in group_list:
+                member_list = await bot_app.get_member_list(group)
+                member_counter += len(member_list)
+            group_list_column.append(
+                ColumnUserInfo(
+                    name=f"{(await Ariadne.current(account).get_bot_profile()).nickname}({account})",
+                    description=f"已加入{len(group_list)}个群,共{member_counter}人,平均{round(member_counter / len(group_list))}人",
+                    avatar=await get_user_avatar_url(account)
+                )
+            )
+    group_list_column = [
+        Column(elements=group_list_column[i: i + 20]) for i in range(0, len(group_list_column), 20)
+    ]
+    return await app.send_message(group, MessageChain(
+        Image(data_bytes=await OneMockUI.gen(
+            GenForm(columns=group_list_column, color_type=get_color_type_follow_time())
         ))
     ), quote=source)
 

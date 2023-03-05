@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TypedDict
 
 import jieba
+import jieba.analyse
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage, Member
@@ -263,6 +264,19 @@ async def web_api(content, result_nums: int = 3):
             return await response.json()
 
 
+async def kw_handle(content):
+    if api_count < 15:
+        kw = await kw_getter(content)
+        if kw:
+            print(f"content: {content}\nkw:{kw}")
+            content = await web_handle(content, kw)
+            return content
+    kw = ",".join(jieba.analyse.extract_tags(content, topK=4))
+    print(f"content: {content}\nkw:{kw}")
+    content = await web_handle(content, kw)
+    return content
+
+
 manager = ConversationManager()
 
 
@@ -303,16 +317,7 @@ async def chat_gpt(
         _ = await manager.new(group, member)
     content = content.result.display
     if not offline.matched:
-        if api_count < 15:
-            kw = await kw_getter(content)
-            if kw:
-                print(f"content: {content}\nkw:{kw}")
-                content = await web_handle(content, kw)
-            else:
-                seg_result = jieba.lcut(content)
-                kw = ",".join(seg_result) if seg_result else ""
-                print(f"content: {content}\nkw:{kw}")
-                content = await web_handle(content, kw)
+        content = await kw_handle(content)
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

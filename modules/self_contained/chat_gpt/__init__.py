@@ -293,12 +293,13 @@ async def chat_gpt(
         return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请稍等一会儿吧qwq~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
-    content = content.result.display.strip()
+    content = content.result.display
     if not offline.matched:
-        kw = await kw_getter(content)
-        if kw:
-            print(f"content: {content}\nkw:{kw}")
-            content = await web_handle(content)
+        if api_count < 15:
+            kw = await kw_getter(content)
+            if kw:
+                print(f"content: {content}\nkw:{kw}")
+                content = await web_handle(content)
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

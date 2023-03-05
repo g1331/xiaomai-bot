@@ -220,7 +220,7 @@ async def kw_getter(content):
         return None
 
 
-async def web_handle(content):
+async def web_handle(content, kw):
     Current_time = datetime.datetime.now().strftime("北京时间: %Y-%m-%d %H:%M:%S %A")
     if not content:
         result_handle = f"Current date:{Current_time}\n"
@@ -230,7 +230,7 @@ async def web_handle(content):
                          f"\nReply in 中文"
         return result_handle
     try:
-        web_result = await web_api(content)
+        web_result = await web_api(kw)
         web_result_handle = "Web search results:\n"
         for i, item in enumerate(web_result):
             web_result_handle += (
@@ -307,10 +307,11 @@ async def chat_gpt(
             kw = await kw_getter(content)
             if kw:
                 print(f"content: {content}\nkw:{kw}")
-                content = await web_handle(content)
+                content = await web_handle(content, kw)
             else:
                 seg_result = jieba.lcut(content)
-                content = await web_handle(",".join(seg_result) if seg_result else "")
+                kw = ",".join(seg_result) if seg_result else ""
+                content = await web_handle(content, kw)
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

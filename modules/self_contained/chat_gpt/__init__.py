@@ -183,7 +183,7 @@ class ConversationManager(object):
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
             if "Error: 429 Too Many Requests" in str(e):
-                result = "小埋忙不过来啦,请晚点再试试吧~"
+                result = "小埋忙不过来啦,请晚点再试试吧qwq~"
         finally:
             self.data[group][member]["running"] = False
         return result
@@ -223,7 +223,7 @@ async def kw_getter(content):
 
 async def web_handle(content, kw):
     Current_time = datetime.datetime.now().strftime("北京时间: %Y-%m-%d %H:%M:%S %A")
-    if not content:
+    if not kw:
         result_handle = f"Current date:{Current_time}\n"
         result_handle += f"Web search results:\n" \
                          f"No Web results!" \
@@ -266,19 +266,6 @@ async def web_api(content: str, result_nums: int = 3):
             return await response.json()
 
 
-async def kw_handle(content):
-    if api_count < 15:
-        kw = await kw_getter(content)
-        if kw:
-            print(f"content: {content}\nkw:{kw}")
-            content = await web_handle(content, kw)
-            return content
-    kw = ",".join(jieba.analyse.extract_tags(content, topK=4))
-    print(f"content: {content}\nkw:{kw}")
-    content = await web_handle(content, kw)
-    return content
-
-
 manager = ConversationManager()
 
 
@@ -314,12 +301,17 @@ async def chat_gpt(
         content: RegexResult
 ):
     if (not gpt_api_available) and (not Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
-        return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请稍等一会儿吧qwq~"), quote=source)
+        return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
     content = content.result.display
     if not offline.matched:
-        content = await kw_handle(content)
+        if api_count < 15:
+            kw = await kw_getter(content)
+            print(f"content: {content}\nkw:{kw}")
+            content = await web_handle(content, kw)
+        else:
+            return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

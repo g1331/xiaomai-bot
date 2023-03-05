@@ -171,8 +171,8 @@ class ConversationManager(object):
         await app.send_group_message(group, MessageChain("请等待,小埋解答ing"), quote=source)
         self.data[group][member]["running"] = True
         try:
-            result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
             api_counter()
+            result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
             # result = "获取回复消息为空!"
             # async for response in self.data[group][member]["gpt"].ask(prompt=content):
             #     result = response["message"]
@@ -187,6 +187,7 @@ class ConversationManager(object):
 
 async def kw_getter(content):
     try:
+        api_counter()
         result = await asyncio.to_thread(
             get_kw_gpt().ask,
             "你的名字叫小埋全名土间埋。"
@@ -209,7 +210,6 @@ async def kw_getter(content):
             "如果没有有关键词回答应该简洁明了如：[]"
             f"以下是输入的句子：”{content}“"
         )
-        api_counter()
         kw = re.findall(r"\[(.*?)\]", result)
         return kw[0]
     except Exception as e:

@@ -16,7 +16,7 @@ from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, Ar
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from loguru import logger
-from revChatGPT.V1 import AsyncChatbot
+# from revChatGPT.V1 import AsyncChatbot
 from revChatGPT.V3 import Chatbot
 
 from core.config import GlobalConfig

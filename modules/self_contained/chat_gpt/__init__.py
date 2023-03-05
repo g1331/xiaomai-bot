@@ -306,7 +306,7 @@ async def chat_gpt(
         _ = await manager.new(group, member)
     content = content.result.display
     if not offline.matched:
-        if api_count < 15:
+        if api_count <= 16:
             kw = await kw_getter(content)
             print(f"content: {content}\nkw:{kw}")
             content = await web_handle(content, kw)

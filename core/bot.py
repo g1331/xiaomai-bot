@@ -132,6 +132,7 @@ class Umaru(object):
         Timeout = 60
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
+
                 if app.account in self.initialized_app_list:
                     continue
                 if not app.connection.status.available:
@@ -141,17 +142,19 @@ class Umaru(object):
                 group_list = await app.get_group_list()
                 self.total_groups[app.account] = group_list
                 # 更新群组权限
+                group_init_counter = 0
                 for group in group_list:
+                    memberId_list = [member.id for member in (await app.get_member_list(group))]
                     if group.id not in self.initialized_group_list:
-                        if group.id == self.config.test_group:
-                            perm = 3
-                        elif await orm.fetch_one(
+                        if await orm.fetch_one(
                                 select(GroupPerm.group_id).where(
                                     GroupPerm.perm == 2,
                                     GroupPerm.group_id == group.id
                                 )
                         ):
                             perm = 2
+                        elif group.id == self.config.test_group:
+                            perm = 3
                         else:
                             perm = 1
                         await orm.insert_or_update(
@@ -161,28 +164,30 @@ class Umaru(object):
                                 GroupPerm.group_id == group.id
                             ]
                         )
-                        logger.debug(f"账号{app.account}初始化群成功")
                         # 更新Master权限
-                        await orm.insert_or_update(
-                            table=MemberPerm,
-                            data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                            condition=[
-                                MemberPerm.qq == self.config.Master,
-                                MemberPerm.group_id == group.id
-                            ]
-                        )
-                        # 更新BotAdmin权限
-                        for admin in admin_list:
+                        if self.config.Master in memberId_list:
                             await orm.insert_or_update(
                                 table=MemberPerm,
-                                data={"qq": admin, "group_id": group.id, "perm": 128},
+                                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
                                 condition=[
-                                    MemberPerm.qq == admin,
+                                    MemberPerm.qq == self.config.Master,
                                     MemberPerm.group_id == group.id
                                 ]
                             )
-                        logger.debug(f"账号{app.account}初始化权限成功")
+                        # 更新BotAdmin权限
+                        for admin in admin_list:
+                            if admin in memberId_list:
+                                await orm.insert_or_update(
+                                    table=MemberPerm,
+                                    data={"qq": admin, "group_id": group.id, "perm": 128},
+                                    condition=[
+                                        MemberPerm.qq == admin,
+                                        MemberPerm.group_id == group.id
+                                    ]
+                                )
                         self.initialized_group_list.append(group.id)
+                        group_init_counter += 1
+                        logger.debug(f"账号{app.account}初始化完成{group_init_counter}/{len(group_list)}")
                 self.initialized_app_list.append(app.account)
             logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):

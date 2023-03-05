@@ -311,6 +311,7 @@ async def chat_gpt(
             else:
                 seg_result = jieba.lcut(content)
                 kw = ",".join(seg_result) if seg_result else ""
+                print(f"content: {content}\nkw:{kw}")
                 content = await web_handle(content, kw)
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:

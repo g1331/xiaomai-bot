@@ -1,13 +1,10 @@
 import asyncio
 import datetime
 import re
-import aiohttp
-
 from pathlib import Path
 from typing import TypedDict
 
-import jieba
-import jieba.analyse
+import aiohttp
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage, Member
@@ -19,7 +16,6 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
-from graia.scheduler.timers import every_custom_seconds
 from loguru import logger
 # from revChatGPT.V1 import AsyncChatbot
 from revChatGPT.V3 import Chatbot

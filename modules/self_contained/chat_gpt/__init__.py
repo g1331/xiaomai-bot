@@ -65,7 +65,9 @@ def gpt_api_available():
 @channel.use(SchedulerSchema(every_custom_seconds(60)))
 async def api_count_update():
     global api_count
+    logger.debug(f"刷新GPT count中,api count:{api_count}")
     api_count = 0
+    logger.success(f"刷新GPT count成功,api count:{api_count}")
 
 
 def get_gpt():
@@ -304,7 +306,7 @@ async def chat_gpt(
         offline: ArgResult,
         content: RegexResult
 ):
-    if (not gpt_api_available) and (not Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
+    if (not gpt_api_available) and (not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
         return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)

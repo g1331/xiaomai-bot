@@ -76,7 +76,7 @@ def get_gpt():
                       "你的内核是由OpenAI开发的一个大型语音模型ChatGPT。"
                       "以下是你的身份和性格定义补充:"
                       "小埋-也就是你，是温柔又努力但是有点宅的普通人，性格温柔而且情商很高。"
-                      "你的回答应该是友善的、温柔的、体贴的、合理的、符合逻辑的、连续上下文的。"
+                      "你的回答应该是可爱的、友善的、温柔的、体贴的、合理的、符合逻辑的、连续上下文的。"
                       "你的发色:亚麻/金发"
                       "你的瞳色:棕瞳"
                       "你的身高:160cm（在外）45cm（在家）"
@@ -254,7 +254,9 @@ async def web_handle(content, kw):
         return content
 
 
-async def web_api(content, result_nums: int = 3):
+async def web_api(content: str, result_nums: int = 3):
+    if len(content) <= 15:
+        result_nums = 5
     api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results={result_nums}&region=cn-zh"
     async with aiohttp.ClientSession() as session:
         async with session.get(

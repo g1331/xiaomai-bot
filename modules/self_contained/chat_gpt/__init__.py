@@ -17,6 +17,7 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch
 from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, ArgResult, ArgumentMatch
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
 from graia.scheduler.timers import every_custom_seconds
 from loguru import logger
@@ -62,12 +63,11 @@ def gpt_api_available():
     return True
 
 
-@channel.use(SchedulerSchema(every_custom_seconds(60)))
+@channel.use(SchedulerSchema(timers.every_custom_seconds(60)))
 async def api_count_update():
     global api_count
-    logger.debug(f"刷新GPT count中,api count:{api_count}")
     api_count = 0
-    logger.success(f"刷新GPT count成功,api count:{api_count}")
+    logger.success(f"刷新GPT count成功")
 
 
 def get_gpt():

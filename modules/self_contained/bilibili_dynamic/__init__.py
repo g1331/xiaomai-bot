@@ -21,6 +21,7 @@ from graia.ariadne.model import Group
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.scheduler import timers
 from graia.scheduler.saya.schema import SchedulerSchema
 from graia.scheduler.timers import every_custom_seconds
 from loguru import logger
@@ -221,7 +222,7 @@ async def init():
 
 
 # 主动推送主程序
-@channel.use(SchedulerSchema(every_custom_seconds(45)))
+@channel.use(SchedulerSchema(timers.every_custom_seconds(45)))
 async def main_update_scheduled():
     if not NONE:
         logger.info("[BiliBili推送] 初始化未完成，终止本次更新")

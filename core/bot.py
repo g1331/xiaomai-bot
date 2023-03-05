@@ -161,45 +161,27 @@ class Umaru(object):
                                 GroupPerm.group_id == group.id
                             ]
                         )
+                        logger.debug(f"账号{app.account}初始化群成功")
                         # 更新Master权限
-                        try:
-                            await app.get_member(group, self.config.Master)
-                            await orm.insert_or_update(
-                                table=MemberPerm,
-                                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                                condition=[
-                                    MemberPerm.qq == self.config.Master,
-                                    MemberPerm.group_id == group.id
-                                ]
-                            )
-                        except:
-                            await orm.delete(
-                                table=MemberPerm,
-                                condition=[
-                                    MemberPerm.qq == self.config.Master,
-                                    MemberPerm.group_id == group.id
-                                ]
-                            )
+                        await orm.insert_or_update(
+                            table=MemberPerm,
+                            data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                            condition=[
+                                MemberPerm.qq == self.config.Master,
+                                MemberPerm.group_id == group.id
+                            ]
+                        )
                         # 更新BotAdmin权限
                         for admin in admin_list:
-                            try:
-                                await app.get_member(group, admin)
-                                await orm.insert_or_update(
-                                    table=MemberPerm,
-                                    data={"qq": admin, "group_id": group.id, "perm": 128},
-                                    condition=[
-                                        MemberPerm.qq == admin,
-                                        MemberPerm.group_id == group.id
-                                    ]
-                                )
-                            except:
-                                await orm.delete(
-                                    table=MemberPerm,
-                                    condition=[
-                                        MemberPerm.qq == admin,
-                                        MemberPerm.group_id == group.id,
-                                    ]
-                                )
+                            await orm.insert_or_update(
+                                table=MemberPerm,
+                                data={"qq": admin, "group_id": group.id, "perm": 128},
+                                condition=[
+                                    MemberPerm.qq == admin,
+                                    MemberPerm.group_id == group.id
+                                ]
+                            )
+                        logger.debug(f"账号{app.account}初始化权限成功")
                         self.initialized_group_list.append(group.id)
                 self.initialized_app_list.append(app.account)
             logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")

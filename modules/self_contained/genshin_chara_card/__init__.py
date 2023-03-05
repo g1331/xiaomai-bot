@@ -7,6 +7,7 @@ import aiohttp
 import pypinyin
 from bs4 import BeautifulSoup
 from graia.ariadne.app import Ariadne
+from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, Image
@@ -139,3 +140,11 @@ async def init_chara_list():
         en_name = re.findall(r'<a href="/(.+?)_.+/?lang=CHS"', c, re.S)[0]
         characters["".join(pypinyin.lazy_pinyin(chn_name))] = en_name.lower()
     print(characters)
+
+
+@channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
+async def init():
+    if not characters:
+        logger.debug("正在初始化原神角色列表")
+        _ = await init_chara_list()
+        logger.success("原神角色列表初始化完成")

@@ -15,6 +15,8 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch
 from graia.ariadne.message.parser.twilight import WildcardMatch, RegexResult, ArgResult, ArgumentMatch
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.scheduler.saya import SchedulerSchema
+from graia.scheduler.timers import every_custom_seconds
 from loguru import logger
 # from revChatGPT.V1 import AsyncChatbot
 from revChatGPT.V3 import Chatbot
@@ -42,6 +44,26 @@ config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None
 session_token = config.functions.get("ChatGPT", {}).get("session_token")
 api_key = config.functions.get("ChatGPT", {}).get("api_key")
+
+api_count = 0
+
+
+def api_counter():
+    global api_count
+    api_count += 1
+
+
+def gpt_api_available():
+    global api_count
+    if api_count >= 25:
+        return False
+    return True
+
+
+@channel.use(SchedulerSchema(every_custom_seconds(60)))
+async def api_count_update():
+    global api_count
+    api_count = 0
 
 
 def get_gpt():
@@ -138,6 +160,7 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         try:
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
+            api_counter()
             # result = "获取回复消息为空!"
             # async for response in self.data[group][member]["gpt"].ask(prompt=content):
             #     result = response["message"]
@@ -170,6 +193,7 @@ async def kw_getter(content):
             "如果没有有关键词回答应该简洁明了如：[]"
             f"以下是输入的句子：”{content}“"
         )
+        api_counter()
         kw = re.findall(r"\[(.*?)\]", result)
         return kw[0]
     except Exception as e:
@@ -247,6 +271,8 @@ async def chat_gpt(
         offline: ArgResult,
         content: RegexResult
 ):
+    if (not gpt_api_available) and (not Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
+        return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请稍等一会儿吧qwq~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member)
     content = content.result.display.strip()

@@ -6,6 +6,7 @@ import aiohttp
 from pathlib import Path
 from typing import TypedDict
 
+import jieba
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage, Member
@@ -101,7 +102,7 @@ def get_kw_gpt():
         kw_gpt = Chatbot(
             api_key=api_key,
             system_prompt=
-            "你的名字叫小埋全名土间埋。"
+            "你的名字叫小埋,全名土间埋。"
             "你是由十三开发的一个服务于战地一QQ群的智能聊天机器人。"
             "你要理解并提取用户输入语句的信息与目的。"
             "如果这句话想要搜索网络信息，提取出要搜索的关键词。"
@@ -191,7 +192,7 @@ async def kw_getter(content):
         api_counter()
         result = await asyncio.to_thread(
             get_kw_gpt().ask,
-            "你的名字叫小埋全名土间埋。"
+            "你的名字叫小埋,全名土间埋。"
             "你是由十三开发的一个服务于战地一QQ群的智能聊天机器人。"
             "你要理解并提取用户输入语句的信息与目的。"
             "如果这句话想要搜索网络信息，提取出要搜索的关键词。"
@@ -220,6 +221,14 @@ async def kw_getter(content):
 
 
 async def web_handle(content):
+    Current_time = datetime.datetime.now().strftime("北京时间: %Y-%m-%d %H:%M:%S %A")
+    if not content:
+        result_handle = f"Current date:{Current_time}\n"
+        result_handle += f"Web search results:\n" \
+                         f"No Web results!" \
+                         f"\nQuery: {content}" \
+                         f"\nReply in 中文"
+        return result_handle
     try:
         web_result = await web_api(content)
         web_result_handle = "Web search results:\n"
@@ -229,7 +238,6 @@ async def web_handle(content):
                 f"Content:{item['body']}\n"
                 f"Url:{item['href']}\n"
             )
-        Current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S %A")
         web_result_handle += f"\nCurrent date:{Current_time}\n"
         web_result_handle += f"Instructions:" \
                              f"Please give priority to the context rather than using Web search results. " \
@@ -300,6 +308,9 @@ async def chat_gpt(
             if kw:
                 print(f"content: {content}\nkw:{kw}")
                 content = await web_handle(content)
+            else:
+                seg_result = jieba.lcut(content)
+                content = await web_handle(",".join(seg_result) if seg_result else "")
     response = await manager.send_message(group, member, content, app, source)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)

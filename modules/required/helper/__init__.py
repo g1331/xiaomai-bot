@@ -120,7 +120,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
         module_columns.append(ColumnList(rows=[
             ColumnListItem(
                 # 副标题
-                subtitle=f"{i + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                subtitle=f"{i + len(normal_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
 
             )
         ]))

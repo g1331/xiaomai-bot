@@ -806,8 +806,9 @@ async def weapon(app: Ariadne, sender: Member, group: Group, player_name: RegexR
             weapon_data = await InfoCache_weapon(str(player_pid)).get_data()
         except Exception as e:
             logger.error(e)
-            await InfoCache_weapon(str(player_pid)).update_cache()
-            weapon_data = await InfoCache_weapon(str(player_pid)).get_data()
+            return await app.send_message(group, MessageChain(
+                f"查询时出现网络错误!"
+            ), quote=source)
         # 0：战场装备 1：装备 2：半自动 3：霰弹 4：佩枪 5：轻机枪
         # 6：近战 7：步枪 8：手榴弹 9：制式步枪 10：坦克/驾驶员 11：冲锋枪
         item_temp = weapon_data["result"][4]["weapons"].pop()
@@ -1136,8 +1137,9 @@ async def vehicle(app: Ariadne, sender: Member, group: Group, player_name: Regex
             vehicle_data = await InfoCache_vehicle(str(player_pid)).get_data()
         except Exception as e:
             logger.error(e)
-            await InfoCache_vehicle(str(player_pid)).update_cache()
-            vehicle_data = await InfoCache_vehicle(str(player_pid)).get_data()
+            return await app.send_message(group, MessageChain(
+                f"查询时出现网络错误!"
+            ), quote=source)
         vehicle_data = vehicle_data["result"]
     except Exception as e:
         logger.error(e)
@@ -1450,10 +1452,9 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
         await tasks
     except Exception as e:
         logger.error(e)
-        await app.send_message(group, MessageChain(
+        return await app.send_message(group, MessageChain(
             f"查询时出现网络错误!"
         ), quote=source)
-        return False
 
     # player_stat_data = scrape_index_tasks[0].result()["result"]
     # player_stat_data = (await InfoCache(str(player_pid), "stat").get_data())["result"]
@@ -1463,8 +1464,9 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
         player_stat_data = scrape_index_tasks[0].result()["result"]
     except Exception as e:
         logger.error(e)
-        await InfoCache(str(player_pid), "stat").update_cache()
-        player_stat_data = (await InfoCache_stat(str(player_pid)).get_data())["result"]
+        return await app.send_message(group, MessageChain(
+            f"查询时出现网络错误!"
+        ), quote=source)
 
     # 等级信息
     rank_data = "0"
@@ -1500,12 +1502,12 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
 
     # bfban查询
     bf_html = scrape_index_tasks[3].result()
-    if type(bf_html) == str:
-        await app.send_message(group, MessageChain(
-            # At(sender.id),
-            "获取玩家bfban信息出错,请稍后再试!"
-        ), quote=source)
-        return
+    # if type(bf_html) == str:
+    #     await app.send_message(group, MessageChain(
+    #         # At(sender.id),
+    #         "获取玩家bfban信息出错,请稍后再试!"
+    #     ), quote=source)
+    #     return
     bf_stat = bf_html
     if_cheat = False
     stat_dict = {
@@ -1519,19 +1521,23 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
         "8": "刷枪"
     }
     # 先看下有无案件信息
-    if "url" in bf_stat["personaids"][str(player_pid)]:
-        bf_url = bf_stat["personaids"][str(player_pid)]["url"]
-        bfban_status = stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]
-        if bf_stat["personaids"][str(player_pid)]["hacker"]:
-            if_cheat = True
-        # if bf_stat['personaids'][str(player_pid)]['cheatMethods'] != "":
-        #     if if_cheat:
-        #         cheat_method = f"作弊方式:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
-        #     else:
-        #         cheat_method = f"被举报为:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
-    else:
+    try:
+        if "url" in bf_stat["personaids"][str(player_pid)]:
+            bf_url = bf_stat["personaids"][str(player_pid)]["url"]
+            bfban_status = stat_dict[str(bf_stat["personaids"][str(player_pid)]["status"])]
+            if bf_stat["personaids"][str(player_pid)]["hacker"]:
+                if_cheat = True
+            # if bf_stat['personaids'][str(player_pid)]['cheatMethods'] != "":
+            #     if if_cheat:
+            #         cheat_method = f"作弊方式:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
+            #     else:
+            #         cheat_method = f"被举报为:{bf_stat['personaids'][str(player_pid)]['cheatMethods']}\n"
+        else:
+            bf_url = "暂无信息"
+            bfban_status = "未查询到联ban信息"
+    except:
         bf_url = "暂无信息"
-        bfban_status = "未查询到联ban信息"
+        bfban_status = "查询信息失败"
     # 头像信息
     # noinspection PyBroadException
     html = None
@@ -1615,8 +1621,9 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
             weapon_data = scrape_index_tasks[1].result()
         except Exception as e:
             logger.error(e)
-            await InfoCache(str(player_pid), "weapon").update_cache()
-            weapon_data = await InfoCache(str(player_pid), "weapon").get_data()
+            return await app.send_message(group, MessageChain(
+                f"查询时出现网络错误!"
+            ), quote=source)
         item_temp = weapon_data["result"][11]["weapons"].pop()
         weapon_data["result"][11]["weapons"].pop()
         weapon_data["result"][3]["weapons"].append(item_temp)
@@ -1695,8 +1702,9 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
             vehicle_data = scrape_index_tasks[2].result()
         except Exception as e:
             logger.error(e)
-            await InfoCache(str(player_pid), "vehicle").update_cache()
-            vehicle_data = await InfoCache(str(player_pid), "vehicle").get_data()
+            return await app.send_message(group, MessageChain(
+                f"查询时出现网络错误!"
+            ), quote=source)
         vehicle_data = vehicle_data["result"]
     except Exception as e:
         logger.error(e)

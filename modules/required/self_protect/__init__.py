@@ -41,6 +41,7 @@ async def auto_quit_group(group: Group, member: Member):
 @listen(NewFriendRequestEvent)
 async def auto_agree_admin_friend_request(event: NewFriendRequestEvent):
     if (event.supplicant in await Permission.get_BotAdminsList()) or event.supplicant == global_config.Master:
+        await event.accept("已同意您的申请!")
         target_app, target_group = await account_controller.get_app_from_total_groups(global_config.test_group)
         if not (target_app and target_group):
             return

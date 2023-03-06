@@ -54,7 +54,7 @@ def api_counter():
 
 def gpt_api_available():
     global api_count
-    if api_count >= 25:
+    if api_count >= 40:
         return False
     return True
 
@@ -181,7 +181,8 @@ class ConversationManager(object):
             #     result = response["message"]
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
-            if "Error: 429 Too Many Requests" in str(e):
+            logger.warning(f"GPT报错:{e}")
+            if "Too Many Requests" in str(e):
                 result = "小埋忙不过来啦,请晚点再试试吧qwq~"
         finally:
             self.data[group][member]["running"] = False

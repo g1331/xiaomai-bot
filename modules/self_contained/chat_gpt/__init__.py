@@ -103,7 +103,7 @@ def get_kw_gpt():
             "你的名字叫小埋"
             "你是由十三开发的一个服务于战地一QQ群的智能聊天机器人。"
             "你要理解并提取用户输入语句的信息与目的。"
-            "如果这句话想要搜索网络信息，提取出要搜索的关键词。"
+            "如果这句话需要搜索网络信息，提取出要搜索的关键词。"
             "关键词最好凝练成一句概括性的话。"
             "关键词应该是你数据库中缺乏的信息。"
             "关键词应该是对这句话的总结。"
@@ -195,7 +195,7 @@ async def kw_getter(content):
         result = await asyncio.to_thread(
             get_kw_gpt().ask,
             "你要理解并提取用户输入语句的信息与目的。"
-            "如果这句话想要搜索网络信息，提取出要搜索的关键词。"
+            "如果这句话需要搜索网络信息，提取出要搜索的关键词。"
             "关键词最好凝练成一句概括性的话。"
             "关键词应该是你数据库中缺乏的信息。"
             "关键词应该是对这句话的总结。"
@@ -233,7 +233,10 @@ async def web_handle(content, kw):
                          f"\nReply in 中文"
         return result_handle
     try:
-        web_result = await web_api(kw)
+        if len(content) <= 15:
+            web_result = await web_api(content, 5)
+        else:
+            web_result = await web_api(kw)
         web_result_handle = "Web search results:\n"
         for i, item in enumerate(web_result):
             web_result_handle += (
@@ -247,7 +250,7 @@ async def web_handle(content, kw):
                              f"If you do not have relevant knowledge, then answer in combination with online search results. " \
                              f"Please answer with your own understanding." \
                              f"If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. " \
-                             f"Make sure to cite results using [[number](URL)] notation after the reference. " \
+                             f"Make sure to cite results using [number](URL) notation after the reference. " \
                              f"\nQuery: {content}" \
                              f"\nReply in 中文"
         return web_result_handle
@@ -257,8 +260,6 @@ async def web_handle(content, kw):
 
 
 async def web_api(content: str, result_nums: int = 3):
-    if len(content) <= 15:
-        result_nums = 5
     api_url = f"https://ddg-webapp-aagd.vercel.app/search?q={content}?&max_results={result_nums}&region=cn-zh"
     async with aiohttp.ClientSession() as session:
         async with session.get(

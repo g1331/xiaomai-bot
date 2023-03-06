@@ -132,7 +132,6 @@ class Umaru(object):
         Timeout = 60
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
             for app in self.apps:
-
                 if app.account in self.initialized_app_list:
                     continue
                 if not app.connection.status.available:

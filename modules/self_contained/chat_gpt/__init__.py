@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.element import Image
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch
@@ -91,3 +92,8 @@ async def chat_gpt(
         await app.send_group_message(
             group, MessageChain(Image(data_bytes=await md2img(response, use_proxy=True))), quote=source
         )
+
+
+@channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
+async def init():
+    await api_count_update()

@@ -22,6 +22,7 @@ session_token = config.functions.get("ChatGPT", {}).get("session_token")
 api_key = config.functions.get("ChatGPT", {}).get("api_key")
 
 api_count = 0
+api_limit = False
 
 
 def api_counter():
@@ -37,17 +38,18 @@ def gpt_api_available():
 
 
 async def api_count_update():
-    global api_count
+    global api_count, api_limit
+    if api_limit:
+        return
+    api_limit = True
     while True:
         api_count = 0
         await asyncio.sleep(60)
 
 
-api_count_update()
-
-
 def get_gpt(preset="umaru"):
-    preset = preset_dict[preset]["content"] if preset in preset_dict else (preset if preset else preset_dict["umaru"]["content"])
+    preset = preset_dict[preset]["content"] if preset in preset_dict else (
+        preset if preset else preset_dict["umaru"]["content"])
     return Chatbot(
         api_key=api_key,
         system_prompt=preset

@@ -1,0 +1,21 @@
+{
+  "level": 1,
+  "name": "Announcement",
+  "version": "0.1",
+  "display_name": "公告",
+  "authors": [
+    "十三"
+  ],
+  "description": "推送公告到符合条件的群",
+  "usage": [
+    "-公告 function_name content",
+    "上述指令会通知所有开启了function_name(指定的功能名)的群,content为通知内容",
+    "-t用于指定每个通知之前间隔多少分钟,默认为1"
+  ],
+  "example": [
+    "-公告 帮助菜单 你好",
+    "-公告 -t=2 识图 识图插件维护啦"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

@@ -51,7 +51,8 @@ def get_gpt(preset="umaru"):
         preset if preset else preset_dict["umaru"]["content"])
     return Chatbot(
         api_key=api_key,
-        system_prompt=preset
+        system_prompt=preset,
+        max_tokens=1000
     )
     # return AsyncChatbot(config={
     #     "session_token": session_token
@@ -88,7 +89,8 @@ def get_kw_gpt():
             "如果你的数据库中有很多信息包含关键词就输出[]。"
             "回答不应该包含其他辅助提示词。"
             "如果有关键词回答应该简洁明了如：[关键词1，关键词2]"
-            "如果没有有关键词回答应该简洁明了如：[]"
+            "如果没有有关键词回答应该简洁明了如：[]",
+            max_tokens=1000
         )
     if len(kw_gpt.conversation) > 1:
         kw_gpt.conversation.pop(1)

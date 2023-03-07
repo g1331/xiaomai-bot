@@ -90,6 +90,8 @@ def get_kw_gpt():
             "如果有关键词回答应该简洁明了如：[关键词1，关键词2]"
             "如果没有有关键词回答应该简洁明了如：[]"
         )
+    if len(kw_gpt.conversation) > 1:
+        kw_gpt.conversation.pop(1)
     return kw_gpt
 
 

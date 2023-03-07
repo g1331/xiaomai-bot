@@ -111,10 +111,10 @@ class ConversationManager(object):
             if member in self.data[group]:
                 self.data[group][member]["gpt"] = get_gpt(preset)
             else:
-                self.data[group][member] = {"running": False, "gpt": get_gpt()}
+                self.data[group][member] = {"running": False, "gpt": get_gpt(preset)}
         else:
             self.data[group] = {}
-            self.data[group][member] = {"running": False, "gpt": get_gpt()}
+            self.data[group][member] = {"running": False, "gpt": get_gpt(preset)}
 
     async def send_message(
             self, group: Group | int, member: Member | int,

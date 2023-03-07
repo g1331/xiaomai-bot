@@ -65,6 +65,7 @@ async def chat_gpt(
         content: RegexResult,
         show_preset: ArgResult,
 ):
+    await api_count_update()
     if show_preset.matched:
         return await app.send_group_message(
             group,
@@ -93,7 +94,3 @@ async def chat_gpt(
             group, MessageChain(Image(data_bytes=await md2img(response, use_proxy=True))), quote=source
         )
 
-
-@channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
-async def init():
-    await api_count_update()

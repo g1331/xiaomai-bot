@@ -2,8 +2,6 @@ import asyncio
 import datetime
 import re
 from typing import TypedDict
-
-import aiohttp
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member
@@ -20,7 +18,6 @@ config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None
 session_token = config.functions.get("ChatGPT", {}).get("session_token")
 api_key = config.functions.get("ChatGPT", {}).get("api_key")
-
 api_count = 0
 api_limit = False
 
@@ -42,7 +39,7 @@ async def api_count_update():
     if api_limit:
         return
     api_limit = True
-    while True:
+    while api_limit:
         api_count = 0
         await asyncio.sleep(60)
 

@@ -69,8 +69,8 @@ async def chat_gpt(
         return await app.send_group_message(
             group,
             MessageChain(Image(data_bytes=await md2img(
-                "当前内置预设：\n" +
-                "\n".join([f"{i} ({v['name']})：{v['description']}" for i, v in preset_dict.items()]), use_proxy=True))),
+                "当前内置预设：\n\n" +
+                "\n\n".join([f"{i} ({v['name']})：{v['description']}" for i, v in preset_dict.items()]), use_proxy=True))),
             quote=source
         )
     if (not gpt_api_available) and (not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):

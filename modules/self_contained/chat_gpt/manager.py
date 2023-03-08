@@ -52,7 +52,7 @@ def get_gpt(preset="umaru"):
     return Chatbot(
         api_key=api_key,
         system_prompt=preset,
-        max_tokens=2000
+        max_tokens=len(ENCODER.encode(preset)) + 1000
     )
     # return AsyncChatbot(config={
     #     "session_token": session_token
@@ -138,7 +138,7 @@ class ConversationManager(object):
             api_counter()
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
             token_cost = len(ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
-            result += f'\n(token cost:{token_cost})'
+            result += f'\n\n(token cost:{token_cost}/{self.data[group][member]["gpt"].max_tokens})'
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
             logger.warning(f"GPT报错:{e}")

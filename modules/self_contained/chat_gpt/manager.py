@@ -11,7 +11,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
 from loguru import logger
 # from revChatGPT.V1 import AsyncChatbot
-from revChatGPT.V3 import Chatbot
+from revChatGPT.V3 import Chatbot, ENCODER
 
 from core.config import GlobalConfig
 from .preset import preset_dict
@@ -137,6 +137,8 @@ class ConversationManager(object):
         try:
             api_counter()
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
+            token_cost = len(ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
+            result += f'\n(token cost:{token_cost})'
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
             logger.warning(f"GPT报错:{e}")

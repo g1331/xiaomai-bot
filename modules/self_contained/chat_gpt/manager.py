@@ -151,33 +151,36 @@ class ConversationManager(object):
 
 async def kw_getter(content):
     try:
-        api_counter()
-        result = await asyncio.to_thread(
-            get_kw_gpt().ask,
-            "你要理解并提取用户输入语句的信息与目的。"
-            "如果这句话需要搜索网络信息，提取出要搜索的关键词。"
-            "关键词最好凝练成一句概括性的话。"
-            "关键词应该是你数据库中缺乏的信息。"
-            "关键词应该是对这句话的总结。"
-            "关键词应该是对这句话的概括。"
-            "关键词应该是这句话的目的。"
-            "关键词应该带有实时性。"
-            "关键词应该用[]括起来。"
-            "[]可以包含多个关键词。"
-            "关键词之间用逗号隔开。"
-            "多个关键词之间应该有很强的相互联系。"
-            "关键词的定语也要提取。"
-            "如果没有关键词就输出一个[]。"
-            "如果问题在和你自己的理解相关就输出[]。"
-            "如果问题关于你自己的信息就输出[]。"
-            "如果你的数据库中有很多信息包含关键词就输出[]。"
-            "回答不应该包含其他辅助提示词。"
-            "如果有关键词回答应该简洁明了如：[关键词1，关键词2]"
-            "如果没有有关键词回答应该简洁明了如：[]"
-            f"以下是输入的句子：”{content}“"
-        )
-        kw = re.findall(r"\[(.*?)\]", result)
-        return kw[0]
+        if len(content) > 20:
+            api_counter()
+            result = await asyncio.to_thread(
+                get_kw_gpt().ask,
+                "你要理解并提取用户输入语句的信息与目的。"
+                "如果这句话需要搜索网络信息，提取出要搜索的关键词。"
+                "关键词最好凝练成一句概括性的话。"
+                "关键词应该是你数据库中缺乏的信息。"
+                "关键词应该是对这句话的总结。"
+                "关键词应该是对这句话的概括。"
+                "关键词应该是这句话的目的。"
+                "关键词应该带有实时性。"
+                "关键词应该用[]括起来。"
+                "[]可以包含多个关键词。"
+                "关键词之间用逗号隔开。"
+                "多个关键词之间应该有很强的相互联系。"
+                "关键词的定语也要提取。"
+                "如果没有关键词就输出一个[]。"
+                "如果问题在和你自己的理解相关就输出[]。"
+                "如果问题关于你自己的信息就输出[]。"
+                "如果你的数据库中有很多信息包含关键词就输出[]。"
+                "回答不应该包含其他辅助提示词。"
+                "如果有关键词回答应该简洁明了如：[关键词1，关键词2]"
+                "如果没有有关键词回答应该简洁明了如：[]"
+                f"以下是输入的句子：”{content}“"
+            )
+            kw = re.findall(r"\[(.*?)\]", result)
+            return kw[0]
+        else:
+            return content
     except Exception as e:
         logger.warning(f"提取关键词出错!{e}")
         return None
@@ -193,10 +196,7 @@ async def web_handle(content, kw):
                          f"\nReply in 中文"
         return result_handle
     try:
-        if len(content) <= 15:
-            web_result = await web_api(content, 5)
-        else:
-            web_result = await web_api(kw)
+        web_result = await web_api(kw)
         web_result_handle = "Web search results:\n"
         for i, item in enumerate(web_result):
             web_result_handle += (

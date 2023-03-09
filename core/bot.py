@@ -138,27 +138,20 @@ class Umaru(object):
                     logger.warning(f"{app.account}失去连接,已跳过初始化")
                     continue
                 logger.debug(f"账号{app.account}初始化ing")
-                group_list = await app.get_group_list()
+                group_list = [group for group in await app.get_group_list() if
+                              group.id not in self.initialized_group_list]
                 self.total_groups[app.account] = group_list
                 # 更新群组权限
                 group_init_counter = 0
                 for group in group_list:
                     memberId_list = [member.id for member in (await app.get_member_list(group))]
                     if group.id not in self.initialized_group_list:
-                        if await orm.fetch_one(
-                                select(GroupPerm.group_id).where(
-                                    GroupPerm.perm == 2,
-                                    GroupPerm.group_id == group.id
-                                )
-                        ):
-                            perm = 2
-                        elif group.id == self.config.test_group:
-                            perm = 3
-                        else:
-                            perm = 1
+                        # 更新Group权限和活动状态
+                        perm = await self.get_init_group_perm(group)
+                        active = await self.get_init_group_active(group)
                         await orm.insert_or_update(
                             GroupPerm,
-                            {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
+                            {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
                             [
                                 GroupPerm.group_id == group.id
                             ]
@@ -211,12 +204,7 @@ class Umaru(object):
             except:
                 pass
 
-    async def init_group(self, app: Ariadne, group: Group):
-        """
-        初始化指定群
-        """
-        group_list = await app.get_group_list()
-        self.total_groups[app.account] = group_list
+    async def get_init_group_perm(self, group: Group) -> int:
         # 更新群组权限
         if group.id == self.config.test_group:
             perm = 3
@@ -229,9 +217,37 @@ class Umaru(object):
             perm = 2
         else:
             perm = 1
+        return perm
+
+    @staticmethod
+    async def get_init_group_active(group: Group) -> bool:
+        if result := await orm.fetch_one(
+                select(GroupPerm.active).where(
+                    GroupPerm.group_id == group.id
+                )
+        ):
+            return result[0]
+        else:
+            await orm.insert_or_update(
+                GroupPerm,
+                {"group_id": group.id, "group_name": group.name, "active": True},
+                [
+                    GroupPerm.group_id == group.id
+                ]
+            )
+            return True
+
+    async def init_group(self, app: Ariadne, group: Group):
+        """
+        初始化指定群
+        """
+        group_list = await app.get_group_list()
+        self.total_groups[app.account] = group_list
+        perm = await self.get_init_group_perm(group)
+        active = await self.get_init_group_active(group)
         await orm.insert_or_update(
             GroupPerm,
-            {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
+            {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
             [
                 GroupPerm.group_id == group.id
             ]

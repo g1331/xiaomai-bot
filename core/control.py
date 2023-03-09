@@ -327,7 +327,11 @@ class Distribute(object):
         :return: Depend
         """
 
-        async def wrapper(group: Union[Group, Friend], app: Ariadne, event: Union[GroupMessage, FriendMessage]):
+        async def wrapper(
+                group: Union[Group, Friend], app: Ariadne,
+                event: Union[GroupMessage, FriendMessage],
+                source: Source
+        ):
             if isinstance(event, FriendMessage):
                 return Depend(wrapper)
             if event.sender.id in global_config.bot_accounts:
@@ -342,11 +346,11 @@ class Distribute(object):
             if not account_controller.check_initialization(group_id, bot_account):
                 await account_controller.init_group(group_id, await app.get_member_list(group_id), bot_account)
                 raise ExecutionStop
-            res_acc = await account_controller.get_response_account(group_id)
+            res_acc = await account_controller.get_response_account(group_id, source.id)
             if not Ariadne.current(res_acc).connection.status.available:
                 account_controller.account_dict.pop(group_id)
                 raise ExecutionStop
-            if bot_account != await account_controller.get_response_account(group_id):
+            if bot_account != await account_controller.get_response_account(group_id, source.id):
                 raise ExecutionStop
             return Depend(wrapper)
 

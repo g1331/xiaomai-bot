@@ -87,12 +87,12 @@ class AccountController:
                 ]
             )
 
-    async def get_response_account(self, group_id: int) -> int:
+    async def get_response_account(self, group_id: int, source_id: int = time.time()) -> int:
         if group_id not in self.account_dict:
-            return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
+            return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
-        return self.account_dict[group_id][int(time.time()) % len(self.account_dict[group_id])]
+        return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]
 
     async def get_app_from_total_groups(self, group_id: int, require_perm=None) -> (Ariadne, Group):
         """
@@ -188,7 +188,7 @@ class AccountController:
 
     @staticmethod
     def check_account_available(bot_account: int):
-        if bot_account in Ariadne.service.connections and Ariadne.current(bot_account).connection.status.available:
+        if (bot_account in Ariadne.service.connections) and Ariadne.current(bot_account).connection.status.available:
             return True
         return False
 

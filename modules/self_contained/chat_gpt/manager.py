@@ -46,13 +46,14 @@ async def api_count_update():
         await asyncio.sleep(60)
 
 
-def get_gpt(preset="umaru"):
+def get_gpt(preset: str):
     preset = preset_dict[preset]["content"] if preset in preset_dict else (
         preset if preset else preset_dict["umaru"]["content"])
     return Chatbot(
         api_key=api_key,
         system_prompt=preset,
-        max_tokens=len(ENCODER.encode(preset)) + 1500
+        max_tokens=len(ENCODER.encode(preset)) + 1500,
+        proxy=proxy
     )
     # return AsyncChatbot(config={
     #     "session_token": session_token

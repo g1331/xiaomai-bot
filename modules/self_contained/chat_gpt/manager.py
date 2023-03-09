@@ -52,7 +52,7 @@ def get_gpt(preset="umaru"):
     return Chatbot(
         api_key=api_key,
         system_prompt=preset,
-        max_tokens=len(ENCODER.encode(preset)) + 1000
+        max_tokens=len(ENCODER.encode(preset)) + 1500
     )
     # return AsyncChatbot(config={
     #     "session_token": session_token

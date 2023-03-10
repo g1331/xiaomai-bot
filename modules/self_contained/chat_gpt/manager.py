@@ -190,30 +190,25 @@ async def kw_getter(content):
 async def web_handle(content, kw):
     Current_time = datetime.datetime.now().strftime("北京时间: %Y-%m-%d %H:%M:%S %A")
     if not kw:
-        result_handle = f"Current date:{Current_time}\n"
-        result_handle += f"Web search results:\n" \
-                         f"No Web results!" \
-                         f"\nQuery: {content}" \
-                         f"\nReply in 中文"
+        result_handle = f"当前北京时间:{Current_time}\n"
+        result_handle += f"网络搜索结果:\n" \
+                         f"无!" \
+                         f"\n问题: {content}"
         return result_handle
     try:
         web_result = await web_api(kw)
-        web_result_handle = "Web search results:\n"
+        web_result_handle = "网络搜索结果:\n"
         for i, item in enumerate(web_result):
             web_result_handle += (
                 f"[{i + 1}]"
-                f"Content:{item['body']}\n"
+                f"内容:{item['body']}\n"
                 f"Url:{item['href']}\n"
             )
-        web_result_handle += f"\nCurrent date:{Current_time}\n"
-        web_result_handle += f"Instructions:" \
-                             f"Please give priority to the context rather than using Web search results. " \
-                             f"If you do not have relevant knowledge, then answer in combination with online search results. " \
-                             f"Please answer with your own understanding." \
-                             f"If the search results provided involve multiple topics with the same name, please fill in the answers for each topic separately. " \
-                             f"Make sure to cite results using [number](URL) notation after the reference. " \
-                             f"\nQuery: {content}" \
-                             f"\nReply in 中文"
+        web_result_handle += f"\n当前北京时间:{Current_time}\n"
+        web_result_handle += f"说明:" \
+                             f"请结合网络搜索到的结果回答问题，请用总结性的语句给出一个准确的回答。" \
+                             f"确保引用引用后使用[[number](Url)]符号引用结果" \
+                             f"\n问题: {content}"
         return web_result_handle
     except Exception as e:
         logger.warning(f"GPT网络搜索出错!{e}")

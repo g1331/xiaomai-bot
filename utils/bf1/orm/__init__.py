@@ -1,9 +1,22 @@
+import asyncio
+
 from sqlalchemy import select
+from sqlalchemy.exc import InternalError, ProgrammingError
 
 from utils.bf1.orm.tables import bf1_orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind
 
 
 class bf1_db:
+    @staticmethod
+    async def db_init():
+        try:
+            # 执行异步函数的代码
+            await bf1_orm.init_check()
+        except (AttributeError, InternalError, ProgrammingError):
+            await bf1_orm.create_all()
+
+    def __init__(self):
+        asyncio.create_task(self.db_init())
 
     # TODO:
     #  BF1账号相关
@@ -15,7 +28,7 @@ class bf1_db:
     #  根据pid写入remid和sid
     #  根据pid写入session
     @staticmethod
-    async def get_account_by_pid(pid: int) -> Bf1Account:
+    async def get_bf1account_by_pid(pid: int) -> Bf1Account:
         if account := await bf1_orm.fetch_one(select(Bf1Account).where(Bf1Account.pid == pid)):
             return account[0]
         else:
@@ -29,8 +42,10 @@ class bf1_db:
             return None
 
     @staticmethod
-    async def update_account_pid(pid: int, display_name: str, uid: int = None, name: str = None,
-                                 remid: str = None, sid: str = None, session: str = None):
+    async def update_bf1account(
+            pid: int, display_name: str, uid: int = None, name: str = None,
+            remid: str = None, sid: str = None, session: str = None
+    ):
         await bf1_orm.insert_or_update(
             table=Bf1Account,
             data={
@@ -48,7 +63,7 @@ class bf1_db:
         )
 
     @staticmethod
-    async def update_account_loginInfo(pid: int, remid: str = None, sid: str = None, session: str = None):
+    async def update_bf1account_loginInfo(pid: int, remid: str = None, sid: str = None, session: str = None):
         await bf1_orm.insert_or_update(
             table=Bf1Account,
             data={
@@ -112,8 +127,10 @@ class bf1_db:
             return None
 
     @staticmethod
-    async def update_serverInfo(gameId: int, guid: str, serverId: int, createdDate: int, expirationDate: int,
-                                updatedDate: int = None) -> bool:
+    async def update_serverInfo(
+            gameId: int, guid: str, serverId: int, createdDate: int,
+            expirationDate: int, updatedDate: int = None
+    ) -> bool:
         await bf1_orm.insert_or_update(
             table=Bf1Server,
             data={

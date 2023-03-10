@@ -1,10 +1,10 @@
+import asyncio
 import json
 import time
 import uuid
-import aiohttp
-import asyncio
-
 from typing import Union
+
+import aiohttp
 from loguru import logger
 
 
@@ -217,7 +217,7 @@ class bf1_api(object):
         }
 
     # api调用
-    def check_session_expire(self):
+    async def check_session_expire(self):
         """过期返回True,否则返回False"""
         if not self.session:
             return True
@@ -252,7 +252,8 @@ class bf1_api(object):
                         url=self.api_url,
                         headers=await self.get_api_header(),
                         data=json.dumps(body),
-                        timeout=10
+                        timeout=10,
+                        ssl=False
                 ) as response:
                     return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
@@ -266,7 +267,7 @@ class bf1_api(object):
         :param sid: 玩家登录时cookie的sid
         :return: 成功登录后的session
         """
-        logger.info(f"BF1账号{self.pid}登录ing")
+        logger.debug(f"BF1账号{self.pid}登录ing")
         self.remid = remid
         self.sid = sid
         # 获取access_token
@@ -280,10 +281,11 @@ class bf1_api(object):
             response = await session.get(
                 url=url,
                 headers=header,
-                timeout=10
+                timeout=10,
+                ssl=False
             )
         try:
-            res = await response.json()
+            res = eval(await response.text())
             self.access_token = res["access_token"]
             self.access_token_expires_time = res["expires_in"]
         except Exception as e:
@@ -299,15 +301,14 @@ class bf1_api(object):
             "localeInfo": "zh_TW",
             "X-Origin-Platform": "PCWIN"
         }
-        async with aiohttp.ClientSession() as session:
-            response2 = await session.get(
-                url=url2,
-                headers=header2,
-                timeout=10
-            )
-        logger.warning(response2.text)
-        authcode = response2.headers['location']
-        authcode = authcode[authcode.rfind('=') + 1:]
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url2, headers=header2, ssl=False) as response2:
+                    authcode = str(response2.url)
+                    authcode = authcode[authcode.rfind('=') + 1:]
+        except Exception as e:
+            logger.error(f"获取authcode失败!{e}")
+            return None
         # 使用authcode登录获取session
         login_info = await self.Authentication_getEnvIdViaAuthCode(authcode)
         # 如果返回的是str说明出错了
@@ -342,7 +343,8 @@ class bf1_api(object):
             response = await session.get(
                 url=url,
                 headers=header,
-                timeout=60
+                timeout=60,
+                ssl=False
             )
         try:
             res = str(response.url)
@@ -393,7 +395,9 @@ class bf1_api(object):
                     url=self.api_url,
                     headers=header,
                     data=json.dumps(body),
-                    timeout=10)
+                    timeout=10,
+                    ssl=False
+                )
             return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
@@ -425,7 +429,7 @@ class bf1_api(object):
             }
         )
 
-    async def getPersonasByName(self, player_name: str) -> str:
+    async def getPersonasByName(self, player_name: str) -> dict:
         """
         根据名字获取Personas
         :param player_name:
@@ -446,7 +450,8 @@ class bf1_api(object):
                 response = await session.get(
                     url=url,
                     headers=head,
-                    timeout=10
+                    timeout=10,
+                    ssl=False
                 )
                 return await response.json()
         except asyncio.exceptions.TimeoutError:

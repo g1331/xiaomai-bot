@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, BIGINT, String, DateTime, ForeignKey, ARRAY
+from sqlalchemy import Column, Integer, BIGINT, String, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from core.orm import AsyncORM
 
-bf1_orm = AsyncORM("data/battlefield/BF1data.db")
+bf1_orm = AsyncORM("sqlite+aiosqlite:///data/battlefield/BF1data.db")
 
 
 # bf1账号表
@@ -12,7 +12,7 @@ class Bf1Account(bf1_orm.Base):
 
     __tablename__ = "bf1_account"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     # 固定
     persona_id = Column(BIGINT, primary_key=True)
     # 一般固定
@@ -72,8 +72,8 @@ class Bf1Group(bf1_orm.Base):
     __tablename__ = "bf1_group"
     id = Column(Integer, primary_key=True)
     group_name = Column(String, primary_key=True)
-    bind_guids = Column(ARRAY(String))
-    bind_manager_account_pids = Column(ARRAY(BIGINT))
+    bind_guids = Column(JSON)
+    bind_manager_account_pids = Column(JSON)
     bind_qq_groups = relationship("Bf1GroupBind", back_populates="bf1_group")
 
 
@@ -107,3 +107,19 @@ class Bf1Server(bf1_orm.Base):
     @guid.setter
     def guid(self, value):
         self.persistedGameId = value
+
+
+# 服管日志
+class Bf1ManagerLog(bf1_orm.Base):
+    """服务器信息"""
+
+    __tablename__ = "bf1_manager_log"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, primary_key=True)
+    persistedGameId = Column(String, primary_key=True)
+    gameId = Column(BIGINT, nullable=False)
+    # 固定
+    persona_id = Column(BIGINT, primary_key=True)
+    # 变化
+    display_name = Column(String)
+    time = Column(DateTime, nullable=False)

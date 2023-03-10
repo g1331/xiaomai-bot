@@ -353,7 +353,7 @@ class ConversationManager(object):
             group = group.id
         if isinstance(member, Member):
             member = member.id
-        await app.send_group_message(group, MessageChain("请等待,EdgeGPT解答ing"), quote=source)
+        await app.send_group_message(group, MessageChain("请等待,必应解答ing"), quote=source)
         if group not in self.data or member not in self.data[group]:
             _ = await self.new(group, member)
         if self.data[group][member]["running"]:
@@ -362,7 +362,7 @@ class ConversationManager(object):
         try:
             result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]
             conversation_count = self.data[group][member]["gpt"].chat_hub.request.invocation_id
-            result += f"\n\n({conversation_count}/10)"
+            result += f"\n\n(对话轮次:{conversation_count}/10)"
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:

@@ -345,8 +345,10 @@ class ConversationManager(object):
         if group in self.data and member in self.data[group]:
             self.data[group][member]["gpt"].close()
 
-    async def send_message(self, group: Group | int, member: Member | int, content: str, app: Ariadne,
-                           source: Source) -> str:
+    async def send_message(
+            self, group: Group | int, member: Member | int,
+            content: str, app: Ariadne, source: Source
+    ) -> str:
         if isinstance(group, Group):
             group = group.id
         if isinstance(member, Member):
@@ -358,9 +360,9 @@ class ConversationManager(object):
             return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
         self.data[group][member]["running"] = True
         try:
-            result = \
-                (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0][
-                    "body"][0]["text"]
+            result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]
+            conversation_count = self.data[group][member]["gpt"].chat_hub.request.invocation_id
+            result += f"\n\n({conversation_count}/10)"
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:

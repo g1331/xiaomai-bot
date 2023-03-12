@@ -2872,27 +2872,25 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "revchatgpt"
-version = "3.0.5"
+version = "3.3.4"
 description = "ChatGPT is a reverse engineering of OpenAI's ChatGPT API"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "revChatGPT-3.0.5-py3-none-any.whl", hash = "sha256:289aba279f3a6b4c965030ecf4f270496f4643b723eabdece7695416f2dd7ae7"},
-    {file = "revChatGPT-3.0.5.tar.gz", hash = "sha256:eaeafb2f006aee75e4e5b46b54ed4df1917275de47dc95bd3e50788fa10d6a83"},
+    {file = "revChatGPT-3.3.4-py3-none-any.whl", hash = "sha256:7a301e5d5381978c6588cbb3a5490731f02ab8cd6245107f6596abc8147e629f"},
+    {file = "revChatGPT-3.3.4.tar.gz", hash = "sha256:b84b48745e7b0aa0ae912cf772f02205e76f091b8bd423fca51060c407f9cf57"},
 ]
 
 [package.dependencies]
-asyncio = "*"
 httpx = {version = "*", extras = ["socks"]}
 OpenAIAuth = "0.3.2"
 prompt-toolkit = "*"
 requests = {version = "*", extras = ["socks"]}
-tiktoken = "*"
+tiktoken = ">=0.3.0"
 
 [package.extras]
-official = ["openai", "tiktoken"]
-unofficial = ["requests", "selenium", "tls-client", "undetected-chromedriver"]
+webgpt = ["duckduckgo-search"]
 
 [package.source]
 type = "legacy"
@@ -3556,4 +3554,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "254a134a555ccf263d1ce13dd5541c597345c53319d866eb220598cb4744a094"
+content-hash = "fd2cdcf15111e513db27c06711a272f84d6f9c5530be0f99b6d169b5cce0ca26"

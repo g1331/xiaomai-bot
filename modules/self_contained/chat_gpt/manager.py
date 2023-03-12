@@ -1,12 +1,11 @@
-import json
-
-import aiofiles
-import aiohttp
 import asyncio
 import datetime
+import json
 import re
 from typing import TypedDict
 
+import aiohttp
+import tiktoken
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, Member
@@ -14,10 +13,11 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
 from loguru import logger
 from revChatGPT.V1 import AsyncChatbot
-from revChatGPT.V3 import Chatbot, ENCODER
+from revChatGPT.V3 import Chatbot
 
 from core.config import GlobalConfig
 from .preset import preset_dict
+ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else None

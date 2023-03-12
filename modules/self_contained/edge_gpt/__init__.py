@@ -353,11 +353,10 @@ class ConversationManager(object):
             group = group.id
         if isinstance(member, Member):
             member = member.id
-        await app.send_group_message(group, MessageChain("请等待,必应解答ing"), quote=source)
         if group not in self.data or member not in self.data[group]:
             _ = await self.new(group, member)
         if self.data[group][member]["running"]:
-            return "我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"
+            return await app.send_group_message(group, MessageChain("我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"), quote=source)
         self.data[group][member]["running"] = True
         try:
             result = (await self.data[group][member]["gpt"].ask(prompt=content))["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]

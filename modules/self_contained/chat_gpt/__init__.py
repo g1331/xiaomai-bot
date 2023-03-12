@@ -90,6 +90,7 @@ async def chat_gpt(
         return await app.send_group_message(group, MessageChain(f"gpt模式无法设置预设哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member, (preset.result.display.strip() if preset.matched else ""))
+        await app.send_group_message(group, MessageChain(f"已重置对话~"), quote=source)
     content = content.result.display.strip()
     if web.matched:
         content = await web_handle(content)

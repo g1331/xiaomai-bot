@@ -175,8 +175,8 @@ class ConversationManager(object):
         data_temp = {
             "mode": 0 if target_mode == "gpt" else 1
         }
-        async with aiofiles.open("gpt_mode.json", 'w', encoding="utf-8") as file_temp2:
-            await file_temp2.write(json.dumps(data_temp, indent=4, ensure_ascii=False))
+        with open('gpt_mode.json', 'w', encoding='utf-8') as f:
+            json.dump(data_temp, f, ensure_ascii=False, indent=4)
         # 清空manager
         self.data = {}
 

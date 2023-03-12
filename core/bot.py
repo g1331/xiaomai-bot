@@ -149,7 +149,7 @@ class Umaru(object):
         # 更新权限
         await self.update_master_permission()
         logger.success("成功更新master权限!")
-        await self.update_admins_permission()
+        await self.update_admins_permission(admin_list)
         logger.success("成功更新admins权限!")
         init_result = f"BOT启动初始化完成!\n" \
                       f"耗时:{(time.time() - time_start):.2f}秒\n" \

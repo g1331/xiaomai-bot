@@ -151,11 +151,12 @@ class ConversationManager(object):
         await app.send_group_message(group, MessageChain("请等待,小埋解答ing"), quote=source)
         self.data[group][member]["running"] = True
         try:
-            api_counter()
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
-            token_cost = len(
-                ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
-            result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation) - 1) / 2)})'
+            if get_gpt_mode() == "api":
+                api_counter()
+                token_cost = len(
+                    ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
+                result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation) - 1) / 2)})'
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
             logger.warning(f"GPT报错:{e}")

@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import json
 import re
-from typing import TypedDict
+from typing import TypedDict, Union
 
 import aiohttp
 import tiktoken
@@ -74,11 +74,6 @@ def get_gpt(preset: str):
         return AsyncChatbot(config={
             "session_token": session_token
         })
-
-
-class MemberGPT(TypedDict):
-    running: bool
-    gpt: Chatbot
 
 
 kw_gpt = None
@@ -169,6 +164,11 @@ async def web_api(content: str, result_nums: int = 3):
             return await response.json()
 
 
+class MemberGPT(TypedDict):
+    running: bool
+    gpt: Union[Chatbot, AsyncChatbot]
+
+
 class ConversationManager(object):
     def __init__(self):
         self.data: dict[int, dict[int, MemberGPT]] = {}
@@ -182,7 +182,10 @@ class ConversationManager(object):
             preset if preset else preset_dict["umaru"]["content"])
         if group in self.data:
             if member in self.data[group]:
-                self.data[group][member]["gpt"].reset(preset)
+                if isinstance(self.data[group][member]["gpt"], Chatbot):
+                    self.data[group][member]["gpt"].reset(preset)
+                else:
+                    self.data[group][member]["gpt"].reset_chat()
             else:
                 self.data[group][member] = {"running": False, "gpt": get_gpt(preset)}
         else:
@@ -205,7 +208,7 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         result = None
         try:
-            if get_gpt_mode() == "api":
+            if isinstance(self.data[group][member]["gpt"], Chatbot):
                 result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
                 api_counter()
                 token_cost = self.data[group][member]["gpt"].get_token_count()

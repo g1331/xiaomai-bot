@@ -131,34 +131,11 @@ class Umaru(object):
         time_start = int(time.mktime(self.launch_time.timetuple()))
         Timeout = 60
         while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
+            tasks = []
             for app in self.apps:
-                if app.account in self.initialized_app_list:
-                    continue
-                if not app.connection.status.available:
-                    logger.warning(f"{app.account}失去连接,已跳过初始化")
-                    continue
-                logger.debug(f"账号{app.account}初始化ing")
-                group_list = [group for group in await app.get_group_list() if
-                              group.id not in self.initialized_group_list]
-                self.total_groups[app.account] = group_list
-                # 更新群组权限
-                group_init_counter = 0
-                for group in group_list:
-                    if group.id not in self.initialized_group_list:
-                        # 更新Group权限和活动状态
-                        perm = await self.get_init_group_perm(group)
-                        active = await self.get_init_group_active(group)
-                        await orm.insert_or_update(
-                            GroupPerm,
-                            {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
-                            [
-                                GroupPerm.group_id == group.id
-                            ]
-                        )
-                        self.initialized_group_list.append(group.id)
-                        group_init_counter += 1
-                        logger.debug(f"账号{app.account}初始化完成{group_init_counter}/{len(group_list)}")
-                self.initialized_app_list.append(app.account)
+                if app not in self.initialized_app_list:
+                    tasks.append(self.init_app(app))
+            await asyncio.gather(*tasks)
             logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
                 await asyncio.sleep(3)
@@ -187,6 +164,32 @@ class Umaru(object):
                 )
             except:
                 pass
+
+    async def init_app(self, app):
+        if not app.connection.status.available:
+            logger.warning(f"{app.account}失去连接,已跳过初始化")
+            return
+        logger.debug(f"账号{app.account}初始化ing")
+        group_list = [group for group in await app.get_group_list() if group.id not in self.initialized_group_list]
+        self.total_groups[app.account] = group_list
+        # 更新群组权限
+        group_init_counter = 0
+        for group in group_list:
+            if group.id not in self.initialized_group_list:
+                # 更新Group权限和活动状态
+                perm = await self.get_init_group_perm(group)
+                active = await self.get_init_group_active(group)
+                await orm.insert_or_update(
+                    GroupPerm,
+                    {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
+                    [
+                        GroupPerm.group_id == group.id
+                    ]
+                )
+                self.initialized_group_list.append(group.id)
+                group_init_counter += 1
+                logger.debug(f"账号{app.account}初始化完成{group_init_counter}/{len(group_list)}")
+        self.initialized_app_list.append(app.account)
 
     async def get_init_group_perm(self, group: Group) -> int:
         # 更新群组权限

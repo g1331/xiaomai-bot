@@ -40,6 +40,7 @@ manager = ConversationManager()
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
                 ArgumentMatch("-w", "-web", action="store_true", optional=True) @ "web",
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
+                ArgumentMatch("-m", "-mode", optional=True, type=str, choices=["gpt", "api"]) @ "mode",
                 ArgumentMatch("--show-preset", action="store_true", optional=True) @ "show_preset",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])
@@ -62,20 +63,31 @@ async def chat_gpt(
         text: ArgResult,
         web: ArgResult,
         preset: ArgResult,
+        mode: ArgResult,
         content: RegexResult,
         show_preset: ArgResult,
 ):
+    if mode.matched:
+        if not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin):
+            return await app.send_group_message(group, MessageChain(f"权限不足!"), quote=source)
+        target_mode = mode.result
+        await manager.change_mode(target_mode)
+        return await app.send_group_message(group, MessageChain(f"已清空所有对话并切换模式为:{target_mode}模式"), quote=source)
     if show_preset.matched:
         return await app.send_group_message(
             group,
             MessageChain(Image(data_bytes=await md2img(
                 "当前内置预设：\n\n" +
-                "\n\n".join([f"{i} ({v['name']})：{v['description']}  (token cost:{len(ENCODER.encode(v['content']))})" for i, v in preset_dict.items()]),
+                "\n\n".join(
+                    [f"{i} ({v['name']})：{v['description']}  (token cost:{len(ENCODER.encode(v['content']))})" for i, v
+                     in preset_dict.items()]),
                 use_proxy=True))),
             quote=source
         )
     if (not gpt_api_available) and (not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
         return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
+    if get_gpt_mode() == "gpt" and preset.matched:
+        return await app.send_group_message(group, MessageChain(f"gpt模式无法设置预设哦~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member, (preset.result.display.strip() if preset.matched else ""))
     content = content.result.display

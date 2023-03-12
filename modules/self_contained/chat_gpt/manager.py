@@ -1,3 +1,6 @@
+import json
+
+import aiofiles
 import aiohttp
 import asyncio
 import datetime
@@ -10,7 +13,7 @@ from graia.ariadne.event.message import Group, Member
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source
 from loguru import logger
-# from revChatGPT.V1 import AsyncChatbot
+from revChatGPT.V1 import AsyncChatbot
 from revChatGPT.V3 import Chatbot, ENCODER
 
 from core.config import GlobalConfig
@@ -22,6 +25,16 @@ session_token = config.functions.get("ChatGPT", {}).get("session_token")
 api_key = config.functions.get("ChatGPT", {}).get("api_key")
 api_count = 0
 api_limit = False
+gpt_mode = {
+    0: "gpt",
+    1: "apt"
+}
+
+
+def get_gpt_mode():
+    with open("gpt_mode.json", "r", encoding="utf-8") as f:
+        mode_dict = json.load(f)
+        return gpt_mode.get(mode_dict["mode"])
 
 
 def api_counter():
@@ -47,17 +60,19 @@ async def api_count_update():
 
 
 def get_gpt(preset: str):
-    preset = preset_dict[preset]["content"] if preset in preset_dict else (
-        preset if preset else preset_dict["umaru"]["content"])
-    return Chatbot(
-        api_key=api_key,
-        system_prompt=preset,
-        max_tokens=len(ENCODER.encode(preset)) + 1500,
-        proxy=proxy
-    )
-    # return AsyncChatbot(config={
-    #     "session_token": session_token
-    # })
+    if get_gpt_mode() == "api":
+        preset = preset_dict[preset]["content"] if preset in preset_dict else (
+            preset if preset else preset_dict["umaru"]["content"])
+        return Chatbot(
+            api_key=api_key,
+            system_prompt=preset,
+            max_tokens=len(ENCODER.encode(preset)) + 1500,
+            proxy=proxy
+        )
+    else:
+        return AsyncChatbot(config={
+            "session_token": session_token
+        })
 
 
 kw_gpt = None
@@ -138,8 +153,9 @@ class ConversationManager(object):
         try:
             api_counter()
             result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
-            token_cost = len(ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
-            result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation)-1)/2)})'
+            token_cost = len(
+                ENCODER.encode("\n".join([x["content"] for x in self.data[group][member]["gpt"].conversation])))
+            result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation) - 1) / 2)})'
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
             logger.warning(f"GPT报错:{e}")
@@ -148,6 +164,16 @@ class ConversationManager(object):
         finally:
             self.data[group][member]["running"] = False
         return result
+
+    async def change_mode(self, target_mode: str):
+        # 写入文件
+        data_temp = {
+            "mode": 0 if target_mode == "gpt" else 1
+        }
+        async with aiofiles.open("gpt_mode.json", 'w', encoding="utf-8") as file_temp2:
+            await file_temp2.write(json.dumps(data_temp, indent=4, ensure_ascii=False))
+        # 清空manager
+        self.data = {}
 
 
 async def kw_getter(content):

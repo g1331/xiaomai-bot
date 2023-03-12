@@ -144,7 +144,6 @@ class Umaru(object):
                 # 更新群组权限
                 group_init_counter = 0
                 for group in group_list:
-                    memberId_list = [member.id for member in (await app.get_member_list(group))]
                     if group.id not in self.initialized_group_list:
                         # 更新Group权限和活动状态
                         perm = await self.get_init_group_perm(group)
@@ -156,27 +155,6 @@ class Umaru(object):
                                 GroupPerm.group_id == group.id
                             ]
                         )
-                        # 更新Master权限
-                        if self.config.Master in memberId_list:
-                            await orm.insert_or_update(
-                                table=MemberPerm,
-                                data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
-                                condition=[
-                                    MemberPerm.qq == self.config.Master,
-                                    MemberPerm.group_id == group.id
-                                ]
-                            )
-                        # 更新BotAdmin权限
-                        for admin in admin_list:
-                            if admin in memberId_list:
-                                await orm.insert_or_update(
-                                    table=MemberPerm,
-                                    data={"qq": admin, "group_id": group.id, "perm": 128},
-                                    condition=[
-                                        MemberPerm.qq == admin,
-                                        MemberPerm.group_id == group.id
-                                    ]
-                                )
                         self.initialized_group_list.append(group.id)
                         group_init_counter += 1
                         logger.debug(f"账号{app.account}初始化完成{group_init_counter}/{len(group_list)}")
@@ -190,6 +168,12 @@ class Umaru(object):
                 logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
         # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
+        logger.success("成功初始化多账户响应!")
+        # 更新权限
+        await self.update_master_permission()
+        logger.success("成功更新master权限!")
+        await self.update_admins_permission()
+        logger.success("成功更新admins权限!")
         init_result = f"BOT启动初始化完成!\n" \
                       f"耗时:{(time.time() - time_start):.2f}秒\n" \
                       f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
@@ -288,6 +272,19 @@ class Umaru(object):
                 MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})")
             )
         logger.success(f"成功初始化群:{group.name}({group.id})")
+
+    # 更新master权限
+    async def update_master_permission(self):
+        for bot_account in self.total_groups:
+            for group in self.total_groups[bot_account]:
+                await orm.insert_or_update(
+                    table=MemberPerm,
+                    data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
+                    condition=[
+                        MemberPerm.qq == self.config.Master,
+                        MemberPerm.group_id == group.id
+                    ]
+                )
 
     # 更新admins权限
     async def update_admins_permission(self, admin_list: list[int] = None):

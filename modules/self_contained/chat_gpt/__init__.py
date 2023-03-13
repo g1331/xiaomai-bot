@@ -71,10 +71,6 @@ async def chat_gpt(
         if not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin):
             return await app.send_group_message(group, MessageChain(f"权限不足!"), quote=source)
         target_mode = mode.result
-        if target_mode == "gpt":
-            channel.metadata.level = 1
-        else:
-            channel.metadata.level = 2
         await manager.change_mode(target_mode)
         return await app.send_group_message(group, MessageChain(f"已清空所有对话并切换模式为:{target_mode}模式"), quote=source)
     if show_preset.matched:

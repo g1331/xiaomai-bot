@@ -46,7 +46,7 @@ proxy = global_config.proxy if global_config.proxy != "proxy" else None
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module, 6),
+    FrequencyLimitation.require(channel.module, 5),
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Permission.user_require(Permission.User, if_noticed=False),
 )

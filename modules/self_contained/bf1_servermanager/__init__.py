@@ -2696,18 +2696,20 @@ async def managerAccount_del(app: Ariadne, group: Group,
             FullMatch("remid=").space(SpacePolicy.NOSPACE),
             "remid" @ ParamMatch(optional=False).space(SpacePolicy.NOSPACE),
             FullMatch(",sid=").space(SpacePolicy.NOSPACE),
-            "sid" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
+            "sid" @ ParamMatch(optional=False),
             # 示例: -bf服管账号 登录 123 remid=xxx,sid=xxx
         ]
     )
 )
-async def managerAccount_login(app: Ariadne, group: Union[Group, Friend],
-                               account_pid: RegexResult, remid: RegexResult, sid: RegexResult, source: Source):
+async def managerAccount_login(
+        app: Ariadne, group: Union[Group, Friend],
+        account_pid: RegexResult, remid: RegexResult, sid: RegexResult, source: Source
+):
     # 先查找有无对应服管帐号，然后写入remid和sid，然后自动写入session
-    account_pid = account_pid.result.display.replace("\n", "")
-    remid = remid.result.display.replace("\n", "")
+    account_pid = account_pid.result.display.strip()
+    remid = remid.result.display.strip()
+    sid = sid.result.display.strip()
 
-    sid = str(sid.result)
     file_path = f'./data/battlefield/managerAccount'
     if not (os.path.exists(file_path) or os.path.isfile(file_path)):
         os.makedirs(file_path)
@@ -3335,7 +3337,7 @@ async def bfgroup_refresh(app: Ariadne, group: Group, source: Source, server_ran
                     f"请检查服务器序号!"
                 ), quote=source)
             else:
-                server_rank = int(server_rank)-1
+                server_rank = int(server_rank) - 1
             if server_rank not in range(len(pid_list)):
                 return await app.send_message(group, MessageChain(
                     f"请检查服务器序号!"

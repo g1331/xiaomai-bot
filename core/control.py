@@ -265,7 +265,7 @@ class Permission(object):
 
         async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
             if isinstance(event, FriendMessage):
-                return
+                return Depend(wrapper)
             # 获取并判断群的权限等级
             group = event.sender.group
             group_perm = await cls.get_group_perm(group)
@@ -377,7 +377,7 @@ class FrequencyLimitation(object):
 
         async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
             if isinstance(event, FriendMessage):
-                return
+                return Depend(judge)
             group_id = event.sender.group.id
             sender_id = event.sender.id
             if frequency_limitation_switch := await orm.fetch_one(

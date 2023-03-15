@@ -84,7 +84,7 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         try:
             conversation_style = ConversationStyle.balanced if style == 1 else ConversationStyle.creative if style == 2 else ConversationStyle.precise
-            response = (await self.data[group][member]["gpt"].ask(prompt="你好", conversation_style=conversation_style))
+            response = (await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style))
             result = response["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]
             maxNumUserMessagesInConversation = response["item"]["throttling"]["maxNumUserMessagesInConversation"]
             numUserMessagesInConversation = response["item"]["throttling"]["numUserMessagesInConversation"]

@@ -105,7 +105,7 @@ manager = ConversationManager()
                 FullMatch("-bing"),
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
-                ArgumentMatch("-s", "-style", action="store_true", type=int, choices=[1, 2, 3], default=1,
+                ArgumentMatch("-s", "-style", action="store_true", type=int, choices=MessageChain(["1", "2", "3"]), default=1,
                               optional=True) @ "style",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])

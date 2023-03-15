@@ -825,14 +825,14 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "edgegpt"
-version = "0.0.56.1"
+version = "0.0.56.2"
 description = "Reverse engineered Edge Chat API"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "EdgeGPT-0.0.56.1-py3-none-any.whl", hash = "sha256:f63361f2c1d5769c2af700dfaee370ab956982f034ce716f95ac7334fd5852fa"},
-    {file = "EdgeGPT-0.0.56.1.tar.gz", hash = "sha256:363489ac41d388c49ca223606697b1dd017d4493757aa08988a474723a4abe13"},
+    {file = "EdgeGPT-0.0.56.2-py3-none-any.whl", hash = "sha256:b42533897d1fd1bcd4b53056e39fbe911810edde447e75316824c65d0c3ce599"},
+    {file = "EdgeGPT-0.0.56.2.tar.gz", hash = "sha256:58a4bc7367fef69519c0d1d0eb91428cf2bd51df78de1c7515f5edaba50be704"},
 ]
 
 [package.dependencies]
@@ -3537,4 +3537,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c3cd54a41c0da12f5c74c9959f1cae41f6bcee9889e9f68c7eb7dec5b4dcc7e4"
+content-hash = "d0418399be6039db6494cc4ef474927462e951e1c3509b49ab816d08b89740c6"

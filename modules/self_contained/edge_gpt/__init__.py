@@ -84,9 +84,13 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         try:
             conversation_style = ConversationStyle.balanced if style == 1 else ConversationStyle.creative if style == 2 else ConversationStyle.precise
-            result = (await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style))
-            conversation_count = self.data[group][member]["gpt"].chat_hub.request.invocation_id
-            result += f"\n\n(对话轮次:{conversation_count}/10)"
+            response = (await self.data[group][member]["gpt"].ask(prompt="你好", conversation_style=conversation_style))
+            result = response["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"]
+            maxNumUserMessagesInConversation = response["item"]["messages"][8]["throttling"][
+                "maxNumUserMessagesInConversation"]
+            numUserMessagesInConversation = response["item"]["messages"][8]["throttling"][
+                "numUserMessagesInConversation"]
+            result += f"\n\n(对话轮次:{numUserMessagesInConversation}/{maxNumUserMessagesInConversation})"
         except Exception as e:
             result = f"发生错误：{e}，请稍后再试"
         finally:

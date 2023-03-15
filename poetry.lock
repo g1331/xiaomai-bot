@@ -825,19 +825,19 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "edgegpt"
-version = "0.0.51"
+version = "0.0.56.1"
 description = "Reverse engineered Edge Chat API"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "EdgeGPT-0.0.51-py3-none-any.whl", hash = "sha256:4f7e936f9d9d6458e09701b9f6f9c6924390738dbe2e9bd34282beb4b4143994"},
-    {file = "EdgeGPT-0.0.51.tar.gz", hash = "sha256:51acca89c26034d9b4c1eb356f7695684f357690818c8312b51598df6f4da45a"},
+    {file = "EdgeGPT-0.0.56.1-py3-none-any.whl", hash = "sha256:f63361f2c1d5769c2af700dfaee370ab956982f034ce716f95ac7334fd5852fa"},
+    {file = "EdgeGPT-0.0.56.1.tar.gz", hash = "sha256:363489ac41d388c49ca223606697b1dd017d4493757aa08988a474723a4abe13"},
 ]
 
 [package.dependencies]
 asyncio = "*"
-tls-client = "*"
+httpx = "*"
 websockets = "*"
 
 [package.source]
@@ -3209,23 +3209,6 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
-name = "tls-client"
-version = "0.1.8"
-description = "Advanced Python HTTP Client."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "tls_client-0.1.8-py3-none-any.whl", hash = "sha256:3c0022997b2ca4e9d7907ac2a2265dae65961f497cc69702784a15f736178311"},
-    {file = "tls_client-0.1.8.tar.gz", hash = "sha256:38b2ead2a04dd0c88ac9ce9a47dd72f48a4b03d9180804c389cba887e91494ef"},
-]
-
-[package.source]
-type = "legacy"
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-reference = "tuna-tsinghua"
-
-[[package]]
 name = "typing-extensions"
 version = "4.4.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -3554,4 +3537,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "fd2cdcf15111e513db27c06711a272f84d6f9c5530be0f99b6d169b5cce0ca26"
+content-hash = "c3cd54a41c0da12f5c74c9959f1cae41f6bcee9889e9f68c7eb7dec5b4dcc7e4"

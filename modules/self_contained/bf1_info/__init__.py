@@ -3293,11 +3293,14 @@ async def Scrap_Exchange(app: Ariadne, sender: Member, group: Group):
         i -= 1
         file_path_temp = f'./data/battlefield/exchange/{(date.today() + timedelta(days=i)).strftime("%#m月%#d日")}.json'
     if file_path_temp:
-        with open(file_path_temp, 'r', encoding="utf-8") as file1:
-            data_temp = json.load(file1)['result']
-            if data_temp == SE_data.get("result", SE_data):
-                logger.info("交换未更新")
-                return
+        try:
+            with open(file_path_temp, 'r', encoding="utf-8") as file1:
+                data_temp = json.load(file1)['result']
+                if data_temp == SE_data.get("result", SE_data):
+                    logger.info("交换未更新")
+                    return
+        except KeyError:
+            os.remove(file_path_temp)
     with open(f'./data/battlefield/exchange/{jh_time}.json', 'w', encoding="utf-8") as file1:
         json.dump(SE_data, file1, indent=4)
     SE_data_list = SE_data["result"]["items"]

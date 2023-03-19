@@ -82,6 +82,7 @@ class ConversationManager(object):
         if self.data[group][member]["running"]:
             return await app.send_group_message(group, MessageChain("我上一句话还没结束呢，别急阿~等我回复你以后你再说下一句话喵~"), quote=source)
         self.data[group][member]["running"] = True
+        response = None
         try:
             conversation_style = ConversationStyle.balanced if style == 1 else ConversationStyle.creative if style == 2 else ConversationStyle.precise
             response = (await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style))

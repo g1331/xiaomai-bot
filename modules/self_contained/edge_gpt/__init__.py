@@ -90,6 +90,7 @@ class ConversationManager(object):
             numUserMessagesInConversation = response["item"]["throttling"]["numUserMessagesInConversation"]
             result += f"\n\n(对话轮次:{numUserMessagesInConversation}/{maxNumUserMessagesInConversation})"
         except Exception as e:
+            logger.error(response)
             result = f"发生错误：{e}，请稍后再试"
         finally:
             self.data[group][member]["running"] = False

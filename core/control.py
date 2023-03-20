@@ -319,6 +319,7 @@ class Function(object):
 
 
 class Distribute(object):
+    initialization_completed = False
 
     @classmethod
     def require(cls):
@@ -332,6 +333,8 @@ class Distribute(object):
                 event: Union[GroupMessage, FriendMessage],
                 source: Source
         ):
+            if not cls.initialization_completed:
+                raise ExecutionStop
             if isinstance(event, FriendMessage):
                 return Depend(wrapper)
             if event.sender.id in global_config.bot_accounts:
@@ -355,6 +358,10 @@ class Distribute(object):
             return Depend(wrapper)
 
         return Depend(wrapper)
+
+    @classmethod
+    def distribute_initialize(cls):
+        setattr(cls, "initialization_completed", True)
 
 
 class FrequencyLimitation(object):

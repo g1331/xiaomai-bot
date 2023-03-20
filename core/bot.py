@@ -153,6 +153,8 @@ class Umaru(object):
         logger.success("成功更新master权限!")
         await self.update_admins_permission(admin_list)
         logger.success("成功更新admins权限!")
+        from core.control import Distribute
+        Distribute.distribute_initialize()
         init_result = f"BOT启动初始化完成!\n" \
                       f"耗时:{(time.time() - time_start):.2f}秒\n" \
                       f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"

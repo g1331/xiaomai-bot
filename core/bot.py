@@ -41,6 +41,7 @@ from core.orm.tables import (
     GroupPerm,
     MemberPerm
 )
+from utils.launch_time import LaunchTimeService, add_launch_time
 from utils.self_upgrade import UpdaterService
 
 non_log = {
@@ -97,6 +98,7 @@ class Umaru(object):
             )
         )
         Ariadne.launch_manager.add_service(UpdaterService())
+        Ariadne.launch_manager.add_service(LaunchTimeService())
         self.config_check()
         self.initialized_app_list: list[int] = []
         self.initialized_group_list: list[int] = []
@@ -387,6 +389,7 @@ class Umaru(object):
                 if module in ignore:
                     continue
                 try:
+                    start = datetime.datetime.now()
                     if (base_path / module).is_dir():
                         if (base_path / module / "__init__.py").exists():
                             saya.require(f"{module_base_path}.{module}")
@@ -394,9 +397,19 @@ class Umaru(object):
                             Umaru.install_modules(base_path / module, recursion_install)
                     elif (base_path / module).is_file():
                         saya.require(f"{module_base_path}.{module.split('.')[0]}")
+                    add_launch_time(
+                        f"{module_base_path}.{module}",
+                        (datetime.datetime.now() - start).total_seconds(),
+                        0,
+                    )
                 except Exception as e:
                     logger.exception("")
                     exceptions[str(base_path / module.split('.')[0])] = e
+                    add_launch_time(
+                        f"{module_base_path}.{module}",
+                        (datetime.datetime.now() - start).total_seconds(),
+                        1,
+                    )
         return exceptions
 
     @staticmethod

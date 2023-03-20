@@ -123,25 +123,19 @@ if __name__ == "__main__":
     if Path.cwd() != Path(__file__).parent:
         logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!")
         exit(0)
-    logger.info("正在检测 Mirai 是否启动")
-    for fl in range(4):
-        if fl >= 3:
-            logger.critical("启动失败,请检查: mirai是否正常启动 / mah-v2是否正常安装 / mah配置端口是否被占用 / mah配置是否与bot配置一致 ")
-            exit()
-        try:
-            mah = httpx.get(config.mirai_host + "/about", timeout=3)
-            if mah.status_code == 200:
-                logger.opt(colors=True).info(f'<blue>mah.status_code:{mah.status_code}</blue>')
-                logger.opt(colors=True).info(f'<blue>mah.version:{eval(mah.text)["data"]["version"]}</blue>')
-                logger.success(f"成功检测到 Mirai !")
-                break
-            else:
-                logger.warning("未检测到 Mirai ，正在重试...")
-        except httpx.HTTPError:
-            logger.warning("Mirai 尚未启动，请检查！")
-        except KeyboardInterrupt:
-            exit("--已手动退出启动--")
+    logger.debug("正在检测 Mirai 是否启动")
+    try:
+        mah = httpx.get(config.mirai_host + "/about", timeout=3)
+        if mah.status_code == 200:
+            logger.opt(colors=True).info(f'<blue>mah.status_code:{mah.status_code}</blue>')
+            logger.opt(colors=True).info(f'<blue>mah.version:{eval(mah.text)["data"]["version"]}</blue>')
+            logger.success(f"成功检测到 Mirai !")
+        else:
+            logger.critical("Mirai 尚未启动，请检查！")
+    except httpx.HTTPError:
+        logger.critical("未检测到 Mirai ! 请检查: mirai是否正常启动 / mah-v2是否正常安装 / mah配置端口是否被占用 / mah配置是否与bot配置一致 ")
     core.install_modules(Path("modules") / "required")
     core.install_modules(Path("modules") / "self_contained")
+    core.install_modules(Path("modules") / "third_party")
     core.launch()
-    logger.info("UmaruBot 已关闭")
+    logger.debug("UmaruBot 已关闭")

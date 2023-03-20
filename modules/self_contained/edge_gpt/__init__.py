@@ -1,15 +1,7 @@
-import argparse
-import asyncio
-import json
-import os
-import random
 import re
-import uuid
 from pathlib import Path
-from typing import Generator, TypedDict
-from typing import Optional
+from typing import TypedDict
 
-import websockets.client as websockets
 from EdgeGPT import Chatbot, ConversationStyle
 from creart import create
 from graia.ariadne.app import Ariadne
@@ -30,7 +22,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model, response_model
-from utils.text2img import md2img
+from utils.text2img import md2img, template2img
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
@@ -71,7 +63,7 @@ class ConversationManager(object):
 
     async def send_message(
             self, group: Group | int, member: Member | int,
-            content: str, app: Ariadne, source: Source, style: int
+            content: str, app: Ariadne, source: Source, style: int, texted: bool
     ) -> str:
         if isinstance(group, Group):
             group = group.id
@@ -84,15 +76,43 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         response = None
         try:
+            if texted:
+                result = []
+            else:
+                result = [f"问题:\n\n{content}\n\n必应:\n\n"]
             conversation_style = ConversationStyle.balanced if style == 1 else ConversationStyle.creative if style == 2 else ConversationStyle.precise
-            response = (await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style))
-            result = response["item"]["messages"][1]["text"]
+            response = (
+                await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style)
+            )
+            if not response["item"]["messages"][1].get("adaptiveCards"):
+                result.append(response["item"]["messages"][1]["text"])
+            else:
+                result.append(response["item"]["messages"][1]["text"])
+
             maxNumUserMessagesInConversation = response["item"]["throttling"]["maxNumUserMessagesInConversation"]
             numUserMessagesInConversation = response["item"]["throttling"]["numUserMessagesInConversation"]
-            result += f"\n\n(对话轮次:{numUserMessagesInConversation}/{maxNumUserMessagesInConversation})"
+
+            if sourceAttributions := response["item"]["messages"][1].get("sourceAttributions"):
+                result.append("引用:")
+                for i, item in enumerate(sourceAttributions):
+                    result.append(f"[{i + 1}]{item.get('providerDisplayName')}:{item.get('seeMoreUrl')}")
+
+            if suggestedResponses := response["item"]["messages"][1].get("suggestedResponses"):
+                result.append("猜你想问:")
+                for item in suggestedResponses:
+                    result.append(f"{item.get('text')}")
+
+            result.append(f"(对话轮次:{numUserMessagesInConversation}/{maxNumUserMessagesInConversation})")
+
+            if texted:
+                result = "\n".join(result)
+            else:
+                result = "\n\n".join(result)
         except Exception as e:
             logger.error(response)
-            result = f"发生错误：{e}，请稍后再试"
+            if response:
+                response = response.get("item", {}).get("result", {}).get("message", {})
+            result = f"发生错误：{e}，response:{response}请稍后再试"
         finally:
             self.data[group][member]["running"] = False
         return result
@@ -135,7 +155,9 @@ async def edge_gpt(
 ):
     if new_thread.matched:
         _ = await manager.new(group, member)
-    response = await manager.send_message(group, member, content.result.display.strip(), app, source, style.result)
+    response = await manager.send_message(
+        group, member, content.result.display, app, source, style.result, text.matched
+    )
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)
     else:

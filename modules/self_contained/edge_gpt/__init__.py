@@ -84,10 +84,11 @@ class ConversationManager(object):
             response = (
                 await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style)
             )
-            if not response["item"]["messages"][1].get("adaptiveCards"):
+            if len(response["item"]["messages"]) != 1:
                 result.append(response["item"]["messages"][1]["text"])
             else:
-                result.append(response["item"]["messages"][1]["text"])
+                logger.error(response)
+                return "获取必应的回复失败!"
 
             maxNumUserMessagesInConversation = response["item"]["throttling"]["maxNumUserMessagesInConversation"]
             numUserMessagesInConversation = response["item"]["throttling"]["numUserMessagesInConversation"]

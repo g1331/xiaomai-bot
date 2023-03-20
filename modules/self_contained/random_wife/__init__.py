@@ -275,7 +275,7 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
     name = (await app.get_member_profile(sender)).nickname
     wife_name = wife[wife.rfind('/') + 1:wife.rfind('.')]
     # 初始化字典
-    if (time.time() - counter.get("time")) >= 60 * 3600 * 24:
+    if (time.time() - counter.get("time")) >= 3600 * 24:
         wife_dict = {
         }
         counter = {
@@ -327,25 +327,25 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
                 counter[qq] = [wife]
             else:
                 counter[qq].append(wife)
+            if counter[qq].count(wife) >= 2:
+                counter[qq] = []
+                msg = MessageChain(
+                    f"你抢走了【{wife_dict[wife]['owner']['name']}】的老婆{wife_name}~",
+                    Image(path=wife),
+                    "\n达成成就【NTR】"
+                )
+                wife_dict[wife] = {
+                    "owner": {
+                        "qq": qq,
+                        "name": name
+                    },
+                    "wife_name": wife_name
+                }
+                return msg
             return MessageChain(
                 f"你抽到了{wife_name},是【{wife_dict[wife]['owner']['name']}】的老婆哦~",
                 Image(path=wife)
             )
-        if counter[qq].count(wife) >= 2:
-            counter[qq] = []
-            msg = MessageChain(
-                f"你抢走了【{wife_dict[wife]['owner']['name']}】的老婆{wife_name}~",
-                Image(path=wife),
-                "\n达成成就【NTR】"
-            )
-            wife_dict[wife] = {
-                "owner": {
-                    "qq": qq,
-                    "name": name
-                },
-                "wife_name": wife_name
-            }
-            return msg
     return MessageChain(f"没有抽到老婆哦~")
 
 

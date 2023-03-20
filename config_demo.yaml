@@ -3,9 +3,9 @@ Master: 填写主人的qq号
 bot_accounts: [填写你bot的qq号]
 default_account: 默认bot的qq账号
 GroupMsg_log: true # 是否开启群消息日志
-test_group: 测试群 # 用于接收bot反馈信息等
+test_group: 测试群的群号 # 用于接收bot反馈信息等
 proxy: proxy
-auto_upgrade: false
+auto_upgrade: true
 
 # mah配置
 mirai_host: http://localhost:8080

@@ -6,6 +6,8 @@ from typing import List, Type
 from creart import add_creator, AbstractCreator, CreateTargetInfo, exists_module
 from pydantic import BaseModel
 
+instances = {}
+
 
 class GlobalConfig(BaseModel):
     Master: int
@@ -35,9 +37,12 @@ class GlobalConfig(BaseModel):
 
 
 def load_config():
+    global instances
     with open(Path().cwd() / "config.yaml", "r", encoding="utf-8") as f:
         config_data = yaml.safe_load(f.read())
-        return GlobalConfig(**config_data)
+        if GlobalConfig.__name__ not in instances:
+            instances[GlobalConfig.__name__] = GlobalConfig(**config_data)
+        return instances[GlobalConfig.__name__]
 
 
 class ConfigClassCreator(AbstractCreator, ABC):

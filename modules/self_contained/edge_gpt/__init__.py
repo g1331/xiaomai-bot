@@ -85,7 +85,17 @@ class ConversationManager(object):
                 await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style)
             )
             if len(response["item"]["messages"]) != 1:
-                result.append(response["item"]["messages"][1]["text"])
+                if response["item"]["messages"][1].get("text"):
+                    result.append(response["item"]["messages"][1]["text"])
+                elif response["item"]["messages"][1].get("adaptiveCards"):
+                    try:
+                        result.append(response["item"]["messages"][1]["adaptiveCards"][0]["body"][0]["text"])
+                    except Exception as e:
+                        logger.error(e)
+                        result.append("获取必应的回复失败!")
+                else:
+                    logger.error(response)
+                    return "获取必应的回复失败!"
             else:
                 logger.error(response)
                 return "获取必应的回复失败!"

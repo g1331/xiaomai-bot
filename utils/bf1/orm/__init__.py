@@ -1,5 +1,6 @@
 import asyncio
 
+from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
 
@@ -8,15 +9,18 @@ from utils.bf1.orm.tables import bf1_orm, Bf1PlayerBind, Bf1Account, Bf1Server, 
 
 class bf1_db:
     @staticmethod
-    async def db_init():
+    async def db_check():
+        logger.debug("正在检查bf1数据库")
         try:
-            # 执行异步函数的代码
             await bf1_orm.init_check()
+            logger.success("bf1数据库初始化成功")
         except (AttributeError, InternalError, ProgrammingError):
+            logger.debug("bf1数据库初始化失败，正在重建数据库")
             await bf1_orm.create_all()
+            logger.success("bf1数据库重建成功")
 
     def __init__(self):
-        asyncio.create_task(self.db_init())
+        asyncio.run(self.db_check())
 
     # TODO:
     #  BF1账号相关
@@ -28,15 +32,28 @@ class bf1_db:
     #  根据pid写入remid和sid
     #  根据pid写入session
     @staticmethod
-    async def get_bf1account_by_pid(pid: int) -> Bf1Account:
-        if account := await bf1_orm.fetch_one(select(Bf1Account).where(Bf1Account.pid == pid)):
-            return account[0]
+    async def get_bf1account_by_pid(pid: int) -> tuple:
+        """
+        根据pid获取玩家信息
+        :param pid: 玩家persona_id(pid)
+        :return: 有结果时,返回一个tuple,依次为pid、uid、name、display_name、remid、sid、session,没有结果时返回None
+        """
+        # 获取玩家persona_id、user_id、name、display_name
+        if account := await bf1_orm.fetch_one(
+                select(
+                    Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name, Bf1Account.display_name,
+                    Bf1Account.remid, Bf1Account.sid, Bf1Account.session
+                ).where(
+                    Bf1Account.persona_id == pid
+                )
+        ):
+            return account
         else:
             return None
 
     @staticmethod
     async def get_session_by_pid(pid: int) -> str:
-        if account := await bf1_orm.fetch_one(select(Bf1Account.session).where(Bf1Account.pid == pid)):
+        if account := await bf1_orm.fetch_one(select(Bf1Account.session).where(Bf1Account.persona_id == pid)):
             return account[0]
         else:
             return None
@@ -45,12 +62,12 @@ class bf1_db:
     async def update_bf1account(
             pid: int, display_name: str, uid: int = None, name: str = None,
             remid: str = None, sid: str = None, session: str = None
-    ):
+    ) -> bool:
         await bf1_orm.insert_or_update(
             table=Bf1Account,
             data={
-                "pid": pid,
-                "uid": uid,
+                "persona_id": pid,
+                "user_id": uid,
                 "name": name,
                 "display_name": display_name,
                 "remid": remid,
@@ -58,24 +75,38 @@ class bf1_db:
                 "session": session
             },
             condition=[
-                Bf1Account.pid == pid
+                Bf1Account.persona_id == pid
             ]
         )
+        return True
 
     @staticmethod
-    async def update_bf1account_loginInfo(pid: int, remid: str = None, sid: str = None, session: str = None):
+    async def update_bf1account_loginInfo(
+            pid: int, remid: str = None, sid: str = None, session: str = None
+    ) -> bool:
+        """
+        根据pid写入remid和sid、session
+        :param pid: 玩家persona_id(pid)
+        :param remid: cookie中的remid
+        :param sid: cookie中的sid
+        :param session: 登录后的session
+        :return: None
+        """
+        data = {"persona_id": pid}
+        if remid:
+            data["remid"] = remid
+        if sid:
+            data["sid"] = sid
+        if session:
+            data["session"] = session
         await bf1_orm.insert_or_update(
             table=Bf1Account,
-            data={
-                "pid": pid,
-                "remid": remid,
-                "sid": sid,
-                "session": session
-            },
+            data=data,
             condition=[
-                Bf1Account.pid == pid
+                Bf1Account.persona_id == pid
             ]
         )
+        return True
 
     # TODO:
     #  绑定相关
@@ -86,25 +117,41 @@ class bf1_db:
     #  写入绑定信息 qq-pid
 
     @staticmethod
-    async def get_pid_by_qq(qq: int):
-        if bind := await bf1_orm.fetch_one(select(Bf1PlayerBind.pid).where(Bf1PlayerBind.qq == qq)):
+    async def get_pid_by_qq(qq: int) -> int:
+        """
+        根据qq获取绑定的pid
+        :param qq: qq号
+        :return: 绑定的pid,没有绑定时返回None
+        """
+        if bind := await bf1_orm.fetch_one(select(Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq == qq)):
             return bind[0]
         else:
             return None
 
     @staticmethod
-    async def get_qq_by_pid(pid: int):
-        if bind := await bf1_orm.fetch_all(select(Bf1PlayerBind.qq).where(Bf1PlayerBind.pid == pid)):
-            return bind
+    async def get_qq_by_pid(pid: int) -> list:
+        """
+        根据pid获取绑定的qq
+        :param pid: 玩家persona_id(pid)
+        :return: 返回一个list,里面是绑定的qq号,没有绑定时返回None
+        """
+        if bind := await bf1_orm.fetch_all(select(Bf1PlayerBind.qq).where(Bf1PlayerBind.persona_id == pid)):
+            return [i[0] for i in bind]
         else:
             return None
 
     @staticmethod
     async def bind_player_qq(qq: int, pid: int) -> bool:
+        """
+        写入绑定信息 qq-pid
+        :param qq: qq号
+        :param pid: 玩家persona_id(pid)
+        :return: True
+        """
         await bf1_orm.insert_or_update(
             table=Bf1PlayerBind,
             data={
-                "personaId": pid,
+                "persona_id": pid,
                 "qq": qq
             },
             condition=[
@@ -121,7 +168,7 @@ class bf1_db:
     #  从getFullServerDetails获取并写入服务器信息
     @staticmethod
     async def get_server_by_guid(guid: str) -> Bf1Server:
-        if server := await bf1_orm.fetch_one(select(Bf1Server).where(Bf1Server.guid == guid)):
+        if server := await bf1_orm.fetch_one(select(Bf1Server).where(Bf1Server.persistedGameId == guid)):
             return server[0]
         else:
             return None
@@ -135,14 +182,14 @@ class bf1_db:
             table=Bf1Server,
             data={
                 "gameId": gameId,
-                "guid": guid,
+                "persistedGameId": guid,
                 "serverId": serverId,
                 "createdDate": createdDate,
                 "expirationDate": expirationDate,
                 "updatedDate": updatedDate
             },
             condition=[
-                Bf1Server.guid == guid
+                Bf1Server.persistedGameId == guid
             ]
         )
         return True
@@ -172,7 +219,7 @@ class bf1_db:
     async def get_bf1_server_by_guid(guid: str) -> Bf1Server:
         """根据guid获取服务器信息"""
         server = await bf1_orm.fetch_one(
-            select(Bf1Server).where(Bf1Server.guid == guid)
+            select(Bf1Server).where(Bf1Server.persistedGameId == guid)
         )
         if server:
             return server[0]

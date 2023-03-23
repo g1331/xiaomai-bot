@@ -1,10 +1,11 @@
-import asyncio
 import json
 import time
 import uuid
+import aiohttp
+import asyncio
 from typing import Union
 
-import aiohttp
+import requests
 from loguru import logger
 
 
@@ -27,7 +28,7 @@ class bf1_api(object):
         self.access_token_time = time.time()
         # token过期的时间
         self.access_token_expires_time = 0
-        self.BB_PREFIX = "http://eaassets-a.akamaihd.net/battlelog/battlebinary"
+        self.BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
         self.api_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'
         self.api_header = {
             "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
@@ -234,7 +235,7 @@ class bf1_api(object):
         return False
 
     async def get_session(self) -> str:
-        if self.check_session_expire():
+        if await self.check_session_expire():
             if (not self.remid) or (not self.pid):
                 logger.warning(f"获取session时发生错误:BF1账号{self.pid}未登录!请先传入remid和sid使用login进行登录!")
             return str(await self.login(self.remid, self.sid))
@@ -288,6 +289,7 @@ class bf1_api(object):
             res = eval(await response.text())
             self.access_token = res["access_token"]
             self.access_token_expires_time = res["expires_in"]
+            logger.success(f"获取access_token成功!access_token:{self.access_token}")
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
@@ -306,6 +308,7 @@ class bf1_api(object):
                 async with session.get(url2, headers=header2, ssl=False) as response2:
                     authcode = str(response2.url)
                     authcode = authcode[authcode.rfind('=') + 1:]
+                    logger.success(f"获取authcode成功!authcode:{authcode}")
         except Exception as e:
             logger.error(f"获取authcode失败!{e}")
             return None
@@ -390,15 +393,13 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                response = await session.post(
-                    url=self.api_url,
-                    headers=header,
-                    data=json.dumps(body),
-                    timeout=10,
-                    ssl=False
-                )
-            return await self.error_handle(await response.json())
+            # 不知道为什么不能运作的废弃的异步方法
+            # async with aiohttp.ClientSession() as session:
+            #     async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10) as response:
+            #         res_json = await response.text()
+            #         return await self.error_handle(res_json)
+            res = await asyncio.to_thread(requests.post, self.api_url, headers=header, data=json.dumps(body))
+            return await self.error_handle(res.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -483,7 +484,7 @@ class bf1_api(object):
                 "method": "RSP.getPersonasByIds",
                 "params": {
                     "game": "tunguska",
-                    "personaIds": personaIds
+                    "personaIds": personaIds if isinstance(personaIds, list) else [personaIds]
                 },
                 "id": await get_a_uuid()
             }
@@ -816,7 +817,7 @@ class Stats(bf1_api):
                         "kpm": 1.11,
                         "spm": 1548.79,
                         "skill": 237.14,
-                        "soldierImageUrl": "http://eaassets-a.akamaihd.net/battlelog/bb/bf4/soldier/large/ch-assault-oceanicgreen-425698c4.png",
+                        "soldierImageUrl": "https://eaassets-a.akamaihd.net/battlelog/bb/bf4/soldier/large/ch-assault-oceanicgreen-425698c4.png",
                         "rank": null,
                         "rankProgress": null,
                         "freemiumRank": null,
@@ -1585,11 +1586,14 @@ class Platoons(bf1_api):
         ...
 
 
-bf1_account_dict = {}
-
-
 class api_instance(bf1_api):
+    # 存储所有实例的字典
+    instances = {}
+
     def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
+        # 如果实例已经存在，则抛出异常，否则创建一个新实例
+        if pid in api_instance.instances:
+            raise Exception("api_instance already exists for pid: {}".format(pid))
         super().__init__(pid=pid, remid=remid, sid=sid, session=session)
         self.Game = Game(self)
         self.Progression = Progression(self)
@@ -1600,12 +1604,16 @@ class api_instance(bf1_api):
         self.RSP = RSP(self)
         self.Platoons = Platoons(self)
 
+        # 将实例添加到字典中
+        api_instance.instances[pid] = self
+
+    # 使用单例模式，让每个pid只有一个实例
     @staticmethod
     def get_api_instance(pid) -> "api_instance":
-        global bf1_account_dict
-        if pid not in bf1_account_dict:
-            bf1_account_dict[pid] = api_instance(pid)
-        return bf1_account_dict[pid]
+        # 如果实例已经存在，则返回它，否则创建一个新实例
+        if pid not in api_instance.instances:
+            api_instance.instances[pid] = api_instance(pid)
+        return api_instance.instances[pid]
 
 
 """

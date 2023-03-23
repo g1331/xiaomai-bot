@@ -25,3 +25,4 @@ data.db
 /modules/third_party/
 auto_get_server.py
 core/models/saya_model/modules_data.json
+/utils/bf1/default_account.json

@@ -63,17 +63,27 @@ class bf1_db:
             pid: int, display_name: str, uid: int = None, name: str = None,
             remid: str = None, sid: str = None, session: str = None
     ) -> bool:
+        if not pid:
+            logger.error("pid不能为空!")
+            return False
+        data = {
+            "persona_id": pid,
+        }
+        if uid:
+            data["user_id"] = uid
+        if name:
+            data["name"] = name
+        if display_name:
+            data["display_name"] = display_name
+        if remid:
+            data["remid"] = remid
+        if sid:
+            data["sid"] = sid
+        if session:
+            data["session"] = session
         await bf1_orm.insert_or_update(
             table=Bf1Account,
-            data={
-                "persona_id": pid,
-                "user_id": uid,
-                "name": name,
-                "display_name": display_name,
-                "remid": remid,
-                "sid": sid,
-                "session": session
-            },
+            data=data,
             condition=[
                 Bf1Account.persona_id == pid
             ]
@@ -246,3 +256,6 @@ class bf1_db:
             ]
         )
         return True
+
+
+BF1DB = bf1_db()

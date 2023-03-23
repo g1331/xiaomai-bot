@@ -7,7 +7,9 @@ from typing import Union
 import aiofiles
 import aiohttp
 import httpx
+import zhconv
 from loguru import logger
+from rapidfuzz import fuzz
 
 from utils.bf1.default_account import BF1DA
 from utils.bf1.orm import BF1DB
@@ -331,7 +333,9 @@ async def get_stat_by_pid(player_pid: str) -> dict:
             return await response.json()
 
 
+# 以下是重构内容
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
+    """根据玩家名称获取玩家信息"""
     player_info = await (await BF1DA.get_api_instance()).getPersonasByName(player_name)
     if not player_info.get("personas"):
         return None
@@ -356,6 +360,7 @@ async def get_personas_by_name(player_name: str) -> Union[dict, None]:
 
 
 async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
+    """根据玩家pid获取玩家信息"""
     player_info = await (await BF1DA.get_api_instance()).getPersonasByIds(player_pid)
     # 如果pid不存在,则返回错误信息
     if isinstance(player_info, str):
@@ -374,3 +379,141 @@ async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
         except Exception as e:
             logger.error(e)
         return player_info
+
+
+# 传入武器dict源数据，返回武器根据条件排序后的列表,封装成类，方便后续调用
+class WeaponData:
+    # 传入武器dict源数据初始化
+    def __init__(self, weapon_data: dict):
+        self.weapon_data: list = weapon_data.get("result")
+        self.weapon_item_list: list = []
+        """例:
+        self.weapon_item_list = [
+            {weapon_item},...
+        ]
+        默认分类:戰場裝備、輕機槍、步槍、配備、半自動步槍、手榴彈、制式步槍、霰彈槍、坦克/駕駛員、衝鋒槍、佩槍、近戰武器
+        将制式步槍也归类到步槍中
+        """
+        for category in self.weapon_data:
+            for weapon in category["weapons"]:
+                if weapon.get("category") == "制式步槍":
+                    weapon["category"] = "步槍"
+                self.weapon_item_list.append(weapon)
+
+    # 按照规则来排序
+    def filter(self, rule: str = None, sort_type: str = "击杀"):
+        weapon_list = []
+        # 按照武器类别、兵种、击杀数来排序
+        for weapon in self.weapon_item_list:
+            if rule in ["精英兵"]:
+                if weapon.get("category") == "戰場裝備" or weapon.get("guid") in [
+                    "8A849EDD-AE9F-4F9D-B872-7728067E4E9F"
+                ]:
+                    weapon_list.append(weapon)
+            elif rule in ["机枪", "轻机枪"]:
+                if weapon.get("category") == "輕機槍":
+                    weapon_list.append(weapon)
+            elif rule in ["步枪", "狙击枪"]:
+                if weapon.get("category") == "步槍":
+                    weapon_list.append(weapon)
+            elif rule in ["装备", "配备"]:
+                if weapon.get("category") == "配備":
+                    weapon_list.append(weapon)
+            elif rule in ["半自动步枪", "半自动"]:
+                if weapon.get("category") == "半自動步槍":
+                    weapon_list.append(weapon)
+            elif rule in ["手榴弹", "手雷", "投掷物"]:
+                if weapon.get("category") == "手榴彈":
+                    weapon_list.append(weapon)
+            elif rule in ["霰弹枪", "散弹枪"]:
+                if weapon.get("category") == "霰彈槍":
+                    weapon_list.append(weapon)
+            elif rule in ["驾驶员", "坦克驾驶员"]:
+                if weapon.get("category") == "坦克/駕駛員":
+                    weapon_list.append(weapon)
+            elif rule in ["冲锋枪"]:
+                if weapon.get("category") == "衝鋒槍":
+                    weapon_list.append(weapon)
+            elif rule in ["副武器", "佩枪", "手枪"]:
+                if weapon.get("category") == "佩槍":
+                    weapon_list.append(weapon)
+            elif rule in ["近战"]:
+                if weapon.get("category") == "近戰武器":
+                    weapon_list.append(weapon)
+            elif rule in ["突击兵", "土鸡兵", "土鸡", "突击"]:
+                if weapon.get("category") in ["衝鋒槍", "霰彈槍"] or weapon.get("guid") in [
+                    "245A23B1-53BA-4AB2-A416-224794F15FCB",  # M1911
+                    "D8AEB334-58E2-4A52-83BA-F3C2107196F0",
+                    "7085A5B9-6A77-4766-83CD-3666DA3EDF28",
+                    "079D8793-073C-4332-A959-19C74A9D2A46",
+                    "72CCBF3E-C0FE-4657-A1A7-EACDB2D11985",
+                    "6DFD1536-BBBB-4528-917A-7E2821FB4B6B",
+                    "BE041F1A-460B-4FD5-9E4B-F1C803C0F42F",
+                    "AE96B513-1F05-4E63-A273-E98FA91EE4D0",
+                ]:
+                    weapon_list.append(weapon)
+            elif rule in ["侦察兵", "侦察", "斟茶兵", "斟茶"]:
+                if weapon.get("category") in ["步枪"] or weapon.get("guid") in [
+                    "2543311A-B9BC-4F72-8E71-C9D32DCA9CFC",
+                    "ADAD5F72-BD74-46EF-AB42-99F95D88DF8E",
+                    "2D64B139-27C8-4EDB-AB14-734993A96008",
+                    "EF1C7B9B-8912-4298-8FCB-29CC75DD0E7F",
+                    "9CF9EA1C-39A1-4365-85A1-3645B9621901",
+                    "033299D1-A8E6-4A5A-8932-6F2091745A9D",
+                ]:
+                    weapon_list.append(weapon)
+            elif rule in ["医疗兵", "医疗"]:
+                if weapon.get("category") in ["半自動步槍"] or weapon.get("guid") in [
+                    "F34B3039-7B3A-0272-14E7-628980A60F06",
+                    "03FDF635-8E98-4F74-A176-DB4960304DF5",
+                    "165ED044-C2C5-43A1-BE04-8618FA5072D4",
+                    "EBA4454E-EEB6-4AF1-9286-BD841E297ED4",
+                    "670F817E-89A6-4048-B8B2-D9997DD97982",
+                    "9BCDB1F5-5E1C-4C3E-824C-8C05CC0CE21A",
+                    "245A23B1-53BA-4AB2-A416-224794F15FCB",
+                    "4E317627-F7F8-4014-BB22-B0ABEB7E9141",
+                ]:
+                    weapon_list.append(weapon)
+            elif rule in ["支援兵", "支援"]:
+                if weapon.get("category") in ["輕機槍"] or weapon.get("guid") in [
+                    "0CC870E0-7AAE-44FE-B9D8-5D90706AF38B",
+                    "6CB23E70-F191-4043-951A-B43D6D2CF4A2",
+                    "3DC12572-2D2F-4439-95CA-8DFB80BA17F5",
+                    "2B421852-CFF9-41FF-B385-34580D5A9BF0",
+                    "EBE043CB-8D37-4807-9260-E2DD7EFC4BD2",
+                    "2B0EC5C1-81A5-424A-A181-29B1E9920DDA",
+                    "19CB192F-1197-4EEB-A499-A2DA449BE811",
+                    "52B19C38-72C0-4E0F-B051-EF11103F6220",
+                    "C71A02C3-608E-42AA-9179-A4324A4D4539",
+                    "8BD0FABD-DCCE-4031-8156-B77866FCE1A0",
+                    "F59AA727-6618-4C1D-A5E2-007044CA3B89",
+                    "95A5E9D8-E949-46C2-B5CA-36B3CA4C2E9D",
+                    "60D24A79-BFD6-4C8F-B54F-D1AA6D2620DE",
+                    "02D4481F-FBC3-4C57-AAAC-1B37DC92751E"
+                ]:
+                    weapon_list.append(weapon)
+            else:
+                weapon_list.append(weapon)
+        # 按照击杀/爆头率/命中率/时长排序
+        sort_type_dict = {
+            "击杀": "kills",
+            "爆头率": "headshots",
+            "命中率": "accuracy",
+            "时长": "seconds"
+        }
+        weapon_list.sort(
+            key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills")),
+            reverse=True
+        )
+        return weapon_list
+
+    # 根据武器名搜索武器信息
+    def search_weapon(self, target_weapon_name):
+        weapon_list = []
+        for weapon in self.weapon_item_list:
+            # 先将武器名转换为简体中文，再进行模糊匹配
+            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans')
+            # 非完全匹配，基于最佳的子串（substrings）进行匹配
+            if fuzz.partial_ratio(target_weapon_name, weapon_name) > 70:
+                weapon_list.append(weapon)
+        return weapon_list

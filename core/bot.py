@@ -192,7 +192,7 @@ class Umaru(object):
                 )
                 self.initialized_group_list.append(group.id)
                 group_init_counter += 1
-                logger.debug(f"账号{app.account}初始化完成{group_init_counter}/{len(group_list)}")
+        logger.debug(f"账号{app.account}初始化完成,初始化群组{group_init_counter}个")
         self.initialized_app_list.append(app.account)
 
     async def get_init_group_perm(self, group: Group) -> int:

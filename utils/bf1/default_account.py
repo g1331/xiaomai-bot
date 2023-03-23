@@ -149,12 +149,15 @@ class DefaultAccount:
             return self.pid, self.uid, self.name, self.display_name, self.remid, self.sid, self.session
 
     # 更新玩家信息
-    async def update_player_info(self):
+    async def update_player_info(self) -> dict:
+        """
+        更新默认账号信息
+        :return: pid, uid, name, display_name, remid, sid, session
+        """
         player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
-        self.display_name = player_info.get("result").get(str(self.pid)).get("displayName")
-        self.pid = player_info["personas"]["persona"][0]["personaId"]
-        self.uid = player_info["personas"]["persona"][0]["userId"]
-        self.name = player_info["personas"]["persona"][0]["name"]
+        self.display_name = f"{player_info['result'][str(self.pid)]['displayName']}"
+        self.pid = f"{player_info['result'][str(self.pid)]['personaId']}"
+        self.uid = f"{player_info['result'][str(self.pid)]['nucleusId']}"
         await self.write_default_account(
             pid=self.pid,
             uid=self.uid,
@@ -165,6 +168,15 @@ class DefaultAccount:
             session=self.session
         )
         logger.success(f"成功更新默认账号: {self.display_name}({self.pid})")
+        return {
+            "pid": self.pid,
+            "uid": self.uid,
+            "name": self.name,
+            "display_name": self.display_name,
+            "remid": self.remid,
+            "sid": self.sid,
+            "session": self.session
+        }
 
 
 BF1DA = DefaultAccount()

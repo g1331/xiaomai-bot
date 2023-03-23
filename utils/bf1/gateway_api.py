@@ -241,9 +241,7 @@ class bf1_api(object):
         return False
 
     async def get_session(self) -> str:
-        if self.session:
-            return str(self.session)
-        elif await self.check_session_expire():
+        if await self.check_session_expire():
             if (not self.remid) or (not self.pid):
                 logger.warning(f"获取session时发生错误:BF1账号{self.pid}未登录!请先传入remid和sid使用login进行登录!")
             return str(await self.login(self.remid, self.sid))

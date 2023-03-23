@@ -70,11 +70,12 @@ class DefaultAccount:
                         logger.success("成功获取到默认账号session")
             else:
                 logger.error("请先配置默认账号pid信息!")
+                return None
         if not self.account_instance.check_login:
             logger.warning("当前默认查询账户未登录!session过期后将尝试自动登录刷新!")
         return self.account_instance
 
-    async def write_default_account(self, pid, uid, name, display_name, remid, sid, session):
+    async def write_default_account(self, pid, remid, sid, uid=None, name=None, display_name=None, session=None):
         self.pid = pid
         self.uid = uid
         self.name = name
@@ -105,7 +106,11 @@ class DefaultAccount:
             }, f, indent=4, ensure_ascii=False)
 
     # 从文件读取默认账号信息
-    async def read_default_account(self):
+    async def read_default_account(self) -> tuple:
+        """
+        返回文件中的默认账号信息
+        :return: pid, uid, name, display_name, remid, sid, session
+        """
         if self.account_path.exists():
             with open(self.account_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -128,6 +133,7 @@ class DefaultAccount:
             )
             logger.debug(
                 f"已从默认账号文件读取到默认账号信息, pid={self.pid}, uid={self.uid}, name={self.name}, display_name={self.display_name}, remid={self.remid}, sid={self.sid}, session={self.session}")
+            return self.pid, self.uid, self.name, self.display_name, self.remid, self.sid, self.session
         else:
             with open(self.account_path, 'w', encoding='utf-8') as f:
                 json.dump({
@@ -140,6 +146,25 @@ class DefaultAccount:
                     "session": self.session
                 }, f, indent=4, ensure_ascii=False)
             logger.debug("没有找到默认账号文件，已自动创建文件")
+            return self.pid, self.uid, self.name, self.display_name, self.remid, self.sid, self.session
+
+    # 更新玩家信息
+    async def update_player_info(self):
+        player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+        self.display_name = player_info.get("result").get(str(self.pid)).get("displayName")
+        self.pid = player_info["personas"]["persona"][0]["personaId"]
+        self.uid = player_info["personas"]["persona"][0]["userId"]
+        self.name = player_info["personas"]["persona"][0]["name"]
+        await self.write_default_account(
+            pid=self.pid,
+            uid=self.uid,
+            name=self.name,
+            display_name=self.display_name,
+            remid=self.remid,
+            sid=self.sid,
+            session=self.session
+        )
+        logger.success(f"成功更新默认账号: {self.display_name}({self.pid})")
 
 
-default_account = DefaultAccount()
+BF1DA = DefaultAccount()

@@ -2,11 +2,15 @@ import asyncio
 import json
 import os
 import random
+from typing import Union
 
 import aiofiles
 import aiohttp
 import httpx
 from loguru import logger
+
+from utils.bf1.default_account import BF1DA
+from utils.bf1.orm import BF1DB
 
 widths = [
     (126, 1), (159, 0), (687, 1), (710, 0), (711, 1),
@@ -325,3 +329,48 @@ async def get_stat_by_pid(player_pid: str) -> dict:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             return await response.json()
+
+
+async def get_personas_by_name(player_name: str) -> Union[dict, None]:
+    player_info = await (await BF1DA.get_api_instance()).getPersonasByName(player_name)
+    if not player_info.get("personas"):
+        return None
+    else:
+        pid = player_info["personas"]["persona"][0]["personaId"]
+        uid = player_info["personas"]["persona"][0]["pidId"]
+        display_name = player_info["personas"]["persona"][0]["displayName"]
+        name = player_info["personas"]["persona"][0]["name"]
+        # dateCreated = player_info["personas"]["persona"][0]["dateCreated"]
+        # lastAuthenticated = player_info["personas"]["persona"][0]["lastAuthenticated"]
+        # 写入数据库
+        try:
+            await BF1DB.update_bf1account(
+                pid=pid,
+                uid=uid,
+                name=name,
+                display_name=display_name,
+            )
+        except Exception as e:
+            logger.error(e)
+        return player_info
+
+
+async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
+    player_info = await (await BF1DA.get_api_instance()).getPersonasByIds(player_pid)
+    # 如果pid不存在,则返回错误信息
+    if isinstance(player_info, str):
+        return player_info
+    if not player_info.get("result"):
+        return None
+    else:
+        try:
+            display_name = player_info['result'][str(player_pid)]['displayName']
+            uid = player_info['result'][str(player_pid)]['nucleusId']
+            await BF1DB.update_bf1account(
+                pid=player_pid,
+                uid=uid,
+                display_name=display_name,
+            )
+        except Exception as e:
+            logger.error(e)
+        return player_info

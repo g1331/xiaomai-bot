@@ -32,7 +32,7 @@ class DefaultAccount:
     async def get_api_instance(self) -> api_instance:
         if self.account_instance is None:
             if self.pid:
-                self.account_instance = api_instance.get_api_instance(self.pid)
+                self.account_instance = api_instance.get_api_instance(self.pid, self.remid, self.sid, self.session)
                 self.account_instance.session = self.session
                 self.account_instance.remid = self.remid
                 self.account_instance.sid = self.sid

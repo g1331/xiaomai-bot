@@ -1592,7 +1592,7 @@ class Platoons(bf1_api):
         ...
 
 
-class api_instance(bf1_api):
+class api_instance(Game, Progression, Stats, ServerHistory, Gamedata, GameServer, RSP, Platoons):
     # 存储所有实例的字典
     instances = {}
 
@@ -1601,24 +1601,16 @@ class api_instance(bf1_api):
         if pid in api_instance.instances:
             raise Exception("api_instance already exists for pid: {}".format(pid))
         super().__init__(pid=pid, remid=remid, sid=sid, session=session)
-        self.Game = Game(self)
-        self.Progression = Progression(self)
-        self.Stats = Stats(self)
-        self.ServerHistory = ServerHistory(self)
-        self.Gamedata = Gamedata(self)
-        self.GameServer = GameServer(self)
-        self.RSP = RSP(self)
-        self.Platoons = Platoons(self)
 
         # 将实例添加到字典中
         api_instance.instances[pid] = self
 
     # 使用单例模式，让每个pid只有一个实例
     @staticmethod
-    def get_api_instance(pid) -> "api_instance":
+    def get_api_instance(pid, remid=None, sid=None, session=None) -> "api_instance":
         # 如果实例已经存在，则返回它，否则创建一个新实例
         if pid not in api_instance.instances:
-            api_instance.instances[pid] = api_instance(pid)
+            api_instance.instances[pid] = api_instance(pid, remid, sid, session)
         return api_instance.instances[pid]
 
 

@@ -33,9 +33,13 @@ class DefaultAccount:
         if self.account_instance is None:
             if self.pid:
                 self.account_instance = api_instance.get_api_instance(self.pid)
+                self.account_instance.session = self.session
+                self.account_instance.remid = self.remid
+                self.account_instance.sid = self.sid
                 if self.remid and self.sid:
-                    # 如果session过期，自动登录
-                    if await self.account_instance.check_session_expire():
+                    # 如果session过期，自动登录覆写信息
+                    data = await self.account_instance.Companion_isLoggedIn()
+                    if not data.get('result').get('isLoggedIn'):
                         logger.debug("正在登录默认账号")
                         await self.account_instance.login(self.remid, self.sid)
                         if await self.account_instance.get_session():
@@ -64,11 +68,10 @@ class DefaultAccount:
                                 logger.success(f"成功登录更新默认账号: {self.display_name}({self.pid})")
                     else:
                         logger.success("成功获取到默认账号session")
-
             else:
-                logger.error("请先配置默认账号信息!")
+                logger.error("请先配置默认账号pid信息!")
         if not self.account_instance.check_login:
-            logger.error("当前默认查询账户未登录!请先登录!")
+            logger.warning("当前默认查询账户未登录!session过期后将尝试自动登录刷新!")
         return self.account_instance
 
     async def write_default_account(self, pid, uid, name, display_name, remid, sid, session):
@@ -99,7 +102,7 @@ class DefaultAccount:
                 "remid": self.remid,
                 "sid": self.sid,
                 "session": self.session
-            }, f, ensure_ascii=False)
+            }, f, indent=4, ensure_ascii=False)
 
     # 从文件读取默认账号信息
     async def read_default_account(self):

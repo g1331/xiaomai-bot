@@ -67,7 +67,14 @@ class DefaultAccount:
                                 )
                                 logger.success(f"成功登录更新默认账号: {self.display_name}({self.pid})")
                     else:
+                        self.session = self.account_instance.session
                         logger.success("成功获取到默认账号session")
+                        await self.write_default_account(
+                            pid=self.pid,
+                            remid=self.remid,
+                            sid=self.sid,
+                            session=self.session
+                        )
             else:
                 logger.error("请先配置默认账号pid信息!")
                 return None
@@ -106,10 +113,10 @@ class DefaultAccount:
             }, f, indent=4, ensure_ascii=False)
 
     # 从文件读取默认账号信息
-    async def read_default_account(self) -> tuple:
+    async def read_default_account(self) -> dict:
         """
         返回文件中的默认账号信息
-        :return: pid, uid, name, display_name, remid, sid, session
+        :return: {pid, uid, name, display_name, remid, sid, session}
         """
         if self.account_path.exists():
             with open(self.account_path, 'r', encoding='utf-8') as f:
@@ -133,7 +140,6 @@ class DefaultAccount:
             )
             logger.debug(
                 f"已从默认账号文件读取到默认账号信息, pid={self.pid}, uid={self.uid}, name={self.name}, display_name={self.display_name}, remid={self.remid}, sid={self.sid}, session={self.session}")
-            return self.pid, self.uid, self.name, self.display_name, self.remid, self.sid, self.session
         else:
             with open(self.account_path, 'w', encoding='utf-8') as f:
                 json.dump({
@@ -146,13 +152,21 @@ class DefaultAccount:
                     "session": self.session
                 }, f, indent=4, ensure_ascii=False)
             logger.debug("没有找到默认账号文件，已自动创建文件")
-            return self.pid, self.uid, self.name, self.display_name, self.remid, self.sid, self.session
+        return {
+            "pid": self.pid,
+            "uid": self.uid,
+            "name": self.name,
+            "display_name": self.display_name,
+            "remid": self.remid,
+            "sid": self.sid,
+            "session": self.session
+        }
 
     # 更新玩家信息
     async def update_player_info(self) -> dict:
         """
         更新默认账号信息
-        :return: pid, uid, name, display_name, remid, sid, session
+        :return: {pid, uid, name, display_name, remid, sid, session}
         """
         player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
         self.display_name = f"{player_info['result'][str(self.pid)]['displayName']}"

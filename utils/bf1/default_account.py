@@ -39,7 +39,7 @@ class DefaultAccount:
                 if self.remid and self.sid:
                     # 如果session过期，自动登录覆写信息
                     data = await self.account_instance.Companion_isLoggedIn()
-                    if not data.get('result').get('isLoggedIn'):
+                    if (not data) or (data.get('result').get('isLoggedIn') is None):
                         logger.debug("正在登录默认账号")
                         await self.account_instance.login(self.remid, self.sid)
                         if await self.account_instance.get_session():

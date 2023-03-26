@@ -80,7 +80,7 @@ async def auto_refresh_account(player_pid: str = f"{default_account}"):
     }
     response3 = requests.post(url3, headers=header3, data=json.dumps(body))
     session = eval(response3.text)["result"]["sessionId"]
-    with open(fr".\data\battlefield\managerAccount\{player_pid}\session.json", 'w', encoding="utf-8") as file_temp2:
+    with open(f"./data/battlefield/managerAccount/{player_pid}/session.json", 'w', encoding="utf-8") as file_temp2:
         dict_temp = {"session": session}
         json.dump(dict_temp, file_temp2, indent=4)
         return "刷新成功"

@@ -107,8 +107,7 @@ async def get_main_session():
     获取主session
     :return: session
     """
-    file_path = os.getcwd().replace("\\modules\\bf1服管",
-                                    "") + f'\\data\\battlefield\\managerAccount\\{default_account}\\session.json'
+    file_path = f'./data/battlefield/managerAccount/{default_account}/session.json'
     with open(file_path, 'r', encoding="utf-8") as file_temp2:
         session = json.load(file_temp2)["session"]
         return session

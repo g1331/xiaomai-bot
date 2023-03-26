@@ -556,7 +556,7 @@ async def rub(
     self_img = await get_pil_avatar(operator_image)
     user_img = await get_pil_avatar(target_image)
     for i in range(6):
-        frame = IMG.open(rf"{os.getcwd()}\statics\RubFrames\frame{i}.png").convert(
+        frame = IMG.open(f"./statics/RubFrames/frame{i}.png").convert(
             "RGBA"
         )
         x, y, w, h, angle = user_locs[i]
@@ -573,7 +573,7 @@ async def rub(
 
 async def support(image: Union[int, str]) -> MessageChain:
     avatar = await get_pil_avatar(image)
-    support = IMG.open(rf"{os.getcwd()}\statics\support.png")
+    support = IMG.open(f"./statics/support.png")
     frame = IMG.new("RGBA", (1293, 1164), (255, 255, 255, 0))
     avatar = avatar.resize((815, 815), IMG.ANTIALIAS).rotate(23, expand=True)
     frame.paste(avatar, (-172, -17))
@@ -607,7 +607,7 @@ async def swallowed(image: Union[int, str]) -> MessageChain:
         (180, 131, 92, 101),
     ]
     raw_frames = [
-        rf"{os.getcwd()}\statics\SwallowedFrames\frame{i}.png" for i in range(23)
+        f"./statics/SwallowedFrames/frame{i}.png" for i in range(23)
     ]
     raw_frames = [IMG.open(i).convert("RGBA") for i in raw_frames]
 

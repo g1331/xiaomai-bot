@@ -408,7 +408,7 @@ async def petpet(image: Union[int, str], flip=False, squish=0, fps=20) -> Messag
     ]
 
     if not os.path.exists(f"./statics/temp/"):
-        os.mkdir(f"./static/temp/")
+        os.mkdir(f"./statics/temp/")
     image_bytes = save_gif(gif_frames, fps=fps)
 
     return MessageChain([Image(data_bytes=image_bytes)])

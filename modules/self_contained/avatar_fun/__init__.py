@@ -57,7 +57,7 @@ squish_factor = [
 
 squish_translation_factor = [0, 20, 34, 21, 0]
 
-frames = tuple([rf"{os.getcwd()}\statics\PetPetFrames\frame{i}.png" for i in range(5)])
+frames = tuple([f"./statics/PetPetFrames/frame{i}.png" for i in range(5)])
 
 
 @listen(GroupMessage)

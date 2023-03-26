@@ -2618,8 +2618,12 @@ async def managerAccount_create(app: Ariadne, group: Group,
         ), quote=source)
     if not os.path.exists(account_path):
         os.makedirs(account_path)
-        open(account_path + "/account.json", "w", encoding="utf-8")
-        open(account_path + "/session.json", "w", encoding="utf-8")
+        account_file_path = account_path + "/account.json"
+        if not os.path.exists(account_file_path):
+            open(account_file_path, "w", encoding="utf-8")
+        session_file_path = account_path + "/session.json"
+        if not os.path.exists(session_file_path):
+            open(account_path + "/session.json", "w", encoding="utf-8")
         with open(account_path + "/info.json", "w", encoding="utf-8") as file:
             json.dump(player_info, file, indent=4)
         await app.send_message(group, MessageChain(

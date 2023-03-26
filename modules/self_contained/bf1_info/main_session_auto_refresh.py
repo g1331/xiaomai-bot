@@ -18,7 +18,7 @@ default_account = global_config.functions.get("bf1").get("default_account", 0)
 async def auto_refresh_account(player_pid: str = f"{default_account}"):
     global client
     logger.warning(f"刷新[{player_pid}]session中")
-    with open(fr".\data\battlefield\managerAccount\{player_pid}\account.json", 'r', encoding='utf-8') as file_temp1:
+    with open(f"./data/battlefield/managerAccount/{player_pid}/account.json", 'r', encoding='utf-8') as file_temp1:
         data_temp = json.load(file_temp1)
         remid = data_temp["remid"]
         sid = data_temp["sid"]

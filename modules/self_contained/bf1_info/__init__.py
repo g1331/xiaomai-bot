@@ -8,7 +8,7 @@ from graia.amnesia.message import MessageChain
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage, FriendMessage
-from graia.ariadne.message.element import Source
+from graia.ariadne.message.element import Source, Image
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, MatchResult, ParamMatch, \
     RegexResult, ArgumentMatch
 from graia.ariadne.model import Group, Friend, Member
@@ -414,4 +414,19 @@ async def player_stat_pic(
         player_vehicle: list = VehicleData(player_vehicle).filter()
 
     # 生成图片
-    player_stat_pic = await PlayerStatPic(player_stat, player_weapon, player_vehicle).draw()
+    player_stat_img = await PlayerStatPic(player_stat, player_weapon, player_vehicle).draw()
+    if player_stat_img:
+        return await app.send_message(
+            group,
+            MessageChain(Image(data_bytes=player_stat_img)),
+            quote=source
+        )
+    else:
+        # 发送文字
+        return await app.send_message(
+            group,
+            MessageChain(
+                f"玩家名字:{display_name}"
+            ),
+            quote=source
+        )

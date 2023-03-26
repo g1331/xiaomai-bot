@@ -718,11 +718,14 @@ async def bfgroup_bind_server(app: Ariadne, group: Group,
             return False
         managerAccount_list_temp = {}
         for item in account_list:
-            with open(file_path + f"/{item}/info.json", 'r', encoding="utf-8") as file_tamp:
-                data = json.load(file_tamp)
-                name = data["personas"]["persona"][0]["displayName"]
-                pid = data["personas"]["persona"][0]["personaId"]
-                managerAccount_list_temp[str(pid)] = name
+            try:
+                with open(file_path + f"/{item}/info.json", 'r', encoding="utf-8") as file_tamp:
+                    data = json.load(file_tamp)
+                    name = data["personas"]["persona"][0]["displayName"]
+                    pid = data["personas"]["persona"][0]["personaId"]
+                    managerAccount_list_temp[str(pid)] = name
+            except:
+                managerAccount_list_temp[str(pid)] = str(pid)
     managerAccount = None
     for i, item in enumerate(managerAccount_list_temp):
         if str(item) in admin_list:
@@ -2599,7 +2602,7 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
 )
 async def managerAccount_create(app: Ariadne, group: Group,
                                 account_name: RegexResult, source: Source):
-    account_name = str(account_name.result)
+    account_name = account_name.result.display
     # 根据名字获取到pid
     try:
         player_info = await getPid_byName(account_name)
@@ -2618,14 +2621,15 @@ async def managerAccount_create(app: Ariadne, group: Group,
     account_path = group_path + f"/{personaId}"
     account_file_path = account_path + "/account.json"
     session_file_path = account_path + "/session.json"
-    if not os.path.exists(account_path) or not os.path.exists(account_file_path) or not os.path.exists(session_file_path):
+    info_file_path = account_path + "/info.json"
+    if not os.path.exists(info_file_path):
         if not os.path.exists(account_path):
             os.makedirs(account_path)
         if not os.path.exists(account_file_path):
             open(account_file_path, "w", encoding="utf-8")
         if not os.path.exists(session_file_path):
-            open(account_path + "/session.json", "w", encoding="utf-8")
-        with open(account_path + "/info.json", "w", encoding="utf-8") as file:
+            open(session_file_path, "w", encoding="utf-8")
+        with open(info_file_path, "w", encoding="utf-8") as file:
             json.dump(player_info, file, indent=4)
         await app.send_message(group, MessageChain(
             f'成功创建{personaId}文件夹\n自动创建account与session.json文件成功\n写入玩家info成功\n请手动导入remid与sid'

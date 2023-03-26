@@ -1780,7 +1780,7 @@ async def player_stat_pic(app: Ariadne, sender: Member, group: Group, player_nam
     name_font = ImageFont.truetype(font_path, 45)
     content_font = ImageFont.truetype(font_path, 40)
     # 等级字体
-    rank_font = ImageFont.truetype(r'C:\Windows\Fonts\simhei.TTF', 80)
+    rank_font = ImageFont.truetype(font_path, 80)
     # 玩家头像获取
     player_img = await playerPicDownload(html["avatar"], html["userName"])
     # 玩家头像打开
@@ -3555,7 +3555,6 @@ async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index
 
     # 字体路径
     font_path = './data/battlefield/font/BFText-Regular-SC-19cf572c.ttf'
-    # font_path = r'C:\Windows\Fonts\simkai.ttf'
     font1 = ImageFont.truetype(font_path, 30)
     font2 = ImageFont.truetype(font_path, 38)
     font3 = ImageFont.truetype(font_path, 30)

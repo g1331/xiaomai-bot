@@ -1,13 +1,17 @@
 import asyncio
+import datetime
 import json
 import os
 import random
+import re
+import time
 from typing import Union
 
 import aiofiles
 import aiohttp
 import httpx
 import zhconv
+from bs4 import BeautifulSoup
 from loguru import logger
 from rapidfuzz import fuzz
 
@@ -335,9 +339,14 @@ async def get_stat_by_pid(player_pid: str) -> dict:
 
 # TODO 以下是重构内容
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
-    """根据玩家名称获取玩家信息"""
+    """根据玩家名称获取玩家信息
+    :param player_name: 玩家名称
+    :return: 成功返回dict，失败返回str信息，玩家不存在返回None
+    """
     player_info = await (await BF1DA.get_api_instance()).getPersonasByName(player_name)
-    if not player_info.get("personas"):
+    if isinstance(player_info, str):
+        return player_info
+    elif not player_info.get("personas"):
         return None
     else:
         pid = player_info["personas"]["persona"][0]["personaId"]
@@ -355,17 +364,20 @@ async def get_personas_by_name(player_name: str) -> Union[dict, None]:
                 display_name=display_name,
             )
         except Exception as e:
-            logger.error(e)
+            logger.error((e, player_info))
         return player_info
 
 
 async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
-    """根据玩家pid获取玩家信息"""
+    """根据玩家pid获取玩家信息
+    :param player_pid: 玩家pid
+    :return: 查询成功返回dict, 查询失败返回str, pid不存在返回None
+    """
     player_info = await (await BF1DA.get_api_instance()).getPersonasByIds(player_pid)
     # 如果pid不存在,则返回错误信息
     if isinstance(player_info, str):
         return player_info
-    if not player_info.get("result"):
+    elif not player_info.get("result"):
         return None
     else:
         try:
@@ -377,7 +389,94 @@ async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
                 display_name=display_name,
             )
         except Exception as e:
-            logger.error(e)
+            logger.error((e, player_info))
         return player_info
 
 
+async def check_bind(qq: int) -> Union[dict, str, None]:
+    """检查玩家是否绑定
+    :param qq: 玩家QQ
+    :return: 返回玩家信息,如果未绑定则返回None,查询失败返回str信息"""
+    player_pid = await BF1DB.get_pid_by_qq(qq)
+    if not player_pid:
+        return None
+    # 修改逻辑,先从数据库中获取,如果数据库中没有则从API中获取
+    player_info = await BF1DB.get_bf1account_by_pid(player_pid)
+    if player_info:
+        return {"displayName": player_info["display_name"], "pid": player_pid, "uid": player_info["uid"], "qq": qq}
+    else:
+        player_info = await get_personas_by_player_pid(player_pid)
+        if isinstance(player_info, str):
+            return player_info
+        elif not player_info:
+            return None
+        else:
+            # 更新该pid的信息
+            await BF1DB.update_bf1account(
+                pid=player_pid,
+                uid=player_info['result'][str(player_pid)]['nucleusId'],
+                display_name=player_info['result'][str(player_pid)]['displayName'],
+            )
+            displayName = player_info['result'][str(player_pid)]['displayName']
+            pid = player_info['result'][str(player_pid)]['personaId']
+            uid = player_info['result'][str(player_pid)]['nucleusId']
+            return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
+
+
+async def get_recent_info(player_name: str) -> list[dict]:
+    """
+    从BTR获取最近的战绩
+    :param player_name: 玩家名称
+    :return: 返回一个列表，列表中的每个元素是一个字典，默认爬取全部数据，调用处决定取前几个
+    """
+    url = "https://battlefieldtracker.com/bf1/profile/pc/" + player_name
+    header = {
+        "Connection": "keep-alive",
+        "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
+    }
+    result = []
+    async with aiohttp.ClientSession(headers=header) as session:
+        async with session.get(url) as response:
+            html = await response.text()
+            # 处理网页超时
+            if html == "timed out":
+                raise Exception
+            elif html == {}:
+                raise Exception
+            soup = BeautifulSoup(html, "html.parser")
+            # 从<div class="card-body player-sessions">获取对局数量，如果找不到则返回None
+            if not soup.select('div.card-body.player-sessions'):
+                return None
+            sessions = soup.select('div.card-body.player-sessions')[0].select('div.sessions')
+            # 每个sessions由标题和对局数据组成，标题包含时间和胜率，对局数据包含spm、kdr、kpm、btr、gs、tp
+            for item in sessions:
+                # time的文字由 int 单位 ago组成，如 3 days ago，需要转换为时间戳
+                # 提取出数字和单位，转换成秒，然后由当前时间减去，得到时间戳，再转换成字符串如xxxx年x月x日x时x分,注意当数字为1时，其文字为an
+                time_item = item.select('div.title > div.time > h4 > span')[0]
+                # 此时time_item =  <span data-livestamp="2023-03-22T14:00:00.000Z"></span>
+                # 提取将UTC时间转换为本地时间的时间戳
+                time_item = time_item['data-livestamp']
+                # 将时间戳转换为时间
+                time_item = datetime.datetime.fromtimestamp(
+                    time.mktime(time.strptime(time_item, "%Y-%m-%dT%H:%M:%S.000Z")))
+                # 将时间转换为字符串
+                time_item = time_item.strftime('%Y年%m月%d日%H时%M分')
+                # 提取胜率
+                win_rate = item.select('div.title > div.stat')[0].text
+                # 提取spm、kdr、kpm、btr、gs、tp
+                spm = item.select('div.session-stats > div:nth-child(1) > div:nth-child(1)')[0].text.strip()
+                kd = item.select('div.session-stats > div:nth-child(2) > div:nth-child(1)')[0].text.strip()
+                kpm = item.select('div.session-stats > div:nth-child(3) > div:nth-child(1)')[0].text.strip()
+                score = item.select('div.session-stats > div:nth-child(5)')[0].text.strip().replace('Game Score', '')
+                time_play = item.select('div.session-stats > div:nth-child(6)')[0].text.strip().replace('Time Played',
+                                                                                                        '')
+                result.append({
+                    'time': time_item.strip(),
+                    'win_rate': win_rate.strip(),
+                    'spm': spm.strip(),
+                    'kd': kd.strip(),
+                    'kpm': kpm.strip(),
+                    'score': score.strip(),
+                    'time_play': time_play.strip()
+                })
+            return result

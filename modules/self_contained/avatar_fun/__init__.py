@@ -407,8 +407,8 @@ async def petpet(image: Union[int, str], flip=False, squish=0, fps=20) -> Messag
         await make_frame(avatar, i, squish=squish, flip=flip) for i in range(5)
     ]
 
-    if not os.path.exists(f"{os.getcwd()}\\statics\\temp\\"):
-        os.mkdir(f"{os.getcwd()}\\static\\temp\\")
+    if not os.path.exists(f"./statics/temp/"):
+        os.mkdir(f"./static/temp/")
     image_bytes = save_gif(gif_frames, fps=fps)
 
     return MessageChain([Image(data_bytes=image_bytes)])
@@ -421,7 +421,7 @@ async def kiss_make_frame(operator, target, i):
     operator_y = [64, 40, 105, 110, 82, 96, 80, 55, 65, 100, 80, 65, 65]
     target_x = [58, 62, 42, 50, 56, 18, 28, 54, 46, 60, 35, 20, 40]
     target_y = [90, 95, 100, 100, 100, 120, 110, 100, 100, 100, 115, 120, 96]
-    bg = IMG.open(f"{os.getcwd()}\\statics\\KissKissFrames\\{i}.png")
+    bg = IMG.open(f"./statics/KissKissFrames/{i}.png")
     gif_frame = IMG.new("RGBA", (200, 200), (255, 255, 255))
     gif_frame.paste(bg, (0, 0))
     gif_frame.paste(target, (target_x[i - 1], target_y[i - 1]), target)
@@ -465,7 +465,7 @@ async def kiss(
 
 
 async def ripped(image: Union[int, str]) -> MessageChain:
-    ripped = IMG.open(f"{os.getcwd()}\\statics\\ripped.png")
+    ripped = IMG.open(f"./statics/ripped.png")
     frame = IMG.new("RGBA", (1080, 804), (255, 255, 255, 0))
     avatar = await get_pil_avatar(image)
     left = avatar.resize((385, 385)).rotate(24, expand=True)
@@ -491,7 +491,7 @@ async def throw(image: Union[int, str]) -> MessageChain:
     avatar.putalpha(mask)
     avatar = avatar.rotate(random.randint(1, 360), IMG.BICUBIC)
     avatar = avatar.resize((143, 143), IMG.ANTIALIAS)
-    throw = IMG.open(f"{os.getcwd()}\\statics\\throw.png")
+    throw = IMG.open(f"./statics/throw.png")
     throw.paste(avatar, (15, 178), mask=avatar)
     throw = throw.convert("RGB")
     output = BytesIO()
@@ -509,8 +509,8 @@ async def crawl(image: Union[int, str]) -> MessageChain:
     )
     mask = mask.filter(ImageFilter.GaussianBlur(0))
     avatar.putalpha(mask)
-    images = [i for i in os.listdir(f"{os.getcwd()}\\statics\\crawl")]
-    crawl = IMG.open(f"{os.getcwd()}\\statics\\crawl\\{random.choice(images)}").resize(
+    images = [i for i in os.listdir(f"./statics/crawl")]
+    crawl = IMG.open(f"./statics/crawl/{random.choice(images)}").resize(
         (500, 500), IMG.ANTIALIAS
     )
     avatar = avatar.resize((100, 100), IMG.ANTIALIAS)

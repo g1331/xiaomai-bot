@@ -2619,7 +2619,8 @@ async def managerAccount_create(app: Ariadne, group: Group,
     account_file_path = account_path + "/account.json"
     session_file_path = account_path + "/session.json"
     if not os.path.exists(account_path) or not os.path.exists(account_file_path) or not os.path.exists(session_file_path):
-        os.makedirs(account_path)
+        if not os.path.exists(account_path):
+            os.makedirs(account_path)
         if not os.path.exists(account_file_path):
             open(account_file_path, "w", encoding="utf-8")
         if not os.path.exists(session_file_path):

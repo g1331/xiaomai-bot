@@ -2610,18 +2610,18 @@ async def managerAccount_create(app: Ariadne, group: Group,
         return False
     personaId = player_info['personas']['persona'][0]['personaId']
     group_path = f'./data/battlefield/managerAccount'
-    account_path = group_path + f"/{personaId}"
     if not os.path.exists(group_path):
         os.makedirs(group_path)
         await app.send_message(group, MessageChain(
             f'未检测到managerAccount文件,已自动新建文件夹'
         ), quote=source)
-    if not os.path.exists(account_path):
+    account_path = group_path + f"/{personaId}"
+    account_file_path = account_path + "/account.json"
+    session_file_path = account_path + "/session.json"
+    if not os.path.exists(account_path) or not os.path.exists(account_file_path) or not os.path.exists(session_file_path):
         os.makedirs(account_path)
-        account_file_path = account_path + "/account.json"
         if not os.path.exists(account_file_path):
             open(account_file_path, "w", encoding="utf-8")
-        session_file_path = account_path + "/session.json"
         if not os.path.exists(session_file_path):
             open(account_path + "/session.json", "w", encoding="utf-8")
         with open(account_path + "/info.json", "w", encoding="utf-8") as file:

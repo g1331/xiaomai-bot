@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from creart import create
+from graia.ariadne import Ariadne
 from graia.ariadne.event.mirai import BotMuteEvent, NewFriendRequestEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import Group, Member
@@ -26,16 +27,21 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 @listen(BotMuteEvent)
-async def auto_quit_group(group: Group, member: Member):
+async def auto_quit_group(app: Ariadne, group: Group, member: Member):
+    await app.quit_group(group)
     target_app, target_group = await account_controller.get_app_from_total_groups(global_config.test_group)
-    if not (target_app and target_group):
-        return
-    await target_app.quit_group(group)
-    await target_app.send_message(target_group, MessageChain(
-        f"注意:\n"
-        f"bot在{group.name}({group.id})被{member.name}({member.id})禁言\n"
-        f"已自动退出该群!"
-    ))
+    if target_app and target_group:
+        await target_app.send_message(target_group, MessageChain(
+            f"注意:\n"
+            f"BOT在{group.name}({group.id})被{member.name}({member.id})禁言\n"
+            f"已自动退出该群!"
+        ))
+    else:
+        await app.send_message(global_config.Master, MessageChain(
+            f"注意:\n"
+            f"BOT在{group.name}({group.id})被{member.name}({member.id})禁言\n"
+            f"已自动退出该群!"
+        ))
 
 
 @listen(NewFriendRequestEvent)

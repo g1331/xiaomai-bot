@@ -7,12 +7,12 @@ COPY . .
 
 RUN mkdir /usr/share/fonts/zh
 
-ADD ./statics/fonts/NotoSansSC-Light.ttf /usr/share/fonts/zh
-RUN chmod 644 /usr/share/fonts/zh/NotoSansSC-Light.ttf && \
+ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh
+RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
     fc-cache -fv && \
     fc-list
 
-#   sed 's/pypi.tuna.tsinghua.edu.cn/pypi.org/g' poetry.lock && \ #服务器在海外请添加这行到一下RUN 开头
+#   sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list #服务器在海外请添加这行到一下RUN开头
 RUN apt-get update && \
     apt-get install -y \
         libnss3 \

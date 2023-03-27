@@ -1,3 +1,9 @@
+import datetime
+import re
+import time
+
+from bs4 import BeautifulSoup
+from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
 
@@ -228,3 +234,191 @@ class VehicleData:
             if fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 70:
                 vehicle_list.append(vehicle)
         return vehicle_list
+
+
+# 传入BTR对局数据，返回BTR对局列表
+class BTRMatchesData:
+    def __init__(self, btr_matches_data: list):
+        self.btr_matches_data: list = btr_matches_data
+
+    async def handle(self) -> list[dict]:
+        result = []
+        # 处理每个对局的详细信息
+        for i, match in enumerate(self.btr_matches_data):
+            result_temp = {}
+            # 获取详细数据
+            soup = BeautifulSoup(match, 'lxml')
+            # 游戏地图、模式、时间在 <div class="match-info">标签,如下所示
+            """
+            <div class="match-info">
+        <div class="activity-details">
+            <h2 class="map-name">Fort De Vaux <small class="hidden-sm hidden-xs">[202]#1 Hotmap  kd&amp;kpm&gt;2 kill&gt;60kb&amp;zh=kick qq608458191</small></h2>
+            <span class="type">Conquest</span>
+            <span class="date">3/26/2023 7:16:20 AM</span>
+        </div>
+    </div>
+            """
+            # 获取地图名并将地图名字翻译成中文
+            # <h2 class="map-name">地图名<small class="hidden-sm hidden-xs">服务器名</small></h2>
+            map_name = soup.select("div.match-info h2.map-name")[0].text
+            map_name = map_name \
+                .replace("Galicia", "加利西亚").replace("Giant's Shadow", "庞然闇影") \
+                .replace("Brusilov Keep", "勃鲁西洛夫关口").replace("Rupture", "决裂") \
+                .replace("Soissons", "苏瓦松").replace("Amiens", "亚眠") \
+                .replace("St. Quentin Scar", "圣康坦的伤痕").replace("Argonne Forest", "阿尔贡森林") \
+                .replace("Ballroom Blitz", "宴厅").replace("MP_Harbor", "泽布吕赫") \
+                .replace("River Somme", "索姆河").replace("Prise de Tahure", "攻占托尔") \
+                .replace("Fao Fortress", "法欧堡").replace("Achi Baba", "2788") \
+                .replace("Cape Helles", "海丽丝峡").replace("Tsaritsyn", "察里津").replace("Volga River", "窝瓦河") \
+                .replace("Empire's Edge", "帝国边境").replace("ŁUPKÓW PASS", "武普库夫山口") \
+                .replace("Verdun Heights", "凡尔登高地").replace("Fort De Vaux", "垃圾厂") \
+                .replace("Sinai Desert", "西奈沙漠").replace("Monte Grappa", "拉粑粑山").replace("Suez", "苏伊士") \
+                .replace("Albion", "阿尔比恩").replace("Caporetto", "卡波雷托").replace("Passchendaele", "帕斯尚尔") \
+                .replace("Nivelle Nights", "尼维尔之夜").replace("MP_Naval", "黑尔戈兰湾").strip()
+            # 游戏模式,并将模式名字翻译成中文
+            mode_name = soup.select('div.match-info')[0].select('span.type')[0].text \
+                .replace("Domination", "抢攻").replace("Team Deathmatch", "团队死斗") \
+                .replace("War Pigeons", "战争信鸽").replace("Conquest", "征服") \
+                .replace("AirAssault0", "空中突袭").replace("Rush", "突袭") \
+                .replace("Breakthrough", "闪击行动").strip()
+            # 游戏发生时间,转换成时间戳
+            game_time = soup.select('div.match-info')[0].select('span.date')[0].text
+            game_time = int(time.mktime(time.strptime(game_time, "%m/%d/%Y %I:%M:%S %p")))
+            game_time = datetime.datetime.fromtimestamp(game_time)
+            # 服务器名
+            server_name = soup.select('div.match-info')[0].select('small.hidden-sm.hidden-xs')[0].text
+            result_temp["game_info"] = {
+                "server_name": server_name,
+                "map_name": map_name,
+                "mode_name": mode_name,
+                "game_time": game_time,
+            }
+            result_temp["players"] = []
+            # <div class="match-teams">下有三个<div class="team">,分别为TEAM 1、TEAM 2、NO TEAM
+            # team下包含 card-heading和 card，
+            # <div class="card-heading">
+            #             <h3 class="card-title">Team 1</h3>
+            #             <div class="additional-info">Lost</div>
+            #         </div>
+            # 循环获取team1和team2的胜负情况
+            for team_item in soup.select('div.match-teams')[0].select('div.team'):
+                # 获取team1和team2的胜负情况，如果赢了转换为True，否则为False
+                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text
+                # team1命名为1，team2命名为2，NO TEAM命名为0
+                if team_name == 'Team 1':
+                    team_name = 1
+                elif team_name == 'Team 2':
+                    team_name = 2
+                else:
+                    team_name = 0
+                team_win = team_item.select('div.card-heading')[0].select('div.additional-info')[0].text
+                if team_win == 'Won':
+                    team_win = True
+                else:
+                    team_win = False
+                # 在每个team的card下包含card-player-container,team-players
+                # team-player下包含整个队伍的player
+                # 获取玩家列表
+                players = team_item.select('div.card')[0].select('div.card-player-container')[0].select(
+                    'div.player')
+                # 循环获取每个玩家的详细信息
+                for player in players:
+                    # 玩家名字在div player-header->div player-info->div->a player-name
+                    player_name_item = player.select('div.player-header')[0].select('div.player-info')[0].select(
+                        'div')[0].select('a.player-name')[0].text.replace('"', "").strip()
+                    # 得分在div player-header->div quick-stats->div stat name=Score
+                    player_score = 0
+                    for value in player.select('div.player-header')[0].select('div.quick-stats')[0].select('div.stat'):
+                        value_name = value.select('.name')[0].text.strip()
+                        if value_name == "Score":
+                            player_score = value.select('.value')[0].text.strip()
+                            if player_score.isdigit():
+                                player_score = int(player_score)
+                            else:
+                                player_score = 0
+                            break
+                    if player_score == 0:
+                        continue
+                    # 获取玩家的详细信息,路径在player->player-details-container->player-details->row->col-md-7->stats
+                    player_stats = player.select('div.player-details-container')[0].select(
+                        'div.player-details')[0].select('div.row')[0].select('div.col-md-7')[0].select('div.stats')
+                    # 获取击杀、死亡、爆头数、命中率、时间
+                    player_kills = player_stats[0].select('div.stat')[0].select('div.value')[0].text
+                    if player_kills.isdigit():
+                        player_kills = int(player_kills)
+                    else:
+                        player_kills = 0
+                    player_deaths = player_stats[0].select('div.stat')[1].select('div.value')[0].text
+                    if player_deaths.isdigit():
+                        player_deaths = int(player_deaths)
+                    else:
+                        player_deaths = 0
+                    if player_kills == 0 and player_deaths == 0:
+                        continue
+                    kd = round(player_kills / player_deaths, 2) if player_deaths != 0 else 0
+                    # 爆头率序号不定
+                    # 通过value来确定
+                    player_headshots = "0"
+                    for value in player_stats[0].select('div.stat'):
+                        value_name = value.select('.name')[0].text.strip()
+                        if value_name == "Headshots":
+                            player_headshots = value.select('.value')[0].text.strip()
+                            break
+                    if player_headshots.isdigit():
+                        player_headshots = int(player_headshots)
+                    else:
+                        player_headshots = 0
+                    player_headshots = f"{round(player_headshots / player_kills, 2) if player_kills != 0 else 0}%"
+                    # 命中率序号不定
+                    # 通过value来确定
+                    player_accuracy = "0%"
+                    for value in player_stats[0].select('div.stat'):
+                        if value.select('.name')[0].text.strip() == "Accuracy":
+                            player_accuracy = value.select('.value')[0].text.strip()
+                            break
+                    # 时间序号不定
+                    # 通过value来确定
+                    player_time = "0s"
+                    for value in player_stats[0].select('div.stat'):
+                        if value.select('.name')[0].text.strip() == "Time Played":
+                            player_time = value.select('.value')[0].text.strip()
+                            break
+                    # 时间都是 xxm xxs 的形式
+                    # 如果m在字符串中，则将m前的数字乘以60，加上m后和s前的数字,转换成时间戳
+                    if 'm' in player_time:
+                        time_second = int(player_time.split('m')[0]) * 60
+                        if 's' in player_time:
+                            time_second += int(player_time.split('m')[1].split('s')[0])
+                    else:
+                        time_second = int(player_time.split('s')[0])
+                    # kpm、spm
+                    if time_second != 0:
+                        kpm = round(player_kills / time_second * 60, 2)
+                        spm = round(player_score / time_second * 60, 2)
+                    else:
+                        kpm = 0
+                        spm = 0
+                    # 将秒转换为xx分，xx秒
+                    if time_second < 60:
+                        player_time = f"{time_second}秒"
+                    else:
+                        minutes, seconds = divmod(time_second, 60)
+                        player_time = f"{minutes}分{seconds}秒"
+                    player_info = {
+                        "player_name": player_name_item,
+                        "team_name": team_name,
+                        "team_win": team_win,
+                        "kills": player_kills,
+                        "deaths": player_deaths,
+                        "kd": kd,
+                        "kpm": kpm,
+                        "score": player_score,
+                        "spm": spm,
+                        "headshots": player_headshots,
+                        "accuracy": player_accuracy,
+                        "time_played": player_time,
+                    }
+                    result_temp["players"].append(player_info)
+                    # 将result_temp添加到result中
+            result.append(result_temp)
+        return result

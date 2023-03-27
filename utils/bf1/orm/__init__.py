@@ -1,10 +1,12 @@
 import asyncio
+from datetime import datetime
+from typing import Union
 
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
 
-from utils.bf1.orm.tables import bf1_orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind
+from utils.bf1.orm.tables import bf1_orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache
 
 
 class bf1_db:
@@ -263,6 +265,76 @@ class bf1_db:
             ]
         )
         return True
+
+    # TODO
+    #   btr对局缓存
+    #   读:
+    #   根据玩家pid获取对应的btr对局信息
+    #   写:
+    #   写入btr对局信息
+    @staticmethod
+    async def get_btr_match_by_displayName(display_name: str) -> Union[list, None]:
+        """根据pid获取对应的btr对局信息"""
+        # 根据时间获取该display_name最新的10条记录
+        if match := await bf1_orm.fetch_all(
+                select(
+                    Bf1MatchCache.match_id, Bf1MatchCache.server_name,
+                    Bf1MatchCache.map_name, Bf1MatchCache.mode_name,
+                    Bf1MatchCache.time, Bf1MatchCache.team_name,
+                    Bf1MatchCache.team_win, Bf1MatchCache.persona_id,
+                    Bf1MatchCache.display_name, Bf1MatchCache.kills,
+                    Bf1MatchCache.deaths, Bf1MatchCache.kd, Bf1MatchCache.kpm,
+                    Bf1MatchCache.score, Bf1MatchCache.spm,
+                    Bf1MatchCache.accuracy, Bf1MatchCache.headshots,
+                    Bf1MatchCache.time_played
+                ).where(Bf1MatchCache.display_name == display_name).order_by(Bf1MatchCache.time).limit(10)
+        ):
+            result = []
+            for match_item in match:
+                temp = {"match_id": match_item[0], "server_name": match_item[1], "map_name": match_item[2],
+                        "mode_name": match_item[3], "time": match_item[4], "team_name": match_item[5],
+                        "team_win": match_item[6], "persona_id": match_item[7], "display_name": match_item[8],
+                        "kills": match_item[9], "deaths": match_item[10], "kd": match_item[11], "kpm": match_item[12],
+                        "score": match_item[13], "spm": match_item[14], "accuracy": match_item[15],
+                        "headshots": match_item[16], "time_played": match_item[17]}
+                result.append(temp)
+            return result
+        return None
+
+    @staticmethod
+    async def update_btr_match_cache(
+            match_id: int, server_name: str, map_name: str, mode_name: str, time: datetime,
+            team_name: str, team_win: bool, display_name: str, kills: int,
+            deaths: int, kd: float, kpm: float, score: int, spm: float, accuracy: str,
+            headshots: str, time_played: int, persona_id: int = 0,
+    ) -> bool:
+        await bf1_orm.insert_or_update(
+            table=Bf1MatchCache,
+            data={
+                "match_id": match_id,
+                "server_name": server_name,
+                "map_name": map_name,
+                "mode_name": mode_name,
+                "time": time,
+                "team_name": team_name,
+                "team_win": team_win,
+                "persona_id": persona_id,
+                "display_name": display_name,
+                "kills": kills,
+                "deaths": deaths,
+                "kd": kd,
+                "kpm": kpm,
+                "score": score,
+                "spm": spm,
+                "accuracy": accuracy,
+                "headshots": headshots,
+                "time_played": time_played
+            },
+            condition=[
+                Bf1MatchCache.match_id == match_id,
+                Bf1MatchCache.display_name == display_name
+            ]
+        )
 
 
 BF1DB = bf1_db()

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BIGINT, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, BIGINT, String, DateTime, ForeignKey, JSON, Boolean
 
 from core.orm import AsyncORM
 
@@ -83,3 +83,36 @@ class Bf1ManagerLog(bf1_orm.Base):
     # 变化
     display_name = Column(String)
     time = Column(DateTime, nullable=False)
+
+
+# 对局缓存
+class Bf1MatchCache(bf1_orm.Base):
+    """记录对局id、服务器名、地图名、模式名、对局时间、队伍名、队伍胜负情况、玩家id、击杀、死亡、kd、命中、爆头、游玩时长"""
+
+    __tablename__ = "bf1_match_cache"
+    id = Column(Integer, primary_key=True)
+    match_id = Column(BIGINT, primary_key=False)
+
+    server_name = Column(String, nullable=False)
+    map_name = Column(String, nullable=False)
+    mode_name = Column(String, nullable=False)
+
+    time = Column(DateTime, nullable=False)
+
+    team_name = Column(String, nullable=False)
+    team_win = Column(Boolean, nullable=False)
+
+    persona_id = Column(BIGINT, nullable=True)
+    display_name = Column(String, nullable=False)
+
+    kills = Column(Integer, nullable=False)
+    deaths = Column(Integer, nullable=False)
+    kd = Column(Integer, nullable=False)
+    kpm = Column(Integer, nullable=False)
+
+    score = Column(Integer, nullable=False)
+    spm = Column(Integer, nullable=False)
+
+    accuracy = Column(String, nullable=False)
+    headshots = Column(String, nullable=False)
+    time_played = Column(Integer, nullable=False)

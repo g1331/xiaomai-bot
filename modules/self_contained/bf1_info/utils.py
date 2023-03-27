@@ -423,26 +423,25 @@ async def check_bind(qq: int) -> Union[dict, str, None]:
             return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
 
 
-async def get_recent_info(player_name: str) -> list[dict]:
+async def BTR_get_recent_info(player_name: str) -> list[dict]:
     """
     从BTR获取最近的战绩
     :param player_name: 玩家名称
     :return: 返回一个列表，列表中的每个元素是一个字典，默认爬取全部数据，调用处决定取前几个
     """
+    result = []
+    # BTR玩家个人信息页面
     url = "https://battlefieldtracker.com/bf1/profile/pc/" + player_name
     header = {
         "Connection": "keep-alive",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
     }
-    result = []
     async with aiohttp.ClientSession(headers=header) as session:
         async with session.get(url) as response:
             html = await response.text()
-            # 处理网页超时
-            if html == "timed out":
-                raise Exception
-            elif html == {}:
-                raise Exception
+            # 处理网页获取失败的情况
+            if not html:
+                return result
             soup = BeautifulSoup(html, "html.parser")
             # 从<div class="card-body player-sessions">获取对局数量，如果找不到则返回None
             if not soup.select('div.card-body.player-sessions'):
@@ -450,11 +449,9 @@ async def get_recent_info(player_name: str) -> list[dict]:
             sessions = soup.select('div.card-body.player-sessions')[0].select('div.sessions')
             # 每个sessions由标题和对局数据组成，标题包含时间和胜率，对局数据包含spm、kdr、kpm、btr、gs、tp
             for item in sessions:
-                # time的文字由 int 单位 ago组成，如 3 days ago，需要转换为时间戳
-                # 提取出数字和单位，转换成秒，然后由当前时间减去，得到时间戳，再转换成字符串如xxxx年x月x日x时x分,注意当数字为1时，其文字为an
                 time_item = item.select('div.title > div.time > h4 > span')[0]
                 # 此时time_item =  <span data-livestamp="2023-03-22T14:00:00.000Z"></span>
-                # 提取将UTC时间转换为本地时间的时间戳
+                # 提取UTC时间转换为本地时间的时间戳
                 time_item = time_item['data-livestamp']
                 # 将时间戳转换为时间
                 time_item = datetime.datetime.fromtimestamp(
@@ -479,4 +476,146 @@ async def get_recent_info(player_name: str) -> list[dict]:
                     'score': score.strip(),
                     'time_play': time_play.strip()
                 })
+            return result
+
+
+async def get_match_detail(session, match_url: str) -> list[dict]:
+    # 网络请求，返回网页源码
+    try:
+        async with session.get(match_url) as resp:
+            html = await resp.text()
+            # 处理网页获取失败的情况
+            if not html:
+                return None
+            return html
+    except Exception as e:
+        logger.error(f"获取对局详情失败{e}")
+        return None
+
+
+async def BTR_get_match_info(player_name: str) -> list[dict]:
+    """
+    从BTR获取最近的对局信息
+    :param player_name: 玩家名称
+    :return: 返回一个字典，包含对局信息和玩家信息
+    """
+    result = []
+    # 先从数据库查询数据,如果数据库中有数据则直接返回
+    if matches := await BF1DB.get_btr_match_by_displayName(player_name):
+        for data in matches:
+            server_name = data['server_name']
+            map_name = data['map_name']
+            mode_name = data['mode_name']
+            game_time = data['time']
+            match_result = {
+                "game_info": {
+                    "server_name": server_name,
+                    "map_name": map_name,
+                    "mode_name": mode_name,
+                    "game_time": game_time,
+                },
+                "players": [{
+                    "player_name": data['display_name'],
+                    "team_name": data['team_name'],
+                    "team_win": data['team_win'],
+                    "kills": data['kills'],
+                    "deaths": data['deaths'],
+                    "kd": data['kd'],
+                    "kpm": data['kpm'],
+                    "score": data['score'],
+                    "spm": data['spm'],
+                    "headshots": data['headshots'],
+                    "accuracy": data['accuracy'],
+                    "time_played": data['time_played'],
+                }]}
+            result.append(match_result)
+    return result
+
+
+async def BTR_update_data(player_name: str):
+    logger.debug(f"开始更新BTR对局数据")
+    result = []
+    # BTR玩家最近对局列表页面
+    header = {
+        "Connection": "keep-alive",
+        "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
+    }
+    matches_url = 'https://battlefieldtracker.com/bf1/profile/pc/' + player_name + '/matches'
+    # 网络请求
+    async with aiohttp.ClientSession(headers=header) as session:
+        async with session.get(matches_url) as resp:
+            matches_list = await resp.text()
+            if not matches_list:
+                return result
+            # 解析网页，结合上面html代码
+            soup = BeautifulSoup(matches_list, 'lxml')
+            # 每一个对局都在div card matches中,每次最多能获取到30个，这里只获取前10个对局的信息，每个对局的链接都在a标签中的href属性中
+            # 如果找不到card matches，说明没有对局
+            if not soup.select('div.card.matches'):
+                return result
+            matches_url_list = []
+            match_id_list = []
+            # 获取每个对局的链接
+            for match in soup.select('div.card.matches')[0].select('a.match'):
+                match_url = match['href']
+                # match_url: bf1/matches/pc/1639959006078647616?context=playerName
+                # 只取?context=playerName前面的部分
+                match_url = match_url.split('?')[0]
+                match_url = 'https://battlefieldtracker.com' + match_url
+                matches_url_list.append(match_url)
+                match_id_list.append(match_url.split('pc/')[1].split('?')[0])
+
+            # 并发获取每个对局的详细信息
+            tasks = [asyncio.ensure_future(get_match_detail(session, match_url)) for match_url in matches_url_list[:10]]
+            if not tasks:
+                return result
+            matches_result = await asyncio.gather(*tasks)
+
+            # 处理每个对局的详细信息
+            matches_info_list = await BTRMatchesData(matches_result).handle()
+            count = 0
+            for i, match_info in enumerate(matches_info_list):
+                result_temp = match_info
+                # 写入数据库
+                if match_info['players']:
+                    for player in match_info['players']:
+                        player_name_item = player['player_name']
+                        player_kills = player['kills']
+                        player_deaths = player['deaths']
+                        kd = player['kd']
+                        kpm = player['kpm']
+                        player_score = player['score']
+                        spm = player['spm']
+                        player_headshots = player['headshots']
+                        player_accuracy = player['accuracy']
+                        player_time = player['time_played']
+                        team_win = player['team_win']
+                        await BF1DB.update_btr_match_cache(
+                            # 服务器信息
+                            match_id=match_id_list[i],
+                            server_name=match_info['game_info']['server_name'],
+                            map_name=match_info['game_info']['map_name'],
+                            mode_name=match_info['game_info']['mode_name'],
+                            time=match_info['game_info']['game_time'],
+                            # 队伍信息
+                            team_name=match_info['players'][0]['team_name'],
+                            team_win=team_win,
+                            # 基本信息
+                            display_name=player_name_item,
+                            kills=player_kills,
+                            deaths=player_deaths,
+                            kd=kd,
+                            kpm=kpm,
+                            # 得分
+                            score=player_score,
+                            spm=spm,
+                            # 其他
+                            headshots=player_headshots,
+                            accuracy=player_accuracy,
+                            time_played=player_time
+                        )
+                        result.append(result_temp)
+                        count += 1
+            logger.success(f"成功更新了{count}条对局信息")
+
             return result

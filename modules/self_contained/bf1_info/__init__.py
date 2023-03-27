@@ -1,3 +1,4 @@
+import datetime
 import time
 from pathlib import Path
 from typing import Union
@@ -26,7 +27,7 @@ from core.control import (
 )
 from core.models import saya_model
 from modules.self_contained.bf1_info.utils import get_personas_by_name, get_personas_by_player_pid, check_bind, \
-    get_recent_info
+    BTR_get_recent_info, BTR_get_match_info, BTR_update_data
 from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
@@ -238,7 +239,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
     # 写入玩家绑定信息
     try:
         await BF1DB.bind_player_qq(sender.id, pid)
-        if old_display_name:
+        if old_display_name and (old_pid != pid):
             result = f"绑定ID变更!\n" \
                      f"displayName: {old_display_name} -> {display_name}\n" \
                      f"pid: {old_pid} -> {pid}\n" \
@@ -752,7 +753,7 @@ async def player_recent_info(
 
     # 从BTR获取数据
     try:
-        player_recent = await get_recent_info(display_name)
+        player_recent = await BTR_get_recent_info(display_name)
         if not player_recent:
             return await app.send_message(
                 group,

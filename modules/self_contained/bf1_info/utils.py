@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 from rapidfuzz import fuzz
 
+from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.orm import BF1DB
 

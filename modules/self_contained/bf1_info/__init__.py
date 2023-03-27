@@ -781,3 +781,116 @@ async def player_recent_info(
             MessageChain(f"查询出错!"),
             quote=source
         )
+
+
+# 对局数据
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-对局").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=True) @ "player_name",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def player_match_info(
+        app: Ariadne,
+        sender: Member,
+        group: Group,
+        source: Source,
+        player_name: RegexResult
+):
+    # 如果没有参数，查询绑定信息,获取display_name
+    if not player_name.matched:
+        if bind_info := await check_bind(sender.id):
+            if isinstance(bind_info, str):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"查询出错!{bind_info}"),
+                    quote=source
+                )
+            display_name = bind_info.get("displayName")
+            # player_pid = bind_info.get("pid")
+        else:
+            return await app.send_message(
+                group,
+                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
+                quote=source
+            )
+    else:
+        player_name = player_name.result.display
+        display_name = player_name
+        # btr节省时间，不查询玩家信息
+        # player_info = await get_personas_by_name(player_name)
+        # if isinstance(player_info, str):
+        #     return await app.send_message(
+        #         group,
+        #         MessageChain(f"查询出错!{player_info}"),
+        #         quote=source
+        #     )
+        # if not player_info:
+        #     return await app.send_message(
+        #         group,
+        #         MessageChain(f"无效玩家名: {player_name}"),
+        #         quote=source
+        #     )
+        # player_pid = player_info["personas"]["persona"][0]["personaId"]
+        # display_name = player_info["personas"]["persona"][0]["displayName"]
+
+    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+
+    # 从BTR获取数据
+    try:
+        player_match = await BTR_get_match_info(display_name)
+        if not player_match:
+            return await app.send_message(
+                group,
+                MessageChain(f"没有查询到对局记录哦~"),
+                quote=source
+            )
+        result = [f"玩家名字: {display_name}\n" + "=" * 15]
+        # 处理数据
+        for item in player_match:
+            players = item.get("players")
+            for player in players:
+                if player.get("player_name").upper() == display_name.upper():
+                    game_info = item.get("game_info")
+                    # 如果得为0则跳过
+                    if player["score"] == 0:
+                        continue
+                    result.append(
+                        f"服务器: {game_info['server_name']}\n"
+                        f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M:%S')}\n"
+                        f"击杀: {player['kills']} "
+                        f"死亡: {player['deaths']} "
+                        f"KD: {player['kd']}"
+                        f"KPM: {player['kpm']}\n"
+                        f"得分: {player['score']} SPM: {player['spm']}\n"
+                        f"爆头: {player['headshots']} "
+                        f"命中率: {player['accuracy']}\n"
+                        f"游玩时长: {player['time_played']}\n"
+                        + "=" * 15
+                    )
+        result = "\n".join(result)
+        await app.send_message(
+            group,
+            MessageChain(result),
+            quote=source
+        )
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!"),
+            quote=source
+        )
+    finally:
+        await BTR_update_data(display_name)

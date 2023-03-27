@@ -54,6 +54,38 @@
 4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~
 
+## 使用Docker部署
+请先安装docker
+```bash
+git clone https://github.com/g1331/xiaomai-bot                                                          # 下载项目
+cd xiaomai-bot                                                                                          # 进入项目目录
+docker build -t xiaomai-bot .                                                                           # 构建docker镜像
+mv config_demo.yaml config.yaml                                                                         # 请修改配置文件
+sqlite3 /xiaomai-bot/config/data.db                                                                     # 创建sqlite数据库
+sqlite> .database                                                                                       # 查看数据库
+sqlite> .quit                                                                                           # 退出sqlite
+docker run -d --name xiaomai-bot\                                                                       # 容器名
+      --net=host \                                                                                      # 使用主机网络
+      -v /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml \                                     # 挂载配置文件
+      -v /xiaomai-bot/config/data.db:/xiaomai-bot/data.db \                                             # 挂载数据库
+      -v /xiaomai-bot/data/battlefield:/xiaomai-bot/data/battlefield/ \                                 # 挂载战地一机器人资源
+      -v /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs/ \  # 挂载随机丁真图片
+      -v /xiaomai-bot/imgs/random_wife:xiaomai-bot/modules/self_contained/random_wife/imgs/ \           # 挂载随机老婆图片
+      -v /xiaomai-bot/imgs/random_dragon:xiaomai-bot/modules/self_contained/random_dragon/imgs/ \       # 挂载随机龙图图片
+      xiaomai-bot                                                                                       #运行容器
+```
+## 使用docker-compose部署
+请先安装docker与docker-compose
+```bash
+git clone https://github.com/g1331/xiaomai-bot                                                          # 下载项目
+cd xiaomai-bot                                                                                          # 进入项目目录
+sqlite3 /xiaomai-bot/config/data.db                                                                     # 创建sqlite数据库
+sqlite> .database                                                                                       # 查看数据库
+sqlite> .quit                                                                                           # 退出
+mv config_demo.yaml config.yaml                                                                         # 请修改配置文件，以及docker-compose.yml中的挂载路径
+docker-compose up -d                                                                                    #构建并运行容器
+```
+
 ---
 
 # V3项目结构与核心内容

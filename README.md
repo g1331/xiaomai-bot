@@ -54,6 +54,31 @@
 4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~
 
+## 使用Docker部署
+请先安装docker
+```bash
+git clone https://github.com/g1331/xiaomai-bot
+cd xiaomai-bot
+docker build -t xiaomai-bot .
+mv config_demo.yaml config.yaml # 请修改配置文件,以及docker挂载路径
+docker run -d --name xiaomai-bot\
+      -v /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml \
+      -v /xiaomai-bot/data:/xiaomai-bot/data \
+      -v /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs \
+      -v /xiaomai-bot/imgs/random_wife:xiaomai-bot/modules/self_contained/random_wife/imgs \
+      -v /xiaomai-bot/imgs/random_dragon:xiaomai-bot/modules/self_contained/random_dragon/imgs \
+      -v /xiaomai-bot/config/data.db:/xiaomai-bot/data.db \
+      xiaomai-bot
+```
+## 使用docker-compose部署
+请先安装docker与docker-compose
+```bash
+git clone https://github.com/g1331/xiaomai-bot
+cd xiaomai-bot
+mv config_demo.yaml config.yaml # 请修改配置文件，以及docker-compose.yml中的挂载路径
+docker-compose up -d
+```
+
 ---
 
 # V3项目结构与核心内容

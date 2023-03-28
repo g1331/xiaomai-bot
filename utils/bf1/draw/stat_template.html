@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>生涯数据</title>
+    <style>
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-gap: 10px;
+            padding: 20px;
+            background-image: url({{ background_path }});
+            background-size: cover;
+            background-position: center;
+          }
+          
+          .column {
+            display: grid;
+            grid-template-rows: repeat(4, 1fr);
+            grid-gap: 10px;
+          }
+          
+          .item {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+          }
+          
+          .avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-size: cover;
+            background-position: center;
+            background-image: url({{ avatar_path }});
+            margin-right: 20px;
+    
+          }
+          
+          .user-details {
+            margin-top: 10px;
+          }
+          
+          .user-name {
+            font-size: 24px;
+            margin-bottom: 5px;
+          }
+          
+          .user-id {
+            margin-bottom: 5px;
+          }
+          
+          .user-level {
+            margin-bottom: 0;
+          }
+          
+          .level {
+            font-weight: bold;
+          }
+          
+          .user-time {
+            margin-top: 10px;
+          }
+    </style>
+</head>
+<body>
+<!-- 使用grid布局+jinja2模板语言 -->
+<!-- 一共三列，第一列为生涯数据，第二列为武器，第三列为载具 -->
+<div class="container">
+
+    <div class="column">
+      <!-- 头像、pid、时长、等级、等级图片、是否绑定BOT -->
+      <div class="item user-info">
+          <!-- 头像，圆形 -->
+          <div class="avatar" ></div>
+      </div>
+      <!-- 生涯击杀、死亡、KD、胜局、败局、胜率、步战KD、载具KD、总KPM、平均命中、平均爆头、最远爆头距离、技巧值 -->
+      <div class="item">
+        生涯数据
+      </div>
+      <!-- 最佳兵种、兵种图片、协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数 -->
+      <div class="item">
+        兵种和成就数据
+      </div>
+      <!-- bfban信息、bfeac信息、服主数、管理数、vip数、封禁数、战队信息、最后上线时间 -->
+      <div class="item">
+        附加信息
+      </div>
+    </div>
+
+    <!-- 武器 -->
+    <div class="column">
+        {% for weapon in weapons %}
+        <!-- 武器图片、星数、武器名、击杀、kpm、命中率、爆头率、效率、时长 -->
+        <div class="item">
+            {{ weapon }}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 载具 -->
+    <div class="column">
+        {% for vehicle in vehicles %}
+        <!-- 载具图片、星数、载具名、击杀、kpm、摧毁数、时长 -->
+        <div class="item">
+            {{ vehicle}}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

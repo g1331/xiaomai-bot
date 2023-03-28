@@ -36,10 +36,11 @@ bilireq = "^0.2.3.post0"
 qrcode = "^7.3.1"
 grpcio = "^1.51.1"
 grpcio-status = "1.49.0"
-edgegpt = "0.0.56.2"
+edgegpt = "0.1.11"
 pypinyin = "^0.48.0"
 gitpython = "^3.1.31"
 revchatgpt = "3.3.4"
+rapidfuzz = "^2.13.7"
 
 
 [tool.poetry.group.dev.dependencies]

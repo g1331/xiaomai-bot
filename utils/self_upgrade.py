@@ -1,13 +1,11 @@
 import re
-import asyncio
 from pathlib import Path
 from typing import Optional
 
-from loguru import logger
 from aiohttp import ClientSession, ClientError
-
 from creart import create
 from launart import Launart, Launchable
+from loguru import logger
 
 from core.config import GlobalConfig
 
@@ -128,8 +126,3 @@ class UpdaterService(Launchable):
                 output.append(f"<red>{sha}</red> <yellow>{message}</yellow>")
             history = "\n".join(["", *output, ""])
             logger.opt(colors=True).warning(f"<yellow>【自动更新】发现新版本</yellow>\n{history}")
-            if not config.auto_upgrade:
-                return
-            logger.opt(colors=True).info("<cyan>【自动更新】正在自动更新</cyan>")
-            await asyncio.to_thread(perform_update)
-            logger.success("【自动更新】更新完成，将在重新启动后生效")

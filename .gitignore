@@ -31,3 +31,6 @@ data.db
 
 # 第三方插件
 /modules/third_party/
+
+#文件修改记录
+.history/

@@ -7,10 +7,10 @@ services:
     container_name: xiaomai-bot
     restart: always
     volumes:
-      - /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml
-      - /xiaomai-bot/data:/xiaomai-bot/data
-      - /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs
-      - /xiaomai-bot/imgs/random_wife:xiaomai-bot/modules/self_contained/random_wife/imgs
-      - /xiaomai-bot/imgs/random_dragon:xiaomai-bot/modules/self_contained/random_dragon/imgs
-      - /xiaomai-bot/config/data.db:/xiaomai-bot/data.db
-network_mode: host
+      - /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml                                    # 配置文件
+      - /xiaomai-bot/config/data.db:/xiaomai-bot/data.db                                            # 数据库文件
+      - /xiaomai-bot/data/battlefield:/xiaomai-bot/data/battlefield/                                # 战地一机器人资源
+      - /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs/ # 随机丁真图片资源
+      - /xiaomai-bot/imgs/random_wife:/xiaomai-bot/modules/self_contained/random_wife/imgs/         # 随机老婆图片资源
+      - /xiaomai-bot/imgs/random_dragon:/xiaomai-bot/modules/self_contained/random_dragon/imgs/     # 随机龙图图片资源
+    network_mode: host

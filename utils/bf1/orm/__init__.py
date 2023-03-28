@@ -1,7 +1,7 @@
-from datetime import datetime
+import asyncio
+import datetime
 from typing import Union
 
-import asyncio
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
@@ -34,11 +34,11 @@ class bf1_db:
     #  根据pid写入remid和sid
     #  根据pid写入session
     @staticmethod
-    async def get_bf1account_by_pid(pid: int) -> dict:
+    async def get_bf1account_by_pid(pid: int) -> tuple:
         """
         根据pid获取玩家信息
         :param pid: 玩家persona_id(pid)
-        :return: 有结果时,返回dict,无结果时返回None
+        :return: 有结果时,返回一个tuple,依次为pid、uid、name、display_name、remid、sid、session,没有结果时返回None
         """
         # 获取玩家persona_id、user_id、name、display_name
         if account := await bf1_orm.fetch_one(
@@ -49,15 +49,7 @@ class bf1_db:
                     Bf1Account.persona_id == pid
                 )
         ):
-            return {
-                "pid": account[0],
-                "uid": account[1],
-                "name": account[2],
-                "display_name": account[3],
-                "remid": account[4],
-                "sid": account[5],
-                "session": account[6]
-            }
+            return account
         else:
             return None
 
@@ -178,6 +170,7 @@ class bf1_db:
                 Bf1PlayerBind.qq == qq
             ]
         )
+        return True
 
     # TODO:
     #  服务器相关

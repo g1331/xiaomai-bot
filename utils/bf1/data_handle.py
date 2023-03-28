@@ -7,9 +7,9 @@ from rapidfuzz import fuzz
 from zhconv import zhconv
 
 
-# 传入武器dict源数据，返回武器根据条件排序后的列表,封装成类，方便后续调用
-
 class WeaponData:
+    """传入武器dict源数据，返回武器根据条件排序后的列表,封装成类，方便后续调用"""
+
     # 传入武器dict源数据初始化
     def __init__(self, weapon_data: dict):
         self.weapon_data: list = weapon_data.get("result")
@@ -148,8 +148,9 @@ class WeaponData:
         return weapon_list
 
 
-# 传入载具dict源数据，根据条件返回排序后的载具列表
 class VehicleData:
+    """传入载具dict源数据，根据条件返回排序后的载具列表"""
+
     # 初始化
     def __init__(self, vehicle_data: dict):
         self.vehicle_data: list = vehicle_data.get("result")
@@ -235,8 +236,9 @@ class VehicleData:
         return vehicle_list
 
 
-# 传入BTR对局数据，返回BTR对局列表
 class BTRMatchesData:
+    """传入BTR对局数据，返回BTR对局列表"""
+
     def __init__(self, btr_matches_data: list):
         self.btr_matches_data: list = btr_matches_data
 
@@ -370,7 +372,7 @@ class BTRMatchesData:
                             player_headshots = value.select('.value')[0].text.strip()
                             break
                     if player_headshots.isdigit():
-                        player_headshots = int(player_headshots)*100
+                        player_headshots = int(player_headshots) * 100
                     else:
                         player_headshots = 0
                     player_headshots = f"{round(player_headshots / player_kills, 2) if player_kills != 0 else 0}%"
@@ -427,3 +429,52 @@ class BTRMatchesData:
                     # 将result_temp添加到result中
             result.append(result_temp)
         return result
+
+
+class ServerData:
+    """处理搜索到的服务器数据"""
+
+    def __init__(self, data: dict):
+        self.data: dict = data
+
+    def sort(self, sort_type: str = "player") -> list[dict]:
+        """对服务器进行排序,默认按照玩家数量排序"""
+        server_list = []
+        # 处理数据
+        for server in self.data.get("gameservers"):
+            game_id = server.get("gameId")
+            guid = server.get("guid")
+            name = server.get("name")
+            description = server.get("description")
+            SoldierCurrent = server.get("slots").get("Soldier").get("current")
+            SoldierMax = server.get("slots").get("Soldier").get("max")
+            QueueCurrent = server.get("slots").get("Queue").get("current")
+            QueueMax = server.get("slots").get("Queue").get("max")
+            SpectatorCurrent = server.get("slots").get("Spectator").get("current")
+            # SpectatorMax = server.get("slots").get("Spectator").get("max")
+            map_name = server.get("mapNamePretty")
+            mode_name = server.get("mapModePretty")
+            mapImageUrl = server.get("mapImageUrl").replace(
+                "[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+            server_list.append({
+                "game_id": game_id,
+                "guid": guid,
+                "name": name,
+                "description": description,
+                "SoldierCurrent": SoldierCurrent,
+                "SoldierMax": SoldierMax,
+                "QueueCurrent": QueueCurrent,
+                "QueueMax": QueueMax,
+                "SpectatorCurrent": SpectatorCurrent,
+                "map_name": map_name,
+                "mode_name": mode_name,
+                "mapImageUrl": mapImageUrl,
+            })
+
+        # 排序
+        if sort_type == "player":
+            server_list.sort(key=lambda x: x.get("SoldierCurrent"), reverse=True)
+        else:
+            server_list.sort(key=lambda x: x.get("name"))
+
+        return server_list

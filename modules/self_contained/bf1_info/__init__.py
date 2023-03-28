@@ -1,6 +1,6 @@
+import asyncio
 from pathlib import Path
 
-import asyncio
 from creart import create
 from graia.amnesia.message import MessageChain
 from graia.ariadne.app import Ariadne
@@ -23,15 +23,14 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
-
-from modules.self_contained.bf1_info.utils import get_personas_by_name, get_personas_by_player_pid, check_bind, \
-    BTR_get_recent_info, BTR_get_match_info, BTR_update_data
-from utils.bf1.data_handle import WeaponData, VehicleData
+from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 from utils.bf1.orm import BF1DB
+from utils.bf1.bf_utils import get_personas_by_name, check_bind, \
+    BTR_get_recent_info, BTR_get_match_info, BTR_update_data
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -891,3 +890,70 @@ async def player_match_info(
         )
     finally:
         await BTR_update_data(display_name)
+
+
+# 搜服务器
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-搜服务器", "-sv").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False) @ "server_name",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def search_server(
+        app: Ariadne,
+        group: Group,
+        source: Source,
+        server_name: RegexResult
+):
+    server_name = server_name.result.display
+
+    # 调用接口获取数据
+    server_info = await (await BF1DA.get_api_instance()).searchServers(server_name)
+    if isinstance(server_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{server_info}"),
+            quote=source
+        )
+    else:
+        server_info = server_info["result"]
+
+    # 处理数据
+    server_list = ServerData(server_info).sort()
+    if not server_list:
+        return await app.send_message(
+            group,
+            MessageChain(f"没有搜索到服务器哦~"),
+            quote=source
+        )
+    else:
+        result = []
+        # 只显示前10个
+        if len(server_list) > 10:
+            result.append(f"搜索到{len(server_list)}个服务器,显示前10个\n" + "=" * 20)
+            server_list = server_list[:10]
+        for server in server_list:
+            result.append(
+                f"{server.get('name')[:25]}\n"
+                f"人数: {server.get('SoldierCurrent')}/{server.get('SoldierMax')}"
+                f"[{server.get('QueueCurrent')}]({server.get('SpectatorCurrent')})\n"
+                f"地图: {server.get('map_name')}-{server.get('mode_name')}\n"
+                f"GameId: {server.get('game_id')}\n"
+                + "=" * 20
+            )
+        result = "\n".join(result)
+        return await app.send_message(
+            group,
+            MessageChain(result),
+            quote=source
+        )

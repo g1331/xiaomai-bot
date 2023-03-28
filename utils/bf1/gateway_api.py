@@ -921,7 +921,7 @@ class Gamedata(bf1_api):
 
 class GameServer(bf1_api):
 
-    async def searchServers(self, limit=200, filterJson=None) -> dict:
+    async def searchServers(self, server_name: str, limit: int = 200, filterJson=None) -> dict:
         """
         搜索服务器
         :return:
@@ -941,6 +941,8 @@ class GameServer(bf1_api):
                             "country": "",
                     ...
         """
+        temp = self.filter_dict
+        temp["name"] = server_name
         return await self.api_call(
             {
                 "jsonrpc": "2.0",
@@ -948,67 +950,7 @@ class GameServer(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "limit": limit,
-                    "filterJson": filterJson if filterJson else {
-                        # 默认参数
-                        "version": 6,
-                        "vehicles": {
-                            "L": "on",
-                            "A": "on"},
-                        "weaponClasses": {
-                            "M": "on",
-                            "S": "on",
-                            "H": "on",
-                            "E": "on",
-                            "LMG": "on",
-                            "SMG": "on",
-                            "SAR": "on",
-                            "SR": "on",
-                            "KG": "on",
-                            "SIR": "off"
-                        },
-                        "slots": {
-                            "oneToFive": "on",
-                            "sixToTen": "on"
-                        },
-                        "kits": {
-                            "1": "on",
-                            "2": "on",
-                            "3": "on",
-                            "4": "on",
-                            "HERO": "on"
-                        },
-                        "misc": {
-                            "KC": "on",
-                            "MM": "on",
-                            "FF": "off",
-                            "RH": "on",
-                            "3S": "on",
-                            "MS": "on",
-                            "F": "off",
-                            "NT": "on",
-                            "3VC": "on",
-                            "SLSO": "off",
-                            "BH": "on",
-                            "RWM": "off",
-                            "MV": "on",
-                            "BPL": "off",
-                            "AAR": "on",
-                            "AAS": "on",
-                            "LL": "off",
-                            "LNL": "off",
-                            "UM": "off",
-                            "DSD": "off",
-                            "DTB": "off"
-                        },
-                        "scales": {
-                            "BD2": "on",
-                            "TC2": "on",
-                            "SR2": "on",
-                            "VR2": "on",
-                            "RT1": "on"
-                        },
-                        "name": f""
-                    }
+                    "filterJson": filterJson if filterJson else json.dumps(temp),
                 },
                 "id": await get_a_uuid()
             }

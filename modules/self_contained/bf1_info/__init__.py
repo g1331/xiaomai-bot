@@ -860,10 +860,8 @@ async def player_match_info(
                     # 如果得为0则跳过
                     if player["score"] == 0:
                         continue
-                    team_name = "No Team"
-                    for k in MapData.MapTeamDict:
-                        if MapData.MapTeamDict.get(k).get("Chinese") == game_info['map_name']:
-                            team_name = MapData.MapTeamDict.get(k).get(f"Team{player['team_name']}")
+                    map_name = game_info['map_name']
+                    team_name = MapData.MapTeamDict.get(map_name, {}).get(f"Team{player['team_name']}", "No Team")
                     team_win = "🏆" if player['team_win'] else "🏳"
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"

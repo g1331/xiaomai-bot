@@ -3,17 +3,14 @@ import datetime
 import json
 import os
 import random
-import re
 import time
 from typing import Union
 
 import aiofiles
 import aiohttp
 import httpx
-import zhconv
 from bs4 import BeautifulSoup
 from loguru import logger
-from rapidfuzz import fuzz
 
 from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
@@ -567,14 +564,13 @@ async def BTR_update_data(player_name: str):
                 match_id_list.append(match_url.split('pc/')[1].split('?')[0])
 
             # 并发获取每个对局的详细信息
-            tasks = [asyncio.ensure_future(get_match_detail(session, match_url)) for match_url in matches_url_list[:10]]
+            tasks = [asyncio.ensure_future(get_match_detail(session, match_url)) for match_url in matches_url_list[:5]]
             if not tasks:
                 return result
             matches_result = await asyncio.gather(*tasks)
 
             # 处理每个对局的详细信息
             matches_info_list = await BTRMatchesData(matches_result).handle()
-            count = 0
             for i, match_info in enumerate(matches_info_list):
                 result_temp = match_info
                 # 写入数据库
@@ -616,7 +612,5 @@ async def BTR_update_data(player_name: str):
                             time_played=player_time
                         )
                         result.append(result_temp)
-                        count += 1
-            logger.success(f"成功更新了{count}条对局信息")
 
             return result

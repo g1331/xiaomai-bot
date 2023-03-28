@@ -1,4 +1,5 @@
 import datetime
+import re
 import time
 
 from bs4 import BeautifulSoup
@@ -249,28 +250,34 @@ class BTRMatchesData:
             # 游戏地图、模式、时间在 <div class="match-info">标签,如下所示
             """
             <div class="match-info">
-        <div class="activity-details">
-            <h2 class="map-name">Fort De Vaux <small class="hidden-sm hidden-xs">[202]#1 Hotmap  kd&amp;kpm&gt;2 kill&gt;60kb&amp;zh=kick qq608458191</small></h2>
-            <span class="type">Conquest</span>
-            <span class="date">3/26/2023 7:16:20 AM</span>
-        </div>
-    </div>
+                <div class="activity-details">
+                    <h2 class="map-name">Fort De Vaux <small class="hidden-sm hidden-xs">[202]#1 Hotmap  kd&amp;kpm&gt;2 kill&gt;60kb&amp;zh=kick qq608458191</small></h2>
+                    <span class="type">Conquest</span>
+                    <span class="date">3/26/2023 7:16:20 AM</span>
+                </div>
+            </div>
             """
             # 获取地图名并将地图名字翻译成中文
             # <h2 class="map-name">地图名<small class="hidden-sm hidden-xs">服务器名</small></h2>
-            map_name = soup.select("div.match-info h2.map-name")[0].text
+            try:
+                map_name = re.findall(re.compile(r'<h2 class="map-name">(.*?)<small'), str(match))[0]
+            except IndexError:
+                try:
+                    map_name = soup.select("div.match-info h2.map-name")[0].text
+                except IndexError:
+                    continue
             map_name = map_name \
-                .replace("Galicia", "加利西亚").replace("Giant's Shadow", "庞然闇影") \
-                .replace("Brusilov Keep", "勃鲁西洛夫关口").replace("Rupture", "决裂") \
+                .replace("Galicia", "加利西亚").replace("Giant's Shadow", "庞然暗影") \
+                .replace("Brusilov Keep", "勃鲁希洛夫关口").replace("Rupture", "决裂") \
                 .replace("Soissons", "苏瓦松").replace("Amiens", "亚眠") \
                 .replace("St. Quentin Scar", "圣康坦的伤痕").replace("Argonne Forest", "阿尔贡森林") \
-                .replace("Ballroom Blitz", "宴厅").replace("MP_Harbor", "泽布吕赫") \
+                .replace("Ballroom Blitz", "流血宴厅").replace("MP_Harbor", "泽布吕赫") \
                 .replace("River Somme", "索姆河").replace("Prise de Tahure", "攻占托尔") \
-                .replace("Fao Fortress", "法欧堡").replace("Achi Baba", "2788") \
-                .replace("Cape Helles", "海丽丝峡").replace("Tsaritsyn", "察里津").replace("Volga River", "窝瓦河") \
+                .replace("Fao Fortress", "法欧堡").replace("Achi Baba", "阿奇巴巴") \
+                .replace("Cape Helles", "海丽丝岬").replace("Tsaritsyn", "察里津").replace("Volga River", "窝瓦河") \
                 .replace("Empire's Edge", "帝国边境").replace("ŁUPKÓW PASS", "武普库夫山口") \
-                .replace("Verdun Heights", "凡尔登高地").replace("Fort De Vaux", "垃圾厂") \
-                .replace("Sinai Desert", "西奈沙漠").replace("Monte Grappa", "拉粑粑山").replace("Suez", "苏伊士") \
+                .replace("Verdun Heights", "凡尔登高地").replace("Fort De Vaux", "法乌克斯要塞") \
+                .replace("Sinai Desert", "西奈沙漠").replace("Monte Grappa", "格拉巴山").replace("Suez", "苏伊士") \
                 .replace("Albion", "阿尔比恩").replace("Caporetto", "卡波雷托").replace("Passchendaele", "帕斯尚尔") \
                 .replace("Nivelle Nights", "尼维尔之夜").replace("MP_Naval", "黑尔戈兰湾").strip()
             # 游戏模式,并将模式名字翻译成中文
@@ -329,7 +336,7 @@ class BTRMatchesData:
                     for value in player.select('div.player-header')[0].select('div.quick-stats')[0].select('div.stat'):
                         value_name = value.select('.name')[0].text.strip()
                         if value_name == "Score":
-                            player_score = value.select('.value')[0].text.strip()
+                            player_score = value.select('.value')[0].text.strip().replace(",", "")
                             if player_score.isdigit():
                                 player_score = int(player_score)
                             else:
@@ -363,7 +370,7 @@ class BTRMatchesData:
                             player_headshots = value.select('.value')[0].text.strip()
                             break
                     if player_headshots.isdigit():
-                        player_headshots = int(player_headshots)
+                        player_headshots = int(player_headshots)*100
                     else:
                         player_headshots = 0
                     player_headshots = f"{round(player_headshots / player_kills, 2) if player_kills != 0 else 0}%"

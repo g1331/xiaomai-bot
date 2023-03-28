@@ -103,7 +103,7 @@ class Bf1MatchCache(bf1_orm.Base):
     team_win = Column(Boolean, nullable=False)
 
     persona_id = Column(BIGINT, nullable=True)
-    display_name = Column(String, nullable=False)
+    display_name = Column(String(collation='NOCASE'), nullable=False)
 
     kills = Column(Integer, nullable=False)
     deaths = Column(Integer, nullable=False)

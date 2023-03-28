@@ -23,12 +23,14 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
+
 from modules.self_contained.bf1_info.utils import get_personas_by_name, get_personas_by_player_pid, check_bind, \
     BTR_get_recent_info, BTR_get_match_info, BTR_update_data
 from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
 from utils.bf1.gateway_api import api_instance
+from utils.bf1.map_team_info import MapData
 from utils.bf1.orm import BF1DB
 
 config = create(GlobalConfig)
@@ -203,7 +205,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
     if not player_info:
         return await app.send_message(
             group,
-            MessageChain(f"无效玩家名: {player_name}"),
+            MessageChain(f"玩家 {player_name} 不存在"),
             quote=source
         )
     pid = player_info["personas"]["persona"][0]["personaId"]
@@ -216,7 +218,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
     if player_name.upper() != display_name.upper():
         return await app.send_message(
             group,
-            MessageChain(f"无效玩家名: {player_name}"),
+            MessageChain(f"玩家 {player_name} 不存在"),
             quote=source
         )
     # 查询绑定信息，如果有旧id就获取旧id
@@ -325,7 +327,7 @@ async def info(
         if not player_info:
             return await app.send_message(
                 group,
-                MessageChain(f"无效玩家名: {player_name}"),
+                MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
         pid = player_info["personas"]["persona"][0]["personaId"]
@@ -398,7 +400,7 @@ async def player_stat_pic(
         if not player_info:
             return await app.send_message(
                 group,
-                MessageChain(f"无效玩家名: {player_name}"),
+                MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -526,7 +528,7 @@ async def player_weapon_pic(
         if not player_info:
             return await app.send_message(
                 group,
-                MessageChain(f"无效玩家名: {player_name}"),
+                MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -637,7 +639,7 @@ async def player_vehicle_pic(
         if not player_info:
             return await app.send_message(
                 group,
-                MessageChain(f"无效玩家名: {player_name}"),
+                MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -728,23 +730,21 @@ async def player_recent_info(
             )
     else:
         player_name = player_name.result.display
-        display_name = player_name
-        # btr节省时间，不查询玩家信息
-        # player_info = await get_personas_by_name(player_name)
-        # if isinstance(player_info, str):
-        #     return await app.send_message(
-        #         group,
-        #         MessageChain(f"查询出错!{player_info}"),
-        #         quote=source
-        #     )
-        # if not player_info:
-        #     return await app.send_message(
-        #         group,
-        #         MessageChain(f"无效玩家名: {player_name}"),
-        #         quote=source
-        #     )
+        player_info = await get_personas_by_name(player_name)
+        if isinstance(player_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
+                quote=source
+            )
+        if not player_info:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
-        # display_name = player_info["personas"]["persona"][0]["displayName"]
+        display_name = player_info["personas"]["persona"][0]["displayName"]
 
     await app.send_message(group, MessageChain(f"查询ing"), quote=source)
 
@@ -823,23 +823,21 @@ async def player_match_info(
             )
     else:
         player_name = player_name.result.display
-        display_name = player_name
-        # btr节省时间，不查询玩家信息
-        # player_info = await get_personas_by_name(player_name)
-        # if isinstance(player_info, str):
-        #     return await app.send_message(
-        #         group,
-        #         MessageChain(f"查询出错!{player_info}"),
-        #         quote=source
-        #     )
-        # if not player_info:
-        #     return await app.send_message(
-        #         group,
-        #         MessageChain(f"无效玩家名: {player_name}"),
-        #         quote=source
-        #     )
+        player_info = await get_personas_by_name(player_name)
+        if isinstance(player_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
+                quote=source
+            )
+        if not player_info:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
-        # display_name = player_info["personas"]["persona"][0]["displayName"]
+        display_name = player_info["personas"]["persona"][0]["displayName"]
 
     await app.send_message(group, MessageChain(f"查询ing"), quote=source)
 
@@ -862,17 +860,20 @@ async def player_match_info(
                     # 如果得为0则跳过
                     if player["score"] == 0:
                         continue
+                    team_name = "No Team"
+                    for k in MapData.MapTeamDict:
+                        if MapData.MapTeamDict.get(k).get("Chinese") == game_info['map_name']:
+                            team_name = MapData.MapTeamDict.get(k).get(f"Team{player['team_name']}")
+                    team_win = "🏆" if player['team_win'] else "🏳"
                     result.append(
-                        f"服务器: {game_info['server_name']}\n"
-                        f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                        f"服务器: {game_info['server_name'][:20]}\n"
                         f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M:%S')}\n"
-                        f"击杀: {player['kills']} "
-                        f"死亡: {player['deaths']} "
-                        f"KD: {player['kd']}"
-                        f"KPM: {player['kpm']}\n"
-                        f"得分: {player['score']} SPM: {player['spm']}\n"
-                        f"爆头: {player['headshots']} "
-                        f"命中率: {player['accuracy']}\n"
+                        f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                        f"队伍: {team_name}  {team_win}\n"
+                        f"击杀: {player['kills']}\t死亡: {player['deaths']}\n"
+                        f"KD: {player['kd']}\tKPM: {player['kpm']}\n"
+                        f"得分: {player['score']}\tPM: {player['spm']}\n"
+                        f"命中率: {player['accuracy']}\t爆头: {player['headshots']}\n"
                         f"游玩时长: {player['time_played']}\n"
                         + "=" * 15
                     )

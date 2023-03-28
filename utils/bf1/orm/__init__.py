@@ -1,7 +1,7 @@
-import asyncio
-import datetime
+from datetime import datetime
 from typing import Union
 
+import asyncio
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.exc import InternalError, ProgrammingError
@@ -34,11 +34,11 @@ class bf1_db:
     #  根据pid写入remid和sid
     #  根据pid写入session
     @staticmethod
-    async def get_bf1account_by_pid(pid: int) -> tuple:
+    async def get_bf1account_by_pid(pid: int) -> dict:
         """
         根据pid获取玩家信息
         :param pid: 玩家persona_id(pid)
-        :return: 有结果时,返回一个tuple,依次为pid、uid、name、display_name、remid、sid、session,没有结果时返回None
+        :return: 有结果时,返回dict,无结果时返回None
         """
         # 获取玩家persona_id、user_id、name、display_name
         if account := await bf1_orm.fetch_one(
@@ -49,7 +49,15 @@ class bf1_db:
                     Bf1Account.persona_id == pid
                 )
         ):
-            return account
+            return {
+                "pid": account[0],
+                "uid": account[1],
+                "name": account[2],
+                "display_name": account[3],
+                "remid": account[4],
+                "sid": account[5],
+                "session": account[6]
+            }
         else:
             return None
 
@@ -170,7 +178,6 @@ class bf1_db:
                 Bf1PlayerBind.qq == qq
             ]
         )
-        return True
 
     # TODO:
     #  服务器相关
@@ -280,7 +287,7 @@ class bf1_db:
                     Bf1MatchCache.score, Bf1MatchCache.spm,
                     Bf1MatchCache.accuracy, Bf1MatchCache.headshots,
                     Bf1MatchCache.time_played
-                ).where(Bf1MatchCache.display_name == display_name).order_by(Bf1MatchCache.time).limit(10)
+                ).where(Bf1MatchCache.display_name == display_name).order_by(-Bf1MatchCache.time).limit(5)
         ):
             result = []
             for match_item in match:
@@ -301,7 +308,7 @@ class bf1_db:
             deaths: int, kd: float, kpm: float, score: int, spm: float, accuracy: str,
             headshots: str, time_played: int, persona_id: int = 0,
     ) -> bool:
-        await bf1_orm.insert_or_update(
+        await bf1_orm.insert_or_ignore(
             table=Bf1MatchCache,
             data={
                 "match_id": match_id,

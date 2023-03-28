@@ -2,17 +2,23 @@
 */__pycache__
 *.pyc
 
-# 虚拟环境、idea
-/.idea/
-/venv
+# 环境
+.env
+.venv
+.vscode/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # 配置文件、日志
-.vscode/
 config.yaml
 /log
 
 # 测试文件
 /modules/test_modules/
+auto_get_server.py
 
 # 数据库
 data.db
@@ -20,9 +26,8 @@ data.db
 # 数据文件
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
 /modules/self_contained/emoji_mix/assets/update.json
+/core/models/saya_model/modules_data.json
+/utils/bf1/default_account.json
 
 # 第三方插件
 /modules/third_party/
-auto_get_server.py
-core/models/saya_model/modules_data.json
-/utils/bf1/default_account.json

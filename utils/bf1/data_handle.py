@@ -1,9 +1,7 @@
 import datetime
-import re
 import time
 
 from bs4 import BeautifulSoup
-from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
 

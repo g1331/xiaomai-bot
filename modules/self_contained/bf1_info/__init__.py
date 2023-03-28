@@ -1,7 +1,4 @@
-import datetime
-import time
 from pathlib import Path
-from typing import Union
 
 import asyncio
 from creart import create
@@ -10,7 +7,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.element import Source, Image
-from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, MatchResult, ParamMatch, \
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
     RegexResult, ArgumentMatch, ArgResult
 from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
@@ -879,6 +876,7 @@ async def player_match_info(
                         f"游玩时长: {player['time_played']}\n"
                         + "=" * 15
                     )
+        result = result[:4]
         result = "\n".join(result)
         await app.send_message(
             group,

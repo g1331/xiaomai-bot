@@ -1,11 +1,12 @@
 import asyncio
 import datetime
 import time
-import aiohttp
-import httpx
-from loguru import logger
 from typing import Union
+
+import aiohttp
 from bs4 import BeautifulSoup
+from loguru import logger
+
 from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.orm import BF1DB
@@ -297,14 +298,40 @@ async def BTR_update_data(player_name: str) -> None:
 
 
 async def bfeac_checkBan(player_name) -> dict:
+    """
+    检查玩家是否被eac封禁
+    :param player_name: 玩家名称
+    :return: {"stat": "状态", "url": "案件链接"}
+    """
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
         "Connection": "keep-alive"
     }
-    async with httpx.AsyncClient() as client:
-        response = await client.get(check_eacInfo_url, headers=header, timeout=10)
+    eac_stat_dict = {
+        0: "未处理",
+        1: "已封禁",
+        2: "证据不足",
+        3: "自证通过",
+        4: "自证中",
+        5: "刷枪",
+    }
+    result = {
+        "stat": None,
+        "url": None
+    }
     try:
-        return response.json()
+        async with aiohttp.ClientSession(headers=header) as session:
+            async with session.get(check_eacInfo_url) as response:
+                response = await response.json()
+        if response.get("data"):
+            data = response["data"][0]
+            eac_status = eac_stat_dict[data["current_status"]]
+            if data.get("case_id"):
+                case_id = data["case_id"]
+                case_url = f"https://bfeac.com/#/case/{case_id}"
+                result["url"] = case_url
+            result["stat"] = eac_status
+        return result
     except Exception as e:
         logger.error(f"bfeac_checkBan: {e}")
-        return {}
+        return result

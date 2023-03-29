@@ -27,14 +27,6 @@ channel.name("BF1入群审核")
 channel.description("处理群加群审核")
 channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
-eac_stat_dict = {
-    0: "未处理",
-    1: "已封禁",
-    2: "证据不足",
-    3: "自证通过",
-    4: "自证中",
-    5: "刷枪",
-}
 
 
 async def check_verify(player_name, player_pid, qq) -> str:
@@ -49,23 +41,12 @@ async def check_verify(player_name, player_pid, qq) -> str:
     if timePlayed == 0:
         return "有效橘子ID,但该ID没有游玩过BF1"
     else:
-        try:
-            eac_response = await bfeac_checkBan(player_name)
-            if eac_response.get("data"):
-                data = eac_response["data"][0]
-                eac_status = eac_stat_dict[data["current_status"]]
-                if eac_status == "已封禁":
-                    case_id = data["case_id"]
-                    case_url = f"https://bfeac.com/#/case/{case_id}"
-                    verify = f"该ID已被实锤:{case_url}"
-                else:
-                    verify = "有效ID"
-            else:
-                verify = "有效ID"
-        except Exception as e:
-            logger.error(f"查询eac信息时出错!{e}")
+        eac_info = await bfeac_checkBan(player_name)
+        if eac_info.get("stat") == "已封禁":
+            ban_url = eac_info.get("url")
+            verify = f"有效ID,但该ID已被EAC封禁!封禁地址:{ban_url}"
+        else:
             verify = "有效ID"
-        if verify == "有效ID":
             # 没有绑定就绑定
             if bind_info := await check_bind(qq):
                 if isinstance(bind_info, str):
@@ -76,7 +57,6 @@ async def check_verify(player_name, player_pid, qq) -> str:
                     return f"有效ID,但与其绑定ID不一致!绑定ID:{display_name}"
             else:
                 await BF1DB.bind_player_qq(qq, player_pid)
-                return f"有效ID"
         return verify
 
 

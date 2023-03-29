@@ -32,7 +32,7 @@ from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 from utils.bf1.orm import BF1DB
 from utils.bf1.bf_utils import get_personas_by_name, check_bind, \
-    BTR_get_recent_info, BTR_get_match_info, BTR_update_data
+    BTR_get_recent_info, BTR_get_match_info, BTR_update_data, bfeac_checkBan
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -413,12 +413,13 @@ async def player_stat_pic(
     tasks = [
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid),
-        (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid)
+        (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid),
+        bfeac_checkBan(display_name)
     ]
-    await asyncio.gather(*tasks)
+    tasks = await asyncio.gather(*tasks)
 
     # 检查返回结果
-    player_stat, player_weapon, player_vehicle = tasks[0].result(), tasks[1].result(), tasks[2].result()
+    player_stat, player_weapon, player_vehicle, eac_info = tasks[0], tasks[1], tasks[2], tasks[3]
     if isinstance(player_stat, str):
         logger.error(player_stat)
         return await app.send_message(
@@ -427,6 +428,7 @@ async def player_stat_pic(
             quote=source
         )
     else:
+        player_stat: dict
         player_stat["result"]["displayName"] = display_name
     if isinstance(player_weapon, str):
         logger.error(player_weapon)
@@ -457,10 +459,93 @@ async def player_stat_pic(
         )
     else:
         # 发送文字
+        # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战KD、载具KD、技巧值、最远爆头距离
+        # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
+        player_info = player_stat["result"]
+        rank = player_info.get('basicStats').get('rank')
+        # 转换成xx小时xx分钟
+        time_seconds = player_info.get('basicStats').get('timePlayed')
+        time_played = f"{time_seconds // 3600}小时{time_seconds % 3600 // 60}分钟"
+        kills = player_info.get('basicStats').get('kills')
+        deaths = player_info.get('basicStats').get('deaths')
+        kd = round(kills / deaths, 2) if deaths else kills
+        wins = player_info.get('basicStats').get('wins')
+        losses = player_info.get('basicStats').get('losses')
+        win_rate = round(wins / (wins + losses) if (wins + losses) else wins, 2)
+        kpm = player_info.get('basicStats').get('kpm')
+        spm = player_info.get('basicStats').get('spm')
+        vehicle_kill = 0
+        for item in player_info["vehicleStats"]:
+            vehicle_kill += item["killsAs"]
+        infantry_kill = player_info['basicStats']['kills'] - vehicle_kill
+        infantry_kd = round(infantry_kill / deaths, 2) if deaths else infantry_kill
+        vehicle_kd = round(vehicle_kill / deaths, 2) if deaths else vehicle_kill
+        skill = player_info.get('basicStats').get('skill')
+        longest_headshot = player_info.get('longestHeadShot')
+        killAssists = int(player_info.get('killAssists'))
+        highestKillStreak = int(player_info.get('highestKillStreak'))
+        revives = int(player_info.get('revives'))
+        heals = int(player_info.get('heals'))
+        repairs = int(player_info.get('repairs'))
+        dogtagsTaken = int(player_info.get('dogtagsTaken'))
+        if eac_info.get("stat"):
+            eac_info = f'{eac_info.get("stat")}\n案件地址:{eac_info.get("url")}\n'
+        else:
+            eac_info = "未查询到EAC信息\n"
+        result = [
+            f"玩家名字:{display_name}\n"
+            f"等级:{rank}\n"
+            f"游玩时长:{time_played}\n"
+            f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
+            f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"
+            f"KPM:{kpm}  SPM:{spm}\n"
+            f"步战KD:{infantry_kd}  载具KD:{vehicle_kd}\n"
+            f"技巧值:{skill}\n"
+            f"最远爆头距离:{longest_headshot}米\n"
+            f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
+            f"复活数:{revives}   治疗数:{heals}\n"
+            f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
+            f"EAC状态:{eac_info}" + "=" * 20
+        ]
+        weapon = player_weapon[0]
+        name = zhconv.convert(weapon.get('name'), 'zh-hans')
+        kills = int(weapon["stats"]["values"]["kills"])
+        seconds = weapon["stats"]["values"]["seconds"]
+        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        acc = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["shots"] * 100, 2) \
+            if weapon["stats"]["values"]["shots"] * 100 != 0 else 0
+        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        time_played = "{:.1f}h".format(seconds / 3600)
+        result.append(
+            f"最佳武器: {name}\n"
+            f"击杀: {kills}\tKPM: {kpm}\n"
+            f"命中率: {acc}%\t爆头击杀率: {hs}%\n"
+            f"效率: {eff}\t时长: {time_played}\n"
+            + "=" * 15
+        )
+
+        vehicle = player_vehicle[0]
+        name = zhconv.convert(vehicle["name"], 'zh-cn')
+        kills = vehicle["stats"]["values"]["kills"]
+        seconds = vehicle["stats"]["values"]["seconds"]
+        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        destroyed = vehicle["stats"]["values"]["destroyed"]
+        time_played = "{:.1f}h".format(vehicle["stats"]["values"]["seconds"] / 3600)
+        result.append(
+            f"最佳载具:{name}\n"
+            f"击杀:{kills}\tkpm:{kpm}\n"
+            f"摧毁:{destroyed}\t时长:{time_played}\n"
+            + "=" * 15
+        )
+        result = "\n".join(result)
+
         return await app.send_message(
             group,
             MessageChain(
-                f"玩家名字:{display_name}"
+                result
             ),
             quote=source
         )
@@ -737,7 +822,7 @@ async def player_vehicle_pic(
             destroyed = vehicle["stats"]["values"]["destroyed"]
             time_played = "{:.1f}h".format(vehicle["stats"]["values"]["seconds"] / 3600)
             result.append(
-                f"{name}\n"
+                f"载具:{name}\n"
                 f"击杀:{kills}\tkpm:{kpm}\n"
                 f"摧毁:{destroyed}\t时长:{time_played}\n"
                 + "=" * 15

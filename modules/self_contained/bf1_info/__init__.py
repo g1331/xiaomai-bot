@@ -14,6 +14,7 @@ from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.saya import Channel, Saya
 from loguru import logger
+from zhconv import zhconv
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -474,14 +475,14 @@ async def player_stat_pic(
             UnionMatch(
                 "武器", "weapon", "wp", "精英兵", "机枪", "轻机枪", "步枪", "狙击枪", "装备", "配备",
                 "半自动步枪", "半自动", "手榴弹", "手雷", "投掷物", "霰弹枪", "散弹枪", "驾驶员", "坦克驾驶员",
-                "冲锋枪", "副武器", "佩枪", "手枪", "近战", "突击兵", "土鸡兵", "土鸡", "突击",
+                "冲锋枪", "佩枪", "手枪", "近战", "突击兵", "土鸡兵", "土鸡", "突击",
                 "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", action="store_true", optional=True, type=int, default=4) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True, type=int, default=1) @ "col",
-            ArgumentMatch("-s", "-search", action="store_true", optional=True) @ "weapon_name",
-            ArgumentMatch("-t", "-type", action="store_true", optional=True) @ "sort_type",
+            ArgumentMatch("-s", "-search", optional=True) @ "weapon_name",
+            ArgumentMatch("-t", "-type", optional=True) @ "sort_type",
         ]
     )
 )
@@ -553,11 +554,20 @@ async def player_weapon_pic(
     else:
         if not weapon_name.matched:
             player_weapon: list = WeaponData(player_weapon).filter(
-                rule=weapon_type.result.display if weapon_type.matched else None,
-                sort_type=sort_type.result.display if sort_type.matched else None,
+                rule=weapon_type.result.display if weapon_type.matched else "",
+                sort_type=sort_type.result.display if sort_type.matched else "",
             )
         else:
-            player_weapon: list = WeaponData(player_weapon).search_weapon(weapon_name.result.display)
+            player_weapon: list = WeaponData(player_weapon).search_weapon(
+                weapon_name.result.display,
+                sort_type=sort_type.result.display if sort_type.matched else "",
+            )
+            if not player_weapon:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
+                    quote=source
+                )
 
     # 生成图片
     player_weapon_img = await PlayerWeaponPic(weapon_data=player_weapon).draw(
@@ -572,13 +582,30 @@ async def player_weapon_pic(
         )
     else:
         # 发送文字数据
-        result = [f"玩家名字: {display_name}"]
+        result = [f"玩家名字: {display_name}\n" + "=" * 20]
         for weapon in player_weapon:
+            if not weapon.get("stats").get('values'):
+                continue
+            name = zhconv.convert(weapon.get('name'), 'zh-hans')
+            kills = int(weapon["stats"]["values"]["kills"])
+            seconds = weapon["stats"]["values"]["seconds"]
+            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+            acc = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["shots"] * 100, 2) \
+                if weapon["stats"]["values"]["shots"] * 100 != 0 else 0
+            hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+                if weapon["stats"]["values"]["kills"] != 0 else 0
+            eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+                if weapon["stats"]["values"]["kills"] != 0 else 0
+            time_played = "{:.1f}h".format(seconds / 3600)
             result.append(
-                f"{weapon['name']}\n"
-                f"击杀: {weapon['kills']}\n"
+                f"武器: {name}\n"
+                f"击杀: {kills}\tKPM: {kpm}\n"
+                f"命中率: {acc}%\t爆头击杀率: {hs}%\n"
+                f"效率: {eff}\t时长: {time_played}\n"
+                + "=" * 15
             )
-
+        result = result[:5]
+        result = "\n".join(result)
         return await app.send_message(
             group,
             MessageChain(
@@ -600,8 +627,8 @@ async def player_weapon_pic(
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", action="store_true", optional=True) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True) @ "col",
-            ArgumentMatch("-s", "-search", action="store_true", optional=True) @ "vehicle_name",
-            ArgumentMatch("-t", "-type", action="store_true", optional=True) @ "sort_type",
+            ArgumentMatch("-s", "-search", optional=True) @ "vehicle_name",
+            ArgumentMatch("-t", "-type", optional=True) @ "sort_type",
         ]
     )
 )
@@ -673,11 +700,20 @@ async def player_vehicle_pic(
     else:
         if not vehicle_name.matched:
             player_vehicle: list = VehicleData(player_vehicle).filter(
-                rule=vehicle_type.result.display if vehicle_type.matched else None,
-                sort_type=sort_type.result.display if sort_type.matched else None,
+                rule=vehicle_type.result.display if vehicle_type.matched else "",
+                sort_type=sort_type.result.display if sort_type.matched else "",
             )
         else:
-            player_vehicle: list = VehicleData(player_vehicle).search_vehicle(vehicle_name.result.display)
+            player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
+                target_vehicle_name=vehicle_name.result.display,
+                sort_type=sort_type.result.display if sort_type.matched else "",
+            )
+            if not player_vehicle:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
+                    quote=source
+                )
 
     # 生成图片
     player_vehicle_img = await PlayerVehiclePic(vehicle_data=player_vehicle).draw(
@@ -692,10 +728,26 @@ async def player_vehicle_pic(
         )
     else:
         # 发送文字数据
+        result = [f"玩家名字: {display_name}\n" + "=" * 20]
+        for vehicle in player_vehicle:
+            name = zhconv.convert(vehicle["name"], 'zh-cn')
+            kills = vehicle["stats"]["values"]["kills"]
+            seconds = vehicle["stats"]["values"]["seconds"]
+            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+            destroyed = vehicle["stats"]["values"]["destroyed"]
+            time_played = "{:.1f}h".format(vehicle["stats"]["values"]["seconds"] / 3600)
+            result.append(
+                f"{name}\n"
+                f"击杀:{kills}\tkpm:{kpm}\n"
+                f"摧毁:{destroyed}\t时长:{time_played}\n"
+                + "=" * 15
+            )
+        result = result[:5]
+        result = "\n".join(result)
         return await app.send_message(
             group,
             MessageChain(
-                f"玩家名字:{display_name}"
+                result
             ),
             quote=source
         )
@@ -1035,9 +1087,9 @@ async def detailed_server(
     if rspInfo := server_info.get("rspInfo"):
         result.append(
             f"ServerId:{rspInfo.get('server').get('serverId')}\n"
-            f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
-            f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
-            f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
+            f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
+            f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
+            f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
             f"服务器拥有者: {rspInfo.get('owner').get('name')}\n"
             f"Pid: {rspInfo.get('owner').get('pid')}\n"
             + "=" * 20

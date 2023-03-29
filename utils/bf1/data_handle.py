@@ -62,7 +62,7 @@ class WeaponData:
             elif rule in ["冲锋枪"]:
                 if weapon.get("category") == "衝鋒槍":
                     weapon_list.append(weapon)
-            elif rule in ["副武器", "佩枪", "手枪"]:
+            elif rule in ["佩枪", "手枪"]:
                 if weapon.get("category") == "佩槍":
                     weapon_list.append(weapon)
             elif rule in ["近战"]:
@@ -125,26 +125,77 @@ class WeaponData:
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
             "击杀": "kills",
-            "爆头率": "headshots",
-            "命中率": "accuracy",
-            "时长": "seconds"
+            "kills": "kills",
+            "kill": "kills",
+            "时长": "seconds",
+            "time": "seconds",
         }
-        weapon_list.sort(
-            key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
-            reverse=True
-        )
+        if sort_type in ["爆头率", "爆头", "hs"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("kills", 0) * 100, 2
+                ) if x["stats"]["values"].get("kills", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type in ["命中率", "命中", "acc"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
+                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type.upper() in ["KPM"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("kills", 0) / x["stats"]["values"].get("seconds", 0) * 60, 2
+                ) if x["stats"]["values"].get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
+                reverse=True
+            )
+        else:
+            weapon_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                reverse=True
+            )
         return weapon_list
 
     # 根据武器名搜索武器信息
-    def search_weapon(self, target_weapon_name):
+    def search_weapon(self, target_weapon_name: str, sort_type: str = "击杀") -> list:
         """根据武器名搜索武器信息"""
+        target_weapon_name = target_weapon_name.upper()
         weapon_list = []
         for weapon in self.weapon_item_list:
             # 先将武器名转换为简体中文，再进行模糊匹配
-            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans')
+            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans').upper().replace("-", "")
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if fuzz.partial_ratio(target_weapon_name, weapon_name) > 70:
+            if (target_weapon_name in weapon_name) or (fuzz.partial_ratio(target_weapon_name, weapon_name) > 70):
                 weapon_list.append(weapon)
+        # 按照击杀/爆头率/命中率/时长排序
+        sort_type_dict = {
+            "击杀": "kills",
+            "kills": "kills",
+            "kill": "kills",
+            "时长": "seconds",
+            "time": "seconds",
+        }
+        if sort_type in ["爆头率", "爆头", "hs"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("hits", 0) * 100, 2
+                ) if x["stats"]["values"].get("hits", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type in ["命中率", "命中", "acc"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
+                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
+                reverse=True
+            )
+        else:
+            weapon_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                reverse=True
+            )
         return weapon_list
 
 
@@ -208,9 +259,42 @@ class VehicleData:
             elif rule in ["定点"]:
                 if vehicle.get("category") in ["定點武器"]:
                     vehicle_list.append(vehicle)
+            elif rule in ["机械巨兽", "巨兽"]:
+                if vehicle.get("category") in ["機械巨獸"]:
+                    vehicle_list.append(vehicle)
             else:
                 vehicle_list.append(vehicle)
 
+        # 按照击杀/时长/摧毁数
+        sort_type_dict = {
+            "击杀": "kills",
+            "时长": "seconds",
+            "摧毁": "destroyed"
+        }
+        if sort_type.upper() in ["KPM"]:
+            vehicle_list.sort(
+                key=lambda x: x.get("stats").get("values").get("kills", 0) / x.get("stats").get("values").get("seconds", 0)
+                if x.get("stats").get("values").get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
+                reverse=True
+            )
+        else:
+            vehicle_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                reverse=True
+            )
+        return vehicle_list
+
+    # 搜索载具
+    def search_vehicle(self, target_vehicle_name: str, sort_type: str = "击杀") -> list:
+        """根据载具名搜索载具信息"""
+        target_vehicle_name = target_vehicle_name.upper()
+        vehicle_list = []
+        for vehicle in self.vehicle_item_list:
+            # 先将载具名转换为简体中文，再进行模糊匹配
+            vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans').upper().replace("-", "")
+            # 非完全匹配，基于最佳的子串（substrings）进行匹配
+            if (target_vehicle_name in vehicle_name) or (fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 60):
+                vehicle_list.append(vehicle)
         # 按照击杀/时长/摧毁数
         sort_type_dict = {
             "击杀": "kills",
@@ -221,18 +305,6 @@ class VehicleData:
             key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
             reverse=True
         )
-        return vehicle_list
-
-    # 搜索载具
-    def search_vehicle(self, target_vehicle_name):
-        """根据载具名搜索载具信息"""
-        vehicle_list = []
-        for vehicle in self.vehicle_item_list:
-            # 先将载具名转换为简体中文，再进行模糊匹配
-            vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans')
-            # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 70:
-                vehicle_list.append(vehicle)
         return vehicle_list
 
 
@@ -473,8 +545,8 @@ class ServerData:
 
         # 排序
         if sort_type == "player":
-            server_list.sort(key=lambda x: x.get("SoldierCurrent"), reverse=True)
+            server_list.sort(key=lambda x: x.get("slots").get("Soldier").get("current"), reverse=True)
         else:
-            server_list.sort(key=lambda x: x.get("name"))
+            server_list.sort(key=lambda x: x.get("name"), reverse=True)
 
         return server_list

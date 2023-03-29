@@ -1,4 +1,5 @@
 import asyncio
+import time
 from pathlib import Path
 
 from creart import create
@@ -469,9 +470,14 @@ async def player_stat_pic(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-武器").space(SpacePolicy.PRESERVE),
+            FullMatch("-").space(SpacePolicy.NOSPACE),
+            UnionMatch(
+                "武器", "weapon", "wp", "精英兵", "机枪", "轻机枪", "步枪", "狙击枪", "装备", "配备",
+                "半自动步枪", "半自动", "手榴弹", "手雷", "投掷物", "霰弹枪", "散弹枪", "驾驶员", "坦克驾驶员",
+                "冲锋枪", "副武器", "佩枪", "手枪", "近战", "突击兵", "土鸡兵", "土鸡", "突击",
+                "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
+            ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
-            ParamMatch(optional=True) @ "weapon_type",
             ArgumentMatch("-r", "-row", action="store_true", optional=True, type=int, default=4) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True, type=int, default=1) @ "col",
             ArgumentMatch("-s", "-search", action="store_true", optional=True) @ "weapon_name",
@@ -566,10 +572,17 @@ async def player_weapon_pic(
         )
     else:
         # 发送文字数据
+        result = [f"玩家名字: {display_name}"]
+        for weapon in player_weapon:
+            result.append(
+                f"{weapon['name']}\n"
+                f"击杀: {weapon['kills']}\n"
+            )
+
         return await app.send_message(
             group,
             MessageChain(
-                f"玩家名字:{display_name}"
+                result
             ),
             quote=source
         )
@@ -580,9 +593,11 @@ async def player_weapon_pic(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-载具").space(SpacePolicy.PRESERVE),
+            FullMatch("-").space(SpacePolicy.NOSPACE),
+            UnionMatch(
+                "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点"
+            ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ParamMatch(optional=True) @ "weapon_type",
             ArgumentMatch("-r", "-row", action="store_true", optional=True) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True) @ "col",
             ArgumentMatch("-s", "-search", action="store_true", optional=True) @ "vehicle_name",
@@ -603,7 +618,7 @@ async def player_vehicle_pic(
         group: Group,
         source: Source,
         player_name: RegexResult,
-        weapon_type: RegexResult,
+        vehicle_type: RegexResult,
         row: ArgResult,
         col: ArgResult,
         vehicle_name: ArgResult,
@@ -658,7 +673,7 @@ async def player_vehicle_pic(
     else:
         if not vehicle_name.matched:
             player_vehicle: list = VehicleData(player_vehicle).filter(
-                rule=weapon_type.result.display if weapon_type.matched else None,
+                rule=vehicle_type.result.display if vehicle_type.matched else None,
                 sort_type=sort_type.result.display if sort_type.matched else None,
             )
         else:
@@ -897,7 +912,7 @@ async def player_match_info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-搜服务器", "-sv").space(SpacePolicy.PRESERVE),
+            UnionMatch("-搜服务器", "-ss").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False) @ "server_name",
         ]
     )
@@ -957,3 +972,86 @@ async def search_server(
             MessageChain(result),
             quote=source
         )
+
+
+# 详细服务器
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-详细服务器", "-ds").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False) @ "game_id",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def detailed_server(
+        app: Ariadne,
+        group: Group,
+        source: Source,
+        game_id: RegexResult
+):
+    game_id = game_id.result.display
+    if not game_id.isdigit():
+        return await app.send_message(
+            group,
+            MessageChain(f"GameId必须为数字!"),
+            quote=source
+        )
+
+    # 调用接口获取数据
+    server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(game_id)
+    if isinstance(server_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{server_info}"),
+            quote=source
+        )
+    else:
+        server_info = server_info["result"]
+
+    # 处理数据
+    # 第一部分为serverInfo,其下:包含服务器名、简介、人数、地图、模式、gameId、guid、收藏数serverBookmarkCount
+    # 第二部分为rspInfo,其下包含owner（名字和pid）、serverId、createdDate、expirationDate、updatedDate
+    # 第三部分为platoonInfo，其下包含战队名、tag、人数、description
+    result = []
+    Info = server_info["serverInfo"]
+    result.append(
+        f"服务器: {Info.get('name')}\n"
+        f"人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
+        f"[{Info.get('slots').get('Queue').get('current')}]({Info.get('slots').get('Spectator').get('current')})\n"
+        f"地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        f"简介: {Info.get('description')}\n"
+        f"GameId: {Info.get('gameId')}\n"
+        f"Guid: {Info.get('guid')}\n"
+        + "=" * 20
+    )
+    if rspInfo := server_info.get("rspInfo"):
+        result.append(
+            f"ServerId:{rspInfo.get('server').get('serverId')}\n"
+            f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
+            f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
+            f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
+            f"服务器拥有者: {rspInfo.get('owner').get('name')}\n"
+            f"Pid: {rspInfo.get('owner').get('pid')}\n"
+            + "=" * 20
+        )
+    if platoonInfo := server_info.get("platoonInfo"):
+        result.append(
+            f"战队: [{platoonInfo.get('tag')}]{platoonInfo.get('name')}\n"
+            f"人数: {platoonInfo.get('soldierCount')}\n"
+            f"简介: {platoonInfo.get('description')}\n"
+            + "=" * 20
+        )
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(result),
+        quote=source
+    )

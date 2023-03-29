@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import time
 import aiohttp
+import httpx
 from loguru import logger
 from typing import Union
 from bs4 import BeautifulSoup
@@ -295,3 +296,15 @@ async def BTR_update_data(player_name: str) -> None:
             return result
 
 
+async def bfeac_checkBan(player_name) -> dict:
+    check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
+    header = {
+        "Connection": "keep-alive"
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(check_eacInfo_url, headers=header, timeout=10)
+    try:
+        return response.json()
+    except Exception as e:
+        logger.error(f"bfeac_checkBan: {e}")
+        return {}

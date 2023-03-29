@@ -18,7 +18,7 @@ from core.control import (
 from core.models import saya_model, response_model
 from utils.bf1.bf_utils import bfeac_checkBan, get_personas_by_name, check_bind
 from utils.bf1.default_account import BF1DA
-from utils.bf1.orm import BF1DB
+from utils.bf1.database import BF1DB
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()

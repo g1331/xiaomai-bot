@@ -9,7 +9,7 @@ from loguru import logger
 
 from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
-from utils.bf1.orm import BF1DB
+from utils.bf1.database import BF1DB
 
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:

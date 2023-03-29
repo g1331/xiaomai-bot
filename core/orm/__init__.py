@@ -205,3 +205,4 @@ class AsyncORM:
 
 # 初始化AsyncORM
 orm = AsyncORM(create(GlobalConfig).db_link)
+Base = orm.Base

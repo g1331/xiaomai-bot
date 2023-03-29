@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 
 from utils.bf1.gateway_api import api_instance
-from utils.bf1.orm import BF1DB
+from utils.bf1.database import BF1DB
 
 
 class DefaultAccount:

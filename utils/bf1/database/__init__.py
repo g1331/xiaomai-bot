@@ -1,28 +1,13 @@
 from datetime import datetime
 from typing import Union
 
-import asyncio
 from loguru import logger
 from sqlalchemy import select
-from sqlalchemy.exc import InternalError, ProgrammingError
 
-from utils.bf1.orm.tables import bf1_orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache
+from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache
 
 
 class bf1_db:
-    @staticmethod
-    async def db_check():
-        logger.debug("正在检查bf1数据库")
-        try:
-            await bf1_orm.init_check()
-            logger.success("bf1数据库初始化成功")
-        except (AttributeError, InternalError, ProgrammingError):
-            logger.debug("bf1数据库初始化失败，正在重建数据库")
-            await bf1_orm.create_all()
-            logger.success("bf1数据库重建成功")
-
-    def __init__(self):
-        asyncio.run(self.db_check())
 
     # TODO:
     #  BF1账号相关
@@ -41,7 +26,7 @@ class bf1_db:
         :return: 有结果时,返回dict,无结果时返回None
         """
         # 获取玩家persona_id、user_id、name、display_name
-        if account := await bf1_orm.fetch_one(
+        if account := await orm.fetch_one(
                 select(
                     Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name, Bf1Account.display_name,
                     Bf1Account.remid, Bf1Account.sid, Bf1Account.session
@@ -63,7 +48,7 @@ class bf1_db:
 
     @staticmethod
     async def get_session_by_pid(pid: int) -> str:
-        if account := await bf1_orm.fetch_one(select(Bf1Account.session).where(Bf1Account.persona_id == pid)):
+        if account := await orm.fetch_one(select(Bf1Account.session).where(Bf1Account.persona_id == pid)):
             return account[0]
         else:
             return None
@@ -91,7 +76,7 @@ class bf1_db:
             data["sid"] = sid
         if session:
             data["session"] = session
-        await bf1_orm.insert_or_update(
+        await orm.insert_or_update(
             table=Bf1Account,
             data=data,
             condition=[
@@ -119,7 +104,7 @@ class bf1_db:
             data["sid"] = sid
         if session:
             data["session"] = session
-        await bf1_orm.insert_or_update(
+        await orm.insert_or_update(
             table=Bf1Account,
             data=data,
             condition=[
@@ -143,7 +128,7 @@ class bf1_db:
         :param qq: qq号
         :return: 绑定的pid,没有绑定时返回None
         """
-        if bind := await bf1_orm.fetch_one(select(Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq == qq)):
+        if bind := await orm.fetch_one(select(Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq == qq)):
             return bind[0]
         else:
             return None
@@ -155,7 +140,7 @@ class bf1_db:
         :param pid: 玩家persona_id(pid)
         :return: 返回一个list,里面是绑定的qq号,没有绑定时返回None
         """
-        if bind := await bf1_orm.fetch_all(select(Bf1PlayerBind.qq).where(Bf1PlayerBind.persona_id == pid)):
+        if bind := await orm.fetch_all(select(Bf1PlayerBind.qq).where(Bf1PlayerBind.persona_id == pid)):
             return [i[0] for i in bind]
         else:
             return None
@@ -168,7 +153,7 @@ class bf1_db:
         :param pid: 玩家persona_id(pid)
         :return: True
         """
-        await bf1_orm.insert_or_update(
+        await orm.insert_or_update(
             table=Bf1PlayerBind,
             data={
                 "persona_id": pid,
@@ -187,7 +172,7 @@ class bf1_db:
     #  从getFullServerDetails获取并写入服务器信息
     @staticmethod
     async def get_server_by_guid(guid: str) -> Bf1Server:
-        if server := await bf1_orm.fetch_one(select(Bf1Server).where(Bf1Server.persistedGameId == guid)):
+        if server := await orm.fetch_one(select(Bf1Server).where(Bf1Server.persistedGameId == guid)):
             return server[0]
         else:
             return None
@@ -197,7 +182,7 @@ class bf1_db:
             gameId: int, guid: str, serverId: int, createdDate: int,
             expirationDate: int, updatedDate: int = None
     ) -> bool:
-        await bf1_orm.insert_or_update(
+        await orm.insert_or_update(
             table=Bf1Server,
             data={
                 "gameId": gameId,
@@ -224,11 +209,11 @@ class bf1_db:
     @staticmethod
     async def get_bf1_group_by_qq(qq_group_id: int) -> Bf1Group:
         """根据qq群号获取对应绑定的bf1群组"""
-        group_bind = await bf1_orm.fetch_one(
+        group_bind = await orm.fetch_one(
             select(Bf1GroupBind).where(Bf1GroupBind.qq_group_id == qq_group_id)
         )
         if group_bind:
-            bf1_group = await bf1_orm.fetch_one(
+            bf1_group = await orm.fetch_one(
                 select(Bf1Group).where(Bf1Group.id == group_bind[0].bf1_group_id)
             )
             return bf1_group[0]
@@ -237,7 +222,7 @@ class bf1_db:
     @staticmethod
     async def get_bf1_server_by_guid(guid: str) -> Bf1Server:
         """根据guid获取服务器信息"""
-        server = await bf1_orm.fetch_one(
+        server = await orm.fetch_one(
             select(Bf1Server).where(Bf1Server.persistedGameId == guid)
         )
         if server:
@@ -247,14 +232,14 @@ class bf1_db:
     @staticmethod
     async def bind_qq_group_to_bf1_group(qq_group_id: int, bf1_group_name: str) -> bool:
         """绑定qq群和bf1群组"""
-        bf1_group = await bf1_orm.fetch_one(
+        bf1_group = await orm.fetch_one(
             select(Bf1Group).where(Bf1Group.group_name == bf1_group_name)
         )
         if not bf1_group:
             return False
         else:
             bf1_group = bf1_group[0]
-        await bf1_orm.insert_or_update(
+        await orm.insert_or_update(
             table=Bf1GroupBind,
             data={
                 "qq_group_id": qq_group_id,
@@ -276,7 +261,7 @@ class bf1_db:
     async def get_btr_match_by_displayName(display_name: str) -> Union[list, None]:
         """根据pid获取对应的btr对局信息"""
         # 根据时间获取该display_name最新的10条记录
-        if match := await bf1_orm.fetch_all(
+        if match := await orm.fetch_all(
                 select(
                     Bf1MatchCache.match_id, Bf1MatchCache.server_name,
                     Bf1MatchCache.map_name, Bf1MatchCache.mode_name,
@@ -308,7 +293,7 @@ class bf1_db:
             deaths: int, kd: float, kpm: float, score: int, spm: float, accuracy: str,
             headshots: str, time_played: int, persona_id: int = 0,
     ) -> bool:
-        await bf1_orm.insert_or_ignore(
+        await orm.insert_or_ignore(
             table=Bf1MatchCache,
             data={
                 "match_id": match_id,

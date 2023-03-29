@@ -23,6 +23,10 @@ auto_get_server.py
 # 数据库
 data.db
 
+# Alembic files
+/alembic/
+alembic.ini
+
 # 数据文件
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
 /modules/self_contained/emoji_mix/assets/update.json

@@ -30,7 +30,7 @@ from utils.bf1.default_account import BF1DA
 from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
-from utils.bf1.orm import BF1DB
+from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import get_personas_by_name, check_bind, \
     BTR_get_recent_info, BTR_get_match_info, BTR_update_data, bfeac_checkBan
 

@@ -20,8 +20,8 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:latest .
-          docker push registry.cn-hangzhou.aliyuncs.com/myrepo/demo:$IMAGE_TAG
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG .
+          docker push ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG
   pull-docker:
     needs: [build]
     name: Pull Docker

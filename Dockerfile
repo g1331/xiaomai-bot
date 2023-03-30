@@ -1,4 +1,4 @@
-FROM python:3.10.10
+FROM python:3.10-bullseye
 
 WORKDIR /xiaomai-bot
 
@@ -32,15 +32,17 @@ RUN apt-get update && \
         curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
-RUN /root/.local/bin/poetry config virtualenvs.create false && \
-    /root/.local/bin/poetry install --no-dev --no-root --no-interaction
+RUN pip install --upgrade pip \
+    pip install poetry && \
+    cd xiaomai-bot && \
+    poetry config installer.max-workers 10 && \
+    poetry install --no-dev --no-root --no-interaction
 
 RUN apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-EXPOSE 4000 # 声明这个镜像服务的守护端口,以方便配置映射
+#   声明这个镜像服务的守护端口,以方便配置映射
+EXPOSE 4000
 
 ENTRYPOINT ["/root/.local/bin/poetry", "run", "python", "main.py"]
 

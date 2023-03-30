@@ -59,4 +59,4 @@ default = false
 [[tool.poetry.source]]
 name = "tuna-tsinghua"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = false
+default = true

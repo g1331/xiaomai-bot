@@ -51,7 +51,6 @@ class AsyncORM:
         Lock
         """
         self.db_mutex = db_mutex or Lock() if self.db_link.startswith("sqlite") else None
-        logger.success(f"已连接至数据库: {self.engine.url}")
 
     async def close(self):
         """关闭数据库连接"""

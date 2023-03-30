@@ -38,7 +38,7 @@ jobs:
             # 删除旧版镜像
             docker rmi -f $(docker images ${{ secrets.DOCKER_REPOSITORY }}:latest -q)
             # 登录阿里云镜像服务器
-            docker login --username=${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
+            docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin registry.cn-hangzhou.aliyuncs.com <<< "${{ secrets.DOCKER_PASSWORD }}"
             # 拉取最新latest版本镜像
             docker pull ${{ secrets.DOCKER_REPOSITORY }}:latest
             # 运行最新latest版本镜像

@@ -37,7 +37,6 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && 
     pip install poetry && \
     cd /xiaomai-bot && \
     poetry config installer.max-workers 10 && \
-    poetry config virtualenvs.create false && \
     poetry install --no-root --only main
 
 RUN apt-get clean && \

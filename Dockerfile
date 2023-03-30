@@ -37,7 +37,7 @@ RUN pip install --upgrade pip \
     cd /xiaomai-bot && \
     poetry config installer.max-workers 10 && \
     poetry config virtualenvs.create false && \
-    poetry install --no-dev
+    poetry install
 
 RUN mkdir /usr/share/fonts/zh
 ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh

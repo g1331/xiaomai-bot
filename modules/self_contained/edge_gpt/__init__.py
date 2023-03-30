@@ -22,7 +22,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model, response_model
-from utils.text2img import md2img, template2img
+from utils.text2img import md2img
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()

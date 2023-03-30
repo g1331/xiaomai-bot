@@ -36,6 +36,7 @@ RUN pip install --upgrade pip \
     pip install poetry && \
     cd /xiaomai-bot && \
     poetry config installer.max-workers 10 && \
+    poetry config virtualenvs.create false && \
     poetry install
 
 RUN mkdir /usr/share/fonts/zh

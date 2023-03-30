@@ -51,8 +51,12 @@ memory-profiler = "^0.61.0"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[[tool.poetry.source]]
+name = "pypi-public"
+url = "https://pypi.org/simple/"
+default = false
 
 [[tool.poetry.source]]
 name = "tuna-tsinghua"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = false
+default = true

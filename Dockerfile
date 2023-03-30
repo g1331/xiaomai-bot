@@ -1,16 +1,5 @@
 FROM python:3.10-bullseye
 
-WORKDIR /xiaomai-bot
-
-COPY . .
-
-RUN mkdir /usr/share/fonts/zh
-
-ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh
-RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
-    fc-cache -fv && \
-    fc-list
-
 #   sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list #服务器在海外请添加这行到一下RUN开头
 RUN apt-get update && \
     apt-get install -y \
@@ -32,11 +21,29 @@ RUN apt-get update && \
         curl && \
     rm -rf /var/lib/apt/lists/*
 
+WORKDIR /xiaomai-bot
+
+COPY . .
+
+RUN mkdir /usr/share/fonts/zh
+
+ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh
+RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
+    fc-cache -fv && \
+    fc-list
+
 RUN pip install --upgrade pip \
     pip install poetry && \
-    cd xiaomai-bot && \
+    cd /xiaomai-bot && \
     poetry config installer.max-workers 10 && \
-    poetry install --no-dev --no-root --no-interaction
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev
+
+RUN mkdir /usr/share/fonts/zh
+ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh
+RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
+    fc-cache -fv && \
+    fc-list
 
 RUN apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*

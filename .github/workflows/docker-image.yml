@@ -10,17 +10,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Build Image
-        run: docker build -t ${{ secrets.DOCKER_REPOSITORY }}:latest ./
       - name: Alibaba Cloud Container Registry (ACR) Login
         uses: aliyun/acr-login@v1
         with:
           login-server: https://registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push Image
-        run: docker push ${{ secrets.DOCKER_REPOSITORY }}:latest
+      - name: Build and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:latest .
+          docker push registry.cn-hangzhou.aliyuncs.com/myrepo/demo:$IMAGE_TAG
   pull-docker:
     needs: [build]
     name: Pull Docker

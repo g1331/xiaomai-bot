@@ -40,5 +40,7 @@ RUN /root/.local/bin/poetry config virtualenvs.create false && \
 RUN apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+EXPOSE 4000 # 声明这个镜像服务的守护端口,以方便配置映射
+
 ENTRYPOINT ["/root/.local/bin/poetry", "run", "python", "main.py"]
 

@@ -20,7 +20,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG ./Dockerfile .
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG -f ./Dockerfile .
           docker push ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG
   pull-docker:
     needs: [build]

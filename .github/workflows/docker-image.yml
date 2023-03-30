@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Alibaba Cloud Container Registry (ACR) Login
         uses: aliyun/acr-login@v1.0.5
         with:
@@ -20,7 +21,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG -f ./Dockerfile .
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG .
           docker push ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG
   pull-docker:
     needs: [build]

@@ -32,18 +32,13 @@ RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
     fc-cache -fv && \
     fc-list
 
-RUN pip install --upgrade pip \
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    pip install --upgrade pip \
     pip install poetry && \
     cd /xiaomai-bot && \
     poetry config installer.max-workers 10 && \
     poetry config virtualenvs.create false && \
-    poetry install
-
-RUN mkdir /usr/share/fonts/zh
-ADD ./statics/fonts/simhei.ttf /usr/share/fonts/zh
-RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
-    fc-cache -fv && \
-    fc-list
+    poetry install --no-root --only main
 
 RUN apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*

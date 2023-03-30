@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Alibaba Cloud Container Registry (ACR) Login
-        uses: aliyun/acr-login@v1
+        uses: aliyun/acr-login@v1.0.5
         with:
           login-server: https://registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -20,7 +20,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG .
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG ./Dockerfile .
           docker push ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG
   pull-docker:
     needs: [build]

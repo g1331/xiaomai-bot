@@ -35,9 +35,9 @@ jobs:
           port: ${{ secrets.HOST_PORT }}
           script: |
             sudo chmod 666 /var/run/docker.sock
-            docker stop $(docker ps -a -q)
-            docker rm $(docker ps -a -q)
-            docker rmi $(docker images -q)
-            echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} registry.cn-hangzhou.aliyuncs.com
+            docker stop $(docker ps -a -q) || true
+            docker rm $(docker ps -a -q) || true
+            docker rmi $(docker images -q) || true
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
             docker pull ${{ secrets.DOCKER_REPOSITORY }}:latest
             docker run -d -p 8000:4000 ${{ secrets.DOCKER_REPOSITORY }}:latest

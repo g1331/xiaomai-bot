@@ -94,7 +94,6 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
         f"磁盘占比：{cp}\n",
         f"在线bot数量:{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}\n",
         f"活动群组数量:{len(account_controller.total_groups.keys())}\n",
-        f"反馈Q群:749094683\n",
         f"爱发电地址:https://afdian.net/a/ss1333\n",
         f"项目地址:https://github.com/g1331/xiaomai-bot"
     ), quote=source)

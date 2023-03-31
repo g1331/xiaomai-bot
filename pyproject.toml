@@ -41,6 +41,7 @@ pypinyin = "^0.48.0"
 gitpython = "^3.1.31"
 revchatgpt = "3.3.4"
 rapidfuzz = "^2.13.7"
+noneprompt = "^0.1.9"
 
 
 [tool.poetry.group.dev.dependencies]

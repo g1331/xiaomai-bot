@@ -1757,6 +1757,26 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "noneprompt"
+version = "0.1.9"
+description = "Prompt toolkit for console interaction"
+category = "main"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "noneprompt-0.1.9-py3-none-any.whl", hash = "sha256:a54f1e6a19a3da2dedf7f365f80420e9ae49326a0ffe60a8a9c7afdee6b6eeb3"},
+    {file = "noneprompt-0.1.9.tar.gz", hash = "sha256:338b8bb89a8d22ef35f1dedb3aa7c1b228cf139973bdc43c5ffc3eef64457db9"},
+]
+
+[package.dependencies]
+prompt-toolkit = ">=3.0.19,<4.0.0"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "numpy"
 version = "1.24.2"
 description = "Fundamental package for array computing in Python"
@@ -3228,4 +3248,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "88d0da9d7bb0f1941b4d4e3d44fca886f8d437b65e9bc69fde692ded8240423c"
+content-hash = "bc82ffe2fe63b8bfdc8fc76f2734b2719554feccb2377c3513871b296565dc4f"

@@ -13,7 +13,7 @@ env.bak/
 venv.bak/
 
 # 配置文件、日志
-config.yaml
+/config/config.yaml
 /log
 
 # 测试文件
@@ -22,6 +22,10 @@ auto_get_server.py
 
 # 数据库
 data.db
+
+# Alembic files
+/alembic/
+alembic.ini
 
 # 数据文件
 /modules/self_contained/bilibili_dynamic/dynamic_list.json

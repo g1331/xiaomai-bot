@@ -1,0 +1,151 @@
+{
+  "configs": [
+    {
+      "name": "bot_accounts",
+      "type": "list[int]",
+      "description": "机器人账号",
+      "required": true
+    },
+    {
+      "name": "default_account",
+      "type": "int",
+      "description": "默认机器人账号",
+      "required": true
+    },
+    {
+      "name": "Master",
+      "type": "int",
+      "description": "机器人主人账号",
+      "required": true
+    },
+    {
+      "name": "mirai_host",
+      "type": "str",
+      "description": "Mirai-Api-HTTP 地址及端口",
+      "default": "http://localhost:8080",
+      "required": true
+    },
+    {
+      "name": "verify_key",
+      "type": "str",
+      "description": "Mirai-Api-HTTP 验证key",
+      "default": "1234567890",
+      "required": true
+    },
+    {
+      "name": "test_group",
+      "type": "int",
+      "description": "测试群号,用于接收bot的一些事件信息，请单独创建非公开群聊拉入bot",
+      "default": 123456789,
+      "required": true
+    },
+    {
+      "name": "GroupMsg_log",
+      "type": "bool",
+      "description": "是否在控制台输出群消息日志",
+      "default": true
+    },
+    {
+      "name": "db_link",
+      "type": "str",
+      "description": "数据库链接",
+      "default": "sqlite+aiosqlite:///data.db",
+      "required": true
+    },
+    {
+      "name": "proxy",
+      "type": "str",
+      "description": "代理端口",
+      "default": "proxy"
+    },
+    {
+      "name": "auto_upgrade",
+      "type": "bool",
+      "description": "是否自动更新",
+      "default": false
+    },
+    {
+      "name": "functions",
+      "type": "dict",
+      "description": "功能相关",
+      "children": [
+        {
+          "name": "bf1",
+          "type": "dict",
+          "description": "战地一相关",
+          "children": [
+            {
+              "name": "default_account",
+              "type": "int",
+              "description": "战地一默认查询账号的pid",
+              "default": "123"
+            },
+            {
+              "name": "apikey",
+              "type": "str",
+              "description": "bfeac举报的apikey",
+              "default": "apikey"
+            }
+          ]
+        },
+        {
+          "name": "image_search",
+          "type": "str",
+          "description": "识图",
+          "children": [
+            {
+              "name": "saucenao_key",
+              "type": "str",
+              "description": "SauceNAO API Key，前往 https://saucenao.com/user.php?page=search-api 获取",
+              "default": "saucenao_key"
+            }
+          ]
+        },
+        {
+          "name": "steamdb_cookie",
+          "type": "str",
+          "description": "steam游戏搜索的cookie 前往steamdb.info/app/app_id 获取",
+          "default": "steamdb_cookie"
+        },
+        {
+          "name": "ChatGPT",
+          "type": "dict",
+          "description": "ChatGPT相关",
+          "children": [
+            {
+              "name": "session_token",
+              "type": "str",
+              "description": "Github 用户名",
+              "default": "session_token"
+            },
+            {
+              "name": "api_key",
+              "type": "str",
+              "description": "Github token，前往 https://github.com/settings/tokens 获取",
+              "default": "api_key"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "log_related",
+      "type": "dict",
+      "description": "日志文件相关",
+      "children": [
+        {
+          "name": "error_retention",
+          "type": "int",
+          "description": "错误日志保存天数",
+          "default": 14
+        },
+        {
+          "name": "common_retention",
+          "type": "int",
+          "description": "普通日志保存天数",
+          "default": 7
+        }
+      ]
+    }
+  ]
+}

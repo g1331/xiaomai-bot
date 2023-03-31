@@ -13,7 +13,7 @@ env.bak/
 venv.bak/
 
 # 配置文件、日志
-config.yaml
+/config/config.yaml
 /log
 
 # 测试文件

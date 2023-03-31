@@ -1,7 +1,24 @@
 # -*- coding: utf-8 -*-
-from pathlib import Path
-
+import argparse
 import httpx
+from pathlib import Path
+from loguru import logger
+
+if __name__ == '__main__':
+    if Path.cwd() != Path(__file__).parent:
+        logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!")
+        exit(0)
+    parser = argparse.ArgumentParser(description='命令行中传入一个数字')
+    parser.add_argument('--set-config', action="store_true", help="配置文件更改", dest="set_config")
+    args = parser.parse_args()
+    if args.set_config:
+        from utils.tui import set_config
+        set_config()
+        exit(0)
+    elif not (Path.cwd() / "config" / "config.yaml").exists():
+        from utils.tui import config_init
+        config_init()
+
 from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.lifecycle import AccountLaunch
@@ -18,13 +35,10 @@ from graia.ariadne.event.mirai import NudgeEvent, BotJoinGroupEvent
 from graia.ariadne.model import Friend, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
-from loguru import logger
 
 from core.bot import Umaru
 from core.config import GlobalConfig
-from core.models import (
-    frequency_model
-)
+from core.models import frequency_model
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -120,9 +134,6 @@ async def init_join_group(app: Ariadne, event: BotJoinGroupEvent):
 
 
 if __name__ == "__main__":
-    if Path.cwd() != Path(__file__).parent:
-        logger.critical(f"当前目录非项目所在目录!请进入{str(Path(__file__).parent)}后再运行!")
-        exit(0)
     logger.debug("正在检测 Mirai 是否启动")
     try:
         mah = httpx.get(config.mirai_host + "/about", timeout=3)

@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import List, Type
 from creart import add_creator, AbstractCreator, CreateTargetInfo, exists_module
 from pydantic import BaseModel
-
-instances = {}
+from utils.Singleton import singleton
 
 
 class GlobalConfig(BaseModel):
@@ -36,13 +35,14 @@ class GlobalConfig(BaseModel):
     GroupMsg_log: bool
 
 
-def load_config():
-    global instances
-    with open(Path().cwd() / "config.yaml", "r", encoding="utf-8") as f:
-        config_data = yaml.safe_load(f.read())
-        if GlobalConfig.__name__ not in instances:
-            instances[GlobalConfig.__name__] = GlobalConfig(**config_data)
-        return instances[GlobalConfig.__name__]
+@singleton
+class ConfigLoader:
+    def __init__(self):
+        with open(Path().cwd() / "config" / "config.yaml", "r", encoding="utf-8") as f:
+            self.config_data = yaml.safe_load(f.read())
+
+    def load_config(self) -> GlobalConfig:
+        return GlobalConfig(**self.config_data)
 
 
 class ConfigClassCreator(AbstractCreator, ABC):
@@ -54,7 +54,8 @@ class ConfigClassCreator(AbstractCreator, ABC):
 
     @staticmethod
     def create(create_type: Type[GlobalConfig]) -> GlobalConfig:
-        config = load_config()
+        config_loader = ConfigLoader()
+        config = config_loader.load_config()
         if not config.default_account:
             config.default_account = config.bot_accounts[0]
         return config

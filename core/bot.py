@@ -57,12 +57,14 @@ non_log = {
     ActiveGroupMessage,
     ActiveFriendMessage
 }
-
-logs = []
-
-
-def set_log(log_str: str):
-    logs.append(log_str.strip())
+UMARU_BOT_LOGO = r"""
+██╗   ██╗███╗   ███╗ █████╗ ██████╗ ██╗   ██╗    ██████╗  ██████╗ ████████╗
+██║   ██║████╗ ████║██╔══██╗██╔══██╗██║   ██║    ██╔══██╗██╔═══██╗╚══██╔══╝
+██║   ██║██╔████╔██║███████║██████╔╝██║   ██║    ██████╔╝██║   ██║   ██║   
+██║   ██║██║╚██╔╝██║██╔══██║██╔══██╗██║   ██║    ██╔══██╗██║   ██║   ██║   
+╚██████╔╝██║ ╚═╝ ██║██║  ██║██║  ██║╚██████╔╝    ██████╔╝╚██████╔╝   ██║   
+ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝                         
+"""
 
 
 class Umaru(object):
@@ -73,8 +75,10 @@ class Umaru(object):
     sent_count: int = 0
     received_count: int = 0
     initialized: bool = False
+    logs = []
 
     def __init__(self, g_config: GlobalConfig, base_path: str or Path):
+        logger.opt(colors=True).info(f"<fg 227,122,80>{UMARU_BOT_LOGO}</>")
         self.total_groups = {}
         """
         total_groups = {
@@ -143,10 +147,6 @@ class Umaru(object):
             logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
             if len(self.initialized_app_list) != len(self.apps):
                 await asyncio.sleep(3)
-        logger.info("本次启动活动群组如下：")
-        for account, group_list in self.total_groups.items():
-            for group in group_list:
-                logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
         # 更新多账户响应
         await response_model.get_acc_controller().init_all_group()
         logger.success("成功初始化多账户响应!")
@@ -157,19 +157,30 @@ class Umaru(object):
         logger.success("成功更新admins权限!")
         from core.control import Distribute
         Distribute.distribute_initialize()
-        init_result = f"BOT启动初始化完成!\n" \
-                      f"耗时:{(time.time() - time_start):.2f}秒\n" \
-                      f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
-        logger.success(init_result.replace("\n", "\\n"))
-        # 向主人发送启动完成的信息
-        if Ariadne.current(self.config.default_account).connection.status.available:
-            try:
-                await Ariadne.current(self.config.default_account).send_friend_message(
-                    self.config.Master,
-                    MessageChain(init_result)
-                )
-            except:
-                pass
+        if self.initialized_app_list:
+            logger.info("本次启动活动群组如下：")
+            for account, group_list in self.total_groups.items():
+                for group in group_list:
+                    logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
+            init_result = f"BOT账号初始化完成!\n" \
+                          f"耗时:{(time.time() - time_start):.2f}秒\n" \
+                          f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
+            logger.success(init_result.replace("\n", "\\n"))
+            # 向主人发送启动完成的信息
+            if Ariadne.current(self.config.default_account).connection.status.available:
+                try:
+                    await Ariadne.current(self.config.default_account).send_friend_message(
+                        self.config.Master,
+                        MessageChain(init_result)
+                    )
+                except:
+                    pass
+        else:
+            logger.critical(
+                f"BOT账号初始化失败!"
+                f"耗时:{(time.time() - time_start):.2f}秒\n"
+                f"初始化了{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
+            )
 
     async def init_app(self, app):
         if not app.connection.status.available:
@@ -321,6 +332,9 @@ class Umaru(object):
                         ]
                     )
 
+    def set_log(self, log_str: str):
+        self.logs.append(log_str.strip())
+
     def set_logger(self):
         logger.add(
             Path.cwd() / "log" / "{time:YYYY-MM-DD}" / "common.log",
@@ -336,7 +350,7 @@ class Umaru(object):
             encoding="utf-8",
             rotation=datetime.time(),
         )
-        logger.add(set_log)
+        logger.add(self.set_log)
 
     def config_check(self) -> None:
         """配置检查"""

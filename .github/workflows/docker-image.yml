@@ -18,11 +18,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push image
-        env:
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG .
-          docker push ${{ secrets.DOCKER_REPOSITORY }}:$IMAGE_TAG
+          docker build -t ${{ secrets.DOCKER_REPOSITORY }}:latest .
+          docker push ${{ secrets.DOCKER_REPOSITORY }}:latest
   pull-docker:
     needs: [build]
     name: Pull Docker
@@ -37,9 +35,9 @@ jobs:
           port: ${{ secrets.HOST_PORT }}
           script: |
             sudo chmod 666 /var/run/docker.sock
-            docker stop $(docker ps --filter ancestor=${{ secrets.DOCKER_REPOSITORY }} -q)
-            docker rm -f $(docker ps -a --filter ancestor=${{ secrets.DOCKER_REPOSITORY }}:latest -q)
-            docker rmi -f $(docker images ${{ secrets.DOCKER_REPOSITORY }}:latest -q)
+            docker stop $(docker ps -a -q)
+            docker rm $(docker ps -a -q)
+            docker rmi $(docker images -q)
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} registry.cn-hangzhou.aliyuncs.com
             docker pull ${{ secrets.DOCKER_REPOSITORY }}:latest
-            docker run -p 8000:4000 -d ${{ secrets.DOCKER_REPOSITORY }}:latest
+            docker run -d -p 8000:4000 ${{ secrets.DOCKER_REPOSITORY }}:latest

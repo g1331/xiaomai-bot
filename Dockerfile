@@ -35,7 +35,7 @@ RUN chmod 644 /usr/share/fonts/zh/simhei.ttf && \
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN /root/.local/bin/poetry config virtualenvs.create true && \
     /root/.local/bin/poetry config installer.max-workers 10 && \
-    /root/.local/bin/poetry install --no-dev --only main
+    /root/.local/bin/poetry install --no-root --no-dev --only main
 
 RUN apt-get clean && \
     rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*

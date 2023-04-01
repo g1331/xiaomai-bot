@@ -15,7 +15,7 @@ def save_env_2_config():
     # 更新变量的值
     for var in env_vars:
         if isinstance(config[var], list):
-            config[var][0] = os.environ.get(var, config[var][0])
+            config[var][0] = [int(x) for x in os.environ.get(var, config[var][0]).split(',')]
         else:
             if config[var].isdigit():
                 config[var] = int(os.environ.get(var, config[var]))

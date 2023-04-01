@@ -53,9 +53,20 @@
 3. 打开config_demo.yaml文件填写配置信息,填写好后请改名为config.yaml再启动
 4. 启动bot在bot根目录下使用poetry run python main.py
 5. ~~根据报错缺啥弄啥吧(~~
-
+## 使用环境变量初始化
+| 变量名称            | 解释              | 示例                          |
+|-----------------|-----------------|-----------------------------|
+| bot_accounts    | bot所使用的账户使用,做分割 | 1111111111,222222222        |
+| default_account | 默认bot账户         | 1111111111                  |
+| Master          | bot管理者账户        | 3333333333                  |
+| mirai_host      | mah服务器          | http://localhost:8080       |
+| verify_key      | mah服务器验证token   | 123456789                   |
+| test_group      | 发送调试信息的群组       | 5555555555                  |
+| db_link         | sqlite3数据位置     | sqlite+aiosqlite:///data.db |
+docker 及 docker-compose 请使用环境变量进行配置
 ## 使用Docker部署
 请先安装docker
+如使用环境变量控制sqlite3位置请同时修改部署文件或指令的映射路径
 ```bash
 git clone https://github.com/g1331/xiaomai-bot                                                          # 下载项目
 cd xiaomai-bot                                                                                          # 进入项目目录
@@ -72,10 +83,19 @@ docker run -d --name xiaomai-bot\                                               
       -v /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs/ \  # 挂载随机丁真图片
       -v /xiaomai-bot/imgs/random_wife:xiaomai-bot/modules/self_contained/random_wife/imgs/ \           # 挂载随机老婆图片
       -v /xiaomai-bot/imgs/random_dragon:xiaomai-bot/modules/self_contained/random_dragon/imgs/ \       # 挂载随机龙图图片
-      xiaomai-bot                                                                                       #运行容器
+#      -e bot_accounts=bot所使用的账户使用,做分割
+#      -e default_account=默认bot账户
+#      -e Master=bot管理者账户
+#      -e mirai_host=mah服务器
+#      -e verify_key=mah服务器验证token
+#      -e test_group=发送调试信息的群组
+#      -e db_link=sqlite3数据位置
+      xiaomai-bot                                                                                       # 运行容器
 ```
 ## 使用docker-compose部署
 请先安装docker与docker-compose
+如使用环境变量控制sqlite3位置请同时修改部署文件或指令的映射路径
+
 ```bash
 git clone https://github.com/g1331/xiaomai-bot                                                          # 下载项目
 cd xiaomai-bot                                                                                          # 进入项目目录
@@ -83,7 +103,7 @@ sqlite3 /xiaomai-bot/config/data.db                                             
 sqlite> .database                                                                                       # 查看数据库
 sqlite> .quit                                                                                           # 退出
 mv config_demo.yaml config.yaml                                                                         # 请修改配置文件，以及docker-compose.yml中的挂载路径
-docker-compose up -d                                                                                    #构建并运行容器
+docker-compose up -d                                                                                    # 构建并运行容器
 ```
 
 ---

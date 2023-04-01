@@ -4,6 +4,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+#    environment:
+#      - bot_accounts=机器人账户使用,做分割
+#      - default_account=默认机器人账户
+#      - Master=机器人管理账户
+#      - mirai_host=mirai服务器
+#      - verify_key=mah验证token
+#      - test_group=debug群组
+#      - db_link=sqlite位置
     container_name: xiaomai-bot
     restart: always
     volumes:

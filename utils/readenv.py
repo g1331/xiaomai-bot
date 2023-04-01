@@ -14,13 +14,13 @@ def save_env_2_config():
 
     # 更新变量的值
     for var in env_vars:
-        # 如果变量是一个列表，则将环境变量转换成列表并赋值给相应的变量
         if isinstance(config[var], list):
-            env_value = os.environ.get(var, config[var][0])
-            config[var] = env_value.split(",") if env_value else config[var]
-        # 否则，直接将环境变量的值赋值给相应的变量
+            config[var][0] = os.environ.get(var, config[var][0])
         else:
-            config[var] = os.environ.get(var, config[var])
+            if config[var].isdigit():
+                config[var] = int(os.environ.get(var, config[var]))
+            else:
+                config[var] = os.environ.get(var, config[var])
 
     # 写入更新后的配置文件
     output_path = os.path.join(root_path, 'config', 'config.yaml')

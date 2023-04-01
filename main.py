@@ -16,9 +16,13 @@ if __name__ == '__main__':
         set_config()
         exit(0)
     elif not (Path.cwd() / "config" / "config.yaml").exists():
-        from utils.tui import config_init
-        config_init()
-
+        from utils.readenv import read_env
+        if not read_env():
+            from utils.tui import config_init
+            config_init()
+        else:
+            from utils.readenv import save_env_2_config
+            save_env_2_config()
 from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.lifecycle import AccountLaunch

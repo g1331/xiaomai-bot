@@ -8,6 +8,7 @@ from loguru import logger
 
 from modules.self_contained.bf1_warm_server import infos, commands
 from utils.bf1.default_account import BF1DA
+from utils.bf1.gateway_api import api_instance
 
 warm_dict = {
     # "group_name": "game_id"
@@ -43,13 +44,15 @@ async def leave_server(game_id, num=None) -> int:
         tasks = []
         for bot_name in infos:
             if infos[bot_name].gameId == game_id:
-                tasks.append((await BF1DA.get_api_instance()).leaveGame(game_id))
+                tasks.append((api_instance.get_api_instance(
+                    bot_name, session=infos[bot_name].sessionId)).leaveGame(game_id))
         await asyncio.gather(*tasks)
     else:
         tasks = []
         for bot_name in infos:
             if infos[bot_name].gameId == game_id:
-                tasks.append((await BF1DA.get_api_instance()).leaveGame(game_id))
+                tasks.append((api_instance.get_api_instance(
+                        bot_name, session=infos[bot_name].sessionId)).leaveGame(game_id))
                 if len(tasks) >= num:
                     break
         await asyncio.gather(*tasks)

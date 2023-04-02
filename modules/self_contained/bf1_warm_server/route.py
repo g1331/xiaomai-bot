@@ -71,12 +71,14 @@ def index():
         nf_bot.state = "Offline"
     if nf_bot.user not in bots:
         logger.info(f"{nf_bot.user} connected")
-        bots[nf_bot.user] = info
     else:
         if infos[nf_bot.user].state != nf_bot.state:
             logger.info(f"{nf_bot.user}状态改变{bots[nf_bot.user]['state']}>>{nf_bot.state}")
+    if bots[nf_bot.user]['state'] == "Playing" and nf_bot.state == "Loading":
+        pass
+    else:
         bots[nf_bot.user] = info
-    infos[nf_bot.user] = nf_bot
+        infos[nf_bot.user] = nf_bot
     if nf_bot.user in commands:
         response_data = {'command': commands[nf_bot.user], 'id': generate_uuid()}
         logger.info(f"{nf_bot.user}执行{commands[nf_bot.user]}")

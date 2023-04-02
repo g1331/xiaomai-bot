@@ -18,6 +18,28 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "aioflask"
+version = "0.4.0"
+description = "Flask running on asyncio."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "aioflask-0.4.0-py3-none-any.whl", hash = "sha256:9f0c2327f973a853a37b1506039e74bc532d58a009427e66bc37bf1e7bffbff2"},
+    {file = "aioflask-0.4.0.tar.gz", hash = "sha256:96403709fff88351c606667fce1a5a66bdef2d634a04b358713c8304216db68f"},
+]
+
+[package.dependencies]
+flask = ">=2"
+greenletio = "*"
+uvicorn = "*"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "aiohttp"
 version = "3.8.4"
 description = "Async http client/server framework (asyncio)"
@@ -1065,6 +1087,26 @@ test = ["faulthandler", "objgraph", "psutil"]
 type = "legacy"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
+
+[[package]]
+name = "greenletio"
+version = "0.10.0"
+description = "Asyncio integration with sync code using greenlets."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "greenletio-0.10.0-py3-none-any.whl", hash = "sha256:52199c2030fb7011fc10ac191329bba1b356b039ba1735970180bb7dd7c05b9a"},
+    {file = "greenletio-0.10.0.tar.gz", hash = "sha256:67c37cfd6f7fa12d7988c4932a6d30f9ef5f3d3477f6744ab363921f0431740c"},
+]
+
+[package.dependencies]
+greenlet = "*"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.org/simple"
+reference = "pypi-public"
 
 [[package]]
 name = "grpcio"
@@ -3059,6 +3101,30 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "uvicorn"
+version = "0.21.1"
+description = "The lightning-fast ASGI server."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "uvicorn-0.21.1-py3-none-any.whl", hash = "sha256:e47cac98a6da10cd41e6fd036d472c6f58ede6c5dbee3dbee3ef7a100ed97742"},
+    {file = "uvicorn-0.21.1.tar.gz", hash = "sha256:0fac9cb342ba099e0d582966005f3fdba5b0290579fed4a6266dc702ca7bb032"},
+]
+
+[package.dependencies]
+click = ">=7.0"
+h11 = ">=0.8"
+
+[package.extras]
+standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "uvloop (>=0.14.0,!=0.15.0,!=0.15.1)", "watchfiles (>=0.13)", "websockets (>=10.4)"]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "wcwidth"
 version = "0.2.6"
 description = "Measures the displayed width of unicode strings in a terminal"
@@ -3335,4 +3401,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "4a98896136a2e9216a70b4bb5f830c536bb1ebfc1c3ec89974a4bda5d57cb4d6"
+content-hash = "3dc8eca2f84e55f4640f1b2a4183039b1d9be1e564bba0b2678a90a2968c5927"

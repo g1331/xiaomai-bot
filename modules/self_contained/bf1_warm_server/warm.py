@@ -59,7 +59,7 @@ async def leave_server(game_id, num=None) -> int:
 async def join_server(game_id, num) -> int:
     counter = 0
     for bot_name in infos:
-        if infos[bot_name].state == "主页":
+        if infos[bot_name].state == "None":
             commands[bot_name] = f"join {game_id}"
             counter += 1
             if counter >= num:

@@ -28,7 +28,7 @@ def get_bots():
     for bot_name in bots:
         if infos[bot_name].onlineState == 3:
             online_counter += 1
-        if infos[bot_name].state == "主页":
+        if infos[bot_name].state == "None":
             rest_counter += 1
         else:
             busy_counter += 1
@@ -95,6 +95,7 @@ class Control(object):
         async def wrapper(event: GroupMessage):
             perm_list = get_perm_list()
             if event.sender.id not in perm_list:
+                print(event.sender.id)
                 raise ExecutionStop
             return Depend(wrapper)
 

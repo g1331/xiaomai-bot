@@ -290,7 +290,7 @@ async def stop_warm_handle(app: Ariadne, group: Group, source: Source, group_nam
     ), quote=source)
     await leave_server(game_id)
     await leave_server(game_id)
-    del warm_dict[game_id]
+    del warm_dict[group_name]
     return await app.send_message(group, MessageChain(
         f"执行成功!"
     ), quote=source)

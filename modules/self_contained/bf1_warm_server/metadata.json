@@ -1,0 +1,51 @@
+{
+  "level": 1,
+  "name": "bf1_warm_server",
+  "version": "0.1",
+  "display_name": "BF1暖服鸡",
+  "authors": [
+    "13"
+  ],
+  "description": "自动暖服鸡",
+  "usage": [
+    "使用 -nfh 查看指令列表",
+    "查询机器人状态:",
+    "-nfb",
+    "连接掉线bot:",
+    "-connect",
+    "查询服务器状态:",
+    "-info [群组名]",
+    "开启一个暖服计划:",
+    "-warm [群组名]",
+    "停止一个暖服计划:",
+    "-stop [群组名]",
+    "列出所有暖服计划:",
+    "-warmlist",
+    "手动加入服务器:",
+    "-join [群组名] [数量]",
+    "手动退出服务器:",
+    "-leave [群组名] [数量]",
+    "绑定群组:",
+    "-bind [群组名] [gameid]",
+    "解绑群组:",
+    "-unbind [群组名]",
+    "列出绑定群组: -bdlist",
+    "授权群:\n",
+    "-addgroup [群号]\n",
+    "取消授权群:\n",
+    "-removegroup [群号]\n",
+    "列出授权群:\n",
+    "-grouplist\n",
+    "授权用户:\n",
+    "-addperm [qq号]\n",
+    "取消授权用户:\n",
+    "-removeperm [qq号]\n",
+    "列出授权用户:\n",
+    "-permlist\n"
+  ],
+  "example": [
+    "-warm scp1"
+  ],
+  "default_switch": false,
+  "default_notice": true
+}

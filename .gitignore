@@ -32,6 +32,9 @@ alembic.ini
 /modules/self_contained/emoji_mix/assets/update.json
 /core/models/saya_model/modules_data.json
 /utils/bf1/default_account.json
+/modules/self_contained/bf1_warm_server/bind.json
+/modules/self_contained/bf1_warm_server/group.json
+/modules/self_contained/bf1_warm_server/perm.json
 
 # 第三方插件
 /modules/third_party/

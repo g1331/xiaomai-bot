@@ -42,6 +42,7 @@ gitpython = "^3.1.31"
 revchatgpt = "3.3.4"
 rapidfuzz = "^2.13.7"
 noneprompt = "^0.1.9"
+flask = "^2.2.3"
 
 
 [tool.poetry.group.dev.dependencies]

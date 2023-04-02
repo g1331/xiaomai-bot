@@ -302,7 +302,7 @@ class Function(object):
             if not module_controller.if_module_available(module_name):
                 if notice and module_controller.if_module_notice_on(module_name, group):
                     await app.send_message(group, MessageChain(
-                        f"{module_meta.display_name or module_name}插件正在维护~"
+                        f"[{module_meta.display_name or module_name}]插件正在维护~"
                     ), quote=source)
                 raise ExecutionStop
             else:
@@ -310,7 +310,7 @@ class Function(object):
                 if not module_controller.if_module_switch_on(module_name, group):
                     if notice and module_controller.if_module_notice_on(module_name, group):
                         await app.send_message(group, MessageChain(
-                            f"{module_meta.display_name or module_name}插件已关闭\n请使用‘-开启 插件编号’来打开插件\n插件编号请使用‘帮助’获取"
+                            f"[{module_meta.display_name or module_name}]插件已关闭\n请使用‘-开启 插件编号’来打开插件\n插件编号请使用‘帮助’获取"
                         ), quote=source)
                     raise ExecutionStop
             return

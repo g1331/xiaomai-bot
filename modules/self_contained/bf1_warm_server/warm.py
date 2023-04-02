@@ -128,27 +128,27 @@ async def warm(app: Ariadne, group: Group, source: Source, game_id, group_name):
             need_in = full_player - current_player
             try_join = await join_server(game_id, need_in)
             if try_join == 0:
-                await app.send_message(group, MessageChain(
-                    f"暖服任务告警!\n"
-                    f"需要塞入机量:{need_in}\n"
-                    f"实际空闲机量:{try_join}\n"
-                    f"服务器:{server_name}\n"
-                    f"当前人数:{current_player}/{max_player}\n"
-                    f"当前机量:{bot_in}\n"
-                    f"任务已耗时:{time_info}"
-                ), quote=source)
+                # await app.send_message(group, MessageChain(
+                #     f"暖服任务告警!\n"
+                #     f"需要塞入机量:{need_in}\n"
+                #     f"实际空闲机量:{try_join}\n"
+                #     f"服务器:{server_name}\n"
+                #     f"当前人数:{current_player}/{max_player}\n"
+                #     f"当前机量:{bot_in}\n"
+                #     f"任务已耗时:{time_info}"
+                # ), quote=source)
                 fail_counter += 1
                 await asyncio.sleep(60)
                 continue
-            await app.send_message(group, MessageChain(
-                f"加塞执行!\n"
-                f"服务器:{server_name}!\n"
-                f"当前人数:{current_player}/{max_player}\n"
-                f"地图:{mapNamePretty}-{mapModePretty}\n"
-                f"服内机量:{bot_in}\n"
-                f"尝试塞入机量:{try_join}\n"
-                f"任务已耗时:{time_info}"
-            ), quote=source)
+            # await app.send_message(group, MessageChain(
+            #     f"加塞执行!\n"
+            #     f"服务器:{server_name}!\n"
+            #     f"当前人数:{current_player}/{max_player}\n"
+            #     f"地图:{mapNamePretty}-{mapModePretty}\n"
+            #     f"服内机量:{bot_in}\n"
+            #     f"尝试塞入机量:{try_join}\n"
+            #     f"任务已耗时:{time_info}"
+            # ), quote=source)
             await asyncio.sleep(60)
             continue
         elif current_player >= full_player:

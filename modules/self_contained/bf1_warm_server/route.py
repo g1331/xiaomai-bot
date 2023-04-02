@@ -44,7 +44,7 @@ log.setLevel(logging.ERROR)
 
 
 @flask.route('/', methods=['POST'])
-async def index():
+def index():
     global infos, commands, bots
     info = request.get_json(force=True, silent=True)
     # 传入NFBOT模型

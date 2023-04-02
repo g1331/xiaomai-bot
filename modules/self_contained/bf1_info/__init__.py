@@ -1,6 +1,8 @@
 import asyncio
+import datetime
 import time
 from pathlib import Path
+from typing import List, Tuple
 
 from creart import create
 from graia.amnesia.message import MessageChain
@@ -12,6 +14,8 @@ from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePol
     RegexResult, ArgumentMatch, ArgResult
 from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
+from graia.scheduler.saya.schema import SchedulerSchema
+from graia.scheduler import timers
 from graia.saya import Channel, Saya
 from loguru import logger
 from zhconv import zhconv
@@ -31,8 +35,10 @@ from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
-from utils.bf1.bf_utils import get_personas_by_name, check_bind, \
-    BTR_get_recent_info, BTR_get_match_info, BTR_update_data, bfeac_checkBan
+from utils.bf1.bf_utils import (
+    get_personas_by_name, check_bind, BTR_get_recent_info,
+    BTR_get_match_info, BTR_update_data, bfeac_checkBan
+)
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -59,6 +65,8 @@ async def check_default_account(app: Ariadne):
             MessageChain("BF1默认查询账号信息不完整，请使用 '-设置默认账号 pid remid=xxx,sid=xxx' 命令设置默认账号信息")
         )
     else:
+        # 登录默认账号
+        await BF1DA.get_api_instance()
         # 更新默认账号信息
         account_info = await BF1DA.update_player_info()
         logger.debug("默认账号信息检查完毕")
@@ -1192,3 +1200,107 @@ async def detailed_server(
         MessageChain(result),
         quote=source
     )
+
+
+# 定时服务器信息收集，每20分钟执行一次
+# @channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            FullMatch("-collect"),
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def server_info_collect():
+    start_time = time.time()
+    #   搜索获取私服game_id
+    tasks = []
+    filter_dict = {
+        "name": "",  # 服务器名
+        "serverType": {  # 服务器类型
+            "OFFICIAL": "off",  # 官服
+            "RANKED": "on",  # 私服
+            "UNRANKED": "on",  # 私服(不计战绩)
+            "PRIVATE": "on"  # 密码服
+        }
+    }
+    game_id_list = []
+    for _ in range(50):
+        tasks.append((await BF1DA.get_api_instance()).searchServers(filter_dict=filter_dict))
+    logger.info("开始获取私服")
+    results = await asyncio.gather(*tasks)
+    for result in results:
+        if isinstance(result, str):
+            continue
+        result: list = result["result"]
+        server_list = ServerData(result).sort()
+        for server in server_list:
+            if server["game_id"] not in game_id_list:
+                game_id_list.append(server["game_id"])
+    logger.success(f"共获取{len(game_id_list)}个私服")
+
+    #   获取详细信息
+    #   每200个私服分为一组获取详细信息
+    tasks = []
+    results = []
+    for game_id in game_id_list:
+        tasks.append((await BF1DA.get_api_instance()).getFullServerDetails(game_id))
+        if len(tasks) == 200:
+            logger.info(f"开始获取私服详细信息，共{len(tasks)}个")
+            temp = await asyncio.gather(*tasks)
+            results.extend(temp)
+            tasks = []
+    if tasks:
+        logger.info(f"开始获取私服详细信息，共{len(tasks)}个")
+        temp = await asyncio.gather(*tasks)
+        results.extend(temp)
+
+    #   整理数据
+    serverId_list = []
+    server_info_list: List[Tuple[str, str, str, int, datetime, datetime, datetime]] = []
+    vip_dict = {}
+    ban_dict = {}
+    admin_dict = {}
+    owner_dict = {}
+    for result in results:
+        if isinstance(result, str):
+            continue
+        server = result["result"]
+        rspInfo = server.get("rspInfo", {})
+        Info = server["serverInfo"]
+        if not rspInfo:
+            continue
+        server_name = Info["name"]
+        server_server_id = rspInfo.get("server", {}).get("serverId")
+        server_guid = Info["guid"]
+        server_game_id = Info["gameId"]
+        #   将其转换为datetime
+        createdDate = rspInfo.get("server", {}).get("createdDate")
+        createdDate = datetime.datetime.fromtimestamp(int(createdDate) / 1000)
+        expirationDate = rspInfo.get("server", {}).get("expirationDate")
+        expirationDate = datetime.datetime.fromtimestamp(int(expirationDate) / 1000)
+        updatedDate = rspInfo.get("server", {}).get("updatedDate")
+        updatedDate = datetime.datetime.fromtimestamp(int(updatedDate) / 1000)
+        server_info_list.append((
+            server_name, server_server_id, server_guid, server_game_id, createdDate, expirationDate, updatedDate))
+        serverId_list.append(server_server_id)
+        vip_dict[server_server_id] = rspInfo.get("vipList", [])
+        ban_dict[server_server_id] = rspInfo.get("bannedList", [])
+        admin_dict[server_server_id] = rspInfo.get("adminList", [])
+        if owner := rspInfo.get("owner"):
+            owner_dict[server_server_id] = owner
+
+    #   保存数据
+    await BF1DB.update_serverInfoList(server_info_list)
+    logger.debug(f"更新服务器信息完成，耗时{round(time.time() - start_time, 2)}秒")
+    await BF1DB.update_serverVipList(vip_dict)
+
+    logger.success(f"共获取{len(serverId_list)}个私服详细信息，耗时{round(time.time() - start_time, 2)}秒")

@@ -9,8 +9,9 @@ class Bf1Account(orm.Base):
 
     __tablename__ = "bf1_account"
 
+    id = Column(Integer, primary_key=True)
     # 固定
-    persona_id = Column(BIGINT, primary_key=True)
+    persona_id = Column(BIGINT)
     # 一般固定
     user_id = Column(BIGINT)
     # 变化
@@ -39,7 +40,7 @@ class Bf1Group(orm.Base):
 
     __tablename__ = "bf1_group"
     id = Column(Integer, primary_key=True)
-    group_name = Column(String, primary_key=True)
+    group_name = Column(String, unique=True)
     bind_guids = Column(JSON)
     bind_manager_account_pids = Column(JSON)
 
@@ -48,7 +49,7 @@ class Bf1GroupBind(orm.Base):
     """bf1群组与QQ群绑定关系表"""
     __tablename__ = "bf1_group_bind"
     id = Column(Integer, primary_key=True)
-    qq_group_id = Column(BIGINT, primary_key=True)
+    qq_group_id = Column(BIGINT)
     bf1_group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
 
 
@@ -58,13 +59,62 @@ class Bf1Server(orm.Base):
 
     __tablename__ = "bf1_server"
     id = Column(Integer, primary_key=True)
-    serverId = Column(BIGINT, primary_key=True)
-    persistedGameId = Column(String, primary_key=True)
+    serverName = Column(String)
+    serverId = Column(BIGINT, unique=True)
+    persistedGameId = Column(String)
     gameId = Column(BIGINT, nullable=False)
-    createdDate = Column(BIGINT, nullable=False)
-    expirationDate = Column(BIGINT, nullable=False)
-    updatedDate = Column(BIGINT, nullable=False)
-    time = Column(DateTime, nullable=False)
+    createdDate = Column(DateTime, nullable=False)
+    expirationDate = Column(DateTime, nullable=False)
+    updatedDate = Column(DateTime, nullable=False)
+    record_time = Column(DateTime, nullable=False)
+
+
+#   Bf1Vip
+class Bf1ServerVip(orm.Base):
+    """VIP表"""
+
+    __tablename__ = "bf1_server_vip"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    display_name = Column(String, nullable=False)
+    time = Column(DateTime)
+
+
+#   Ban
+class Bf1ServerBan(orm.Base):
+    """Ban表"""
+
+    __tablename__ = "bf1_server_ban"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    display_name = Column(String, nullable=False)
+    time = Column(DateTime)
+
+
+#   Admin
+class Bf1ServerAdmin(orm.Base):
+    """管理员表"""
+
+    __tablename__ = "bf1_server_admin"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    display_name = Column(String, nullable=False)
+    time = Column(DateTime)
+
+
+#   Owner
+class Bf1ServerOwner(orm.Base):
+    """服主表"""
+
+    __tablename__ = "bf1_server_owner"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    display_name = Column(String, nullable=False)
+    time = Column(DateTime)
 
 
 # 服管日志
@@ -73,14 +123,16 @@ class Bf1ManagerLog(orm.Base):
 
     __tablename__ = "bf1_manager_log"
     id = Column(Integer, primary_key=True)
-    serverId = Column(BIGINT, primary_key=True)
-    persistedGameId = Column(String, primary_key=True)
+    serverId = Column(BIGINT)
+    persistedGameId = Column(String)
     gameId = Column(BIGINT, nullable=False)
     # 固定
-    persona_id = Column(BIGINT, primary_key=True)
+    persona_id = Column(BIGINT)
     # 变化
     display_name = Column(String)
-    time = Column(DateTime, nullable=False)
+    # action
+    action = Column(String,)
+    time = Column(DateTime)
 
 
 # 对局缓存
@@ -89,7 +141,7 @@ class Bf1MatchCache(orm.Base):
 
     __tablename__ = "bf1_match_cache"
     id = Column(Integer, primary_key=True)
-    match_id = Column(BIGINT, primary_key=False)
+    match_id = Column(BIGINT)
 
     server_name = Column(String, nullable=False)
     map_name = Column(String, nullable=False)

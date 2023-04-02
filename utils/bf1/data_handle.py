@@ -545,7 +545,7 @@ class ServerData:
 
         # 排序
         if sort_type == "player":
-            server_list.sort(key=lambda x: x.get("slots").get("Soldier").get("current"), reverse=True)
+            server_list.sort(key=lambda x: x.get("SoldierCurrent"), reverse=True)
         else:
             server_list.sort(key=lambda x: x.get("name"), reverse=True)
 

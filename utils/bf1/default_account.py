@@ -1,11 +1,10 @@
-import asyncio
 import json
 from pathlib import Path
 
 from loguru import logger
 
-from utils.bf1.gateway_api import api_instance
 from utils.bf1.database import BF1DB
+from utils.bf1.gateway_api import api_instance
 
 
 class DefaultAccount:
@@ -24,10 +23,6 @@ class DefaultAccount:
         self.remid = None
         self.sid = None
         self.session = None
-        # 初始化时，从文件读取默认账号信息
-        asyncio.run(self.read_default_account())
-        # 初始化时，自动登录默认账号
-        asyncio.run(self.get_api_instance())
 
     async def get_api_instance(self) -> api_instance:
         if self.account_instance is None:

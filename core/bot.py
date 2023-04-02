@@ -442,17 +442,20 @@ class Umaru(object):
             alembic_version_path.mkdir()
         cfg = Config(file_="alembic.ini", ini_section="alembic")
         try:
+            logger.debug("尝试自动更新数据库")
             revision(cfg, message="update", autogenerate=True)
             upgrade(cfg, "head")
+            logger.success("数据库更新成功")
         except (CommandError, ResolutionError):
+            logger.warning("数据库更新失败，正在重置数据库")
             _ = await orm.reset_version()
             shutil.rmtree(alembic_version_path)
             alembic_version_path.mkdir()
             revision(cfg, message="update", autogenerate=True)
             upgrade(cfg, "head")
 
-        # os.system("alembic revision --autogenerate -m 'update'")
-        # os.system("alembic upgrade head")
+        os.system("alembic revision --autogenerate -m 'update'")
+        os.system("alembic upgrade head")
 
     @staticmethod
     def launch():

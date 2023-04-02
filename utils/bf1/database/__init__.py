@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Union
+from typing import Union, List, Tuple, Dict, Any
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, and_, not_
 
-from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache
+from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache, \
+    Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner
 
 
 class bf1_db:
@@ -170,30 +171,181 @@ class bf1_db:
     #  根据serverid/guid获取对应信息如gameid、
     #  写:
     #  从getFullServerDetails获取并写入服务器信息
-    @staticmethod
-    async def get_server_by_guid(guid: str) -> Bf1Server:
-        if server := await orm.fetch_one(select(Bf1Server).where(Bf1Server.persistedGameId == guid)):
-            return server[0]
-        else:
-            return None
 
     @staticmethod
     async def update_serverInfo(
-            gameId: int, guid: str, serverId: int, createdDate: int,
-            expirationDate: int, updatedDate: int = None
+            serverName: str, serverId: str, guid: str, gameId: int,
+            createdDate: datetime, expirationDate: datetime, updatedDate: datetime
     ) -> bool:
         await orm.insert_or_update(
             table=Bf1Server,
             data={
-                "gameId": gameId,
-                "persistedGameId": guid,
+                "serverName": serverName,
                 "serverId": serverId,
+                "persistedGameId": guid,
+                "gameId": gameId,
                 "createdDate": createdDate,
                 "expirationDate": expirationDate,
-                "updatedDate": updatedDate
+                "updatedDate": updatedDate,
+                "record_time": datetime.now()
             },
             condition=[
-                Bf1Server.persistedGameId == guid
+                Bf1Server.serverId == serverId
+            ]
+        )
+        return True
+
+    @staticmethod
+    async def update_serverInfoList(
+            server_info_list: List[Tuple[str, str, str, int, datetime, datetime, datetime]]
+    ) -> bool:
+        # 构造要插入或更新的记录列表
+        records = []
+        for serverName, serverId, guid, gameId, createdDate, expirationDate, updatedDate in server_info_list:
+            record = {
+                "serverName": serverName,
+                "serverId": serverId,
+                "persistedGameId": guid,
+                "gameId": gameId,
+                "createdDate": createdDate,
+                "expirationDate": expirationDate,
+                "updatedDate": updatedDate,
+                "record_time": datetime.now()
+            }
+            records.append(record)
+        # 插入或更新记录
+        await orm.insert_or_update_batch(
+            table=Bf1Server,
+            data_list=records,
+            conditions=[(Bf1Server.serverId == record["serverId"],) for record in records]
+        )
+        return True
+
+    @staticmethod
+    async def get_serverInfo(
+            serverId: str
+    ) -> Bf1Server:
+        if server := await orm.fetch_one(select(
+                Bf1Server.serverName, Bf1Server.serverId, Bf1Server.persistedGameId, Bf1Server.gameId,
+        ).where(Bf1Server.serverId == serverId)):
+            result = {
+
+            }
+            return result
+        else:
+            return None
+
+    @staticmethod
+    async def update_serverVip(
+            serverId: str, persona_id: int, display_name: str
+    ) -> bool:
+        await orm.insert_or_update(
+            table=Bf1ServerVip,
+            data={
+                "serverId": serverId,
+                "persona_id": persona_id,
+                "display_name": display_name,
+                "time": datetime.now(),
+            },
+            condition=[
+                Bf1ServerVip.serverId == serverId,
+                Bf1ServerVip.persona_id == persona_id
+            ]
+        )
+        return True
+
+    @staticmethod
+    async def update_serverVipList(
+            vip_dict: Dict[int, Dict[str, Any]]
+    ) -> bool:
+        # 构造要插入或更新的记录列表
+        records = []
+        for serverId in vip_dict:
+            for vip in vip_dict[serverId]:
+                record = {
+                    "serverId": serverId,
+                    "persona_id": vip["personaId"],
+                    "display_name": vip["displayName"],
+                    "time": datetime.now(),
+                }
+                records.append(record)
+        # 插入或更新记录
+        await orm.insert_or_update_batch(
+            table=Bf1ServerVip,
+            data_list=records,
+            conditions=[(Bf1ServerVip.serverId == record["serverId"], Bf1ServerVip.persona_id == record["persona_id"])
+                        for record in records]
+        )
+        logger.debug(f"更新vip完成")
+        # 删除根据传入的serverId获取的所有vip中不在的数据库中的记录
+        delete_conditions = []
+        for serverId in vip_dict:
+            persona_ids = [vip['personaId'] for vip in vip_dict[serverId]]
+            delete_conditions.append(
+                and_(
+                    Bf1ServerVip.serverId == serverId,
+                    not_(Bf1ServerVip.persona_id.in_(persona_ids))
+                )
+            )
+        await orm.delete_batch(
+            table=Bf1ServerVip,
+            conditions_list=delete_conditions
+        )
+        return True
+
+    @staticmethod
+    async def update_serverBan(
+            serverId: str, persona_id: int, display_name: str
+    ) -> bool:
+        await orm.insert_or_update(
+            table=Bf1ServerBan,
+            data={
+                "serverId": serverId,
+                "persona_id": persona_id,
+                "display_name": display_name,
+                "time": datetime.now(),
+            },
+            condition=[
+                Bf1ServerBan.serverId == serverId,
+                Bf1ServerBan.persona_id == persona_id
+            ]
+        )
+        return True
+
+    @staticmethod
+    async def update_serverAdmin(
+            serverId: str, persona_id: int, display_name: str
+    ) -> bool:
+        await orm.insert_or_update(
+            table=Bf1ServerAdmin,
+            data={
+                "serverId": serverId,
+                "persona_id": persona_id,
+                "display_name": display_name,
+                "time": datetime.now(),
+            },
+            condition=[
+                Bf1ServerAdmin.serverId == serverId,
+                Bf1ServerAdmin.persona_id == persona_id
+            ]
+        )
+        return True
+
+    @staticmethod
+    async def update_serverOwner(
+            serverId: str, persona_id: int, display_name: str
+    ) -> bool:
+        await orm.insert_or_update(
+            table=Bf1ServerOwner,
+            data={
+                "serverId": serverId,
+                "persona_id": persona_id,
+                "display_name": display_name,
+                "time": datetime.now(),
+            },
+            condition=[
+                Bf1ServerOwner.serverId == serverId,
+                Bf1ServerOwner.persona_id == persona_id
             ]
         )
         return True

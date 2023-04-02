@@ -114,7 +114,7 @@ async def get_bot_list(app: Ariadne, group: Group, source: Source):
             unknown_list.append(bot_info)
     return await app.send_message(group, MessageChain(
         f"机器人状态:\n"
-        f"在线:{len(menu_list)}\n"
+        f"空闲:{len(menu_list)}\n"
         f"加载中:{len(loading_list)}\n"
         f"游戏中:{len(playing_list)}\n"
         f"离线:{len(offline_list)}\n"

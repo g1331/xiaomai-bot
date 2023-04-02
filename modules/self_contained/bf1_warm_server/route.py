@@ -76,14 +76,15 @@ def index():
     else:
         if infos[nf_bot.user].state != nf_bot.state:
             logger.info(f"{nf_bot.user} {bots[nf_bot.user]['state']}>>{nf_bot.state}")
+        bots[nf_bot.user] = info
     infos[nf_bot.user] = nf_bot
     if nf_bot.user in commands:
         response_data = {'command': commands[nf_bot.user], 'id': generate_uuid()}
         logger.info(f"{nf_bot.user}>>{commands[nf_bot.user]}")
         del commands[nf_bot.user]
-        return jsonify(response_data)
+        return json.dumps(response_data)
     else:
-        return jsonify({})
+        return json.dumps({})
 
 
 def run_flask_app():

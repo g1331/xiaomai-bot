@@ -2,11 +2,11 @@
   "level": 1,
   "name": "bf1_warm_server",
   "version": "0.1",
-  "display_name": "BF1暖服鸡",
+  "display_name": "BF1暖服姬",
   "authors": [
     "13"
   ],
-  "description": "自动暖服鸡",
+  "description": "暖服姬",
   "usage": [
     "使用 -nfh 查看指令列表",
     "查询机器人状态:",

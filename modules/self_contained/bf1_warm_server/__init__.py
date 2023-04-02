@@ -656,6 +656,8 @@ async def get_grouplist(app: Ariadne, group: Group, source: Source):
             quote=source
         )
     else:
+        for i in range(len(group_list)):
+            group_list[i] = f"{i + 1}.{group_list[i]}"
         result = "\n".join(group_list)
         return await app.send_message(
             group,
@@ -755,6 +757,8 @@ async def get_permlist(app: Ariadne, group: Group, source: Source):
             quote=source
         )
     else:
+        for i in range(len(perm_list)):
+            perm_list[i] = f"{i + 1}.{perm_list[i]}"
         result = "\n".join(perm_list)
         return await app.send_message(
             group,

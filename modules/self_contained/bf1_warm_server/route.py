@@ -3,13 +3,10 @@ import logging
 import uuid
 from typing import Optional
 
-from creart import create
-from flask import Flask, request, jsonify
-from graia.saya import Saya
+from flask import Flask, request
 from loguru import logger
 from pydantic import BaseModel
 
-saya = create(Saya)
 infos = {}
 commands = {}
 bots = {
@@ -47,11 +44,13 @@ log.setLevel(logging.ERROR)
 
 
 @flask.route('/', methods=['POST'])
-def index():
+async def index():
     global infos, commands, bots
     info = request.get_json(force=True, silent=True)
     # 传入NFBOT模型
     try:
+        if info is None:
+            return json.dumps({})
         nf_bot = NFBOT(**info)
     except Exception as e:
         logger.error(f"传入NFBOT模型失败, 错误信息: {e}")
@@ -75,12 +74,12 @@ def index():
         bots[nf_bot.user] = info
     else:
         if infos[nf_bot.user].state != nf_bot.state:
-            logger.info(f"{nf_bot.user} {bots[nf_bot.user]['state']}>>{nf_bot.state}")
+            logger.info(f"{nf_bot.user}状态改变{bots[nf_bot.user]['state']}>>{nf_bot.state}")
         bots[nf_bot.user] = info
     infos[nf_bot.user] = nf_bot
     if nf_bot.user in commands:
         response_data = {'command': commands[nf_bot.user], 'id': generate_uuid()}
-        logger.info(f"{nf_bot.user}>>{commands[nf_bot.user]}")
+        logger.info(f"{nf_bot.user}执行{commands[nf_bot.user]}")
         del commands[nf_bot.user]
         return json.dumps(response_data)
     else:

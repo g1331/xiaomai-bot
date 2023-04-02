@@ -504,6 +504,12 @@ async def bind_gn_gi(app: Ariadne, group: Group, source: Source, game_id: RegexR
 )
 async def unbind_gn_gi(app: Ariadne, group: Group, source: Source, group_name: RegexResult):
     group_name = group_name.result.display.strip()
+    if group_name in warm_dict:
+        return await app.send_message(
+            group,
+            MessageChain(f"群组[{group_name}]正在进行暖服中,请先停止其任务!"),
+            quote=source
+        )
     if not os.path.exists(bind_file_path):
         with open(bind_file_path, "w") as f:
             json.dump({}, f, indent=4, ensure_ascii=False)

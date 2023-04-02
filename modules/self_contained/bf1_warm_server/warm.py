@@ -156,7 +156,7 @@ async def warm(app: Ariadne, group: Group, source: Source, game_id, group_name):
             if real_player >= full_player:
                 await leave_server(game_id)
                 await leave_server(game_id)
-                del warm_dict[game_id]
+                del warm_dict[group_name]
                 bot_in = 0
                 for bot in infos:
                     if infos[bot].gameId == game_id:
@@ -171,19 +171,19 @@ async def warm(app: Ariadne, group: Group, source: Source, game_id, group_name):
             # current = real + bot > full
             else:
                 need_leave = bot_in - (full_player - real_player)
-                await app.send_message(group, MessageChain(
-                    f"暖服ing"
-                    f"服务器:{server_name}\n"
-                    f"当前人数:{current_player}/{max_player}\n"
-                    f"地图:{mapNamePretty}-{mapModePretty}\n"
-                    f"服内机量:{bot_in}\n"
-                    f"尝试退服机量:{need_leave}\n"
-                    f"任务已耗时:{time_info}"
-                ), quote=source)
+                # await app.send_message(group, MessageChain(
+                #     f"暖服ing\n"
+                #     f"服务器:{server_name}\n"
+                #     f"当前人数:{current_player}/{max_player}\n"
+                #     f"地图:{mapNamePretty}-{mapModePretty}\n"
+                #     f"服内机量:{bot_in}\n"
+                #     f"尝试退服机量:{need_leave}\n"
+                #     f"任务已耗时:{time_info}"
+                # ), quote=source)
                 # 计算需要多少机器人退服
                 if need_leave <= 0:
                     logger.info(
-                        f"暖服ing"
+                        f"暖服ing\n"
                         f"服务器:{server_name}\n"
                         f"当前人数:{current_player}/{max_player}\n"
                         f"地图:{mapNamePretty}-{mapModePretty}\n"

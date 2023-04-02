@@ -179,7 +179,7 @@ async def warm_list_handle(app: Ariadne, group: Group, source: Source):
             f"当前无暖服计划"
         ), quote=source)
     for group_name in warm_dict:
-        result.append(f"{group_name}\n{warm_dict[group_name]}" + "=" * 10)
+        result.append(f"{group_name}\n{warm_dict[group_name]}\n" + "=" * 10)
     result = "\n".join(result)
     return await app.send_message(group, MessageChain(
         f"当前暖服计划:\n{result}"

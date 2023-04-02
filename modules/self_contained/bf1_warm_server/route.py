@@ -71,6 +71,7 @@ def index():
         nf_bot.state = "Offline"
     if nf_bot.user not in bots:
         logger.info(f"{nf_bot.user} connected")
+        bots[nf_bot.user] = info
     else:
         if infos[nf_bot.user].state != nf_bot.state:
             logger.info(f"{nf_bot.user}状态改变{bots[nf_bot.user]['state']}>>{nf_bot.state}")

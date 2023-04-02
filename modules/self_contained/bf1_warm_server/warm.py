@@ -230,5 +230,5 @@ async def warm(app: Ariadne, group: Group, source: Source, game_id, group_name):
     ), quote=source)
     await leave_server(game_id)
     await leave_server(game_id)
-    del warm_dict[game_id]
+    del warm_dict[group_name]
     return

@@ -61,6 +61,6 @@ async def template2img(
         template = Template(template)
     elif isinstance(template, Path):
         if not template.is_file():
-            raise ValueError("Path for template is not a file!") 
+            raise ValueError("Path for template is not a file!")
         template = Template(template.read_text(encoding="utf-8"))
     return await html2img(template.render(params), page_option, extra_screenshot_option, use_proxy)

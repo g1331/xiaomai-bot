@@ -1,8 +1,8 @@
 import yaml
 import json
-import aiofiles
 from pathlib import Path
 
+import aiofiles
 
 async def read_file(path: str | Path) -> str:
     async with aiofiles.open(path, mode="r", encoding="utf-8") as f:

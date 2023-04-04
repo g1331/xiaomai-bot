@@ -35,6 +35,7 @@ alembic.ini
 
 # 第三方插件
 /modules/third_party/
+/modules/self_contained/bf1_warm_server/
 
 #文件修改记录
 .history/

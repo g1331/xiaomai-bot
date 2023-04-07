@@ -3,6 +3,7 @@ import time
 import uuid
 import aiohttp
 import asyncio
+import httpx
 from typing import Union
 
 import requests
@@ -311,11 +312,11 @@ class bf1_api(object):
             "X-Origin-Platform": "PCWIN"
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url2, headers=header2, ssl=False) as response2:
-                    authcode = str(response2.url)
-                    authcode = authcode[authcode.rfind('=') + 1:]
-                    logger.success(f"获取authcode成功!authcode:{authcode}")
+            async with httpx.AsyncClient() as client:
+                response2 = await client.get(url2, headers=header2)
+            authcode = response2.headers['location']
+            authcode = authcode[authcode.rfind('=') + 1:]
+            logger.success(f"获取authcode成功!authcode:{authcode}")
         except Exception as e:
             logger.error(f"获取authcode失败!{e}")
             return None

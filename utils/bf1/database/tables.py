@@ -59,9 +59,13 @@ class Bf1Server(orm.Base):
 
     __tablename__ = "bf1_server"
     id = Column(Integer, primary_key=True)
+    # 服务器名称(变化)
     serverName = Column(String)
+    # 服务器serverId(唯一标识)
     serverId = Column(BIGINT, unique=True)
+    # 服务器guid(唯一标识)
     persistedGameId = Column(String)
+    # gameid(变化)
     gameId = Column(BIGINT, nullable=False)
     createdDate = Column(DateTime, nullable=False)
     expirationDate = Column(DateTime, nullable=False)
@@ -71,7 +75,7 @@ class Bf1Server(orm.Base):
 
 # 服务器人数变化记录表
 class Bf1ServerPlayerCount(orm.Base):
-    """服务器人数变化记录表"""
+    """服务器人数信息变化记录表"""
 
     __tablename__ = "bf1_server_player_count"
     id = Column(Integer, primary_key=True)
@@ -81,6 +85,8 @@ class Bf1ServerPlayerCount(orm.Base):
     playerQueue = Column(Integer, nullable=False)
     playerSpectator = Column(Integer, nullable=False)
     time = Column(DateTime, nullable=False)
+    # 收藏
+    serverBookmarkCount = Column(BIGINT, default=False)
 
 
 #   Bf1Vip

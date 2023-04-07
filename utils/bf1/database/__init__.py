@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Union, List, Tuple, Dict, Any
 
 from loguru import logger
-from sqlalchemy import select, and_, not_
+from sqlalchemy import select
 
 from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache, \
     Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner, Bf1ServerPlayerCount
@@ -202,8 +202,7 @@ class bf1_db:
         # 构造要插入或更新的记录列表
         info_records = []
         player_records = []
-        for serverName, serverId, guid, gameId, createdDate, expirationDate, updatedDate, \
-            playerCurrent, playerMax, playerQueue, playerSpectator in server_info_list:
+        for serverName, serverId, guid, gameId, serverBookmarkCount, createdDate, expirationDate, updatedDate, playerCurrent, playerMax, playerQueue, playerSpectator in server_info_list:
             record = {
                 "serverName": serverName,
                 "serverId": serverId,
@@ -221,7 +220,8 @@ class bf1_db:
                 "playerMax": playerMax,
                 "playerQueue": playerQueue,
                 "playerSpectator": playerSpectator,
-                "time": datetime.now()
+                "time": datetime.now(),
+                "serverBookmarkCount": serverBookmarkCount,
             }
             player_records.append(record)
 
@@ -237,7 +237,7 @@ class bf1_db:
         )
 
     @staticmethod
-    async def get_serverInfo(
+    async def get_serverInfo_byServerId(
             serverId: str
     ) -> Bf1Server:
         if server := await orm.fetch_one(select(
@@ -246,6 +246,22 @@ class bf1_db:
             result = {
 
             }
+            return result
+        else:
+            return None
+
+    @staticmethod
+    async def get_all_serverInfo() -> list:
+        if servers := await orm.fetch_all(
+                select(
+                    Bf1Server.serverId, Bf1Server.expirationDate,
+                )
+        ):
+            result = []
+            for server in servers:
+                result.append({
+
+                })
             return result
         else:
             return None
@@ -268,6 +284,22 @@ class bf1_db:
             ]
         )
         return True
+
+    @staticmethod
+    async def get_playerVip(persona_id: int) -> int:
+        """
+        查询玩家的VIP数量
+        :param persona_id: 玩家persona_id(pid)
+        :return: VIP数量
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerVip.serverId).where(
+                    Bf1ServerVip.personaId == persona_id
+                )
+        ):
+            return len([i[0] for i in result])
+        else:
+            return 0
 
     @staticmethod
     async def update_serverVipList(
@@ -345,6 +377,22 @@ class bf1_db:
         return True
 
     @staticmethod
+    async def get_playerBan(persona_id: int) -> int:
+        """
+        查询玩家的Ban数量
+        :param persona_id: 玩家persona_id(pid)
+        :return: Ban数量
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerBan.serverId).where(
+                    Bf1ServerBan.personaId == persona_id
+                )
+        ):
+            return len([i[0] for i in result])
+        else:
+            return 0
+
+    @staticmethod
     async def update_serverBanList(
             ban_dict: Dict[int, Dict[str, Any]]
     ) -> bool:
@@ -420,6 +468,22 @@ class bf1_db:
         return True
 
     @staticmethod
+    async def get_playerAdmin(persona_id: int) -> int:
+        """
+        查询玩家的Admin数量
+        :param persona_id: 玩家persona_id(pid)
+        :return: Admin数量
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerAdmin.serverId).where(
+                    Bf1ServerAdmin.personaId == persona_id
+                )
+        ):
+            return len([i[0] for i in result])
+        else:
+            return 0
+
+    @staticmethod
     async def update_serverAdminList(
             admin_dict: Dict[int, Dict[str, Any]]
     ) -> bool:
@@ -493,6 +557,22 @@ class bf1_db:
             ]
         )
         return True
+
+    @staticmethod
+    async def get_playerOwner(persona_id: int) -> int:
+        """
+        查询玩家的Owner数量
+        :param persona_id: 玩家persona_id(pid)
+        :return: Owner数量
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerOwner.serverId).where(
+                    Bf1ServerOwner.personaId == persona_id
+                )
+        ):
+            return len([i[0] for i in result])
+        else:
+            return 0
 
     @staticmethod
     async def update_serverOwnerList(

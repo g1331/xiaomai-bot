@@ -1,5 +1,7 @@
 import asyncio
 import datetime
+import json
+import random
 import time
 from pathlib import Path
 from typing import List, Tuple
@@ -8,8 +10,9 @@ from creart import create
 from graia.amnesia.message import MessageChain
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
+from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.event.message import GroupMessage, FriendMessage
-from graia.ariadne.message.element import Source, Image
+from graia.ariadne.message.element import Source, Image, At
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
     RegexResult, ArgumentMatch, ArgResult
 from graia.ariadne.model import Group, Friend, Member
@@ -37,7 +40,7 @@ from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
-    BTR_get_match_info, BTR_update_data, bfeac_checkBan
+    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat
 )
 
 config = create(GlobalConfig)
@@ -528,9 +531,9 @@ async def player_stat_pic(
             if weapon["stats"]["values"]["kills"] != 0 else 0
         time_played = "{:.1f}h".format(seconds / 3600)
         result.append(
-            f"最佳武器: {name}\n"
+            f"最佳武器:{name}\n"
             f"击杀: {kills}\tKPM: {kpm}\n"
-            f"命中率: {acc}%\t爆头击杀率: {hs}%\n"
+            f"命中率: {acc}%\t爆头率: {hs}%\n"
             f"效率: {eff}\t时长: {time_played}\n"
             + "=" * 15
         )
@@ -574,8 +577,8 @@ async def player_stat_pic(
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", action="store_true", optional=True, type=int, default=4) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True, type=int, default=1) @ "col",
-            ArgumentMatch("-s", "-search", optional=True) @ "weapon_name",
-            ArgumentMatch("-t", "-type", optional=True) @ "sort_type",
+            ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
+            ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
         ]
     )
 )
@@ -693,7 +696,7 @@ async def player_weapon_pic(
             result.append(
                 f"武器: {name}\n"
                 f"击杀: {kills}\tKPM: {kpm}\n"
-                f"命中率: {acc}%\t爆头击杀率: {hs}%\n"
+                f"命中率: {acc}%\t爆头率: {hs}%\n"
                 f"效率: {eff}\t时长: {time_played}\n"
                 + "=" * 15
             )
@@ -720,8 +723,8 @@ async def player_weapon_pic(
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", action="store_true", optional=True) @ "row",
             ArgumentMatch("-c", "-col", action="store_true", optional=True) @ "col",
-            ArgumentMatch("-s", "-search", optional=True) @ "vehicle_name",
-            ArgumentMatch("-t", "-type", optional=True) @ "sort_type",
+            ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
+            ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
         ]
     )
 )
@@ -1268,6 +1271,7 @@ async def server_info_collect():
         server_server_id = rspInfo.get("server", {}).get("serverId")
         server_guid = Info["guid"]
         server_game_id = Info["gameId"]
+        serverBookmarkCount = Info["serverBookmarkCount"]
         playerCurrent = Info["slots"]["Soldier"]["current"]
         playerMax = Info["slots"]["Soldier"]["max"]
         playerQueue = Info["slots"]["Queue"]["current"]
@@ -1283,7 +1287,7 @@ async def server_info_collect():
         server_info_list.append(
             (
                 server_name, server_server_id,
-                server_guid, server_game_id,
+                server_guid, server_game_id, serverBookmarkCount,
                 createdDate, expirationDate, updatedDate,
                 playerCurrent, playerMax, playerQueue, playerSpectator
             )
@@ -1311,3 +1315,173 @@ async def server_info_collect():
     await BF1DB.update_serverOwnerList(owner_dict)
     logger.debug(f"更新服务器所有者完成，耗时{round(time.time() - start_time, 2)}秒")
     logger.success(f"共更新{len(serverId_list)}个私服详细信息，耗时{round(time.time() - time_start, 2)}秒")
+
+
+# 天眼查
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-天眼查").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=True) @ "player_name",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def tyc(
+        app: Ariadne,
+        sender: Member,
+        group: Group,
+        source: Source,
+        player_name: RegexResult,
+):
+    # 如果没有参数，查询绑定信息,获取display_name
+    if not player_name.matched:
+        if bind_info := await check_bind(sender.id):
+            if isinstance(bind_info, str):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"查询出错!{bind_info}"),
+                    quote=source
+                )
+            display_name = bind_info.get("displayName")
+            player_pid = bind_info.get("pid")
+        else:
+            return await app.send_message(
+                group,
+                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
+                quote=source
+            )
+    else:
+        player_name = player_name.result.display
+        player_info = await get_personas_by_name(player_name)
+        if isinstance(player_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
+                quote=source
+            )
+        if not player_info:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        player_pid = player_info["personas"]["persona"][0]["personaId"]
+        display_name = player_info["personas"]["persona"][0]["displayName"]
+
+    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
+    # 查询最近游玩、vip/admin/owner/ban数、bfban信息、bfeac信息、正在游玩
+    tasks = [
+        (await BF1DA.get_api_instance()).mostRecentServers(player_pid),
+        bfeac_checkBan(display_name),
+        bfban_checkBan(player_pid),
+        gt_checkVban(player_pid),
+        (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
+    ]
+    tasks = await asyncio.gather(*tasks)
+
+    # 最近游玩
+    recent_play_data = tasks[0]
+    if not isinstance(recent_play_data, str):
+        recent_play_data: dict = recent_play_data
+        send.append("最近游玩:\n")
+        for data in recent_play_data["result"][:3]:
+            send.append(f'{data["name"][:25]}\n')
+        send.append("=" * 20 + '\n')
+
+    vip_count = await BF1DB.get_playerVip(player_pid)
+    admin_count = await BF1DB.get_playerAdmin(player_pid)
+    owner_count = await BF1DB.get_playerOwner(player_pid)
+    ban_count = await BF1DB.get_playerBan(player_pid)
+    vban_count = tasks[3]
+    send.append(
+        f"VIP数:{vip_count}\t"
+        f"管理数:{admin_count}\n"
+        f"BAN数:{ban_count}\t"
+        f"服主数:{owner_count}\n"
+        f"VBAN数:{vban_count}\n"
+        + "=" * 20 + '\n'
+    )
+
+    # bfban信息
+    bfban_data = tasks[2]
+    if bfban_data.get("stat"):
+        send.append("BFBAN信息:\n")
+        send.append(f'状态:{bfban_data["status"]}\n' + f"案件地址:{bfban_data['url']}\n" if bfban_data.get("url") else "")
+        send.append("=" * 20 + '\n')
+
+    # bfeac信息
+    bfeac_data = tasks[1]
+    if bfeac_data.get("stat"):
+        send.append("BFEAC信息:\n")
+        send.append(
+            f'状态:{bfeac_data["stat"]}\n'
+            f'案件地址:{bfeac_data["url"]}\n'
+        )
+        send.append("=" * 20 + '\n')
+
+    # 正在游玩
+    playing_data = tasks[4]
+    if not isinstance(playing_data, str):
+        playing_data: dict = playing_data["result"]
+        send.append("正在游玩:\n")
+        if not playing_data[f"{player_pid}"]:
+            send.append("玩家未在线/未进入服务器游玩")
+        else:
+            send.append(playing_data[f"{player_pid}"])
+        send.append("=" * 20 + '\n')
+
+    return await app.send_message(group, MessageChain(f"{''.join(send)}"), quote=source)
+
+
+# 被戳回复小标语
+@listen(NudgeEvent)
+async def NudgeReply(app: Ariadne, event: NudgeEvent):
+    if event.group_id and event.target == app.account and module_controller.if_module_switch_on(
+            channel.module, event.group_id
+    ):
+        # 98%的概率从文件获取tips
+        if random.randint(0, 99) > 1:
+            file_path = f"./data/battlefield/小标语/data.json"
+            with open(file_path, 'r', encoding="utf-8") as file1:
+                data = json.load(file1)['result']
+                a = random.choice(data)['name']
+                send = zhconv.convert(a, 'zh-cn')
+        else:
+            bf_dic = [
+                "你知道吗,小埋最初的灵感来自于胡桃-by水神",
+                f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+            ]
+            send = random.choice(bf_dic)
+        await app.send_message(event.group_id, MessageChain([At(event.supplicant), f"{send}"]))
+
+
+# 战地一私服情况
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf1", "-bfstat").space(SpacePolicy.PRESERVE),
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
+    result = await gt_bf1_stat()
+    if not isinstance(result, str):
+        return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
+    return await app.send_message(group, MessageChain(f"{result}"), quote=source)

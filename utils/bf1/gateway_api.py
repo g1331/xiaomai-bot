@@ -1050,6 +1050,8 @@ class GameServer(bf1_api):
                 }
             }
         """
+        if not isinstance(personaIds, list):
+            personaIds = [personaIds]
         return await self.api_call(
             {
                 "jsonrpc": "2.0",

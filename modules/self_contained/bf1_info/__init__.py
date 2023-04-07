@@ -504,8 +504,8 @@ async def player_stat_pic(
         else:
             eac_info = "未查询到EAC信息\n"
         result = [
-            f"玩家名字:{display_name}\n"
-            f"等级:{rank}\n"
+            f"玩家:{display_name}\n"
+            f"等级:{rank if rank else 0}\n"
             f"游玩时长:{time_played}\n"
             f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
             f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"
@@ -529,7 +529,7 @@ async def player_stat_pic(
             if weapon["stats"]["values"]["kills"] != 0 else 0
         eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
             if weapon["stats"]["values"]["kills"] != 0 else 0
-        time_played = "{:.1f}h".format(seconds / 3600)
+        time_played = "{:.1f}H".format(seconds / 3600)
         result.append(
             f"最佳武器:{name}\n"
             f"击杀: {kills}\tKPM: {kpm}\n"
@@ -544,10 +544,10 @@ async def player_stat_pic(
         seconds = vehicle["stats"]["values"]["seconds"]
         kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
         destroyed = vehicle["stats"]["values"]["destroyed"]
-        time_played = "{:.1f}h".format(vehicle["stats"]["values"]["seconds"] / 3600)
+        time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
         result.append(
             f"最佳载具:{name}\n"
-            f"击杀:{kills}\tkpm:{kpm}\n"
+            f"击杀:{kills}\tKPM:{kpm}\n"
             f"摧毁:{destroyed}\t时长:{time_played}\n"
             + "=" * 15
         )
@@ -678,7 +678,7 @@ async def player_weapon_pic(
         )
     else:
         # 发送文字数据
-        result = [f"玩家名字: {display_name}\n" + "=" * 20]
+        result = [f"玩家: {display_name}\n" + "=" * 20]
         for weapon in player_weapon:
             if not weapon.get("stats").get('values'):
                 continue
@@ -692,9 +692,9 @@ async def player_weapon_pic(
                 if weapon["stats"]["values"]["kills"] != 0 else 0
             eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
                 if weapon["stats"]["values"]["kills"] != 0 else 0
-            time_played = "{:.1f}h".format(seconds / 3600)
+            time_played = "{:.1f}H".format(seconds / 3600)
             result.append(
-                f"武器: {name}\n"
+                f"{name}\n"
                 f"击杀: {kills}\tKPM: {kpm}\n"
                 f"命中率: {acc}%\t爆头率: {hs}%\n"
                 f"效率: {eff}\t时长: {time_played}\n"
@@ -824,17 +824,17 @@ async def player_vehicle_pic(
         )
     else:
         # 发送文字数据
-        result = [f"玩家名字: {display_name}\n" + "=" * 20]
+        result = [f"玩家: {display_name}\n" + "=" * 20]
         for vehicle in player_vehicle:
             name = zhconv.convert(vehicle["name"], 'zh-cn')
-            kills = vehicle["stats"]["values"]["kills"]
+            kills = int(vehicle["stats"]["values"]["kills"])
             seconds = vehicle["stats"]["values"]["seconds"]
             kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-            destroyed = vehicle["stats"]["values"]["destroyed"]
-            time_played = "{:.1f}h".format(vehicle["stats"]["values"]["seconds"] / 3600)
+            destroyed = int(vehicle["stats"]["values"]["destroyed"])
+            time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
             result.append(
-                f"载具:{name}\n"
-                f"击杀:{kills}\tkpm:{kpm}\n"
+                f"{name}\n"
+                f"击杀:{kills}\tKPM:{kpm}\n"
                 f"摧毁:{destroyed}\t时长:{time_played}\n"
                 + "=" * 15
             )
@@ -919,7 +919,7 @@ async def player_recent_info(
                 MessageChain(f"没有查询到最近记录哦~"),
                 quote=source
             )
-        result = [f"玩家名字: {display_name}\n" + "=" * 15]
+        result = [f"玩家: {display_name}\n" + "=" * 15]
         for item in player_recent[:3]:
             result.append(
                 f"{item['time']}\n"
@@ -1012,7 +1012,7 @@ async def player_match_info(
                 MessageChain(f"没有查询到对局记录哦~"),
                 quote=source
             )
-        result = [f"玩家名字: {display_name}\n" + "=" * 15]
+        result = [f"玩家: {display_name}\n" + "=" * 15]
         # 处理数据
         for item in player_match:
             players = item.get("players")
@@ -1081,7 +1081,8 @@ async def search_server(
     server_name = server_name.result.display
 
     # 调用接口获取数据
-    server_info = await (await BF1DA.get_api_instance()).searchServers(server_name)
+    filter_dict = {"name": server_name}
+    server_info = await (await BF1DA.get_api_instance()).searchServers(server_name, filter_dict=filter_dict)
     if isinstance(server_info, str):
         return await app.send_message(
             group,
@@ -1105,6 +1106,8 @@ async def search_server(
         if len(server_list) > 10:
             result.append(f"搜索到{len(server_list)}个服务器,显示前10个\n" + "=" * 20)
             server_list = server_list[:10]
+        else:
+            result.append(f"搜索到{len(server_list)}个服务器\n" + "=" * 20)
         for server in server_list:
             result.append(
                 f"{server.get('name')[:25]}\n"

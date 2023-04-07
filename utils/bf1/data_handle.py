@@ -125,19 +125,19 @@ class WeaponData:
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
             "击杀": "kills",
-            "kills": "kills",
-            "kill": "kills",
+            "KILLS": "kills",
+            "KILL": "kills",
             "时长": "seconds",
-            "time": "seconds",
+            "TIME": "seconds",
         }
-        if sort_type in ["爆头率", "爆头", "hs"]:
+        if sort_type.upper() in ["爆头率", "爆头", "HS"]:
             weapon_list.sort(
                 key=lambda x: round(
                     x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("kills", 0) * 100, 2
                 ) if x["stats"]["values"].get("kills", 0) != 0 else 0,
                 reverse=True
             )
-        elif sort_type in ["命中率", "命中", "acc"]:
+        elif sort_type.upper() in ["命中率", "命中", "ACC"]:
             weapon_list.sort(
                 key=lambda x: round(
                     x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
@@ -153,7 +153,7 @@ class WeaponData:
             )
         else:
             weapon_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
                 reverse=True
             )
         return weapon_list
@@ -172,19 +172,19 @@ class WeaponData:
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
             "击杀": "kills",
-            "kills": "kills",
-            "kill": "kills",
+            "KILLS": "kills",
+            "KILL": "kills",
             "时长": "seconds",
-            "time": "seconds",
+            "TIME": "seconds",
         }
-        if sort_type in ["爆头率", "爆头", "hs"]:
+        if sort_type.upper() in ["爆头率", "爆头", "HS"]:
             weapon_list.sort(
                 key=lambda x: round(
                     x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("hits", 0) * 100, 2
                 ) if x["stats"]["values"].get("hits", 0) != 0 else 0,
                 reverse=True
             )
-        elif sort_type in ["命中率", "命中", "acc"]:
+        elif sort_type.upper() in ["命中率", "命中", "ACC"]:
             weapon_list.sort(
                 key=lambda x: round(
                     x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
@@ -193,7 +193,7 @@ class WeaponData:
             )
         else:
             weapon_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
                 reverse=True
             )
         return weapon_list
@@ -269,7 +269,8 @@ class VehicleData:
         sort_type_dict = {
             "击杀": "kills",
             "时长": "seconds",
-            "摧毁": "destroyed"
+            "摧毁": "destroyed",
+            "TIME": "seconds",
         }
         if sort_type.upper() in ["KPM"]:
             vehicle_list.sort(
@@ -279,7 +280,7 @@ class VehicleData:
             )
         else:
             vehicle_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
                 reverse=True
             )
         return vehicle_list

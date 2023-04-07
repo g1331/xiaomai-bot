@@ -257,42 +257,43 @@ async def BTR_update_data(player_name: str) -> None:
                 # 写入数据库
                 if match_info['players']:
                     for player in match_info['players']:
-                        player_name_item = player['player_name']
-                        player_kills = player['kills']
-                        player_deaths = player['deaths']
-                        kd = player['kd']
-                        kpm = player['kpm']
-                        player_score = player['score']
-                        spm = player['spm']
-                        player_headshots = player['headshots']
-                        player_accuracy = player['accuracy']
-                        player_time = player['time_played']
-                        team_win = player['team_win']
-                        await BF1DB.update_btr_match_cache(
-                            # 服务器信息
-                            match_id=match_id_list[i],
-                            server_name=match_info['game_info']['server_name'],
-                            map_name=match_info['game_info']['map_name'],
-                            mode_name=match_info['game_info']['mode_name'],
-                            time=match_info['game_info']['game_time'],
-                            # 队伍信息
-                            team_name=match_info['players'][0]['team_name'],
-                            team_win=team_win,
-                            # 基本信息
-                            display_name=player_name_item,
-                            kills=player_kills,
-                            deaths=player_deaths,
-                            kd=kd,
-                            kpm=kpm,
-                            # 得分
-                            score=player_score,
-                            spm=spm,
-                            # 其他
-                            headshots=player_headshots,
-                            accuracy=player_accuracy,
-                            time_played=player_time
-                        )
-                        result.append(result_temp)
+                        if player_name.lower() == player['player_name'].lower():
+                            player_name_item = player['player_name']
+                            player_kills = player['kills']
+                            player_deaths = player['deaths']
+                            kd = player['kd']
+                            kpm = player['kpm']
+                            player_score = player['score']
+                            spm = player['spm']
+                            player_headshots = player['headshots']
+                            player_accuracy = player['accuracy']
+                            player_time = player['time_played']
+                            team_win = player['team_win']
+                            await BF1DB.update_btr_match_cache(
+                                # 服务器信息
+                                match_id=match_id_list[i],
+                                server_name=match_info['game_info']['server_name'],
+                                map_name=match_info['game_info']['map_name'],
+                                mode_name=match_info['game_info']['mode_name'],
+                                time=match_info['game_info']['game_time'],
+                                # 队伍信息
+                                team_name=match_info['players'][0]['team_name'],
+                                team_win=team_win,
+                                # 基本信息
+                                display_name=player_name_item,
+                                kills=player_kills,
+                                deaths=player_deaths,
+                                kd=kd,
+                                kpm=kpm,
+                                # 得分
+                                score=player_score,
+                                spm=spm,
+                                # 其他
+                                headshots=player_headshots,
+                                accuracy=player_accuracy,
+                                time_played=player_time
+                            )
+                            result.append(result_temp)
 
             return result
 

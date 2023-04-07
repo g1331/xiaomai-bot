@@ -922,7 +922,7 @@ class Gamedata(bf1_api):
 
 class GameServer(bf1_api):
 
-    async def searchServers(self, server_name: str = "", limit: int = 200, filter_dict=None) -> dict:
+    async def searchServers(self, server_name: str, limit: int = 200, filterJson=None) -> dict:
         """
         搜索服务器
         :return:
@@ -951,7 +951,7 @@ class GameServer(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "limit": limit,
-                    "filterJson": json.dumps(filter_dict) if filter_dict else json.dumps(temp),
+                    "filterJson": filterJson if filterJson else json.dumps(temp),
                 },
                 "id": await get_a_uuid()
             }

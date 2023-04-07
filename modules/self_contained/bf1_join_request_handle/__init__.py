@@ -79,7 +79,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
     verify = ""
     if application_answer and (application_answer < u'\u4e00' or application_answer > u'\u9fff'):
         # 查询玩家信息
-        player_name = application_answer.result.display
+        player_name = application_answer
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
             return await app.send_message(

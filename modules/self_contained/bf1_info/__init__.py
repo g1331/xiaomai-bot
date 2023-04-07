@@ -1202,25 +1202,10 @@ async def detailed_server(
     )
 
 
-# 定时服务器信息收集，每20分钟执行一次
-# @channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
-@listen(GroupMessage)
-@dispatch(
-    Twilight(
-        [
-            FullMatch("-collect"),
-        ]
-    )
-)
-@decorate(
-    Distribute.require(),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
-    Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.User),
-)
+# 定时服务器详细信息收集，每20分钟执行一次
+@channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
 async def server_info_collect():
-    start_time = time.time()
+    time_start = time.time()
     #   搜索获取私服game_id
     tasks = []
     filter_dict = {
@@ -1235,7 +1220,7 @@ async def server_info_collect():
     game_id_list = []
     for _ in range(50):
         tasks.append((await BF1DA.get_api_instance()).searchServers(filter_dict=filter_dict))
-    logger.info("开始获取私服")
+    logger.debug("开始更新私服数据")
     results = await asyncio.gather(*tasks)
     for result in results:
         if isinstance(result, str):
@@ -1248,20 +1233,23 @@ async def server_info_collect():
     logger.success(f"共获取{len(game_id_list)}个私服")
 
     #   获取详细信息
-    #   每200个私服分为一组获取详细信息
+    #   每250个私服分为一组获取详细信息
     tasks = []
     results = []
     for game_id in game_id_list:
         tasks.append((await BF1DA.get_api_instance()).getFullServerDetails(game_id))
-        if len(tasks) == 200:
-            logger.info(f"开始获取私服详细信息，共{len(tasks)}个")
+        if len(tasks) == 250:
+            logger.debug(f"开始获取私服详细信息，共{len(tasks)}个")
             temp = await asyncio.gather(*tasks)
             results.extend(temp)
             tasks = []
     if tasks:
-        logger.info(f"开始获取私服详细信息，共{len(tasks)}个")
+        logger.debug(f"开始获取私服详细信息，共{len(tasks)}个")
         temp = await asyncio.gather(*tasks)
         results.extend(temp)
+
+    results = [result for result in results if not isinstance(result, str)]
+    logger.success(f"共获取{len(results)}个私服详细信息")
 
     #   整理数据
     serverId_list = []
@@ -1271,8 +1259,6 @@ async def server_info_collect():
     admin_dict = {}
     owner_dict = {}
     for result in results:
-        if isinstance(result, str):
-            continue
         server = result["result"]
         rspInfo = server.get("rspInfo", {})
         Info = server["serverInfo"]
@@ -1282,6 +1268,11 @@ async def server_info_collect():
         server_server_id = rspInfo.get("server", {}).get("serverId")
         server_guid = Info["guid"]
         server_game_id = Info["gameId"]
+        playerCurrent = Info["slots"]["Soldier"]["current"]
+        playerMax = Info["slots"]["Soldier"]["max"]
+        playerQueue = Info["slots"]["Queue"]["current"]
+        playerSpectator = Info["slots"]["Spectator"]["current"]
+
         #   将其转换为datetime
         createdDate = rspInfo.get("server", {}).get("createdDate")
         createdDate = datetime.datetime.fromtimestamp(int(createdDate) / 1000)
@@ -1289,18 +1280,34 @@ async def server_info_collect():
         expirationDate = datetime.datetime.fromtimestamp(int(expirationDate) / 1000)
         updatedDate = rspInfo.get("server", {}).get("updatedDate")
         updatedDate = datetime.datetime.fromtimestamp(int(updatedDate) / 1000)
-        server_info_list.append((
-            server_name, server_server_id, server_guid, server_game_id, createdDate, expirationDate, updatedDate))
+        server_info_list.append(
+            (
+                server_name, server_server_id,
+                server_guid, server_game_id,
+                createdDate, expirationDate, updatedDate,
+                playerCurrent, playerMax, playerQueue, playerSpectator
+            )
+        )
         serverId_list.append(server_server_id)
         vip_dict[server_server_id] = rspInfo.get("vipList", [])
         ban_dict[server_server_id] = rspInfo.get("bannedList", [])
         admin_dict[server_server_id] = rspInfo.get("adminList", [])
         if owner := rspInfo.get("owner"):
-            owner_dict[server_server_id] = owner
+            owner_dict[server_server_id] = [owner]
 
     #   保存数据
+    start_time = time.time()
     await BF1DB.update_serverInfoList(server_info_list)
     logger.debug(f"更新服务器信息完成，耗时{round(time.time() - start_time, 2)}秒")
+    start_time = time.time()
     await BF1DB.update_serverVipList(vip_dict)
-
-    logger.success(f"共获取{len(serverId_list)}个私服详细信息，耗时{round(time.time() - start_time, 2)}秒")
+    logger.debug(f"更新服务器VIP完成，耗时{round(time.time() - start_time, 2)}秒")
+    start_time = time.time()
+    await BF1DB.update_serverBanList(ban_dict)
+    logger.debug(f"更新服务器封禁完成，耗时{round(time.time() - start_time, 2)}秒")
+    await BF1DB.update_serverAdminList(admin_dict)
+    start_time = time.time()
+    logger.debug(f"更新服务器管理员完成，耗时{round(time.time() - start_time, 2)}秒")
+    await BF1DB.update_serverOwnerList(owner_dict)
+    logger.debug(f"更新服务器所有者完成，耗时{round(time.time() - start_time, 2)}秒")
+    logger.success(f"共更新{len(serverId_list)}个私服详细信息，耗时{round(time.time() - time_start, 2)}秒")

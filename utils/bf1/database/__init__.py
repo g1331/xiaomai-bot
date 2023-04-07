@@ -5,7 +5,7 @@ from loguru import logger
 from sqlalchemy import select, and_, not_
 
 from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache, \
-    Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner
+    Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner, Bf1ServerPlayerCount
 
 
 class bf1_db:
@@ -200,8 +200,10 @@ class bf1_db:
             server_info_list: List[Tuple[str, str, str, int, datetime, datetime, datetime]]
     ) -> bool:
         # 构造要插入或更新的记录列表
-        records = []
-        for serverName, serverId, guid, gameId, createdDate, expirationDate, updatedDate in server_info_list:
+        info_records = []
+        player_records = []
+        for serverName, serverId, guid, gameId, createdDate, expirationDate, updatedDate, \
+            playerCurrent, playerMax, playerQueue, playerSpectator in server_info_list:
             record = {
                 "serverName": serverName,
                 "serverId": serverId,
@@ -212,14 +214,27 @@ class bf1_db:
                 "updatedDate": updatedDate,
                 "record_time": datetime.now()
             }
-            records.append(record)
+            info_records.append(record)
+            record = {
+                "serverId": serverId,
+                "playerCurrent": playerCurrent,
+                "playerMax": playerMax,
+                "playerQueue": playerQueue,
+                "playerSpectator": playerSpectator,
+                "time": datetime.now()
+            }
+            player_records.append(record)
+
         # 插入或更新记录
         await orm.insert_or_update_batch(
             table=Bf1Server,
-            data_list=records,
-            conditions=[(Bf1Server.serverId == record["serverId"],) for record in records]
+            data_list=info_records,
+            conditions_list=[(Bf1Server.serverId == record["serverId"],) for record in info_records]
         )
-        return True
+        await orm.add_batch(
+            table=Bf1ServerPlayerCount,
+            data_list=player_records
+        )
 
     @staticmethod
     async def get_serverInfo(
@@ -249,7 +264,7 @@ class bf1_db:
             },
             condition=[
                 Bf1ServerVip.serverId == serverId,
-                Bf1ServerVip.persona_id == persona_id
+                Bf1ServerVip.personaId == persona_id
             ]
         )
         return True
@@ -258,40 +273,57 @@ class bf1_db:
     async def update_serverVipList(
             vip_dict: Dict[int, Dict[str, Any]]
     ) -> bool:
-        # 构造要插入或更新的记录列表
-        records = []
-        for serverId in vip_dict:
-            for vip in vip_dict[serverId]:
-                record = {
-                    "serverId": serverId,
-                    "persona_id": vip["personaId"],
-                    "display_name": vip["displayName"],
+        update_list = []
+        delete_list = []
+        # 查询所有记录
+        all_records = await orm.fetch_all(
+            select(Bf1ServerVip.serverId, Bf1ServerVip.personaId, Bf1ServerVip.displayName).where(
+                Bf1ServerVip.serverId.in_(vip_dict.keys())
+            )
+        )
+        all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+        now_records = {f"{serverId}-{record['personaId']}": record["displayName"] for serverId, records in
+                       vip_dict.items() for
+                       record in records}
+        # 如果数据库中的记录不在现在的记录中,则删除
+        # 如果数据库中的记录在现在的记录中,则更新对应pid下变化的display_name
+        for record in all_records:
+            if record not in now_records:
+                delete_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1]
+                })
+            elif all_records[record] != now_records[record]:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
                     "time": datetime.now(),
-                }
-                records.append(record)
-        # 插入或更新记录
+                })
+        # 如果现在的记录不在数据库中,则插入
+        for record in now_records:
+            if record not in all_records:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 更新
         await orm.insert_or_update_batch(
             table=Bf1ServerVip,
-            data_list=records,
-            conditions=[(Bf1ServerVip.serverId == record["serverId"], Bf1ServerVip.persona_id == record["persona_id"])
-                        for record in records]
+            data_list=update_list,
+            conditions_list=[
+                (Bf1ServerVip.serverId == record["serverId"], Bf1ServerVip.personaId == record["personaId"]) for
+                record in update_list]
         )
-        logger.debug(f"更新vip完成")
-        # 删除根据传入的serverId获取的所有vip中不在的数据库中的记录
-        delete_conditions = []
-        for serverId in vip_dict:
-            persona_ids = [vip['personaId'] for vip in vip_dict[serverId]]
-            delete_conditions.append(
-                and_(
-                    Bf1ServerVip.serverId == serverId,
-                    not_(Bf1ServerVip.persona_id.in_(persona_ids))
-                )
-            )
+        # 删除
         await orm.delete_batch(
             table=Bf1ServerVip,
-            conditions_list=delete_conditions
+            conditions_list=[
+                (Bf1ServerVip.serverId == record["serverId"], Bf1ServerVip.personaId == record["personaId"]) for
+                record in delete_list]
         )
-        return True
 
     @staticmethod
     async def update_serverBan(
@@ -307,10 +339,66 @@ class bf1_db:
             },
             condition=[
                 Bf1ServerBan.serverId == serverId,
-                Bf1ServerBan.persona_id == persona_id
+                Bf1ServerBan.personaId == persona_id
             ]
         )
         return True
+
+    @staticmethod
+    async def update_serverBanList(
+            ban_dict: Dict[int, Dict[str, Any]]
+    ) -> bool:
+        update_list = []
+        delete_list = []
+        # 查询所有记录
+        all_records = await orm.fetch_all(
+            select(Bf1ServerBan.serverId, Bf1ServerBan.personaId, Bf1ServerBan.displayName).where(
+                Bf1ServerBan.serverId.in_(ban_dict.keys())
+            )
+        )
+        all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+        now_records = {f"{serverId}-{record['personaId']}": record["displayName"] for serverId, records in
+                       ban_dict.items() for
+                       record in records}
+        # 如果数据库中的记录不在现在的记录中,则删除
+        # 如果数据库中的记录在现在的记录中,则更新对应pid下变化的display_name
+        for record in all_records:
+            if record not in now_records:
+                delete_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1]
+                })
+            elif all_records[record] != now_records[record]:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 如果现在的记录不在数据库中,则插入
+        for record in now_records:
+            if record not in all_records:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 更新
+        await orm.insert_or_update_batch(
+            table=Bf1ServerBan,
+            data_list=update_list,
+            conditions_list=[
+                (Bf1ServerBan.serverId == record["serverId"], Bf1ServerBan.personaId == record["personaId"]) for
+                record in update_list]
+        )
+        # 删除
+        await orm.delete_batch(
+            table=Bf1ServerBan,
+            conditions_list=[
+                (Bf1ServerBan.serverId == record["serverId"], Bf1ServerBan.personaId == record["personaId"]) for
+                record in delete_list]
+        )
 
     @staticmethod
     async def update_serverAdmin(
@@ -326,10 +414,66 @@ class bf1_db:
             },
             condition=[
                 Bf1ServerAdmin.serverId == serverId,
-                Bf1ServerAdmin.persona_id == persona_id
+                Bf1ServerAdmin.personaId == persona_id
             ]
         )
         return True
+
+    @staticmethod
+    async def update_serverAdminList(
+            admin_dict: Dict[int, Dict[str, Any]]
+    ) -> bool:
+        update_list = []
+        delete_list = []
+        # 查询所有记录
+        all_records = await orm.fetch_all(
+            select(Bf1ServerAdmin.serverId, Bf1ServerAdmin.personaId, Bf1ServerAdmin.displayName).where(
+                Bf1ServerAdmin.serverId.in_(admin_dict.keys())
+            )
+        )
+        all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+        now_records = {f"{serverId}-{record['personaId']}": record["displayName"] for serverId, records in
+                       admin_dict.items() for
+                       record in records}
+        # 如果数据库中的记录不在现在的记录中,则删除
+        # 如果数据库中的记录在现在的记录中,则更新对应pid下变化的display_name
+        for record in all_records:
+            if record not in now_records:
+                delete_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1]
+                })
+            elif all_records[record] != now_records[record]:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 如果现在的记录不在数据库中,则插入
+        for record in now_records:
+            if record not in all_records:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 更新
+        await orm.insert_or_update_batch(
+            table=Bf1ServerAdmin,
+            data_list=update_list,
+            conditions_list=[
+                (Bf1ServerAdmin.serverId == record["serverId"], Bf1ServerAdmin.personaId == record["personaId"]) for
+                record in update_list]
+        )
+        # 删除
+        await orm.delete_batch(
+            table=Bf1ServerAdmin,
+            conditions_list=[
+                (Bf1ServerAdmin.serverId == record["serverId"], Bf1ServerAdmin.personaId == record["personaId"]) for
+                record in delete_list]
+        )
 
     @staticmethod
     async def update_serverOwner(
@@ -345,10 +489,69 @@ class bf1_db:
             },
             condition=[
                 Bf1ServerOwner.serverId == serverId,
-                Bf1ServerOwner.persona_id == persona_id
+                Bf1ServerOwner.personaId == persona_id
             ]
         )
         return True
+
+    @staticmethod
+    async def update_serverOwnerList(
+            owner_dict: Dict[int, Dict[str, Any]]
+    ) -> bool:
+        update_list = []
+        delete_list = []
+        # 查询所有记录
+        all_records = await orm.fetch_all(
+            select(Bf1ServerOwner.serverId, Bf1ServerOwner.personaId, Bf1ServerOwner.displayName).where(
+                Bf1ServerOwner.serverId.in_(owner_dict.keys())
+            )
+        )
+        all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+        now_records = {
+            f"{serverId}-{record['personaId']}": record["displayName"]
+            for serverId, records in owner_dict.items() for record in records
+        }
+        # 如果数据库中的记录不在现在的记录中,则删除
+        # 如果数据库中的记录在现在的记录中,则更新对应pid下变化的display_name
+        for record in all_records:
+            if record not in now_records:
+                delete_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1]
+                })
+            elif all_records[record] != now_records[record]:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 如果现在的记录不在数据库中,则插入
+        for record in now_records:
+            if record not in all_records:
+                update_list.append({
+                    "serverId": record.split("-")[0],
+                    "personaId": record.split("-")[1],
+                    "displayName": now_records[record],
+                    "time": datetime.now(),
+                })
+        # 更新
+        await orm.insert_or_update_batch(
+            table=Bf1ServerOwner,
+            data_list=update_list,
+            conditions_list=[
+                (Bf1ServerOwner.serverId == record["serverId"],
+                 Bf1ServerOwner.personaId == record["personaId"])
+                for record in update_list
+            ]
+        )
+        # 删除
+        await orm.delete_batch(
+            table=Bf1ServerOwner,
+            conditions_list=[
+                (Bf1ServerOwner.serverId == record["serverId"], Bf1ServerOwner.personaId == record["personaId"]) for
+                record in delete_list]
+        )
 
     # TODO:
     #   bf群组相关

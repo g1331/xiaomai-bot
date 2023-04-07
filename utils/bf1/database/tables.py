@@ -69,6 +69,20 @@ class Bf1Server(orm.Base):
     record_time = Column(DateTime, nullable=False)
 
 
+# 服务器人数变化记录表
+class Bf1ServerPlayerCount(orm.Base):
+    """服务器人数变化记录表"""
+
+    __tablename__ = "bf1_server_player_count"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    playerCurrent = Column(Integer, nullable=False)
+    playerMax = Column(Integer, nullable=False)
+    playerQueue = Column(Integer, nullable=False)
+    playerSpectator = Column(Integer, nullable=False)
+    time = Column(DateTime, nullable=False)
+
+
 #   Bf1Vip
 class Bf1ServerVip(orm.Base):
     """VIP表"""
@@ -76,8 +90,9 @@ class Bf1ServerVip(orm.Base):
     __tablename__ = "bf1_server_vip"
     id = Column(Integer, primary_key=True)
     serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
-    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
-    display_name = Column(String, nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
+    expire_time = Column(DateTime, default=None)
     time = Column(DateTime)
 
 
@@ -88,8 +103,9 @@ class Bf1ServerBan(orm.Base):
     __tablename__ = "bf1_server_ban"
     id = Column(Integer, primary_key=True)
     serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
-    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
-    display_name = Column(String, nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
+    expire_time = Column(DateTime, default=None)
     time = Column(DateTime)
 
 
@@ -100,8 +116,8 @@ class Bf1ServerAdmin(orm.Base):
     __tablename__ = "bf1_server_admin"
     id = Column(Integer, primary_key=True)
     serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
-    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
-    display_name = Column(String, nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
     time = Column(DateTime)
 
 
@@ -112,8 +128,8 @@ class Bf1ServerOwner(orm.Base):
     __tablename__ = "bf1_server_owner"
     id = Column(Integer, primary_key=True)
     serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
-    persona_id = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
-    display_name = Column(String, nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
     time = Column(DateTime)
 
 
@@ -131,7 +147,7 @@ class Bf1ManagerLog(orm.Base):
     # 变化
     display_name = Column(String)
     # action
-    action = Column(String,)
+    action = Column(String, )
     time = Column(DateTime)
 
 

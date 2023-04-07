@@ -74,7 +74,6 @@ class bf1_api(object):
             "ServerNotRestartableException": "服务器未开启",
             "InvalidLevelIndexException": "地图编号无效",
             "RspErrUserIsAlreadyVip()": "玩家已经是VIP了",
-            "Could not find gameserver.": "找不到服务器"
         }
         self.filter_dict = {
             # 所有值都是可选的, 要什么写什么就行, 在getGameData有详细的
@@ -242,9 +241,10 @@ class bf1_api(object):
         return False
 
     async def get_session(self) -> str:
+        if (not self.remid) or (not self.pid):
+            logger.warning(f"BF1账号{self.pid}未登录!请传入remid和sid使用login进行登录!")
+            return str(self.session)
         if await self.check_session_expire():
-            if (not self.remid) or (not self.pid):
-                logger.warning(f"获取session时发生错误:BF1账号{self.pid}未登录!请先传入remid和sid使用login进行登录!")
             return str(await self.login(self.remid, self.sid))
         else:
             return str(self.session)
@@ -922,7 +922,7 @@ class Gamedata(bf1_api):
 
 class GameServer(bf1_api):
 
-    async def searchServers(self, server_name: str = "", limit: int = 200, filter_dict=None) -> dict:
+    async def searchServers(self, server_name: str, limit: int = 200, filterJson=None) -> dict:
         """
         搜索服务器
         :return:
@@ -951,7 +951,7 @@ class GameServer(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "limit": limit,
-                    "filterJson": json.dumps(filter_dict) if filter_dict else json.dumps(temp),
+                    "filterJson": filterJson if filterJson else json.dumps(temp),
                 },
                 "id": await get_a_uuid()
             }
@@ -1050,8 +1050,6 @@ class GameServer(bf1_api):
                 }
             }
         """
-        if not isinstance(personaIds, list):
-            personaIds = [personaIds]
         return await self.api_call(
             {
                 "jsonrpc": "2.0",

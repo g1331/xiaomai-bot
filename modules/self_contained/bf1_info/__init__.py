@@ -1032,7 +1032,7 @@ async def player_match_info(
                         f"队伍: {team_name}  {team_win}\n"
                         f"击杀: {player['kills']}\t死亡: {player['deaths']}\n"
                         f"KD: {player['kd']}\tKPM: {player['kpm']}\n"
-                        f"得分: {player['score']}\tPM: {player['spm']}\n"
+                        f"得分: {player['score']}\tSPM: {player['spm']}\n"
                         f"命中率: {player['accuracy']}\t爆头: {player['headshots']}\n"
                         f"游玩时长: {player['time_played']}\n"
                         + "=" * 15

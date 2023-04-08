@@ -482,7 +482,8 @@ async def player_stat_pic(
         kd = round(kills / deaths, 2) if deaths else kills
         wins = player_info.get('basicStats').get('wins')
         losses = player_info.get('basicStats').get('losses')
-        win_rate = round(wins / (wins + losses) if (wins + losses) else wins, 2)
+        # 百分制
+        win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
         kpm = player_info.get('basicStats').get('kpm')
         spm = player_info.get('basicStats').get('spm')
         vehicle_kill = 0

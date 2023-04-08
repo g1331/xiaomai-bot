@@ -1225,7 +1225,7 @@ async def server_info_collect():
     }
     game_id_list = []
     for _ in range(50):
-        tasks.append((await BF1DA.get_api_instance()).searchServers(filter_dict=filter_dict))
+        tasks.append((await BF1DA.get_api_instance()).searchServers("", filter_dict=filter_dict))
     logger.debug("开始更新私服数据")
     results = await asyncio.gather(*tasks)
     for result in results:
@@ -1325,7 +1325,7 @@ async def server_info_collect():
 @dispatch(
     Twilight(
         [
-            UnionMatch("-天眼查").space(SpacePolicy.PRESERVE),
+            UnionMatch("-天眼查", "-tyc").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )

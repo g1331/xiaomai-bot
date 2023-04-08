@@ -274,7 +274,8 @@ class VehicleData:
         }
         if sort_type.upper() in ["KPM"]:
             vehicle_list.sort(
-                key=lambda x: x.get("stats").get("values").get("kills", 0) / x.get("stats").get("values").get("seconds", 0)
+                key=lambda x: x.get("stats").get("values").get("kills", 0) / x.get("stats").get("values").get("seconds",
+                                                                                                              0)
                 if x.get("stats").get("values").get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
                 reverse=True
             )
@@ -463,14 +464,20 @@ class BTRMatchesData:
                         if value.select('.name')[0].text.strip() == "Time Played":
                             player_time = value.select('.value')[0].text.strip()
                             break
-                    # 时间都是 xxm xxs 的形式
-                    # 如果m在字符串中，则将m前的数字乘以60，加上m后和s前的数字,转换成时间戳
-                    if 'm' in player_time:
-                        time_second = int(player_time.split('m')[0]) * 60
-                        if 's' in player_time:
-                            time_second += int(player_time.split('m')[1].split('s')[0])
+                    # 时间都是  xh xm xs 的形式
+                    # 转换成秒
+                    time_second = 0
+                    if player_time.find("h") != -1:
+                        time_second += int(player_time.split("h")[0]) * 3600
+                        time_second += int(player_time.split("h")[1].split("m")[0]) * 60
+                        time_second += int(player_time.split("h")[1].split("m")[1].split("s")[0])
+                    elif player_time.find("m") != -1:
+                        time_second += int(player_time.split("m")[0]) * 60
+                        time_second += int(player_time.split("m")[1].split("s")[0])
+                    elif player_time.find("s") != -1:
+                        time_second += int(player_time.split("s")[0])
                     else:
-                        time_second = int(player_time.split('s')[0])
+                        time_second = 0
                     # kpm、spm
                     if time_second != 0:
                         kpm = round(player_kills / time_second * 60, 2)
@@ -478,12 +485,7 @@ class BTRMatchesData:
                     else:
                         kpm = 0
                         spm = 0
-                    # 将秒转换为xx分，xx秒
-                    if time_second < 60:
-                        player_time = f"{time_second}秒"
-                    else:
-                        minutes, seconds = divmod(time_second, 60)
-                        player_time = f"{minutes}分{seconds}秒"
+
                     player_info = {
                         "player_name": player_name_item,
                         "team_name": team_name,

@@ -68,320 +68,320 @@ null = ''
 
 # TODO: 1.创建群组-增删改查 2.群组添加服务器-增删改查、qq群绑定群组后查服务器 3.服管账号-增删改查、绑定到群组服务器的账号 4.踢人 5.封禁 6.换边 7.换图 8.vip
 # TODO: 前置功能: 搜索服务器
-@listen(GroupMessage)
-@decorate(
-    Distribute.require(),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
-    Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.User, if_noticed=True),
-)
-@dispatch(
-    Twilight(
-        [
-            "action" @ UnionMatch("-搜服务器", "-服务器").space(SpacePolicy.PRESERVE),
-            "server_name" @ WildcardMatch(optional=True).space(SpacePolicy.PRESERVE)
-        ]
-    )
-)
-async def search_server(app: Ariadne, group: Group, server_name: RegexResult, source: Source):
-    server_name = str(server_name.result)
-    if server_name == '':
-        return
-    elif server_name.startswith("#"):
-        return
-    try:
-        result = await api_gateway.search_server_by_name(server_name)
-    except Exception as e:
-        logger.error(e)
-        await app.send_message(group, MessageChain(
-            f'接口出错，请稍后再试'
-        ), quote=source)
-        return False
-    if result == "timed out":
-        await app.send_message(group, MessageChain(
-            f'网络出错，请稍后再试'
-        ), quote=source)
-        return False
-    if not result:
-        await app.send_message(group, MessageChain(
-            f'共搜索到0个服务器'
-        ), quote=source)
-        return True
-    temp = []
-    length = len(result)
-    if 0 < length <= 3:
-        temp.append(f"共搜到{length}个服务器\n")
-        temp.append("=" * 20 + "\n")
-        for item in result:
-            temp.append(f'{item["name"]}\n')
-            temp.append(f'GameId:{item["gameId"]}\n')
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            temp.append(
-                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]}) ')
-            # 地图:行动模式-苏伊士
-            temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争",
-                                                                                                               "战\u200b争"))
-            if item["description"] != '':
-                temp.append(f'简介:{item["description"]}\n')
-            temp.append("=" * 20 + "\n")
-        temp[-1] = temp[-1].replace("\n", '')
-        await app.send_message(group, MessageChain(
-            temp
-        ), quote=source)
-        return True
-    elif 3 < length <= 10:
-        temp.append(f"共搜到{length}个服务器\n")
-        temp.append("=" * 20 + "\n")
-        for item in result:
-            temp.append(f'{item["name"][:30]}\n')
-            temp.append(f'GameId:{item["gameId"]}\n')
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            temp.append(
-                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})  ')
-            # 地图:行动模式-苏伊士
-            temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争",
-                                                                                                               "战\u200b争"))
-            temp.append("=" * 20 + "\n")
-        temp[-1] = temp[-1].replace("\n", '')
+# @listen(GroupMessage)
+# @decorate(
+#     Distribute.require(),
+#     Function.require(channel.module),
+#     FrequencyLimitation.require(channel.module),
+#     Permission.group_require(channel.metadata.level),
+#     Permission.user_require(Permission.User, if_noticed=True),
+# )
+# @dispatch(
+#     Twilight(
+#         [
+#             "action" @ UnionMatch("-搜服务器", "-服务器").space(SpacePolicy.PRESERVE),
+#             "server_name" @ WildcardMatch(optional=True).space(SpacePolicy.PRESERVE)
+#         ]
+#     )
+# )
+# async def search_server(app: Ariadne, group: Group, server_name: RegexResult, source: Source):
+#     server_name = str(server_name.result)
+#     if server_name == '':
+#         return
+#     elif server_name.startswith("#"):
+#         return
+#     try:
+#         result = await api_gateway.search_server_by_name(server_name)
+#     except Exception as e:
+#         logger.error(e)
+#         await app.send_message(group, MessageChain(
+#             f'接口出错，请稍后再试'
+#         ), quote=source)
+#         return False
+#     if result == "timed out":
+#         await app.send_message(group, MessageChain(
+#             f'网络出错，请稍后再试'
+#         ), quote=source)
+#         return False
+#     if not result:
+#         await app.send_message(group, MessageChain(
+#             f'共搜索到0个服务器'
+#         ), quote=source)
+#         return True
+#     temp = []
+#     length = len(result)
+#     if 0 < length <= 3:
+#         temp.append(f"共搜到{length}个服务器\n")
+#         temp.append("=" * 20 + "\n")
+#         for item in result:
+#             temp.append(f'{item["name"]}\n')
+#             temp.append(f'GameId:{item["gameId"]}\n')
+#             # temp.append(f'Guid:{item["guid"]}\n')
+#             # 人数:62/64[1](0)
+#             temp.append(
+#                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]}) ')
+#             # 地图:行动模式-苏伊士
+#             temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争",
+#                                                                                                                "战\u200b争"))
+#             if item["description"] != '':
+#                 temp.append(f'简介:{item["description"]}\n')
+#             temp.append("=" * 20 + "\n")
+#         temp[-1] = temp[-1].replace("\n", '')
+#         await app.send_message(group, MessageChain(
+#             temp
+#         ), quote=source)
+#         return True
+#     elif 3 < length <= 10:
+#         temp.append(f"共搜到{length}个服务器\n")
+#         temp.append("=" * 20 + "\n")
+#         for item in result:
+#             temp.append(f'{item["name"][:30]}\n')
+#             temp.append(f'GameId:{item["gameId"]}\n')
+#             # temp.append(f'Guid:{item["guid"]}\n')
+#             # 人数:62/64[1](0)
+#             temp.append(
+#                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})  ')
+#             # 地图:行动模式-苏伊士
+#             temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争",
+#                                                                                                                "战\u200b争"))
+#             temp.append("=" * 20 + "\n")
+#         temp[-1] = temp[-1].replace("\n", '')
+#
+#         # await app.send_message(
+#         #     group,
+#         #     await MessageChainUtils.messagechain_to_img(
+#         #         MessageChain(
+#         #             temp
+#         #         )
+#         #     ), quote=message[Source][0]
+#         # )
+#
+#         await app.send_message(group, MessageChain(
+#             temp
+#         ), quote=source)
+#         return True
+#     elif 10 < length <= 20:
+#         fwd_nodeList = []
+#         bot_member = await app.get_member(group, app.account)
+#         servers = []
+#         # temp = []
+#         for item in result:
+#             temp = [
+#                 f'{item["name"]}\n',
+#                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n',
+#                 f'GameId:{item["gameId"]}\n',
+#                 f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
+#             ]
+#             # temp.append(f'Guid:{item["guid"]}\n')
+#             # 人数:62/64[1](0)
+#             # 地图:行动模式-苏伊士
+#             if item["description"] != '':
+#                 temp.append(f'\n简介:{item["description"]}\n\n')
+#             # temp.append("=" * 20 + "\n")
+#             fwd_nodeList.append(
+#                 ForwardNode(
+#                     target=bot_member,
+#                     time=datetime.now(),
+#                     message=MessageChain(temp),
+#                 )
+#             )
+#             servers.append(temp)
+#
+#         # temp[-1] = temp[-1].replace("\n", '')
+#         # await app.send_message(
+#         #     group,
+#         #     await MessageChainUtils.messagechain_to_img(
+#         #         MessageChain(
+#         #             temp
+#         #         )
+#         #     ), quote=message[Source][0]
+#         # )
+#
+#         message_send = MessageChain(Forward(nodeList=fwd_nodeList))
+#         try:
+#             await app.send_message(group, MessageChain(
+#                 message_send
+#             ), quote=source)
+#             await app.send_message(group, MessageChain(
+#                 f"共搜到{length}个服务器,请点击转发消息查看!"
+#             ), quote=source)
+#         except:
+#             try:
+#                 await app.send_message(
+#                     group,
+#                     MessageChain(
+#                         GraiaImage(data_bytes=await md2img(servers))
+#                     ),
+#                     quote=source
+#                 )
+#                 return
+#             except Exception as e:
+#                 logger.error(e)
+#                 await app.send_message(group, MessageChain(
+#                     f"发送消息失败,请增加关键词!"
+#                 ), quote=source)
+#         return
+#     else:
+#         result = result[:20]
+#         bot_member = await app.get_member(group, app.account)
+#         fwd_nodeList = []
+#         servers = []
+#         # temp = []
+#         for item in result:
+#             temp = [
+#                 f'{item["name"]}\n',
+#                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n',
+#                 f'GameId:{item["gameId"]}\n',
+#                 f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
+#             ]
+#             # temp.append(f'Guid:{item["guid"]}\n')
+#             # 人数:62/64[1](0)
+#             # 地图:行动模式-苏伊士
+#             if item["description"] != '':
+#                 temp.append(f'\n简介:{item["description"]}\n\n')
+#             # temp.append("=" * 20 + "\n")
+#             fwd_nodeList.append(
+#                 ForwardNode(
+#                     target=bot_member,
+#                     time=datetime.now(),
+#                     message=MessageChain(temp),
+#                 )
+#             )
+#             servers.append(temp)
+#
+#         # temp[-1] = temp[-1].replace("\n", '')
+#         # await app.send_message(group, MessageChain(
+#         #             f"共搜到{length}个服务器,已保留前20个结果,请点击图片查看!"
+#         #         ), quote=message[Source][0])
+#         # await app.send_message(
+#         #     group,
+#         #     await MessageChainUtils.messagechain_to_img(
+#         #         MessageChain(
+#         #             temp
+#         #         )
+#         #     ), quote=message[Source][0]
+#         # )
+#
+#         message_send = MessageChain(Forward(nodeList=fwd_nodeList))
+#         try:
+#             await app.send_message(group, MessageChain(
+#                 message_send
+#             ), quote=source)
+#             await app.send_message(group, MessageChain(
+#                 f"共搜到{length}个服务器,已保留前20个结果,请点击转发消息查看!"
+#             ), quote=source)
+#         except:
+#             try:
+#                 await app.send_message(
+#                     group,
+#                     MessageChain(
+#                         GraiaImage(data_bytes=await md2img(servers))
+#                     ),
+#                     quote=source
+#                 )
+#                 return
+#             except:
+#                 await app.send_message(group, MessageChain(
+#                     f"发送消息失败,请增加关键词!"
+#                 ), quote=source)
+#         return
+#         # result_list = cut_list(result, int(len(result)/4) + 1)
+#         # for item_temp in result_list:
+#         #     fwd_nodeList = []
+#         #     for item in item_temp:
+#         #         temp = []
+#         #         temp.append(f'{item["name"][:30]}\n')
+#         #         temp.append(f'GameId:{item["gameId"]}\n')
+#         #         temp.append(f'Guid:{item["guid"]}\n')
+#         #         # 人数:62/64[1](0)
+#         #         temp.append(
+#         #             f'人数:{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n')
+#         #         # 地图:行动模式-苏伊士
+#         #         temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", ""))
+#         #         # temp.append(f'简介:{item["description"]}')
+#         #         fwd_nodeList.append(
+#         #             ForwardNode(
+#         #                 target=bot_member,
+#         #                 time=datetime.now(),
+#         #                 message=MessageChain(temp),
+#         #             )
+#         #         )
+#         #     await app.send_message(group, MessageChain(
+#         #         Forward(nodeList=fwd_nodeList)
+#         #     ), quote=message[Source][0])
 
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
 
-        await app.send_message(group, MessageChain(
-            temp
-        ), quote=source)
-        return True
-    elif 10 < length <= 20:
-        fwd_nodeList = []
-        bot_member = await app.get_member(group, app.account)
-        servers = []
-        # temp = []
-        for item in result:
-            temp = [
-                f'{item["name"]}\n',
-                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n',
-                f'GameId:{item["gameId"]}\n',
-                f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
-            ]
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            # 地图:行动模式-苏伊士
-            if item["description"] != '':
-                temp.append(f'\n简介:{item["description"]}\n\n')
-            # temp.append("=" * 20 + "\n")
-            fwd_nodeList.append(
-                ForwardNode(
-                    target=bot_member,
-                    time=datetime.now(),
-                    message=MessageChain(temp),
-                )
-            )
-            servers.append(temp)
-
-        # temp[-1] = temp[-1].replace("\n", '')
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
-
-        message_send = MessageChain(Forward(nodeList=fwd_nodeList))
-        try:
-            await app.send_message(group, MessageChain(
-                message_send
-            ), quote=source)
-            await app.send_message(group, MessageChain(
-                f"共搜到{length}个服务器,请点击转发消息查看!"
-            ), quote=source)
-        except:
-            try:
-                await app.send_message(
-                    group,
-                    MessageChain(
-                        GraiaImage(data_bytes=await md2img(servers))
-                    ),
-                    quote=source
-                )
-                return
-            except Exception as e:
-                logger.error(e)
-                await app.send_message(group, MessageChain(
-                    f"发送消息失败,请增加关键词!"
-                ), quote=source)
-        return
-    else:
-        result = result[:20]
-        bot_member = await app.get_member(group, app.account)
-        fwd_nodeList = []
-        servers = []
-        # temp = []
-        for item in result:
-            temp = [
-                f'{item["name"]}\n',
-                f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n',
-                f'GameId:{item["gameId"]}\n',
-                f'{item["mapModePretty"]}-{item["mapNamePretty"]}'.replace("流血", "流\u200b血").replace("战争", "战\u200b争")
-            ]
-            # temp.append(f'Guid:{item["guid"]}\n')
-            # 人数:62/64[1](0)
-            # 地图:行动模式-苏伊士
-            if item["description"] != '':
-                temp.append(f'\n简介:{item["description"]}\n\n')
-            # temp.append("=" * 20 + "\n")
-            fwd_nodeList.append(
-                ForwardNode(
-                    target=bot_member,
-                    time=datetime.now(),
-                    message=MessageChain(temp),
-                )
-            )
-            servers.append(temp)
-
-        # temp[-1] = temp[-1].replace("\n", '')
-        # await app.send_message(group, MessageChain(
-        #             f"共搜到{length}个服务器,已保留前20个结果,请点击图片查看!"
-        #         ), quote=message[Source][0])
-        # await app.send_message(
-        #     group,
-        #     await MessageChainUtils.messagechain_to_img(
-        #         MessageChain(
-        #             temp
-        #         )
-        #     ), quote=message[Source][0]
-        # )
-
-        message_send = MessageChain(Forward(nodeList=fwd_nodeList))
-        try:
-            await app.send_message(group, MessageChain(
-                message_send
-            ), quote=source)
-            await app.send_message(group, MessageChain(
-                f"共搜到{length}个服务器,已保留前20个结果,请点击转发消息查看!"
-            ), quote=source)
-        except:
-            try:
-                await app.send_message(
-                    group,
-                    MessageChain(
-                        GraiaImage(data_bytes=await md2img(servers))
-                    ),
-                    quote=source
-                )
-                return
-            except:
-                await app.send_message(group, MessageChain(
-                    f"发送消息失败,请增加关键词!"
-                ), quote=source)
-        return
-        # result_list = cut_list(result, int(len(result)/4) + 1)
-        # for item_temp in result_list:
-        #     fwd_nodeList = []
-        #     for item in item_temp:
-        #         temp = []
-        #         temp.append(f'{item["name"][:30]}\n')
-        #         temp.append(f'GameId:{item["gameId"]}\n')
-        #         temp.append(f'Guid:{item["guid"]}\n')
-        #         # 人数:62/64[1](0)
-        #         temp.append(
-        #             f'人数:{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}[{item["slots"]["Queue"]["current"]}]({item["slots"]["Spectator"]["current"]})\n')
-        #         # 地图:行动模式-苏伊士
-        #         temp.append(f'{item["mapModePretty"]}-{item["mapNamePretty"]}\n'.replace("流血", ""))
-        #         # temp.append(f'简介:{item["description"]}')
-        #         fwd_nodeList.append(
-        #             ForwardNode(
-        #                 target=bot_member,
-        #                 time=datetime.now(),
-        #                 message=MessageChain(temp),
-        #             )
-        #         )
-        #     await app.send_message(group, MessageChain(
-        #         Forward(nodeList=fwd_nodeList)
-        #     ), quote=message[Source][0])
-
-
-# TODO: 详细服务器
-@listen(GroupMessage)
-@decorate(
-    Distribute.require(),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
-    Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.User, if_noticed=True),
-)
-@dispatch(
-    Twilight(
-        [
-            FullMatch("-详细服务器").space(SpacePolicy.PRESERVE),
-            "server_gameid" @ ParamMatch(optional=True).space(PRESERVE)
-        ]
-    )
-)
-async def get_server_detail(app: Ariadne, group: Group, server_gameid: RegexResult, source: Source):
-    server_gameid = str(server_gameid.result)
-    if server_gameid is None:
-        await app.send_message(group, MessageChain(
-            f"请检查输入的服务器gameid"
-        ))
-        return False
-    try:
-        # await app.send_message(group, MessageChain(
-        #     f'搜索ing'
-        # ), quote=message[Source][0])
-        result = await api_gateway.get_server_fulldetails(server_gameid)
-        if result == "":
-            raise Exception
-    except:
-        await app.send_message(group, MessageChain(
-            f'可能网络接口出错/输入gameid有误，请稍后再试'
-        ), quote=source)
-        return False
-    temp = [
-        f'{result["serverInfo"]["name"]}\n', "=" * 20 + "\n", f'Gameid:{result["serverInfo"]["gameId"]}\n',
-        f'Guid:{result["serverInfo"]["guid"]}\n', f'Serverid:{result["rspInfo"]["server"]["serverId"]}\n',
-                                             f"=" * 20 + "\n",
-        f'人数:{result["serverInfo"]["slots"]["Soldier"]["current"]}/{result["serverInfo"]["slots"]["Soldier"]["max"]}'
-        f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
-        f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
-        f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血",
-                                                                                                        "流\u200b血").replace(
-            "战争", "战\u200b争")
-    ]
-    try:
-        temp.append(f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n')
-    except:
-        pass
-    if result["serverInfo"]["description"] != '':
-        temp.append(f'简介:{result["serverInfo"]["description"]}\n')
-    temp.append("=" * 20 + "\n")
-    try:
-        temp.append(
-            f'战队名:{result["platoonInfo"]["name"]}\n战队简写:{result["platoonInfo"]["tag"]} 人数:{result["platoonInfo"]["size"]}\n')
-        temp.append(f'战队描述:{result["platoonInfo"]["description"]}\n')
-        temp.append("=" * 20 + "\n")
-    except:
-        pass
-    temp.append(
-        f'创建时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["createdDate"]) / 1000))}\n')
-    temp.append(
-        f'到期时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["expirationDate"]) / 1000))}\n')
-    temp.append(
-        f'续费时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["updatedDate"]) / 1000))}\n')
-    temp.append("=" * 20)
-    await app.send_message(group, MessageChain(
-        temp
-    ), quote=source)
+# # TODO: 详细服务器
+# @listen(GroupMessage)
+# @decorate(
+#     Distribute.require(),
+#     Function.require(channel.module),
+#     FrequencyLimitation.require(channel.module),
+#     Permission.group_require(channel.metadata.level),
+#     Permission.user_require(Permission.User, if_noticed=True),
+# )
+# @dispatch(
+#     Twilight(
+#         [
+#             FullMatch("-详细服务器").space(SpacePolicy.PRESERVE),
+#             "server_gameid" @ ParamMatch(optional=True).space(PRESERVE)
+#         ]
+#     )
+# )
+# async def get_server_detail(app: Ariadne, group: Group, server_gameid: RegexResult, source: Source):
+#     server_gameid = str(server_gameid.result)
+#     if server_gameid is None:
+#         await app.send_message(group, MessageChain(
+#             f"请检查输入的服务器gameid"
+#         ))
+#         return False
+#     try:
+#         # await app.send_message(group, MessageChain(
+#         #     f'搜索ing'
+#         # ), quote=message[Source][0])
+#         result = await api_gateway.get_server_fulldetails(server_gameid)
+#         if result == "":
+#             raise Exception
+#     except:
+#         await app.send_message(group, MessageChain(
+#             f'可能网络接口出错/输入gameid有误，请稍后再试'
+#         ), quote=source)
+#         return False
+#     temp = [
+#         f'{result["serverInfo"]["name"]}\n', "=" * 20 + "\n", f'Gameid:{result["serverInfo"]["gameId"]}\n',
+#         f'Guid:{result["serverInfo"]["guid"]}\n', f'Serverid:{result["rspInfo"]["server"]["serverId"]}\n',
+#                                              f"=" * 20 + "\n",
+#         f'人数:{result["serverInfo"]["slots"]["Soldier"]["current"]}/{result["serverInfo"]["slots"]["Soldier"]["max"]}'
+#         f'[{result["serverInfo"]["slots"]["Queue"]["current"]}]({result["serverInfo"]["slots"]["Spectator"]["current"]}) ',
+#         f"收藏:{result['serverInfo']['serverBookmarkCount']}\n",
+#         f'地图:{result["serverInfo"]["mapModePretty"]}-{result["serverInfo"]["mapNamePretty"]}\n'.replace("流血",
+#                                                                                                         "流\u200b血").replace(
+#             "战争", "战\u200b争")
+#     ]
+#     try:
+#         temp.append(f'服主:{result["rspInfo"]["owner"]["displayName"]} Pid:{result["rspInfo"]["owner"]["personaId"]}\n')
+#     except:
+#         pass
+#     if result["serverInfo"]["description"] != '':
+#         temp.append(f'简介:{result["serverInfo"]["description"]}\n')
+#     temp.append("=" * 20 + "\n")
+#     try:
+#         temp.append(
+#             f'战队名:{result["platoonInfo"]["name"]}\n战队简写:{result["platoonInfo"]["tag"]} 人数:{result["platoonInfo"]["size"]}\n')
+#         temp.append(f'战队描述:{result["platoonInfo"]["description"]}\n')
+#         temp.append("=" * 20 + "\n")
+#     except:
+#         pass
+#     temp.append(
+#         f'创建时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["createdDate"]) / 1000))}\n')
+#     temp.append(
+#         f'到期时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["expirationDate"]) / 1000))}\n')
+#     temp.append(
+#         f'续费时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(result["rspInfo"]["server"]["updatedDate"]) / 1000))}\n')
+#     temp.append("=" * 20)
+#     await app.send_message(group, MessageChain(
+#         temp
+#     ), quote=source)
 
 
 # TODO 1：-bf群组 增删改查

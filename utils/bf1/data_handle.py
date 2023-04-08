@@ -81,7 +81,7 @@ class WeaponData:
                 ]:
                     weapon_list.append(weapon)
             elif rule in ["侦察兵", "侦察", "斟茶兵", "斟茶"]:
-                if weapon.get("category") in ["步枪"] or weapon.get("guid") in [
+                if weapon.get("category") in ["步槍"] or weapon.get("guid") in [
                     "2543311A-B9BC-4F72-8E71-C9D32DCA9CFC",
                     "ADAD5F72-BD74-46EF-AB42-99F95D88DF8E",
                     "2D64B139-27C8-4EDB-AB14-734993A96008",

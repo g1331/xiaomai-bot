@@ -6,6 +6,8 @@ import time
 from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Type
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from alembic.command import revision, upgrade
 from alembic.config import Config
@@ -28,12 +30,14 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
+from graia.amnesia.builtins.uvicorn import UvicornService
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import LogConfig, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graia.saya.builtins.broadcast import BroadcastBehaviour
 from graiax.playwright import PlaywrightService
+from graiax.fastapi import FastAPIBehaviour, FastAPIService
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -105,6 +109,23 @@ class Umaru(object):
                 proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None
             )
         )
+        if self.config.web_manager_api:
+            Ariadne.launch_manager.add_service(
+                UvicornService(
+                    host="0.0.0.0" if self.config.api_expose else "127.0.0.1",
+                    port=self.config.api_port,
+                )
+            )
+            fastapi = FastAPI()
+            fastapi.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+            create(Saya).install_behaviours(FastAPIBehaviour(fastapi))
+            Ariadne.launch_manager.add_service(FastAPIService(fastapi))
         # 推后导入，避免循环导入
         from utils.alembic import AlembicService
         Ariadne.launch_manager.add_service(AlembicService())
@@ -468,8 +489,8 @@ class Umaru(object):
             revision(cfg, message="update", autogenerate=True)
             upgrade(cfg, "head")
 
-        os.system("alembic revision --autogenerate -m 'update'")
-        os.system("alembic upgrade head")
+        # os.system("alembic revision --autogenerate -m 'update'")
+        # os.system("alembic upgrade head")
 
     @staticmethod
     def launch():

@@ -16,6 +16,10 @@ class GlobalConfig(BaseModel):
     verify_key: str = "1234567890"
     test_group: int
     proxy: str
+    api_port: int = 8080
+    api_expose: bool = False
+    web_manager_api: bool = True
+    web_manager_auto_boot: bool = False
     db_link: str = "sqlite+aiosqlite:///data.db"
     log_related: dict = {"error_retention": 14, "common_retention": 7}
     auto_upgrade: bool = False

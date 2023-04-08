@@ -7,6 +7,12 @@ test_group: 测试群的群号 # 用于接收bot反馈信息等
 proxy: proxy
 auto_upgrade: true
 
+# web管理相关
+web_manager_api: true
+web_manager_auto_boot: false
+api_port: 8080
+api_expose: false
+
 # mah配置
 mirai_host: http://localhost:8080
 verify_key: verify_key

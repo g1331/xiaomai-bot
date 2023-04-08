@@ -415,25 +415,36 @@ async def gt_bf1_stat():
             f"排队总数:{data.get('amounts').get('queueAmount')}\n" \
             f"观众总数:{data.get('amounts').get('spectatorAmount')}\n" + \
             f"=" * 13 + "\n" \
-            "私服(官服):\n" \
-            f"服务器:{data.get('amounts').get('communityServerAmount', 0)}" \
-            f"({data.get('amounts').get('diceServerAmount', 0)})\n" \
-            f"人数:{data.get('amounts').get('communitySoldierAmount', 0)}" \
-            f"({data.get('amounts').get('diceSoldierAmount', 0)})\n" \
-            f"排队:{data.get('amounts').get('communityQueueAmount', 0)}" \
-            f"({data.get('amounts').get('diceQueueAmount', 0)})\n" \
-            f"观众:{data.get('amounts').get('communitySpectatorAmount', 0)}" \
-            f"({data.get('amounts').get('diceSpectatorAmount', 0)})\n" + \
+                        "私服(官服):\n" \
+                        f"服务器:{data.get('amounts').get('communityServerAmount', 0)}" \
+                        f"({data.get('amounts').get('diceServerAmount', 0)})\n" \
+                        f"人数:{data.get('amounts').get('communitySoldierAmount', 0)}" \
+                        f"({data.get('amounts').get('diceSoldierAmount', 0)})\n" \
+                        f"排队:{data.get('amounts').get('communityQueueAmount', 0)}" \
+                        f"({data.get('amounts').get('diceQueueAmount', 0)})\n" \
+                        f"观众:{data.get('amounts').get('communitySpectatorAmount', 0)}" \
+                        f"({data.get('amounts').get('diceSpectatorAmount', 0)})\n" + \
             f"=" * 13 + "\n" \
-            f"征服:{data.get('modes').get('Conquest', 0)}\t" \
-            f"行动:{data.get('modes').get('BreakthroughLarge', 0)}\n" \
-            f"前线:{data.get('modes').get('TugOfWar', 0)}\t" \
-            f"突袭:{data.get('modes').get('Rush', 0)}\n" \
-            f"抢攻:{data.get('modes').get('Domination', 0)}\t" \
-            f"闪击行动:{data.get('modes').get('Breakthrough', 0)}\n" \
-            f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
-            f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
-            f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
-            f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
+                        f"征服:{data.get('modes').get('Conquest', 0)}\t" \
+                        f"行动:{data.get('modes').get('BreakthroughLarge', 0)}\n" \
+                        f"前线:{data.get('modes').get('TugOfWar', 0)}\t" \
+                        f"突袭:{data.get('modes').get('Rush', 0)}\n" \
+                        f"抢攻:{data.get('modes').get('Domination', 0)}\t" \
+                        f"闪击行动:{data.get('modes').get('Breakthrough', 0)}\n" \
+                        f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
+                        f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
+                        f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
+                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
         return result
     return "获取数据失败"
+
+
+async def record_api(player_pid) -> dict:
+    record_url = "https://record.ainios.com/getReport"
+    data = {
+        "personaId": player_pid
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(record_url, json=data) as response:
+            response = await response.json()
+    return response

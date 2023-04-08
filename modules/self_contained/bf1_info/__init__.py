@@ -40,7 +40,7 @@ from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
-    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat
+    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api
 )
 
 config = create(GlobalConfig)
@@ -1387,6 +1387,7 @@ async def tyc(
         bfeac_checkBan(display_name),
         bfban_checkBan(player_pid),
         gt_checkVban(player_pid),
+        record_api(player_pid),
         (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
     ]
     tasks = await asyncio.gather(*tasks)
@@ -1431,8 +1432,22 @@ async def tyc(
         )
         send.append("=" * 20 + '\n')
 
+    # 小助手标记信息
+    record_data = tasks[4]
+    try:
+        browse = record_data["data"]["browse"]
+        hacker = record_data["data"]["hacker"]
+        doubt = record_data["data"]["doubt"]
+        send.append("战绩软件查询结果:\n")
+        send.append(f"浏览量:{browse} ")
+        send.append(f"外挂标记:{hacker} ")
+        send.append(f"怀疑标记:{doubt}\n")
+        send.append("=" * 20 + '\n')
+    except:
+        pass
+
     # 正在游玩
-    playing_data = tasks[4]
+    playing_data = tasks[5]
     if not isinstance(playing_data, str):
         playing_data: dict = playing_data["result"]
         send.append("正在游玩:\n")
@@ -1442,6 +1457,9 @@ async def tyc(
             send.append(playing_data[f"{player_pid}"])
         send.append("=" * 20 + '\n')
 
+    # 去掉最后一个换行
+    if send[-1] == '\n':
+        send = send[:-1]
     return await app.send_message(group, MessageChain(f"{''.join(send)}"), quote=source)
 
 

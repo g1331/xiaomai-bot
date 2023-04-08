@@ -467,17 +467,18 @@ class BTRMatchesData:
                     # 时间都是  xh xm xs 的形式
                     # 转换成秒
                     time_second = 0
-                    if player_time.find("h") != -1:
-                        time_second += int(player_time.split("h")[0]) * 3600
-                        time_second += int(player_time.split("h")[1].split("m")[0]) * 60
-                        time_second += int(player_time.split("h")[1].split("m")[1].split("s")[0])
-                    elif player_time.find("m") != -1:
-                        time_second += int(player_time.split("m")[0]) * 60
-                        time_second += int(player_time.split("m")[1].split("s")[0])
-                    elif player_time.find("s") != -1:
-                        time_second += int(player_time.split("s")[0])
+                    if "h" in player_time:
+                        hours, remaining_time = player_time.split("h")
+                        time_second += int(hours) * 3600
                     else:
-                        time_second = 0
+                        remaining_time = player_time
+                    if "m" in remaining_time:
+                        minutes, remaining_time = remaining_time.split("m")
+                        time_second += int(minutes) * 60
+                    if "s" in remaining_time:
+                        seconds = remaining_time.split("s")[0]
+                        time_second += int(seconds)
+
                     # kpm、spm
                     if time_second != 0:
                         kpm = round(player_kills / time_second * 60, 2)

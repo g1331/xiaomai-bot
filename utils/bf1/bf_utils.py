@@ -448,3 +448,30 @@ async def record_api(player_pid) -> dict:
         async with session.post(record_url, json=data) as response:
             response = await response.json()
     return response
+
+
+# 下载交换皮肤
+async def download_skin(url):
+    file_name = './data/battlefield/pic/skins/' + url[url.rfind('/') + 1:]
+    # noinspection PyBroadException
+    try:
+        fp = open(file_name, 'rb')
+        fp.close()
+        return file_name
+    except Exception as e:
+        logger.warning(e)
+        i = 0
+        while i < 3:
+            async with aiohttp.ClientSession() as session:
+                # noinspection PyBroadException
+                try:
+                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
+                        pic = await resp.read()
+                        fp = open(file_name, 'wb')
+                        fp.write(pic)
+                        fp.close()
+                        return file_name
+                except Exception as e:
+                    logger.error(e)
+                    i += 1
+        return None

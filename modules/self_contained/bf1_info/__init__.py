@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from creart import create
-from graia.amnesia.message import MessageChain
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.mirai import NudgeEvent
@@ -34,7 +34,7 @@ from core.control import (
 from core.models import saya_model
 from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
 from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic
+from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
@@ -1507,3 +1507,70 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
     if not isinstance(result, str):
         return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
     return await app.send_message(group, MessageChain(f"{result}"), quote=source)
+
+
+# 交换
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-交换").space(SpacePolicy.PRESERVE),
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def get_exchange(app: Ariadne, group: Group, source: Source):
+    # 交换缓存图片的路径
+    file_path = Path("./data/battlefield/exchange/")
+    # 获取今天的日期
+    file_date = datetime.datetime.now()
+    date_now = file_date
+    # 文件名为xxxx年xx月xx日
+    # 先查询是否有当天的文件，否则获取gw api的数据制图
+    json_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.json"
+    pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
+    # 从今天往前找,如果存在json文件和png文件,则直接发送,否则继续往前找,如果大于7天则重新获取gw api的数据
+    while True:
+        if (file_path / json_file_name).exists() and (file_path / pic_file_name).exists():
+            # 读取图片
+            img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
+            break
+        else:
+            # 往前推一天
+            file_date = file_date - datetime.timedelta(days=1)
+            json_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.json"
+            pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
+            # 如果大于7天则重新获取gw api的数据
+            if (file_date - datetime.datetime.now()).days < -7:
+                # 获取gw api的数据
+                result = await (await BF1DA.get_api_instance()).getOffers()
+                if not isinstance(result, dict):
+                    return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
+                # 如果result和之前最新的json文件内容一样,则打开之前的img文件发送
+                if (file_path / json_file_name).exists():
+                    with open(file_path / json_file_name, 'r', encoding="utf-8") as file1:
+                        data = json.load(file1)
+                        if data == result:
+                            img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
+                            break
+                # 将数据写入json文件
+                with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w',
+                          encoding="utf-8") as file1:
+                    json.dump(result, file1, ensure_ascii=False, indent=4)
+                # 将数据制图
+                img = await Exchange(result).draw()
+                break
+    return await app.send_message(
+        group,
+        MessageChain(
+            Image(data_bytes=img),
+            f"更新时间:{pic_file_name.split('.')[0]}"
+        ),
+        quote=source
+    )

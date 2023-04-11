@@ -3405,4 +3405,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "f6b7e435425b9fff69c87440a827a0189d032855d0682da9060ed6f944d5044f"
+content-hash = "668c4c7b57a63b94470ff4f0a5a54724b1877ab14b432e6f602fe3d01db55995"

@@ -26,7 +26,6 @@ launart = "0.6.1"
 unwind = "0.3.2"
 aiofiles = "^22.1.0"
 zhconv = "^1.4.3"
-pillow = "^9.4.0"
 bs4 = "^0.0.1"
 requests = "^2.28.1"
 jieba = "^0.42.1"
@@ -45,6 +44,7 @@ noneprompt = "^0.1.9"
 alembic = "^1.10.3"
 graiax-fastapi = "^0.2.1"
 uvicorn = "^0.21.1"
+pillow = "^9.5.0"
 
 
 [tool.poetry.group.dev.dependencies]

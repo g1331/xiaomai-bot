@@ -164,6 +164,9 @@ class DefaultAccount:
         :return: {pid, uid, name, display_name, remid, sid, session}
         """
         player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+        if not isinstance(player_info, dict):
+            logger.error(f"更新默认账号信息失败!{player_info}")
+            return None
         self.display_name = f"{player_info['result'][str(self.pid)]['displayName']}"
         self.pid = f"{player_info['result'][str(self.pid)]['personaId']}"
         self.uid = f"{player_info['result'][str(self.pid)]['nucleusId']}"

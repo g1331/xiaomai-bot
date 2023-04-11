@@ -167,7 +167,7 @@ class WeaponData:
             # 先将武器名转换为简体中文，再进行模糊匹配
             weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans').upper().replace("-", "")
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if (target_weapon_name in weapon_name) or (fuzz.partial_ratio(target_weapon_name, weapon_name) > 70):
+            if (target_weapon_name in weapon_name) or (fuzz.partial_ratio(target_weapon_name, weapon_name) > 90):
                 weapon_list.append(weapon)
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
@@ -295,7 +295,7 @@ class VehicleData:
             # 先将载具名转换为简体中文，再进行模糊匹配
             vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans').upper().replace("-", "")
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if (target_vehicle_name in vehicle_name) or (fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 60):
+            if (target_vehicle_name in vehicle_name) or (fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 90):
                 vehicle_list.append(vehicle)
         # 按照击杀/时长/摧毁数
         sort_type_dict = {

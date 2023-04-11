@@ -71,18 +71,27 @@ async def check_default_account(app: Ariadne):
         # 登录默认账号
         await BF1DA.get_api_instance()
         # 更新默认账号信息
-        account_info = await BF1DA.update_player_info()
-        logger.debug("默认账号信息检查完毕")
-        # 给Master发送提示
-        return await app.send_friend_message(
-            config.Master,
-            MessageChain(
-                f"BF1默认查询账号信息已更新，当前默认账号信息为：\n"
-                f"display_name: {account_info['display_name']}\n"
-                f"pid: {account_info['pid']}\n"
-                f"session: {account_info['session']}"
-            ),
-        )
+        if account_info := await BF1DA.update_player_info():
+            logger.debug("默认账号信息检查完毕")
+            # 给Master发送提示
+            return await app.send_friend_message(
+                config.Master,
+                MessageChain(
+                    f"BF1默认查询账号信息已更新，当前默认账号信息为：\n"
+                    f"display_name: {account_info['display_name']}\n"
+                    f"pid: {account_info['pid']}\n"
+                    f"session: {account_info['session']}"
+                ),
+            )
+        else:
+            logger.warning("默认账号信息更新失败")
+            # 给Master发送提示
+            return await app.send_friend_message(
+                config.Master,
+                MessageChain(
+                    f"BF1更新默认查询账号失败!"
+                ),
+            )
 
 
 # 设置默认账号信息
@@ -1574,3 +1583,44 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
         ),
         quote=source
     )
+
+
+# 战役
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-战役", "-行动").space(SpacePolicy.PRESERVE),
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
+    data = await (await BF1DA.get_api_instance()).getPlayerCampaignStatus()
+    if not isinstance(data, dict):
+        return await app.send_message(group, MessageChain(f"查询出错!{data}"), quote=source)
+    if not data.get("result"):
+        return await app.send_message(group, MessageChain(
+            f"当前无进行战役信息!"
+        ), quote=source)
+    return_list = []
+    from time import strftime, gmtime
+    return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}\n", "zh-cn"))
+    return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}\n', "zh-cn"))
+    return_list.append('战役地点:')
+    place_list = []
+    for key in data["result"]:
+        if key.startswith("op") and data["result"].get(key):
+            place_list.append(zhconv.convert(f'{data["result"][key]["name"]} ', "zh-cn"))
+    place_list = ','.join(place_list)
+    return_list.append(place_list)
+    return_list.append(strftime("\n剩余时间:%d天%H小时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
+    return await app.send_message(group, MessageChain(
+        return_list
+    ), quote=source)

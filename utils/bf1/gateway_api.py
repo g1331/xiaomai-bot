@@ -823,6 +823,25 @@ class ScrapExchange(bf1_api):
         )
 
 
+class CampaignOperations(bf1_api):
+    async def getPlayerCampaignStatus(self) -> dict:
+        """
+        获取战役信息
+        :param personaId: PID
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CampaignOperations.getPlayerCampaignStatus",
+                "params": {
+                    "game": "tunguska",
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
 class Stats(bf1_api):
     async def detailedStatsByPersonaId(self, personaId: Union[int, str]) -> dict:
         """
@@ -1560,7 +1579,10 @@ class Platoons(bf1_api):
         ...
 
 
-class api_instance(Game, Progression, Stats, ServerHistory, Gamedata, GameServer, RSP, Platoons, ScrapExchange):
+class api_instance(
+    Game, Progression, Stats, ServerHistory, Gamedata,
+    GameServer, RSP, Platoons, ScrapExchange, CampaignOperations
+):
     # 存储所有实例的字典
     instances = {}
 

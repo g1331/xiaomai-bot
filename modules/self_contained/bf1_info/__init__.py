@@ -1540,49 +1540,61 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
     # 获取今天的日期
     file_date = datetime.datetime.now()
     date_now = file_date
-    # 文件名为xxxx年xx月xx日
-    # 先查询是否有当天的文件，否则获取gw api的数据制图
-    json_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.json"
-    pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
-    # 从今天往前找,如果存在json文件和png文件,则直接发送,否则继续往前找,如果大于7天则重新获取gw api的数据
-    while True:
-        if (file_path / json_file_name).exists() and (file_path / pic_file_name).exists():
-            # 读取图片
+    # 1.如果文件夹为空,则获取gw api的数据制图
+    # 2.如果不为空,直接发送最新的缓存图片
+    # 3.发送完毕后从gw api获取数据,如果和缓存的json文件内容一样,则不做任何操作,否则重新制图并保存为今天日期的文件
+    if not file_path.exists():
+        file_path.mkdir(parents=True)
+    if file_path.exists() and len(list(file_path.iterdir())) == 0:
+        # 获取gw api的数据
+        result = await (await BF1DA.get_api_instance()).getOffers()
+        if not isinstance(result, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
+        # 将数据写入json文件
+        with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w',
+                  encoding="utf-8") as file1:
+            json.dump(result, file1, ensure_ascii=False, indent=4)
+        # 将数据制图
+        img = await Exchange(result).draw()
+        return await app.send_message(
+            group,
+            MessageChain(
+                Image(data_bytes=img),
+                f"更新时间:{date_now.year}年{date_now.month}月{date_now.day}日"
+            ),
+            quote=source
+        )
+    # 发送缓存里最新的图片
+    for day in range(int(len(list(file_path.iterdir()))/2)):
+        file_date = file_date - datetime.timedelta(days=1)
+        pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
+        if (file_path / pic_file_name).exists():
             img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
-            break
-        else:
-            # 往前推一天
-            file_date = file_date - datetime.timedelta(days=1)
-            json_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.json"
-            pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
-            # 如果大于7天则重新获取gw api的数据
-            if (file_date - datetime.datetime.now()).days < -7:
-                # 获取gw api的数据
-                result = await (await BF1DA.get_api_instance()).getOffers()
-                if not isinstance(result, dict):
-                    return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
-                # 如果result和之前最新的json文件内容一样,则打开之前的img文件发送
-                if (file_path / json_file_name).exists():
-                    with open(file_path / json_file_name, 'r', encoding="utf-8") as file1:
-                        data = json.load(file1)
-                        if data == result:
-                            img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
-                            break
-                # 将数据写入json文件
-                with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w',
-                          encoding="utf-8") as file1:
-                    json.dump(result, file1, ensure_ascii=False, indent=4)
-                # 将数据制图
-                img = await Exchange(result).draw()
-                break
-    return await app.send_message(
-        group,
-        MessageChain(
-            Image(data_bytes=img),
-            f"更新时间:{pic_file_name.split('.')[0]}"
-        ),
-        quote=source
-    )
+            await app.send_message(
+                group,
+                MessageChain(
+                    Image(data_bytes=img),
+                    f"更新时间:{pic_file_name.split('.')[0]}"
+                ),
+                quote=source
+            )
+    # 获取gw api的数据,更新缓存
+    result = await (await BF1DA.get_api_instance()).getOffers()
+    if not isinstance(result, dict):
+        return logger.error(f"查询交换出错!{result}")
+    # 如果result和之前最新的json文件内容一样,则return
+    if (file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json").exists():
+        with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json", 'r',
+                  encoding="utf-8") as file1:
+            data = json.load(file1)
+            if data == result:
+                return logger.info("交换数据无变化,不更新缓存")
+    # 将数据写入json文件
+    with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w', encoding="utf-8") as file1:
+        json.dump(result, file1, ensure_ascii=False, indent=4)
+    # 将数据制图
+    _ = await Exchange(result).draw()
+    return logger.success("成功更新交换缓存")
 
 
 # 战役

@@ -1565,7 +1565,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
             quote=source
         )
     # 发送缓存里最新的图片
-    for day in range(int(len(list(file_path.iterdir()))/2)):
+    for day in range(int(len(list(file_path.iterdir())) / 2)):
         file_date = file_date - datetime.timedelta(days=day)
         pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
         if (file_path / pic_file_name).exists():
@@ -1578,6 +1578,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
                 ),
                 quote=source
             )
+            break
     # 获取gw api的数据,更新缓存
     result = await (await BF1DA.get_api_instance()).getOffers()
     if not isinstance(result, dict):
@@ -1587,14 +1588,19 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
         with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json", 'r',
                   encoding="utf-8") as file1:
             data = json.load(file1)
-            if data == result:
-                return logger.info("交换数据无变化,不更新缓存")
-    # 将数据写入json文件
-    with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w', encoding="utf-8") as file1:
-        json.dump(result, file1, ensure_ascii=False, indent=4)
-    # 将数据制图
-    _ = await Exchange(result).draw()
-    return logger.success("成功更新交换缓存")
+            if data.get("result") == result.get("result"):
+                return logger.info("交换未更新~")
+            else:
+                logger.debug("正在更新交换~")
+                # 将数据写入json文件
+                with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json",
+                          'w', encoding="utf-8") as file2:
+                    json.dump(result, file2, ensure_ascii=False, indent=4)
+                # 将数据制图
+                _ = await Exchange(result).draw()
+                return logger.success("成功更新交换缓存~")
+    else:
+        return logger.error(f"未找到交换数据文件{file_date.year}年{file_date.month}月{file_date.day}日.json")
 
 
 # 战役

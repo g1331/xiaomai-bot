@@ -175,7 +175,6 @@ class Exchange:
                 y += 298
                 x = 59
         bg_img.save(SavePic, 'png', quality=100)
-        logger.info("更新交换缓存成功!")
         # 返回bytes
         output_buffer = BytesIO()
         bg_img.save(output_buffer, format='PNG')

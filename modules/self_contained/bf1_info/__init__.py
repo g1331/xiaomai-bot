@@ -1566,7 +1566,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
         )
     # 发送缓存里最新的图片
     for day in range(int(len(list(file_path.iterdir()))/2)):
-        file_date = file_date - datetime.timedelta(days=1)
+        file_date = file_date - datetime.timedelta(days=day)
         pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
         if (file_path / pic_file_name).exists():
             img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()

@@ -32,6 +32,30 @@
       "default": "1234567890",
       "required": true
     },
+        {
+      "name": "api_port",
+      "type": "int",
+      "description": "后端管理面板api端口",
+      "default": 8080
+    },
+    {
+      "name": "api_expose",
+      "type": "bool",
+      "description": "是否将后端管理面板api暴露到公网",
+      "default": false
+    },
+    {
+      "name": "web_manager_api",
+      "type": "bool",
+      "description": "是否打开后端管理面板api",
+      "default": true
+    },
+    {
+      "name": "web_manager_auto_boot",
+      "type": "bool",
+      "description": "是否自动打开后端管理面板",
+      "default": false
+    },
     {
       "name": "test_group",
       "type": "int",

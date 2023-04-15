@@ -40,4 +40,4 @@ jobs:
             docker rmi $(docker images -q) || true
             docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
             docker pull ${{ secrets.DOCKER_REPOSITORY }}:latest
-            docker run -it -p 3214:4000 ${{ secrets.DOCKER_REPOSITORY }}:latest
+            docker run -p 3214:4000 -d ${{ secrets.DOCKER_REPOSITORY }}:latest

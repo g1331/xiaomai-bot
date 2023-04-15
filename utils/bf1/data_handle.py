@@ -62,7 +62,7 @@ class WeaponData:
             elif rule in ["冲锋枪"]:
                 if weapon.get("category") == "衝鋒槍":
                     weapon_list.append(weapon)
-            elif rule in ["副武器", "佩枪", "手枪"]:
+            elif rule in ["佩枪", "手枪"]:
                 if weapon.get("category") == "佩槍":
                     weapon_list.append(weapon)
             elif rule in ["近战"]:
@@ -81,7 +81,7 @@ class WeaponData:
                 ]:
                     weapon_list.append(weapon)
             elif rule in ["侦察兵", "侦察", "斟茶兵", "斟茶"]:
-                if weapon.get("category") in ["步枪"] or weapon.get("guid") in [
+                if weapon.get("category") in ["步槍"] or weapon.get("guid") in [
                     "2543311A-B9BC-4F72-8E71-C9D32DCA9CFC",
                     "ADAD5F72-BD74-46EF-AB42-99F95D88DF8E",
                     "2D64B139-27C8-4EDB-AB14-734993A96008",
@@ -125,26 +125,77 @@ class WeaponData:
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
             "击杀": "kills",
-            "爆头率": "headshots",
-            "命中率": "accuracy",
-            "时长": "seconds"
+            "KILLS": "kills",
+            "KILL": "kills",
+            "时长": "seconds",
+            "TIME": "seconds",
         }
-        weapon_list.sort(
-            key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
-            reverse=True
-        )
+        if sort_type.upper() in ["爆头率", "爆头", "HS"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("kills", 0) * 100, 2
+                ) if x["stats"]["values"].get("kills", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type.upper() in ["命中率", "命中", "ACC"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
+                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type.upper() in ["KPM"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("kills", 0) / x["stats"]["values"].get("seconds", 0) * 60, 2
+                ) if x["stats"]["values"].get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
+                reverse=True
+            )
+        else:
+            weapon_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True
+            )
         return weapon_list
 
     # 根据武器名搜索武器信息
-    def search_weapon(self, target_weapon_name):
+    def search_weapon(self, target_weapon_name: str, sort_type: str = "击杀") -> list:
         """根据武器名搜索武器信息"""
+        target_weapon_name = target_weapon_name.upper()
         weapon_list = []
         for weapon in self.weapon_item_list:
             # 先将武器名转换为简体中文，再进行模糊匹配
-            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans')
+            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans').upper().replace("-", "")
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if fuzz.partial_ratio(target_weapon_name, weapon_name) > 70:
+            if (target_weapon_name in weapon_name) or (fuzz.partial_ratio(target_weapon_name, weapon_name) > 90):
                 weapon_list.append(weapon)
+        # 按照击杀/爆头率/命中率/时长排序
+        sort_type_dict = {
+            "击杀": "kills",
+            "KILLS": "kills",
+            "KILL": "kills",
+            "时长": "seconds",
+            "TIME": "seconds",
+        }
+        if sort_type.upper() in ["爆头率", "爆头", "HS"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("hits", 0) * 100, 2
+                ) if x["stats"]["values"].get("hits", 0) != 0 else 0,
+                reverse=True
+            )
+        elif sort_type.upper() in ["命中率", "命中", "ACC"]:
+            weapon_list.sort(
+                key=lambda x: round(
+                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
+                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
+                reverse=True
+            )
+        else:
+            weapon_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True
+            )
         return weapon_list
 
 
@@ -208,9 +259,44 @@ class VehicleData:
             elif rule in ["定点"]:
                 if vehicle.get("category") in ["定點武器"]:
                     vehicle_list.append(vehicle)
+            elif rule in ["机械巨兽", "巨兽"]:
+                if vehicle.get("category") in ["機械巨獸"]:
+                    vehicle_list.append(vehicle)
             else:
                 vehicle_list.append(vehicle)
 
+        # 按照击杀/时长/摧毁数
+        sort_type_dict = {
+            "击杀": "kills",
+            "时长": "seconds",
+            "摧毁": "destroyed",
+            "TIME": "seconds",
+        }
+        if sort_type.upper() in ["KPM"]:
+            vehicle_list.sort(
+                key=lambda x: x.get("stats").get("values").get("kills", 0) / x.get("stats").get("values").get("seconds",
+                                                                                                              0)
+                if x.get("stats").get("values").get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
+                reverse=True
+            )
+        else:
+            vehicle_list.sort(
+                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True
+            )
+        return vehicle_list
+
+    # 搜索载具
+    def search_vehicle(self, target_vehicle_name: str, sort_type: str = "击杀") -> list:
+        """根据载具名搜索载具信息"""
+        target_vehicle_name = target_vehicle_name.upper()
+        vehicle_list = []
+        for vehicle in self.vehicle_item_list:
+            # 先将载具名转换为简体中文，再进行模糊匹配
+            vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans').upper().replace("-", "")
+            # 非完全匹配，基于最佳的子串（substrings）进行匹配
+            if (target_vehicle_name in vehicle_name) or (fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 90):
+                vehicle_list.append(vehicle)
         # 按照击杀/时长/摧毁数
         sort_type_dict = {
             "击杀": "kills",
@@ -221,18 +307,6 @@ class VehicleData:
             key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
             reverse=True
         )
-        return vehicle_list
-
-    # 搜索载具
-    def search_vehicle(self, target_vehicle_name):
-        """根据载具名搜索载具信息"""
-        vehicle_list = []
-        for vehicle in self.vehicle_item_list:
-            # 先将载具名转换为简体中文，再进行模糊匹配
-            vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans')
-            # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 70:
-                vehicle_list.append(vehicle)
         return vehicle_list
 
 
@@ -390,14 +464,21 @@ class BTRMatchesData:
                         if value.select('.name')[0].text.strip() == "Time Played":
                             player_time = value.select('.value')[0].text.strip()
                             break
-                    # 时间都是 xxm xxs 的形式
-                    # 如果m在字符串中，则将m前的数字乘以60，加上m后和s前的数字,转换成时间戳
-                    if 'm' in player_time:
-                        time_second = int(player_time.split('m')[0]) * 60
-                        if 's' in player_time:
-                            time_second += int(player_time.split('m')[1].split('s')[0])
+                    # 时间都是  xh xm xs 的形式
+                    # 转换成秒
+                    time_second = 0
+                    if "h" in player_time:
+                        hours, remaining_time = player_time.split("h")
+                        time_second += int(hours) * 3600
                     else:
-                        time_second = int(player_time.split('s')[0])
+                        remaining_time = player_time
+                    if "m" in remaining_time:
+                        minutes, remaining_time = remaining_time.split("m")
+                        time_second += int(minutes) * 60
+                    if "s" in remaining_time:
+                        seconds = remaining_time.split("s")[0]
+                        time_second += int(seconds)
+
                     # kpm、spm
                     if time_second != 0:
                         kpm = round(player_kills / time_second * 60, 2)
@@ -405,12 +486,7 @@ class BTRMatchesData:
                     else:
                         kpm = 0
                         spm = 0
-                    # 将秒转换为xx分，xx秒
-                    if time_second < 60:
-                        player_time = f"{time_second}秒"
-                    else:
-                        minutes, seconds = divmod(time_second, 60)
-                        player_time = f"{minutes}分{seconds}秒"
+
                     player_info = {
                         "player_name": player_name_item,
                         "team_name": team_name,
@@ -475,6 +551,6 @@ class ServerData:
         if sort_type == "player":
             server_list.sort(key=lambda x: x.get("SoldierCurrent"), reverse=True)
         else:
-            server_list.sort(key=lambda x: x.get("name"))
+            server_list.sort(key=lambda x: x.get("name"), reverse=True)
 
         return server_list

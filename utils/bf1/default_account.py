@@ -1,11 +1,10 @@
-import asyncio
 import json
 from pathlib import Path
 
 from loguru import logger
 
+from utils.bf1.database import BF1DB
 from utils.bf1.gateway_api import api_instance
-from utils.bf1.orm import BF1DB
 
 
 class DefaultAccount:
@@ -24,10 +23,6 @@ class DefaultAccount:
         self.remid = None
         self.sid = None
         self.session = None
-        # 初始化时，从文件读取默认账号信息
-        asyncio.run(self.read_default_account())
-        # 初始化时，自动登录默认账号
-        asyncio.run(self.get_api_instance())
 
     async def get_api_instance(self) -> api_instance:
         if self.account_instance is None:
@@ -55,6 +50,9 @@ class DefaultAccount:
                                 )
                                 # 更新玩家信息
                                 player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+                                if isinstance(player_info, str):
+                                    logger.error(f"获取玩家信息失败: {player_info}")
+                                    return None
                                 self.display_name = player_info.get("result").get(str(self.pid)).get("displayName")
                                 await self.write_default_account(
                                     pid=self.pid,
@@ -169,6 +167,9 @@ class DefaultAccount:
         :return: {pid, uid, name, display_name, remid, sid, session}
         """
         player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+        if not isinstance(player_info, dict):
+            logger.error(f"更新默认账号信息失败!{player_info}")
+            return None
         self.display_name = f"{player_info['result'][str(self.pid)]['displayName']}"
         self.pid = f"{player_info['result'][str(self.pid)]['personaId']}"
         self.uid = f"{player_info['result'][str(self.pid)]['nucleusId']}"

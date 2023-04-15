@@ -327,6 +327,7 @@ class ModulesController:
         dirs = [
             "modules/required",
             "modules/self_contained",
+            "modules/third_party",
         ]
         modules = []
         for path in dirs:

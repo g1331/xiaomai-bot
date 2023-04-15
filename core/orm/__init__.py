@@ -98,6 +98,21 @@ class AsyncORM:
                 if self.db_mutex:
                     self.db_mutex.release()
 
+    async def execute_all(self, sql_list):
+        async with self.async_session() as session:
+            try:
+                if self.db_mutex:
+                    await self.db_mutex.acquire()
+                for sql in sql_list:
+                    await session.execute(sql)
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                raise e
+            finally:
+                if self.db_mutex:
+                    self.db_mutex.release()
+
     async def fetch_one(self, sql, parameters=None):
         """获取单条记录"""
         result = await self.execute(sql, parameters)
@@ -121,6 +136,17 @@ class AsyncORM:
         """
         await self.execute(insert(table).values(**data))
 
+    async def add_batch(self, table, data_list):
+        """
+        批量插入数据
+        :param table: 表
+        :param data_list: 数据列表，每个元素是一个dict，表示一条记录
+        """
+        # 构造所有的insert语句
+        insert_stmts = [insert(table).values(**data) for data in data_list]
+        # 执行批量插入操作
+        await self.execute_all(insert_stmts)
+
     async def delete(self, table, condition):
         """
         删除数据
@@ -128,6 +154,17 @@ class AsyncORM:
         :param condition: 条件
         """
         return await self.execute(delete(table).where(*condition))
+
+    async def delete_batch(self, table, conditions_list):
+        """
+        批量删除数据
+        :param table: 表
+        :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件
+        """
+        # 构造所有的delete语句
+        delete_stmts = [delete(table).where(*condition) for condition in conditions_list]
+        # 执行批量删除操作
+        await self.execute_all(delete_stmts)
 
     async def update(self, table, data, condition):
         """
@@ -137,6 +174,18 @@ class AsyncORM:
         :param condition: 条件
         """
         await self.execute(update(table).where(*condition).values(**data))
+
+    async def update_batch(self, table, data_list, conditions_list):
+        """
+        批量更新数据
+        :param table: 表
+        :param data_list: 更新的数据列表，每个元素是一个dict，表示一条记录的数据
+        :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件
+        """
+        # 构造所有的update语句
+        update_stmts = [update(table).where(*condition).values(**data) for data, condition in zip(data_list, conditions_list)]
+        # 执行批量更新操作
+        await self.execute_all(update_stmts)
 
     async def insert_or_update(self, table, data, condition):
         """
@@ -153,6 +202,25 @@ class AsyncORM:
         else:
             # 否则执行插入操作
             await self.execute(insert(table).values(**data))
+
+    async def insert_or_update_batch(self, table, data_list, conditions_list):
+        """
+        批量插入或更新数据
+        :param table: 表
+        :param data_list: 数据列表，每个元素是一个dict，表示一条记录的数据
+        :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件，与data_list中的元素一一对应
+        """
+        stmts = []
+        for data, condition in zip(data_list, conditions_list):
+            exist = (await self.execute(select(table).where(*condition))).all()
+            if exist:
+                # 如果存在符合条件的数据，则更新
+                stmts.append(update(table).where(*condition).values(**data))
+            else:
+                # 否则插入
+                stmts.append(insert(table).values(**data))
+        # 执行批量插入或更新操作
+        await self.execute_all(stmts)
 
     async def insert_or_ignore(self, table, data, condition):
         """
@@ -204,3 +272,4 @@ class AsyncORM:
 
 # 初始化AsyncORM
 orm = AsyncORM(create(GlobalConfig).db_link)
+Base = orm.Base

@@ -1,13 +1,15 @@
 import asyncio
 import datetime
 import time
-import aiohttp
-from loguru import logger
 from typing import Union
+
+import aiohttp
 from bs4 import BeautifulSoup
+from loguru import logger
+
 from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
-from utils.bf1.orm import BF1DB
+from utils.bf1.database import BF1DB
 
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
@@ -255,43 +257,221 @@ async def BTR_update_data(player_name: str) -> None:
                 # 写入数据库
                 if match_info['players']:
                     for player in match_info['players']:
-                        player_name_item = player['player_name']
-                        player_kills = player['kills']
-                        player_deaths = player['deaths']
-                        kd = player['kd']
-                        kpm = player['kpm']
-                        player_score = player['score']
-                        spm = player['spm']
-                        player_headshots = player['headshots']
-                        player_accuracy = player['accuracy']
-                        player_time = player['time_played']
-                        team_win = player['team_win']
-                        await BF1DB.update_btr_match_cache(
-                            # 服务器信息
-                            match_id=match_id_list[i],
-                            server_name=match_info['game_info']['server_name'],
-                            map_name=match_info['game_info']['map_name'],
-                            mode_name=match_info['game_info']['mode_name'],
-                            time=match_info['game_info']['game_time'],
-                            # 队伍信息
-                            team_name=match_info['players'][0]['team_name'],
-                            team_win=team_win,
-                            # 基本信息
-                            display_name=player_name_item,
-                            kills=player_kills,
-                            deaths=player_deaths,
-                            kd=kd,
-                            kpm=kpm,
-                            # 得分
-                            score=player_score,
-                            spm=spm,
-                            # 其他
-                            headshots=player_headshots,
-                            accuracy=player_accuracy,
-                            time_played=player_time
-                        )
-                        result.append(result_temp)
+                        if player_name.lower() == player['player_name'].lower():
+                            player_name_item = player['player_name']
+                            player_kills = player['kills']
+                            player_deaths = player['deaths']
+                            kd = player['kd']
+                            kpm = player['kpm']
+                            player_score = player['score']
+                            spm = player['spm']
+                            player_headshots = player['headshots']
+                            player_accuracy = player['accuracy']
+                            player_time = player['time_played']
+                            team_win = player['team_win']
+                            await BF1DB.update_btr_match_cache(
+                                # 服务器信息
+                                match_id=match_id_list[i],
+                                server_name=match_info['game_info']['server_name'],
+                                map_name=match_info['game_info']['map_name'],
+                                mode_name=match_info['game_info']['mode_name'],
+                                time=match_info['game_info']['game_time'],
+                                # 队伍信息
+                                team_name=match_info['players'][0]['team_name'],
+                                team_win=team_win,
+                                # 基本信息
+                                display_name=player_name_item,
+                                kills=player_kills,
+                                deaths=player_deaths,
+                                kd=kd,
+                                kpm=kpm,
+                                # 得分
+                                score=player_score,
+                                spm=spm,
+                                # 其他
+                                headshots=player_headshots,
+                                accuracy=player_accuracy,
+                                time_played=player_time
+                            )
+                            result.append(result_temp)
 
             return result
 
 
+async def bfeac_checkBan(player_name: str) -> dict:
+    """
+    检查玩家bfeac信息
+    :param player_name: 玩家名称
+    :return: {"stat": "状态", "url": "案件链接"}
+    """
+    check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
+    header = {
+        "Connection": "keep-alive"
+    }
+    eac_stat_dict = {
+        0: "未处理",
+        1: "已封禁",
+        2: "证据不足",
+        3: "自证通过",
+        4: "自证中",
+        5: "刷枪",
+    }
+    result = {
+        "stat": None,
+        "url": None
+    }
+    try:
+        async with aiohttp.ClientSession(headers=header) as session:
+            async with session.get(check_eacInfo_url) as response:
+                response = await response.json()
+        if response.get("data"):
+            data = response["data"][0]
+            eac_status = eac_stat_dict[data["current_status"]]
+            if data.get("case_id"):
+                case_id = data["case_id"]
+                case_url = f"https://bfeac.com/#/case/{case_id}"
+                result["url"] = case_url
+            result["stat"] = eac_status
+        return result
+    except Exception as e:
+        logger.error(f"bfeac_checkBan: {e}")
+        return result
+
+
+async def bfban_checkBan(player_pid: str) -> dict:
+    """
+    检查玩家bfban信息
+    :param player_pid: 玩家pid
+    :return: {"stat": "状态", "url": "案件链接"}
+    """
+    player_pid = str(player_pid)
+    bfban_url = f'https://api.gametools.network/bfban/checkban?personaids={player_pid}'
+    header = {
+        "Connection": "keep-alive"
+    }
+    result = {
+        "stat": None,
+        "url": None
+    }
+    bfban_stat_dict = {
+        "0": "未处理",
+        "1": "实锤",
+        "2": "嫌疑再观察",
+        "3": "认为没开",
+        "4": "未处理",
+        "5": "回复讨论中",
+        "6": "等待管理确认",
+        "8": "刷枪"
+    }
+
+    async with aiohttp.ClientSession(headers=header) as session:
+        async with session.get(bfban_url) as response:
+            response = await response.json()
+    if response.get(player_pid):
+        data = response[player_pid]
+        if not data.get("status"):
+            return result
+        bfban_status = bfban_stat_dict[data["status"]]
+        if data.get("url"):
+            case_url = data["url"]
+            result["url"] = case_url
+        result["stat"] = bfban_status
+    return result
+
+
+async def gt_checkVban(player_pid) -> int:
+    url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
+    head = {
+        'accept': 'application/json',
+    }
+    async with aiohttp.ClientSession(headers=head) as session:
+        async with session.get(url) as response:
+            response = await response.json()
+    vban_num = len(response["vban"])
+    return vban_num
+
+
+async def gt_bf1_stat():
+    url = "https://api.gametools.network/bf1/status/?platform=pc"
+    head = {
+        "Connection": "Keep-Alive"
+    }
+    # noinspection PyBroadException
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=head) as response:
+                html = await response.json()
+        if html.get("errors"):
+            # {'errors': ['Error connecting to the database']}
+            return f"{html['errors'][0]}"
+        data: dict = html["regions"].get("ALL")
+    except Exception as e:
+        logger.error(f"gt_bf1_stat: {e}")
+        data = None
+    if data:
+        result = \
+            f"当前在线:{data.get('amounts').get('soldierAmount')}\n" \
+            f"服务器数:{data.get('amounts').get('serverAmount')}\n" \
+            f"排队总数:{data.get('amounts').get('queueAmount')}\n" \
+            f"观众总数:{data.get('amounts').get('spectatorAmount')}\n" + \
+            f"=" * 13 + "\n" \
+                        "私服(官服):\n" \
+                        f"服务器:{data.get('amounts').get('communityServerAmount', 0)}" \
+                        f"({data.get('amounts').get('diceServerAmount', 0)})\n" \
+                        f"人数:{data.get('amounts').get('communitySoldierAmount', 0)}" \
+                        f"({data.get('amounts').get('diceSoldierAmount', 0)})\n" \
+                        f"排队:{data.get('amounts').get('communityQueueAmount', 0)}" \
+                        f"({data.get('amounts').get('diceQueueAmount', 0)})\n" \
+                        f"观众:{data.get('amounts').get('communitySpectatorAmount', 0)}" \
+                        f"({data.get('amounts').get('diceSpectatorAmount', 0)})\n" + \
+            f"=" * 13 + "\n" \
+                        f"征服:{data.get('modes').get('Conquest', 0)}\t" \
+                        f"行动:{data.get('modes').get('BreakthroughLarge', 0)}\n" \
+                        f"前线:{data.get('modes').get('TugOfWar', 0)}\t" \
+                        f"突袭:{data.get('modes').get('Rush', 0)}\n" \
+                        f"抢攻:{data.get('modes').get('Domination', 0)}\t" \
+                        f"闪击行动:{data.get('modes').get('Breakthrough', 0)}\n" \
+                        f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
+                        f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
+                        f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
+                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
+        return result
+    return "获取数据失败"
+
+
+async def record_api(player_pid) -> dict:
+    record_url = "https://record.ainios.com/getReport"
+    data = {
+        "personaId": player_pid
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(record_url, json=data) as response:
+            response = await response.json()
+    return response
+
+
+# 下载交换皮肤
+async def download_skin(url):
+    file_name = './data/battlefield/pic/skins/' + url[url.rfind('/') + 1:]
+    # noinspection PyBroadException
+    try:
+        fp = open(file_name, 'rb')
+        fp.close()
+        return file_name
+    except Exception as e:
+        logger.warning(e)
+        i = 0
+        while i < 3:
+            async with aiohttp.ClientSession() as session:
+                # noinspection PyBroadException
+                try:
+                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
+                        pic = await resp.read()
+                        fp = open(file_name, 'wb')
+                        fp.write(pic)
+                        fp.close()
+                        return file_name
+                except Exception as e:
+                    logger.error(e)
+                    i += 1
+        return None

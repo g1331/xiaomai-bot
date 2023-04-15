@@ -1,11 +1,18 @@
 import asyncio
 import datetime
 import os
+import shutil
 import time
 from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Type
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from alembic.command import revision, upgrade
+from alembic.config import Config
+from alembic.script.revision import ResolutionError
+from alembic.util.exc import CommandError
 from creart import create, add_creator, exists_module
 from creart.creator import AbstractCreator, CreateTargetInfo
 from graia.ariadne import Ariadne
@@ -23,16 +30,17 @@ from graia.ariadne.event.message import (
     ActiveGroupMessage,
     ActiveFriendMessage,
 )
+from graia.amnesia.builtins.uvicorn import UvicornService
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.model import LogConfig, Group
 from graia.broadcast import Broadcast
 from graia.saya import Saya
 from graia.saya.builtins.broadcast import BroadcastBehaviour
 from graiax.playwright import PlaywrightService
+from graiax.fastapi import FastAPIBehaviour, FastAPIService
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.exc import InternalError, ProgrammingError
 
 from core.config import GlobalConfig
 from core.models import response_model
@@ -101,6 +109,26 @@ class Umaru(object):
                 proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None
             )
         )
+        if self.config.web_manager_api:
+            Ariadne.launch_manager.add_service(
+                UvicornService(
+                    host="0.0.0.0" if self.config.api_expose else "127.0.0.1",
+                    port=self.config.api_port,
+                )
+            )
+            fastapi = FastAPI()
+            fastapi.add_middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+            create(Saya).install_behaviours(FastAPIBehaviour(fastapi))
+            Ariadne.launch_manager.add_service(FastAPIService(fastapi))
+        # 推后导入，避免循环导入
+        from utils.alembic import AlembicService
+        Ariadne.launch_manager.add_service(AlembicService())
         Ariadne.launch_manager.add_service(UpdaterService())
         Ariadne.launch_manager.add_service(LaunchTimeService())
         self.config_check()
@@ -119,10 +147,6 @@ class Umaru(object):
         bcc = create(Broadcast)
         saya = create(Saya)
         saya.install_behaviours(BroadcastBehaviour(bcc))
-        try:
-            _ = await orm.init_check()
-        except (AttributeError, InternalError, ProgrammingError):
-            _ = await orm.create_all()
         # 检查活动群组:
         await orm.update(GroupPerm, {"active": False}, [])
         admin_list = []
@@ -429,6 +453,44 @@ class Umaru(object):
                         1,
                     )
         return exceptions
+
+    async def alembic(self):
+        if not (Path.cwd() / "alembic").exists():
+            logger.info("未检测到alembic目录，进行初始化")
+            os.system("alembic init alembic")
+            with open(Path.cwd() / "statics" / "alembic_env_py_content.txt", "r") as r:
+                alembic_env_py_content = r.read()
+            with open(Path.cwd() / "alembic" / "env.py", "w") as w:
+                w.write(alembic_env_py_content)
+            db_link = self.config.db_link
+            db_link = db_link.split(":")[0].split("+")[0] + ":" + ":".join(db_link.split(":")[1:])
+            logger.warning(f"尝试自动更改 sqlalchemy.url 为 {db_link}，若出现报错请自行修改")
+            alembic_ini_path = Path.cwd() / "alembic.ini"
+            lines = alembic_ini_path.read_text(encoding="utf-8").split("\n")
+            for i, line in enumerate(lines):
+                if line.startswith("sqlalchemy.url"):
+                    lines[i] = line.replace("driver://user:pass@localhost/dbname", db_link)
+                    break
+            alembic_ini_path.write_text("\n".join(lines))
+        alembic_version_path = Path.cwd() / "alembic" / "versions"
+        if not alembic_version_path.exists():
+            alembic_version_path.mkdir()
+        cfg = Config(file_="alembic.ini", ini_section="alembic")
+        try:
+            logger.debug("尝试自动更新数据库")
+            revision(cfg, message="update", autogenerate=True)
+            upgrade(cfg, "head")
+            logger.success("数据库更新成功")
+        except (CommandError, ResolutionError):
+            logger.warning("数据库更新失败，正在重置数据库")
+            _ = await orm.reset_version()
+            shutil.rmtree(alembic_version_path)
+            alembic_version_path.mkdir()
+            revision(cfg, message="update", autogenerate=True)
+            upgrade(cfg, "head")
+
+        # os.system("alembic revision --autogenerate -m 'update'")
+        # os.system("alembic upgrade head")
 
     @staticmethod
     def launch():

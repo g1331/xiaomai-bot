@@ -3,6 +3,7 @@ import time
 import uuid
 import aiohttp
 import asyncio
+import httpx
 from typing import Union
 
 import requests
@@ -241,9 +242,10 @@ class bf1_api(object):
         return False
 
     async def get_session(self) -> str:
+        if (not self.remid) or (not self.pid):
+            logger.warning(f"BF1账号{self.pid}未登录!请传入remid和sid使用login进行登录!")
+            return str(self.session)
         if await self.check_session_expire():
-            if (not self.remid) or (not self.pid):
-                logger.warning(f"获取session时发生错误:BF1账号{self.pid}未登录!请先传入remid和sid使用login进行登录!")
             return str(await self.login(self.remid, self.sid))
         else:
             return str(self.session)
@@ -310,11 +312,11 @@ class bf1_api(object):
             "X-Origin-Platform": "PCWIN"
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url2, headers=header2, ssl=False) as response2:
-                    authcode = str(response2.url)
-                    authcode = authcode[authcode.rfind('=') + 1:]
-                    logger.success(f"获取authcode成功!authcode:{authcode}")
+            async with httpx.AsyncClient() as client:
+                response2 = await client.get(url2, headers=header2)
+            authcode = response2.headers['location']
+            authcode = authcode[authcode.rfind('=') + 1:]
+            logger.success(f"获取authcode成功!authcode:{authcode}")
         except Exception as e:
             logger.error(f"获取authcode失败!{e}")
             return None
@@ -803,6 +805,43 @@ class Progression(bf1_api):
         )
 
 
+class ScrapExchange(bf1_api):
+    async def getOffers(self) -> dict:
+        """
+        获取交换信息
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "ScrapExchange.getOffers",
+                "params": {
+                    "game": "tunguska",
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class CampaignOperations(bf1_api):
+    async def getPlayerCampaignStatus(self) -> dict:
+        """
+        获取战役信息
+        :param personaId: PID
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CampaignOperations.getPlayerCampaignStatus",
+                "params": {
+                    "game": "tunguska",
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
 class Stats(bf1_api):
     async def detailedStatsByPersonaId(self, personaId: Union[int, str]) -> dict:
         """
@@ -921,7 +960,7 @@ class Gamedata(bf1_api):
 
 class GameServer(bf1_api):
 
-    async def searchServers(self, server_name: str, limit: int = 200, filterJson=None) -> dict:
+    async def searchServers(self, server_name: str, limit: int = 200, filter_dict=None) -> dict:
         """
         搜索服务器
         :return:
@@ -941,8 +980,12 @@ class GameServer(bf1_api):
                             "country": "",
                     ...
         """
-        temp = self.filter_dict
-        temp["name"] = server_name
+        if filter_dict:
+            filter_dict = json.dumps(filter_dict)
+        else:
+            temp = self.filter_dict
+            temp["name"] = server_name
+            filter_dict = json.dumps(temp)
         return await self.api_call(
             {
                 "jsonrpc": "2.0",
@@ -950,7 +993,7 @@ class GameServer(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "limit": limit,
-                    "filterJson": filterJson if filterJson else json.dumps(temp),
+                    "filterJson": filter_dict,
                 },
                 "id": await get_a_uuid()
             }
@@ -1049,6 +1092,8 @@ class GameServer(bf1_api):
                 }
             }
         """
+        if not isinstance(personaIds, list):
+            personaIds = [personaIds]
         return await self.api_call(
             {
                 "jsonrpc": "2.0",
@@ -1534,7 +1579,10 @@ class Platoons(bf1_api):
         ...
 
 
-class api_instance(Game, Progression, Stats, ServerHistory, Gamedata, GameServer, RSP, Platoons):
+class api_instance(
+    Game, Progression, Stats, ServerHistory, Gamedata,
+    GameServer, RSP, Platoons, ScrapExchange, CampaignOperations
+):
     # 存储所有实例的字典
     instances = {}
 

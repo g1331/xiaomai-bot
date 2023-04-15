@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import math
 import random
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.event.message import GroupMessage, FriendMessage
-from graia.ariadne.message.element import Source, Image, At
+from graia.ariadne.message.element import Source, Image, At, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
     RegexResult, ArgumentMatch, ArgResult
 from graia.ariadne.model import Group, Friend, Member
@@ -21,6 +22,7 @@ from graia.scheduler.saya.schema import SchedulerSchema
 from graia.scheduler import timers
 from graia.saya import Channel, Saya
 from loguru import logger
+from rapidfuzz import fuzz
 from zhconv import zhconv
 
 from core.bot import Umaru
@@ -585,8 +587,8 @@ async def player_stat_pic(
                 "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", action="store_true", optional=True, type=int, default=4) @ "row",
-            ArgumentMatch("-c", "-col", action="store_true", optional=True, type=int, default=1) @ "col",
+            ArgumentMatch("-r", "-row", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-c", "-col", optional=True, type=int, default=1) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
         ]
@@ -731,8 +733,8 @@ async def player_weapon_pic(
                 "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", action="store_true", optional=True) @ "row",
-            ArgumentMatch("-c", "-col", action="store_true", optional=True) @ "col",
+            ArgumentMatch("-r", "-row", action="store_true", optional=True, default=4) @ "row",
+            ArgumentMatch("-c", "-col", action="store_true", optional=True, default=1) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
         ]
@@ -1337,6 +1339,10 @@ async def server_info_collect():
         [
             UnionMatch("-天眼查", "-tyc").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
+            ArgumentMatch("-a", "-admin", action="store_true", optional=True) @ "admin",
+            ArgumentMatch("-v", "-vip", action="store_true", optional=True) @ "vip",
+            ArgumentMatch("-b", "-ban", action="store_true", optional=True) @ "ban",
+            ArgumentMatch("-o", "-owner", action="store_true", optional=True) @ "owner",
         ]
     )
 )
@@ -1353,6 +1359,10 @@ async def tyc(
         group: Group,
         source: Source,
         player_name: RegexResult,
+        admin: ArgResult,
+        vip: ArgResult,
+        ban: ArgResult,
+        owner: ArgResult,
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if not player_name.matched:
@@ -1388,6 +1398,88 @@ async def tyc(
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
+
+    # 如果admin/vip/ban/owner有一个匹配,就查询对应信息
+    if admin.matched:
+        adminServerList = await BF1DB.get_playerAdminServerList(player_pid)
+        if not adminServerList:
+            return await app.send_message(group, MessageChain(f"玩家{display_name}没有拥有admin哦~"), quote=source)
+        fwd_nodeList = [
+            ForwardNode(
+                target=sender,
+                time=datetime.datetime.now(),
+                message=MessageChain(f"玩家{display_name}拥有{len(adminServerList)}个服务器的admin权限:"),
+            )
+        ]
+        for serverName in adminServerList:
+            fwd_nodeList.append(
+                ForwardNode(
+                    target=sender,
+                    time=datetime.datetime.now(),
+                    message=MessageChain(f"{serverName}"),
+                )
+            )
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+    elif vip.matched:
+        vipServerList = await BF1DB.get_playerVipServerList(player_pid)
+        if not vipServerList:
+            return await app.send_message(group, MessageChain(f"玩家{display_name}没有拥有vip哦~"), quote=source)
+        fwd_nodeList = [
+            ForwardNode(
+                target=sender,
+                time=datetime.datetime.now(),
+                message=MessageChain(f"玩家{display_name}拥有{len(vipServerList)}个服务器的vip权限:"),
+            )
+        ]
+        for serverName in vipServerList:
+            fwd_nodeList.append(
+                ForwardNode(
+                    target=sender,
+                    time=datetime.datetime.now(),
+                    message=MessageChain(f"{serverName}"),
+                )
+            )
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+    elif ban.matched:
+        banServerList = await BF1DB.get_playerBanServerList(player_pid)
+        if not banServerList:
+            return await app.send_message(group, MessageChain(f"玩家{display_name}没有封禁信息哦~"), quote=source)
+        fwd_nodeList = [
+            ForwardNode(
+                target=sender,
+                time=datetime.datetime.now(),
+                message=MessageChain(f"玩家{display_name}被{len(banServerList)}个服务器封禁了:"),
+            )
+        ]
+        for serverName in banServerList:
+            fwd_nodeList.append(
+                ForwardNode(
+                    target=sender,
+                    time=datetime.datetime.now(),
+                    message=MessageChain(f"{serverName}"),
+                )
+            )
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+    elif owner.matched:
+        ownerServerList = await BF1DB.get_playerOwnerServerList(player_pid)
+        if not ownerServerList:
+            return await app.send_message(group, MessageChain(f"玩家{display_name}未持有服务器哦~"), quote=source)
+        fwd_nodeList = [
+            ForwardNode(
+                target=sender,
+                time=datetime.datetime.now(),
+                message=MessageChain(f"玩家{display_name}拥有{len(ownerServerList)}个服务器:"),
+            )
+        ]
+        for serverName in ownerServerList:
+            fwd_nodeList.append(
+                ForwardNode(
+                    target=sender,
+                    time=datetime.datetime.now(),
+                    message=MessageChain(f"{serverName}"),
+                )
+            )
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
 
     await app.send_message(group, MessageChain(f"查询ing"), quote=source)
     send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
@@ -1473,6 +1565,201 @@ async def tyc(
     return await app.send_message(group, MessageChain(f"{''.join(send)}"), quote=source)
 
 
+# 查询排名信息
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf1rank").space(SpacePolicy.PRESERVE),
+            UnionMatch(
+                "收藏", "bookmark", "vip", "ban", "admin", "owner", "管理", "服主", "封禁", optional=False
+            ).space(SpacePolicy.PRESERVE) @ "rank_type",
+            ArgumentMatch("-p", "-page", optional=True, type=int, default=1) @ "page",
+            ArgumentMatch("-n", "-name", optional=True, type=str) @ "name",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+async def BF1Rank(
+        app: Ariadne, group: Group,
+        rank_type: RegexResult, page: ArgResult, name: ArgResult, source: Source
+):
+    rank_type = rank_type.result.display
+    page = page.result
+    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    if not name.matched:
+        if rank_type in ["收藏", "bookmark"]:
+            bookmark_list = await BF1DB.get_server_bookmark()
+            if not bookmark_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
+            # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
+            if page > math.ceil(len(bookmark_list) / 15):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"超出范围!({page}/{math.ceil(len(bookmark_list) / 15)})"),
+                    quote=source
+                )
+            send = [
+                f"服务器收藏排名(page:{page}/{math.ceil(len(bookmark_list) / 15)})",
+            ]
+            for data in bookmark_list[(page - 1) * 15:page * 15]:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = bookmark_list.index(data) + 1
+                send.append(f"{index}.{data['serverName'][:20]} {data['bookmark']}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+        elif rank_type in ["vip"]:
+            vip_list = await BF1DB.get_allServerPlayerVipList()
+            if not vip_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
+            # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
+            # data = [
+            #     {
+            #         "pid": 123,
+            #         "displayName": "xxx",
+            #         "server_list": []
+            #     }
+            # ]
+            if page > math.ceil(len(vip_list) / 15):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"超出范围!({page}/{math.ceil(len(vip_list) / 15)})"),
+                    quote=source
+                )
+            send = [
+                f"服务器VIP排名(page:{page}/{math.ceil(len(vip_list) / 15)})",
+            ]
+            for data in vip_list[(page - 1) * 15:page * 15]:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = vip_list.index(data) + 1
+                send.append(f"{index}.{data['displayName'][:20]} {len(data['server_list'])}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+        elif rank_type in ["ban", "封禁"]:
+            ban_list = await BF1DB.get_allServerPlayerBanList()
+            if not ban_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
+            # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
+            if page > math.ceil(len(ban_list) / 15):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"超出范围!({page}/{math.ceil(len(ban_list) / 15)})"),
+                    quote=source
+                )
+            send = [f"服务器封禁排名(page:{page}/{math.ceil(len(ban_list) / 15)})"]
+            for data in ban_list[(page - 1) * 15:page * 15]:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = ban_list.index(data) + 1
+                send.append(f"{index}.{data['displayName'][:20]} {len(data['server_list'])}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+        elif rank_type in ["admin", "管理"]:
+            admin_list = await BF1DB.get_allServerPlayerAdminList()
+            if not admin_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
+            # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
+            if page > math.ceil(len(admin_list) / 15):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"超出范围!({page}/{math.ceil(len(admin_list) / 15)})"),
+                    quote=source
+                )
+            send = [
+                f"服务器管理排名(page:{page}/{math.ceil(len(admin_list) / 15)})",
+            ]
+            for data in admin_list[(page - 1) * 15:page * 15]:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = admin_list.index(data) + 1
+                send.append(f"{index}.{data['displayName'][:20]} {len(data['server_list'])}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+        elif rank_type in ["owner", "服主"]:
+            owner_list = await BF1DB.get_allServerPlayerOwnerList()
+            if not owner_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
+            # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
+            if page > math.ceil(len(owner_list) / 15):
+                return await app.send_message(
+                    group,
+                    MessageChain(f"超出范围!({page}/{math.ceil(len(owner_list) / 15)})"),
+                    quote=source
+                )
+            send = [
+                f"服务器服主排名(page:{page}/{math.ceil(len(owner_list) / 15)})",
+            ]
+            for data in owner_list[(page - 1) * 15:page * 15]:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = owner_list.index(data) + 1
+                send.append(f"{index}.{data['displayName'][:20]} {len(data['server_list'])}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+    else:
+        name = name.result
+        # 查询服务器/玩家对应分类的排名
+        if rank_type in ["收藏", "bookmark"]:
+            bookmark_list = await BF1DB.get_server_bookmark()
+            if not bookmark_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
+            result = []
+            for item in bookmark_list:
+                if (fuzz.ratio(name.upper(), item['serverName'].upper()) > 80) or \
+                        name.upper() in item['serverName'].upper() or \
+                        item['serverName'].upper() in name.upper():
+                    result.append(item)
+            if not result:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该服务器的收藏信息!"), quote=source)
+            send = [f"搜索到{len(result)}个结果:" if len(result) <= 15 else f"搜索到超过15个结果,只显示前15个结果!"]
+            result = result[:15]
+            for data in result:
+                # 获取服务器排名,组合为: index. serverName[:20] bookmark
+                index = bookmark_list.index(data) + 1
+                send.append(f"{index}.{data['serverName'][:20]} {data['bookmark']}")
+            send = "\n".join(send)
+            return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+        elif rank_type in ["vip"]:
+            vip_list = await BF1DB.get_allServerPlayerVipList()
+            if not vip_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
+            display_name = [item['displayName'].upper() for item in vip_list]
+            if name.upper() not in display_name:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的VIP信息!"), quote=source)
+            index = display_name.index(name.upper()) + 1
+            return await app.send_message(group, MessageChain(f"{name}的VIP排名为{index}"), quote=source)
+        elif rank_type in ["ban", "封禁"]:
+            ban_list = await BF1DB.get_allServerPlayerBanList()
+            if not ban_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
+            display_name = [item['displayName'].upper() for item in ban_list]
+            if name.upper() not in display_name:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的封禁信息!"), quote=source)
+            index = display_name.index(name.upper()) + 1
+            return await app.send_message(group, MessageChain(f"{name}的封禁排名为{index}"), quote=source)
+        elif rank_type in ["admin", "管理"]:
+            admin_list = await BF1DB.get_allServerPlayerAdminList()
+            if not admin_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
+            display_name = [item['displayName'].upper() for item in admin_list]
+            if name.upper() not in display_name:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的管理信息!"), quote=source)
+            index = display_name.index(name.upper()) + 1
+            return await app.send_message(group, MessageChain(f"{name}的管理排名为{index}"), quote=source)
+        elif rank_type in ["owner", "服主"]:
+            owner_list = await BF1DB.get_allServerPlayerOwnerList()
+            if not owner_list:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
+            display_name = [item['displayName'].upper() for item in owner_list]
+            if name.upper() not in display_name:
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的服主信息!"), quote=source)
+            index = display_name.index(name.upper()) + 1
+            return await app.send_message(group, MessageChain(f"{name}的服主排名为{index}"), quote=source)
+
+
 # 被戳回复小标语
 @listen(NudgeEvent)
 async def NudgeReply(app: Ariadne, event: NudgeEvent):
@@ -1524,6 +1811,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
     Twilight(
         [
             UnionMatch("-交换").space(SpacePolicy.PRESERVE),
+            ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
         ]
     )
 )
@@ -1534,7 +1822,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
 )
-async def get_exchange(app: Ariadne, group: Group, source: Source):
+async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: ArgResult):
     # 交换缓存图片的路径
     file_path = Path("./data/battlefield/exchange/")
     # 获取今天的日期
@@ -1564,6 +1852,34 @@ async def get_exchange(app: Ariadne, group: Group, source: Source):
             ),
             quote=source
         )
+    if search_time.matched:
+        try:
+            strptime_temp = datetime.datetime.strptime(search_time.result, "%Y.%m.%d")
+        except ValueError:
+            return await app.send_message(group, MessageChain(f"日期格式错误!示例:xxxx.x.x"), quote=source)
+        # 转换成xx年x月xx日
+        strptime_temp = f"{strptime_temp.year}年{strptime_temp.month}月{strptime_temp.day}日"
+        # 发送缓存里指定日期的图片
+        pic_file_name = f"{strptime_temp}.png"
+        pic_list = []
+        for item in file_path.iterdir():
+            if item.name.endswith(".png"):
+                pic_list.append(item.name.split(".")[0])
+        if strptime_temp not in pic_list:
+            # 发送最接近时间的5条数据
+            pic_list.sort(key=lambda x: abs((datetime.datetime.strptime(x, "%Y年%m月%d日") - datetime.datetime.strptime(
+                search_time.result, "%Y.%m.%d")).days))
+            pic_list = pic_list[:5]
+            pic_list = "\n".join(pic_list)
+            return await app.send_message(
+                group,
+                MessageChain(f"没有找到{strptime_temp}的数据,以下是最接近的5条数据:\n{pic_list}"),
+                quote=source
+            )
+        img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
+        return await app.send_message(group, MessageChain(
+            Image(data_bytes=img), f"更新时间:{pic_file_name.split('.')[0]}"
+        ),  quote=source)
     # 发送缓存里最新的图片
     for day in range(int(len(list(file_path.iterdir())) / 2)):
         file_date = file_date - datetime.timedelta(days=day)

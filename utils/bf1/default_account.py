@@ -50,6 +50,9 @@ class DefaultAccount:
                                 )
                                 # 更新玩家信息
                                 player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+                                if isinstance(player_info, str):
+                                    logger.error(f"获取玩家信息失败: {player_info}")
+                                    return None
                                 self.display_name = player_info.get("result").get(str(self.pid)).get("displayName")
                                 await self.write_default_account(
                                     pid=self.pid,

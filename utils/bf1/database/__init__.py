@@ -1,8 +1,8 @@
-from datetime import datetime
+import datetime
 from typing import Union, List, Tuple, Dict, Any
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import select, func, between
 
 from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache, \
     Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner, Bf1ServerPlayerCount
@@ -175,7 +175,7 @@ class bf1_db:
     @staticmethod
     async def update_serverInfo(
             serverName: str, serverId: str, guid: str, gameId: int,
-            createdDate: datetime, expirationDate: datetime, updatedDate: datetime
+            createdDate: datetime.datetime, expirationDate: datetime.datetime, updatedDate: datetime.datetime
     ) -> bool:
         await orm.insert_or_update(
             table=Bf1Server,
@@ -187,7 +187,7 @@ class bf1_db:
                 "createdDate": createdDate,
                 "expirationDate": expirationDate,
                 "updatedDate": updatedDate,
-                "record_time": datetime.now()
+                "record_time": datetime.datetime.now()
             },
             condition=[
                 Bf1Server.serverId == serverId
@@ -197,7 +197,7 @@ class bf1_db:
 
     @staticmethod
     async def update_serverInfoList(
-            server_info_list: List[Tuple[str, str, str, int, datetime, datetime, datetime]]
+            server_info_list: List[Tuple[str, str, str, int, datetime.datetime, datetime.datetime, datetime.datetime]]
     ) -> bool:
         # 构造要插入或更新的记录列表
         info_records = []
@@ -211,7 +211,7 @@ class bf1_db:
                 "createdDate": createdDate,
                 "expirationDate": expirationDate,
                 "updatedDate": updatedDate,
-                "record_time": datetime.now()
+                "record_time": datetime.datetime.now()
             }
             info_records.append(record)
             record = {
@@ -220,7 +220,7 @@ class bf1_db:
                 "playerMax": playerMax,
                 "playerQueue": playerQueue,
                 "playerSpectator": playerSpectator,
-                "time": datetime.now(),
+                "time": datetime.datetime.now(),
                 "serverBookmarkCount": serverBookmarkCount,
             }
             player_records.append(record)
@@ -276,7 +276,7 @@ class bf1_db:
                 "serverId": serverId,
                 "persona_id": persona_id,
                 "display_name": display_name,
-                "time": datetime.now(),
+                "time": datetime.datetime.now(),
             },
             condition=[
                 Bf1ServerVip.serverId == serverId,
@@ -300,6 +300,72 @@ class bf1_db:
             return len([i[0] for i in result])
         else:
             return 0
+
+    @staticmethod
+    async def get_playerVipServerList(persona_id: int) -> list:
+        """
+        查询玩家的VIP服务器列表
+        :param persona_id: 玩家persona_id(pid)
+        :return: VIP服务器列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerVip.serverId).where(
+                    Bf1ServerVip.personaId == persona_id
+                )
+        ):
+            server_list = []
+            # 根据serverId查询serverName
+            for item in result:
+                serverId = item[0]
+                if server := await orm.fetch_one(
+                        select(Bf1Server.serverName).where(
+                            Bf1Server.serverId == serverId
+                        )
+                ):
+                    server_list.append(server[0])
+            return server_list
+        else:
+            return []
+
+    @staticmethod
+    async def get_allServerPlayerVipList() -> list:
+        """
+        查询所有玩家拥有的VIP数量
+        :return: 服务器VIP列表
+        """
+        # 查询整个表
+        if result := await orm.fetch_all(
+                select(Bf1ServerVip.serverId, Bf1ServerVip.personaId, Bf1ServerVip.displayName)
+        ):
+            # 挑选出所有的pid和对应dName,放在list中,然后按照server_list的数量排序
+            # data = [
+            #     {
+            #         "pid": 123,
+            #         "displayName": "xxx",
+            #         "server_list": []
+            #     }
+            # ]
+            data = []
+            for item in result:
+                serverId = item[0]
+                pid = item[1]
+                dName = item[2]
+                # 如果data中已经存在该pid,则直接添加serverId
+                if pid in [i["pid"] for i in data]:
+                    for i in data:
+                        if i["pid"] == pid:
+                            i["server_list"].append(serverId)
+                else:
+                    data.append({
+                        "pid": pid,
+                        "displayName": dName,
+                        "server_list": [serverId]
+                    })
+            # 按照server_list的数量排序
+            data.sort(key=lambda x: len(x["server_list"]), reverse=True)
+            return data
+        else:
+            return []
 
     @staticmethod
     async def update_serverVipList(
@@ -330,7 +396,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 如果现在的记录不在数据库中,则插入
         for record in now_records:
@@ -339,7 +405,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 更新
         await orm.insert_or_update_batch(
@@ -367,7 +433,7 @@ class bf1_db:
                 "serverId": serverId,
                 "persona_id": persona_id,
                 "display_name": display_name,
-                "time": datetime.now(),
+                "time": datetime.datetime.now(),
             },
             condition=[
                 Bf1ServerBan.serverId == serverId,
@@ -391,6 +457,60 @@ class bf1_db:
             return len([i[0] for i in result])
         else:
             return 0
+
+    @staticmethod
+    async def get_playerBanServerList(persona_id: int) -> list:
+        """
+        查询玩家的Ban服务器列表
+        :param persona_id: 玩家persona_id(pid)
+        :return: Ban服务器列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerBan.serverId).where(
+                    Bf1ServerBan.personaId == persona_id
+                )
+        ):
+            server_list = []
+            # 根据serverId查询serverName
+            for item in result:
+                serverId = item[0]
+                if server := await orm.fetch_one(
+                        select(Bf1Server.serverName).where(
+                            Bf1Server.serverId == serverId
+                        )
+                ):
+                    server_list.append(server[0])
+            return server_list
+        else:
+            return []
+
+    @staticmethod
+    async def get_allServerPlayerBanList() -> list:
+        """
+        获取所有服务器的玩家Ban列表
+        :return: {"pid": pid, "displayName": displayName, "server_list": [serverId, serverId]}
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerBan.serverId, Bf1ServerBan.personaId, Bf1ServerBan.displayName)
+        ):
+            data = {}
+            for item in result:
+                serverId = item[0]
+                pid = item[1]
+                displayName = item[2]
+                if pid not in data:
+                    data[pid] = {
+                        "displayName": displayName,
+                        "server_list": [serverId]
+                    }
+                else:
+                    data[pid]["server_list"].append(serverId)
+            # 按照server_list的数量排序
+            data = [{"pid": pid, **value} for pid, value in data.items()]
+            data.sort(key=lambda x: len(x["server_list"]), reverse=True)
+            return data
+        else:
+            return []
 
     @staticmethod
     async def update_serverBanList(
@@ -421,7 +541,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 如果现在的记录不在数据库中,则插入
         for record in now_records:
@@ -430,7 +550,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 更新
         await orm.insert_or_update_batch(
@@ -458,7 +578,7 @@ class bf1_db:
                 "serverId": serverId,
                 "persona_id": persona_id,
                 "display_name": display_name,
-                "time": datetime.now(),
+                "time": datetime.datetime.now(),
             },
             condition=[
                 Bf1ServerAdmin.serverId == serverId,
@@ -482,6 +602,63 @@ class bf1_db:
             return len([i[0] for i in result])
         else:
             return 0
+
+    @staticmethod
+    async def get_playerAdminServerList(persona_id: int) -> list:
+        """
+        查询玩家的Admin服务器列表
+        :param persona_id: 玩家persona_id(pid)
+        :return: Admin服务器列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerAdmin.serverId).where(
+                    Bf1ServerAdmin.personaId == persona_id
+                )
+        ):
+            server_list = []
+            # 根据serverId查询serverName
+            for item in result:
+                serverId = item[0]
+                if server := await orm.fetch_one(
+                        select(Bf1Server.serverName).where(
+                            Bf1Server.serverId == serverId
+                        )
+                ):
+                    server_list.append(server[0])
+            return server_list
+        else:
+            return []
+
+    @staticmethod
+    async def get_allServerPlayerAdminList() -> list:
+        """
+        查询所有服务器的玩家Admin列表
+        :return: 所有服务器的玩家Admin列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerAdmin.serverId, Bf1ServerAdmin.personaId, Bf1ServerAdmin.displayName)
+        ):
+            data = []
+            for item in result:
+                serverId = item[0]
+                pid = item[1]
+                dName = item[2]
+                # 如果data中已经存在该pid,则直接添加serverId
+                if pid in [i["pid"] for i in data]:
+                    for i in data:
+                        if i["pid"] == pid:
+                            i["server_list"].append(serverId)
+                else:
+                    data.append({
+                        "pid": pid,
+                        "displayName": dName,
+                        "server_list": [serverId]
+                    })
+            # 按照server_list的数量排序
+            data.sort(key=lambda x: len(x["server_list"]), reverse=True)
+            return data
+        else:
+            return []
 
     @staticmethod
     async def update_serverAdminList(
@@ -512,7 +689,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 如果现在的记录不在数据库中,则插入
         for record in now_records:
@@ -521,7 +698,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 更新
         await orm.insert_or_update_batch(
@@ -549,7 +726,7 @@ class bf1_db:
                 "serverId": serverId,
                 "persona_id": persona_id,
                 "display_name": display_name,
-                "time": datetime.now(),
+                "time": datetime.datetime.now(),
             },
             condition=[
                 Bf1ServerOwner.serverId == serverId,
@@ -573,6 +750,63 @@ class bf1_db:
             return len([i[0] for i in result])
         else:
             return 0
+
+    @staticmethod
+    async def get_playerOwnerServerList(persona_id: int) -> list:
+        """
+        查询玩家的Owner服务器列表
+        :param persona_id: 玩家persona_id(pid)
+        :return: Owner服务器列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerOwner.serverId).where(
+                    Bf1ServerOwner.personaId == persona_id
+                )
+        ):
+            server_list = []
+            # 根据serverId查询serverName
+            for item in result:
+                serverId = item[0]
+                if server := await orm.fetch_one(
+                        select(Bf1Server.serverName).where(
+                            Bf1Server.serverId == serverId
+                        )
+                ):
+                    server_list.append(server[0])
+            return server_list
+        else:
+            return []
+
+    @staticmethod
+    async def get_allServerPlayerOwnerList() -> list:
+        """
+        查询所有服务器的Owner列表
+        :return: 所有服务器的Owner列表
+        """
+        if result := await orm.fetch_all(
+                select(Bf1ServerOwner.serverId, Bf1ServerOwner.personaId, Bf1ServerOwner.displayName)
+        ):
+            data = []
+            for item in result:
+                serverId = item[0]
+                pid = item[1]
+                dName = item[2]
+                # 如果data中已经存在该pid,则直接添加serverId
+                if pid in [i["pid"] for i in data]:
+                    for i in data:
+                        if i["pid"] == pid:
+                            i["server_list"].append(serverId)
+                else:
+                    data.append({
+                        "pid": pid,
+                        "displayName": dName,
+                        "server_list": [serverId]
+                    })
+            # 按照server_list的数量排序
+            data.sort(key=lambda x: len(x["server_list"]), reverse=True)
+            return data
+        else:
+            return []
 
     @staticmethod
     async def update_serverOwnerList(
@@ -604,7 +838,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 如果现在的记录不在数据库中,则插入
         for record in now_records:
@@ -613,7 +847,7 @@ class bf1_db:
                     "serverId": record.split("-")[0],
                     "personaId": record.split("-")[1],
                     "displayName": now_records[record],
-                    "time": datetime.now(),
+                    "time": datetime.datetime.now(),
                 })
         # 更新
         await orm.insert_or_update_batch(
@@ -632,6 +866,43 @@ class bf1_db:
                 (Bf1ServerOwner.serverId == record["serverId"], Bf1ServerOwner.personaId == record["personaId"]) for
                 record in delete_list]
         )
+
+    @staticmethod
+    async def get_server_bookmark() -> list:
+        """
+        获取所有服务器的bookmark数
+        :return: [{serverName: serverName, bookmark: bookmark}]
+        """
+        # 查询max(time) - 1s的时间
+        time_temp = await orm.fetch_one(
+            select(func.max(Bf1ServerPlayerCount.time))
+        )
+        time_temp = time_temp[0] - datetime.timedelta(seconds=1)
+        if not time_temp:
+            return []
+        if result := await orm.fetch_all(
+                select(Bf1ServerPlayerCount.serverId, Bf1ServerPlayerCount.serverBookmarkCount).where(
+                    Bf1ServerPlayerCount.time >= time_temp
+                )
+        ):
+            # 根据serverId查询serverName
+            server_list = []
+            for item in result:
+                serverId = item[0]
+                if server := await orm.fetch_one(
+                        select(Bf1Server.serverName).where(
+                            Bf1Server.serverId == serverId
+                        )
+                ):
+                    server_list.append({
+                        "serverName": server[0],
+                        "bookmark": item[1]
+                    })
+            # 按bookmark降序排序
+            server_list.sort(key=lambda x: x["bookmark"], reverse=True)
+            return server_list
+        else:
+            return []
 
     # TODO:
     #   bf群组相关
@@ -723,7 +994,7 @@ class bf1_db:
 
     @staticmethod
     async def update_btr_match_cache(
-            match_id: int, server_name: str, map_name: str, mode_name: str, time: datetime,
+            match_id: int, server_name: str, map_name: str, mode_name: str, time: datetime.datetime,
             team_name: str, team_win: bool, display_name: str, kills: int,
             deaths: int, kd: float, kpm: float, score: int, spm: float, accuracy: str,
             headshots: str, time_played: int, persona_id: int = 0,

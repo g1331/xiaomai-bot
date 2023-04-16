@@ -500,7 +500,8 @@ async def player_stat_pic(
         vehicle_kill = 0
         for item in player_info["vehicleStats"]:
             vehicle_kill += item["killsAs"]
-        infantry_kill = player_info['basicStats']['kills'] - vehicle_kill
+        vehicle_kill = int(vehicle_kill)
+        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
         skill = player_info.get('basicStats').get('skill')
         longest_headshot = player_info.get('longestHeadShot')
         killAssists = int(player_info.get('killAssists'))

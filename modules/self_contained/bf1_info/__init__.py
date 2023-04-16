@@ -481,7 +481,7 @@ async def player_stat_pic(
         )
     else:
         # 发送文字
-        # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战KD、载具KD、技巧值、最远爆头距离
+        # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
         # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
         player_info = player_stat["result"]
         rank = player_info.get('basicStats').get('rank')
@@ -501,8 +501,6 @@ async def player_stat_pic(
         for item in player_info["vehicleStats"]:
             vehicle_kill += item["killsAs"]
         infantry_kill = player_info['basicStats']['kills'] - vehicle_kill
-        infantry_kd = round(infantry_kill / deaths, 2) if deaths else infantry_kill
-        vehicle_kd = round(vehicle_kill / deaths, 2) if deaths else vehicle_kill
         skill = player_info.get('basicStats').get('skill')
         longest_headshot = player_info.get('longestHeadShot')
         killAssists = int(player_info.get('killAssists'))
@@ -522,7 +520,7 @@ async def player_stat_pic(
             f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
             f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"
             f"KPM:{kpm}  SPM:{spm}\n"
-            f"步战KD:{infantry_kd}  载具KD:{vehicle_kd}\n"
+            f"步战击杀:{infantry_kill}  载具击杀:{vehicle_kill}\n"
             f"技巧值:{skill}\n"
             f"最远爆头距离:{longest_headshot}米\n"
             f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
@@ -1035,7 +1033,12 @@ async def player_match_info(
                     if player["score"] == 0:
                         continue
                     map_name = game_info['map_name']
-                    team_name = MapData.MapTeamDict.get(map_name, {}).get(f"Team{player['team_name']}", "No Team")
+                    player["team_name"] = f"Team{player['team_name']}" if player["team_name"] else "No Team"
+                    team_name = "No Team"
+                    for key in MapData.MapTeamDict:
+                        if MapData.MapTeamDict.get(key).get("Chinese") == map_name:
+                            team_name = MapData.MapTeamDict.get(key).get(player["team_name"], "No Team")
+                            break
                     team_win = "🏆" if player['team_win'] else "🏳"
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"

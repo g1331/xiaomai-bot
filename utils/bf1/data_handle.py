@@ -358,6 +358,7 @@ class BTRMatchesData:
                 .replace("Nivelle Nights", "尼维尔之夜").replace("MP_Naval", "黑尔戈兰湾").strip()
             # 游戏模式,并将模式名字翻译成中文
             mode_name = soup.select('div.match-info')[0].select('span.type')[0].text \
+                .replace("BreakthroughLarge0", "行动模式").replace("Frontlines", "前线")\
                 .replace("Domination", "抢攻").replace("Team Deathmatch", "团队死斗") \
                 .replace("War Pigeons", "战争信鸽").replace("Conquest", "征服") \
                 .replace("AirAssault0", "空中突袭").replace("Rush", "突袭") \
@@ -384,11 +385,11 @@ class BTRMatchesData:
             # 循环获取team1和team2的胜负情况
             for team_item in soup.select('div.match-teams')[0].select('div.team'):
                 # 获取team1和team2的胜负情况，如果赢了转换为True，否则为False
-                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text
+                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text.strip().replace(" ", "")
                 # team1命名为1，team2命名为2，NO TEAM命名为0
-                if team_name == 'Team 1':
+                if team_name == 'Team1':
                     team_name = 1
-                elif team_name == 'Team 2':
+                elif team_name == 'Team2':
                     team_name = 2
                 else:
                     team_name = 0

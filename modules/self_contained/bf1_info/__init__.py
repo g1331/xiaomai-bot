@@ -1455,14 +1455,30 @@ async def tyc(
                 message=MessageChain(f"玩家{display_name}被{len(banServerList)}个服务器封禁了:"),
             )
         ]
-        for serverName in banServerList:
-            fwd_nodeList.append(
-                ForwardNode(
-                    target=sender,
-                    time=datetime.datetime.now(),
-                    message=MessageChain(f"{serverName}"),
+        if len(banServerList) <= 200:
+            for serverName in banServerList:
+                fwd_nodeList.append(
+                    ForwardNode(
+                        target=sender,
+                        time=datetime.datetime.now(),
+                        message=MessageChain(f"{banServerList.index(serverName) + 1}.{serverName}"),
+                    )
                 )
-            )
+        else:
+            # 总长度超过200,则每m个合并为一个,m = len//200 + 1
+            m = len(banServerList) // 200 + 1
+            for i in range(0, len(banServerList), m):
+                banServerListStr = ""
+                for j in range(m):
+                    if i + j < len(banServerList):
+                        banServerListStr += f"{i + j + 1}.{banServerList[i + j]}\n"
+                fwd_nodeList.append(
+                    ForwardNode(
+                        target=sender,
+                        time=datetime.datetime.now(),
+                        message=MessageChain(banServerListStr),
+                    )
+                )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
     elif owner.matched:
         ownerServerList = await BF1DB.get_playerOwnerServerList(player_pid)
@@ -1885,8 +1901,8 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
             Image(data_bytes=img), f"更新时间:{pic_file_name.split('.')[0]}"
         ),  quote=source)
     # 发送缓存里最新的图片
-    for day in range(int(len(list(file_path.iterdir())) / 2)):
-        file_date = file_date - datetime.timedelta(days=day)
+    for day in range(int(len(list(file_path.iterdir())))+1):
+        file_date = date_now - datetime.timedelta(days=day)
         pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
         if (file_path / pic_file_name).exists():
             img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
@@ -1901,12 +1917,12 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
             break
     # 获取gw api的数据,更新缓存
     result = await (await BF1DA.get_api_instance()).getOffers()
-    if not isinstance(result, dict):
+    if isinstance(result, str):
         return logger.error(f"查询交换出错!{result}")
     # 如果result和之前最新的json文件内容一样,则return
     if (file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json").exists():
-        with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json", 'r',
-                  encoding="utf-8") as file1:
+        with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json",
+                  'r', encoding="utf-8") as file1:
             data = json.load(file1)
             if data.get("result") == result.get("result"):
                 return logger.info("交换未更新~")

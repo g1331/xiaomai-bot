@@ -1447,6 +1447,8 @@ async def tyc(
             )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
     elif ban.matched:
+        if not await Permission.require_user_perm(group.id, sender.id, Permission.GroupAdmin):
+            return await app.send_message(group, MessageChain(f"权限不足!需要权限:{Permission.GroupAdmin}"), quote=source)
         banServerList = await BF1DB.get_playerBanServerList(player_pid)
         if not banServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}没有封禁信息哦~"), quote=source)
@@ -1900,9 +1902,9 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
         img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
         return await app.send_message(group, MessageChain(
             Image(data_bytes=img), f"更新时间:{pic_file_name.split('.')[0]}"
-        ),  quote=source)
+        ), quote=source)
     # 发送缓存里最新的图片
-    for day in range(int(len(list(file_path.iterdir())))+1):
+    for day in range(int(len(list(file_path.iterdir()))) + 1):
         file_date = date_now - datetime.timedelta(days=day)
         pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
         if (file_path / pic_file_name).exists():

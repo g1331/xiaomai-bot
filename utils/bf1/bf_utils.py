@@ -437,7 +437,8 @@ async def gt_bf1_stat():
                         f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
                         f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
                         f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
-                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
+                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n" + \
+            "=" * 13
         return result
     return "获取数据失败"
 

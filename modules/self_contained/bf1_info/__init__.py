@@ -1403,6 +1403,8 @@ async def tyc(
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
 
+    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+
     # 如果admin/vip/ban/owner有一个匹配,就查询对应信息
     if admin.matched:
         adminServerList = await BF1DB.get_playerAdminServerList(player_pid)
@@ -1501,7 +1503,6 @@ async def tyc(
             )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
 
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
     send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
     # 查询最近游玩、vip/admin/owner/ban数、bfban信息、bfeac信息、正在游玩
     tasks = [

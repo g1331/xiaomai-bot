@@ -363,10 +363,13 @@ async def bfban_checkBan(player_pid: str) -> dict:
         "6": "等待管理确认",
         "8": "刷枪"
     }
-
-    async with aiohttp.ClientSession(headers=header) as session:
-        async with session.get(bfban_url) as response:
-            response = await response.json()
+    try:
+        async with aiohttp.ClientSession(headers=header) as session:
+            async with session.get(bfban_url) as response:
+                response = await response.json()
+    except Exception as e:
+        logger.error(f"联ban查询出错! {e}")
+        return result
     if response.get(player_pid):
         data = response[player_pid]
         if not data.get("status"):

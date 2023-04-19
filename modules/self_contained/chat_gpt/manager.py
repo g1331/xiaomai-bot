@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import re
+from pathlib import Path
 from typing import TypedDict, Union
 
 import aiohttp
@@ -28,12 +29,17 @@ api_count = 0
 api_limit = False
 gpt_mode = {
     0: "gpt",
-    1: "apt"
+    1: "api"
 }
+
+gpt_mode_path = Path(__file__).parent / "gpt_mode.json"
 
 
 def get_gpt_mode():
-    with open("gpt_mode.json", "r", encoding="utf-8") as f:
+    if not gpt_mode_path.exists():
+        with open(gpt_mode_path, "w", encoding="utf-8") as f:
+            json.dump({"mode": 0}, f)
+    with open(gpt_mode_path, "r", encoding="utf-8") as f:
         mode_dict = json.load(f)
         return gpt_mode.get(mode_dict["mode"])
 
@@ -72,7 +78,7 @@ def get_gpt(preset: str):
         )
     else:
         return AsyncChatbot(config={
-            "session_token": session_token
+            "access_token": session_token
         })
 
 
@@ -229,7 +235,7 @@ class ConversationManager(object):
         data_temp = {
             "mode": 0 if target_mode == "gpt" else 1
         }
-        with open('gpt_mode.json', 'w', encoding='utf-8') as f:
+        with open(gpt_mode_path, 'w', encoding='utf-8') as f:
             json.dump(data_temp, f, ensure_ascii=False, indent=4)
         # 清空manager
         self.data = {}

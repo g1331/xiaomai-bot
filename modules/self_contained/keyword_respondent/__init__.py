@@ -1,22 +1,14 @@
-import asyncio
-import re
-import random
 import hashlib
+import random
+import re
 from pathlib import Path
 from typing import Union
-from sqlalchemy import select
 
 from creart import create
-from graia.saya import Channel
 from graia.ariadne.app import Ariadne
-from graia.broadcast import Broadcast
-from graia.broadcast.interrupt.waiter import Waiter
-from graia.ariadne.message.chain import MessageChain
-from graia.broadcast.interrupt import InterruptControl
-from graia.ariadne.message.parser.twilight import Twilight
 from graia.ariadne.event.lifecycle import ApplicationLaunched
-from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graia.ariadne.event.message import Group, GroupMessage, Member
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, MultimediaElement, Plain
 from graia.ariadne.message.parser.twilight import (
     FullMatch,
@@ -24,18 +16,27 @@ from graia.ariadne.message.parser.twilight import (
     WildcardMatch,
     RegexResult,
 )
+from graia.ariadne.message.parser.twilight import Twilight
+from graia.broadcast import Broadcast
+from graia.broadcast.interrupt import InterruptControl
+from graia.broadcast.interrupt.waiter import Waiter
+from graia.saya import Channel
+from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graia.scheduler import timers
+from graia.scheduler.saya import SchedulerSchema
+from sqlalchemy import select
 
-from core.models import saya_model
-from core.orm import orm
-from core.orm.tables import KeywordReply
 from core.control import (
     Permission,
     Function,
     FrequencyLimitation,
     Distribute
 )
-from utils.waiter import ConfirmWaiter
+from core.models import saya_model
+from core.orm import orm
+from core.orm.tables import KeywordReply
 from utils.message_chain import message_chain_to_json, json_to_message_chain
+from utils.waiter import ConfirmWaiter
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
@@ -311,29 +312,71 @@ async def delete_keyword(
         await app.send_group_message(group, MessageChain("未检测到此关键词数据"), quote=source)
 
 
-FrequencyLimitationDict = {}
-limit_running = False
+class FrequencyJudge:
+    FrequencyLimitationDict = {}
 
+    def __init__(self, sender_id):
+        self.sender_id = sender_id
 
-async def limit():
-    global limit_running, FrequencyLimitationDict
-    limit_running = True
-    if limit_running:
-        return
-    while True:
-        FrequencyLimitationDict = {}
-        await asyncio.sleep(30)
-
-
-def FrequencyJudge(sender_id) -> bool:
-    global FrequencyLimitationDict
-    if sender_id not in FrequencyLimitationDict:
-        FrequencyLimitationDict[sender_id] = 3
-    if FrequencyLimitationDict[sender_id] > 12:
-        return False
-    else:
-        FrequencyLimitationDict[sender_id] += 3
+    def judge(self, sender_id):
+        if sender_id not in self.FrequencyLimitationDict:
+            self.FrequencyLimitationDict[sender_id] = 0
+        if self.FrequencyLimitationDict[sender_id] >= 5:
+            return False
+        self.FrequencyLimitationDict[sender_id] += 1
         return True
+
+
+@channel.use(SchedulerSchema(timers.every_custom_seconds(30)))
+async def limit():
+    FrequencyJudge.FrequencyLimitationDict = {}
+
+
+async def generate_reply(app: Ariadne, message: MessageChain, group: Group, sender: Member):
+    copied_msg = message.copy()
+    for i in copied_msg.__root__:
+        if isinstance(i, MultimediaElement):
+            i.url = ""
+    if result := list(
+            await orm.fetch_all(
+                select(KeywordReply.reply).where(
+                    KeywordReply.keyword == copied_msg.as_persistent_string(),
+                    KeywordReply.group.in_((-1, group.id)),
+                )
+            )
+    ):
+        reply = random.choice(result)
+        if not FrequencyJudge(sender.id).judge(sender.id):
+            return
+        await app.send_group_message(
+            group, json_to_message_chain(str(reply[0]))
+        )
+    else:
+        response_md5 = [
+            i[1]
+            for i in regex_list
+            if (
+                    re.match(i[0], copied_msg.as_persistent_string())
+                    and i[2] in (-1, group.id)
+            )
+        ]
+        if response_md5:
+            if reply := (
+                    await orm.fetch_one(
+                        select(KeywordReply.reply).where(
+                            KeywordReply.reply_md5
+                            == random.choice(response_md5)
+                        )
+                    )
+            ):
+                if not FrequencyJudge(sender.id).judge(sender.id):
+                    return
+                await app.send_group_message(
+                    group,
+                    json_to_message_chain(
+                        reply[0]
+                    ),
+                )
 
 
 @channel.use(
@@ -348,60 +391,13 @@ def FrequencyJudge(sender_id) -> bool:
     )
 )
 async def keyword_detect(app: Ariadne, message: MessageChain, group: Group, sender: Member):
-    if not limit_running:
-        await limit()
     try:
         add_keyword_twilight.generate(message)
     except ValueError:
         try:
             delete_keyword_twilight.generate(message)
         except ValueError:
-            copied_msg = message.copy()
-            for i in copied_msg.__root__:
-                if isinstance(i, MultimediaElement):
-                    i.url = ""
-            if result := list(
-                    await orm.fetch_all(
-                        select(KeywordReply.reply).where(
-                            KeywordReply.keyword == copied_msg.as_persistent_string(),
-                            KeywordReply.group.in_((-1, group.id)),
-                        )
-                    )
-            ):
-                reply = random.choice(result)
-                if not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
-                    if not FrequencyJudge(sender.id):
-                        return
-                await app.send_group_message(
-                    group, json_to_message_chain(str(reply[0]))
-                )
-            else:
-                response_md5 = [
-                    i[1]
-                    for i in regex_list
-                    if (
-                            re.match(i[0], copied_msg.as_persistent_string())
-                            and i[2] in (-1, group.id)
-                    )
-                ]
-                if response_md5:
-                    if reply := (
-                            await orm.fetch_one(
-                                select(KeywordReply.reply).where(
-                                    KeywordReply.reply_md5
-                                    == random.choice(response_md5)
-                                )
-                            )
-                    ):
-                        if not await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
-                            if not FrequencyJudge(sender.id):
-                                return
-                        await app.send_group_message(
-                            group,
-                            json_to_message_chain(
-                                reply[0]
-                            ),
-                        )
+            await generate_reply(app, message, group, sender)
 
 
 @channel.use(

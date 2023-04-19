@@ -729,7 +729,7 @@ async def player_weapon_pic(
         [
             FullMatch("-").space(SpacePolicy.NOSPACE),
             UnionMatch(
-                "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点"
+                "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点", "巨兽", "机械巨兽"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", action="store_true", optional=True, default=4) @ "row",

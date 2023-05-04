@@ -231,15 +231,12 @@ class bf1_api(object):
             else:
                 self.check_login = True
                 return False
-        if (
-                not self.check_login
-        ) or (
-                self.access_token is None
-        ) or (
-                (time.time() - self.access_token_time) >= int(self.access_token_expires_time)
-        ):
-            return True
-        return False
+        return (
+            not self.check_login
+            or self.access_token is None
+            or (time.time() - self.access_token_time)
+            >= int(self.access_token_expires_time)
+        )
 
     async def get_session(self) -> str:
         if (not self.remid) or (not self.pid):
@@ -380,11 +377,8 @@ class bf1_api(object):
         body = {
             "jsonrpc": "2.0",
             "method": "Authentication.getEnvIdViaAuthCode",
-            "params": {
-                "authCode": "%s" % authcode,
-                "locale": "zh-tw",
-            },
-            "id": await get_a_uuid()
+            "params": {"authCode": f"{authcode}", "locale": "zh-tw"},
+            "id": await get_a_uuid(),
         }
         header = {
             "Host": "sparta-gw.battlelog.com",
@@ -536,22 +530,21 @@ class bf1_api(object):
         :param data: api获得的返回数据
         :return: 成功:返回dict，失败:返回str
         """
-        if error_data := data.get("error"):
-            if error_msg := self.error_msg_dict.get(str(error_data.get("message")), error_data.get("message")):
-                return error_msg
-            elif error_msg := self.error_code_dict.get(str(error_data.get("code")), error_data.get("code")):
-                if error_data.get("code") == -32501:
-                    self.check_login = False
-                    logger.warning(f"BF1账号{self.pid}session失效,尝试重新登录")
-                    await self.login(self.remid, self.sid)
-                logger.error(error_msg)
-                return error_msg
-            else:
-                error_msg = f"未知错误!code:{error_data.get('code')},msg:{error_data.get('message')}"
-                logger.error(error_msg)
-                return error_msg
-        else:
+        if not (error_data := data.get("error")):
             return data
+        if error_msg := self.error_msg_dict.get(str(error_data.get("message")), error_data.get("message")):
+            return error_msg
+        elif error_msg := self.error_code_dict.get(str(error_data.get("code")), error_data.get("code")):
+            if error_data.get("code") == -32501:
+                self.check_login = False
+                logger.warning(f"BF1账号{self.pid}session失效,尝试重新登录")
+                await self.login(self.remid, self.sid)
+            logger.error(error_msg)
+            return error_msg
+        else:
+            error_msg = f"未知错误!code:{error_data.get('code')},msg:{error_data.get('message')}"
+            logger.error(error_msg)
+            return error_msg
 
 
 class Game(bf1_api):
@@ -827,7 +820,6 @@ class CampaignOperations(bf1_api):
     async def getPlayerCampaignStatus(self) -> dict:
         """
         获取战役信息
-        :param personaId: PID
         :return:
         """
         return await self.api_call(
@@ -1589,7 +1581,7 @@ class api_instance(
     def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
         # 如果实例已经存在，则抛出异常，否则创建一个新实例
         if pid in api_instance.instances:
-            raise Exception("api_instance already exists for pid: {}".format(pid))
+            raise Exception(f"api_instance already exists for pid: {pid}")
         super().__init__(pid=pid, remid=remid, sid=sid, session=session)
 
         # 将实例添加到字典中

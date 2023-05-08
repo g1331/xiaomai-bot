@@ -527,7 +527,7 @@ async def player_stat_pic(
             f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
             f"复活数:{revives}   治疗数:{heals}\n"
             f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
-            f"EAC状态:{eac_info}" + "=" * 20
+            f"EAC状态:{eac_info}" + "=" * 18
         ]
         weapon = player_weapon[0]
         name = zhconv.convert(weapon.get('name'), 'zh-hans')
@@ -546,7 +546,7 @@ async def player_stat_pic(
             f"击杀: {kills}\tKPM: {kpm}\n"
             f"命中率: {acc}%\t爆头率: {hs}%\n"
             f"效率: {eff}\t时长: {time_played}\n"
-            + "=" * 15
+            + "=" * 18
         )
 
         vehicle = player_vehicle[0]
@@ -560,7 +560,7 @@ async def player_stat_pic(
             f"最佳载具:{name}\n"
             f"击杀:{kills}\tKPM:{kpm}\n"
             f"摧毁:{destroyed}\t时长:{time_played}\n"
-            + "=" * 15
+            + "=" * 18
         )
         result = "\n".join(result)
 
@@ -689,7 +689,7 @@ async def player_weapon_pic(
         )
     else:
         # 发送文字数据
-        result = [f"玩家: {display_name}\n" + "=" * 20]
+        result = [f"玩家: {display_name}\n" + "=" * 18]
         for weapon in player_weapon:
             if not weapon.get("stats").get('values'):
                 continue
@@ -709,7 +709,7 @@ async def player_weapon_pic(
                 f"击杀: {kills}\tKPM: {kpm}\n"
                 f"命中率: {acc}%\t爆头率: {hs}%\n"
                 f"效率: {eff}\t时长: {time_played}\n"
-                + "=" * 15
+                + "=" * 18
             )
         result = result[:5]
         result = "\n".join(result)
@@ -835,7 +835,7 @@ async def player_vehicle_pic(
         )
     else:
         # 发送文字数据
-        result = [f"玩家: {display_name}\n" + "=" * 20]
+        result = [f"玩家: {display_name}\n" + "=" * 18]
         for vehicle in player_vehicle:
             name = zhconv.convert(vehicle["name"], 'zh-cn')
             kills = int(vehicle["stats"]["values"]["kills"])
@@ -847,7 +847,7 @@ async def player_vehicle_pic(
                 f"{name}\n"
                 f"击杀:{kills}\tKPM:{kpm}\n"
                 f"摧毁:{destroyed}\t时长:{time_played}\n"
-                + "=" * 15
+                + "=" * 18
             )
         result = result[:5]
         result = "\n".join(result)
@@ -1043,7 +1043,7 @@ async def player_match_info(
                     team_win = "🏆" if player['team_win'] else "🏳"
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"
-                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M:%S')}\n"
+                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M')}\n"
                         f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
                         f"队伍: {team_name}  {team_win}\n"
                         f"击杀: {player['kills']}\t死亡: {player['deaths']}\n"

@@ -105,7 +105,7 @@ async def BTR_get_recent_info(player_name: str) -> list[dict]:
     """
     result = []
     # BTR玩家个人信息页面
-    url = "https://battlefieldtracker.com/bf1/profile/pc/" + player_name
+    url = f"https://battlefieldtracker.com/bf1/profile/pc/{player_name}"
     header = {
         "Connection": "keep-alive",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
@@ -131,7 +131,7 @@ async def BTR_get_recent_info(player_name: str) -> list[dict]:
                 time_item = datetime.datetime.fromtimestamp(
                     time.mktime(time.strptime(time_item, "%Y-%m-%dT%H:%M:%S.000Z")))
                 # 将时间转换为字符串
-                time_item = time_item.strftime('%Y年%m月%d日%H时%M分')
+                time_item = time_item.strftime('%Y年%m月%d日%H时')
                 # 提取胜率
                 win_rate = item.select('div.title > div.stat')[0].text
                 # 提取spm、kdr、kpm、btr、gs、tp
@@ -159,9 +159,7 @@ async def get_match_detail(session, match_url: str) -> list[dict]:
         async with session.get(match_url) as resp:
             html = await resp.text()
             # 处理网页获取失败的情况
-            if not html:
-                return None
-            return html
+            return html if html else None
     except Exception as e:
         logger.error(f"获取对局详情失败{e}")
         return None
@@ -353,16 +351,6 @@ async def bfban_checkBan(player_pid: str) -> dict:
         "stat": None,
         "url": None
     }
-    bfban_stat_dict = {
-        "0": "未处理",
-        "1": "实锤",
-        "2": "嫌疑再观察",
-        "3": "认为没开",
-        "4": "未处理",
-        "5": "回复讨论中",
-        "6": "等待管理确认",
-        "8": "刷枪"
-    }
     try:
         async with aiohttp.ClientSession(headers=header) as session:
             async with session.get(bfban_url) as response:
@@ -374,6 +362,16 @@ async def bfban_checkBan(player_pid: str) -> dict:
         data = response[player_pid]
         if not data.get("status"):
             return result
+        bfban_stat_dict = {
+            "0": "未处理",
+            "1": "实锤",
+            "2": "嫌疑再观察",
+            "3": "认为没开",
+            "4": "未处理",
+            "5": "回复讨论中",
+            "6": "等待管理确认",
+            "8": "刷枪"
+        }
         bfban_status = bfban_stat_dict[data["status"]]
         if data.get("url"):
             case_url = data["url"]
@@ -390,8 +388,7 @@ async def gt_checkVban(player_pid) -> int:
     async with aiohttp.ClientSession(headers=head) as session:
         async with session.get(url) as response:
             response = await response.json()
-    vban_num = len(response["vban"])
-    return vban_num
+    return len(response["vban"])
 
 
 async def gt_bf1_stat():
@@ -471,9 +468,8 @@ async def download_skin(url):
                 try:
                     async with session.get(url, timeout=5, verify_ssl=False) as resp:
                         pic = await resp.read()
-                        fp = open(file_name, 'wb')
-                        fp.write(pic)
-                        fp.close()
+                        with open(file_name, 'wb') as fp:
+                            fp.write(pic)
                         return file_name
                 except Exception as e:
                     logger.error(e)

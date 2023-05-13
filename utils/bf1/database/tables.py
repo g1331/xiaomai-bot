@@ -42,7 +42,6 @@ class Bf1Group(orm.Base):
     id = Column(Integer, primary_key=True)
     group_name = Column(String, unique=True)
     bind_ids = Column(JSON)
-    bind_qq_group = Column(BIGINT, default=None)
     # 格式: {
     #   ids:[
     #       {
@@ -53,6 +52,14 @@ class Bf1Group(orm.Base):
     #       }
     #   ],
     # }
+
+
+class Bf1GroupBind(orm.Base):
+    """bf1群组与QQ群绑定关系表"""
+    __tablename__ = "bf1_group_bind"
+    id = Column(Integer, primary_key=True)
+    qq_group_id = Column(BIGINT)
+    bf1_group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
 
 
 # 服务器信息

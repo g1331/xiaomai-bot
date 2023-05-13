@@ -1,8 +1,6 @@
 import asyncio
 import datetime
-import json
 import time
-from pathlib import Path
 from typing import Union
 
 import aiohttp
@@ -540,64 +538,10 @@ class BF1GROUP:
             return "序号只能在1-30以内"
         # 绑定到对应序号上
         await BF1DB.bind_bf1_group_id(group_name, index, guid, gameId, serverId, account)
-        account_info = await BF1DB.get_bf1account_by_pid(account)
+        account_info = await BF1DB.get_bf1account_by_pid(int(account))
         display_name = account_info.get("displayName") if account_info else ""
         manager_account = f"服管账号:{display_name}" if display_name else "未识别到服管账号,请手动绑定!"
         return f"群组[{group_name}]绑定{index}服成功!\n" \
                f"guid:{guid}\n" \
                f"gameId:{gameId}\n" \
                f"serverId:{serverId}\n" + manager_account
-
-    @staticmethod
-    async def unbind_ids(group_name: str, index: int) -> str:
-        # 解绑玩家id，返回str
-        # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
-            return f"群组[{group_name}]不存在"
-        # 解绑对应的序号
-        # index只能在1-30以内
-        if index < 1 or index > 30:
-            return "序号只能在1-30以内"
-        # 解绑对应序号
-        await BF1DB.unbind_bf1_group_id(group_name, index)
-        return f"群组[{group_name}]解绑{index}服成功!"
-
-    @staticmethod
-    async def bind_qq_group(group_name: str, group_id: int) -> str:
-        # 绑定群组，返回str
-        # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
-            return f"群组[{group_name}]不存在"
-        # 绑定群组
-        await BF1DB.bind_bf1_group_qq_group(group_name, group_id)
-        return f"群组[{group_name}]绑定群[{group_id}]成功"
-
-    @staticmethod
-    async def unbind_qq_group(group_name: str) -> str:
-        # 解绑群组，返回str
-        # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
-            return f"群组[{group_name}]不存在"
-        # 解绑群组
-        await BF1DB.unbind_bf1_group_qq_group(group_name)
-        return f"群组[{group_name}]解绑群成功"
-
-
-class BF1ManagerAccount:
-    """BF1服管账号相关操作"""
-    accounts_file_path = Path("./data/battlefield/accounts.json")
-    if not accounts_file_path.exists():
-        accounts_file_path.touch()
-        accounts_file_path.write_text(json.dumps({"accounts": []}))
-
-    @staticmethod
-    async def get_accounts() -> list:
-        """获取所有服管账号"""
-        return json.loads(BF1ManagerAccount.accounts_file_path.read_text()).get(
-            "accounts"
-        )
-
-
-
-
-

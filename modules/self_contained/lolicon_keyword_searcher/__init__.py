@@ -45,8 +45,8 @@ cache18_path = Path(config.functions.get("lolicon", {}).get("cache18_path", ""))
                 FullMatch("来点"),
                 RegexMatch(r"[^\s]+") @ "keyword",
                 RegexMatch(r"[色涩瑟]图$"),
-                ArgumentMatch("-r", optional=True, type=str, default="") @ "age",
-                ArgumentMatch("-m", "-mode", optional=True, type=str, default="revoke") @ "mode",
+                ArgumentMatch("-r", optional=True, type=int, default=0) @ "age",
+                ArgumentMatch("-m", "-mode", optional=True, type=str, default="revoke") @ "mode"
             ])
         ],
         decorators=[
@@ -63,6 +63,8 @@ async def lolicon_keyword_searcher(
         keyword: RegexResult, age: ArgResult, mode: ArgResult
 ):
     keyword = keyword.result.display
+    if age not in [0, 1]:
+        age = 0
     msg_chain = await get_image(keyword, age)
     if msg_chain.only(Plain):
         return await app.send_group_message(group, msg_chain, quote=source)
@@ -84,19 +86,35 @@ async def lolicon_keyword_searcher(
             return "ERROR:工口发生!"
 
 
-async def get_image(keyword: str, age: str) -> MessageChain:
+async def send_lolicon_request(keyword, age) -> dict:
+    url = "https://api.lolicon.app/setu/v2"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "r18": age,
+        "num": 1,
+        "uid": [],
+        "keyword": keyword,
+        "tag": [],
+        "size": ["original"],
+        "proxy": "i.pixiv.re",
+        "dateAfter": 0,
+        "dateBefore": 0,
+        "dsc": False,
+        "excludeAI": False
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=payload) as response:
+            return await response.json()
+
+
+async def get_image(keyword: str, age: int) -> MessageChain:
     word_filter = ("&", "r18", "&r18", "%26r18")
     r18 = False
     if any(i in keyword for i in word_filter):
         return MessageChain("你注个寄吧")
-    if not age:
-        url = f"https://api.lolicon.app/setu/v2&keyword={keyword}"
-    else:
-        age = f"r{age}"
-        url = f"https://api.lolicon.app/setu/v2?{age}=1&keyword={keyword}"
-    async with aiohttp.ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
-        async with session.get(url=url, proxy=proxy) as resp:
-            result = await resp.json()
+    result = await send_lolicon_request(keyword, age)
     logger.info(result)
     if result["error"]:
         return MessageChain(result["error"])

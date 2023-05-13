@@ -53,7 +53,9 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
     upgrade_info = [f"SHA:{sha}\n {upgrade_dict[sha]}" for sha in upgrade_dict]
     logger.debug(f"【Upgrade】更新信息\n{upgrade_info}")
     if not upgrade_info:
-        return await app.send_message(group, MessageChain(f"当前Github仓库还没有更新信息!"), quote=source)
+        return await app.send_message(
+            group, MessageChain("当前Github仓库还没有更新信息!"), quote=source
+        )
     await app.send_message(
         group,
         MessageChain(
@@ -64,18 +66,19 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
         quote=source
     )
     try:
-        if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
-            logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
-            try:
-                await asyncio.to_thread(perform_update)
-                upgrade_dict = {}
-                logger.success("【Upgrade】更新完成,将在重新启动后生效")
-                await app.send_message(group, MessageChain(f"【Upgrade】更新完成!\n 将在重新启动后生效"), quote=source)
-            except Exception as e:
-                logger.error(e)
-                return await app.send_message(group, MessageChain(f"【Upgrade】更新失败!\n 请手动更新!{e}"), quote=source)
-        else:
-            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+        if not await asyncio.wait_for(
+            inc.wait(ConfirmWaiter(group, member)), 30
+        ):
+            return await app.send_message(group, MessageChain("未预期回复,操作退出"), quote=source)
+        logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
+        try:
+            await asyncio.to_thread(perform_update)
+            upgrade_dict = {}
+            logger.success("【Upgrade】更新完成,将在重新启动后生效")
+            await app.send_message(group, MessageChain(f"【Upgrade】更新完成!\n 将在重新启动后生效"), quote=source)
+        except Exception as e:
+            logger.error(e)
+            return await app.send_message(group, MessageChain(f"【Upgrade】更新失败!\n 请手动更新!{e}"), quote=source)
     except asyncio.TimeoutError:
         return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
@@ -112,7 +115,10 @@ async def auto_upgrade_handle():
         if not config.auto_upgrade:
             return
         committer_name = f'{update[0].get("commit", {}).get("committer", {}).get("name")}'
-        committer_avatar_url = f'{update[0].get("committer", {}).get("avatar_url")}'
+        if update[0]:
+            committer_avatar_url = f'{update[0].get("committer", {}).get("avatar_url")}'
+        else:
+            committer_avatar_url = ""
         utc_time_str = f'{update[0].get("commit", {}).get("committer", {}).get("date", "")}'
         committer_time = (
                 datetime.fromisoformat(utc_time_str.replace("Z", "+00:00")) + timedelta(hours=8)).strftime(
@@ -120,20 +126,19 @@ async def auto_upgrade_handle():
         sha = update[0].get("sha", "")[:7]
         message = update[0].get("commit", {}).get("message", "").replace("<", r"\<").splitlines()[0]
         url = f'{update[0].get("html_url")}'
-        if target_app and target_group:
-            if sha not in noticed_list:
-                await target_app.send_message(
-                    target_group,
-                    MessageChain(
-                        f"【自动更新】发现新的提交!\n",
-                        f"提交时间：{committer_time}\n",
-                        f"提交信息：{message}\n",
-                        Image(url=committer_avatar_url),
-                        "\n" if committer_avatar_url else "",
-                        f"提交者：{committer_name}\n",
-                        f"sha：{sha}\n",
-                        f"链接：{url}\n"
-                        f"请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
-                    )
+        if target_app and target_group and sha not in noticed_list:
+            await target_app.send_message(
+                target_group,
+                MessageChain(
+                    f"【自动更新】发现新的提交!\n",
+                    f"提交时间：{committer_time}\n",
+                    f"提交信息：{message}\n",
+                    Image(url=committer_avatar_url) if committer_avatar_url else "",
+                    "\n" if committer_avatar_url else "",
+                    f"提交者：{committer_name}\n",
+                    f"sha：{sha}\n",
+                    f"链接：{url}\n"
+                    f"请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
                 )
-                noticed_list.append(sha)
+            )
+            noticed_list.append(sha)

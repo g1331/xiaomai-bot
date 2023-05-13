@@ -41,8 +41,17 @@ class Bf1Group(orm.Base):
     __tablename__ = "bf1_group"
     id = Column(Integer, primary_key=True)
     group_name = Column(String, unique=True)
-    bind_guids = Column(JSON)
-    bind_manager_account_pids = Column(JSON)
+    bind_ids = Column(JSON)
+    # 格式: {
+    #   ids:[
+    #       {
+    #           "guid": "guid",
+    #           "gameId": "gameId",
+    #           "serverId": "serverId",
+    #           "account": "account",
+    #       }
+    #   ],
+    # }
 
 
 class Bf1GroupBind(orm.Base):
@@ -152,8 +161,11 @@ class Bf1ManagerLog(orm.Base):
     persona_id = Column(BIGINT)
     # 变化
     display_name = Column(String)
-    # action
-    action = Column(String, )
+    # 操作
+    action = Column(String)
+    # 信息
+    info = Column(String)
+    # 时间
     time = Column(DateTime)
 
 

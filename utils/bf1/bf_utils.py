@@ -78,23 +78,22 @@ async def check_bind(qq: int) -> Union[dict, str, None]:
     player_info = await BF1DB.get_bf1account_by_pid(player_pid)
     if player_info:
         return {"displayName": player_info["display_name"], "pid": player_pid, "uid": player_info["uid"], "qq": qq}
+    player_info = await get_personas_by_player_pid(player_pid)
+    if isinstance(player_info, str):
+        return player_info
+    elif not player_info:
+        return None
     else:
-        player_info = await get_personas_by_player_pid(player_pid)
-        if isinstance(player_info, str):
-            return player_info
-        elif not player_info:
-            return None
-        else:
-            # 更新该pid的信息
-            await BF1DB.update_bf1account(
-                pid=player_pid,
-                uid=player_info['result'][str(player_pid)]['nucleusId'],
-                display_name=player_info['result'][str(player_pid)]['displayName'],
-            )
-            displayName = player_info['result'][str(player_pid)]['displayName']
-            pid = player_info['result'][str(player_pid)]['personaId']
-            uid = player_info['result'][str(player_pid)]['nucleusId']
-            return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
+        # 更新该pid的信息
+        await BF1DB.update_bf1account(
+            pid=player_pid,
+            uid=player_info['result'][str(player_pid)]['nucleusId'],
+            display_name=player_info['result'][str(player_pid)]['displayName'],
+        )
+        displayName = player_info['result'][str(player_pid)]['displayName']
+        pid = player_info['result'][str(player_pid)]['personaId']
+        uid = player_info['result'][str(player_pid)]['nucleusId']
+        return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
 
 
 async def BTR_get_recent_info(player_name: str) -> list[dict]:
@@ -210,14 +209,14 @@ async def BTR_update_data(player_name: str) -> None:
     :param player_name: 玩家名称
     :return: None
     """
-    logger.debug(f"开始更新BTR对局数据")
+    logger.debug("开始更新BTR对局数据")
     result = []
     # BTR玩家最近对局列表页面
     header = {
         "Connection": "keep-alive",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
     }
-    matches_url = 'https://battlefieldtracker.com/bf1/profile/pc/' + player_name + '/matches'
+    matches_url = f'https://battlefieldtracker.com/bf1/profile/pc/{player_name}/matches'
     # 网络请求
     async with aiohttp.ClientSession(headers=header) as session:
         async with session.get(matches_url) as resp:
@@ -238,7 +237,7 @@ async def BTR_update_data(player_name: str) -> None:
                 # match_url: bf1/matches/pc/1639959006078647616?context=playerName
                 # 只取?context=playerName前面的部分
                 match_url = match_url.split('?')[0]
-                match_url = 'https://battlefieldtracker.com' + match_url
+                match_url = f'https://battlefieldtracker.com{match_url}'
                 matches_url_list.append(match_url)
                 match_id_list.append(match_url.split('pc/')[1].split('?')[0])
 
@@ -342,7 +341,7 @@ async def bfban_checkBan(player_pid: str) -> dict:
     :param player_pid: 玩家pid
     :return: {"stat": "状态", "url": "案件链接"}
     """
-    player_pid = str(player_pid)
+    player_pid = player_pid
     bfban_url = f'https://api.gametools.network/bfban/checkban?personaids={player_pid}'
     header = {
         "Connection": "keep-alive"
@@ -391,7 +390,7 @@ async def gt_checkVban(player_pid) -> int:
     return len(response["vban"])
 
 
-async def gt_bf1_stat():
+async def gt_bf1_stat() -> str:
     url = "https://api.gametools.network/bf1/status/?platform=pc"
     head = {
         "Connection": "Keep-Alive"
@@ -409,34 +408,25 @@ async def gt_bf1_stat():
         logger.error(f"gt_bf1_stat: {e}")
         data = None
     if data:
-        result = \
-            f"当前在线:{data.get('amounts').get('soldierAmount')}\n" \
-            f"服务器数:{data.get('amounts').get('serverAmount')}\n" \
-            f"排队总数:{data.get('amounts').get('queueAmount')}\n" \
-            f"观众总数:{data.get('amounts').get('spectatorAmount')}\n" + \
-            f"=" * 13 + "\n" \
-                        "私服(官服):\n" \
-                        f"服务器:{data.get('amounts').get('communityServerAmount', 0)}" \
-                        f"({data.get('amounts').get('diceServerAmount', 0)})\n" \
-                        f"人数:{data.get('amounts').get('communitySoldierAmount', 0)}" \
-                        f"({data.get('amounts').get('diceSoldierAmount', 0)})\n" \
-                        f"排队:{data.get('amounts').get('communityQueueAmount', 0)}" \
-                        f"({data.get('amounts').get('diceQueueAmount', 0)})\n" \
-                        f"观众:{data.get('amounts').get('communitySpectatorAmount', 0)}" \
-                        f"({data.get('amounts').get('diceSpectatorAmount', 0)})\n" + \
-            f"=" * 13 + "\n" \
-                        f"征服:{data.get('modes').get('Conquest', 0)}\t" \
-                        f"行动:{data.get('modes').get('BreakthroughLarge', 0)}\n" \
-                        f"前线:{data.get('modes').get('TugOfWar', 0)}\t" \
-                        f"突袭:{data.get('modes').get('Rush', 0)}\n" \
-                        f"抢攻:{data.get('modes').get('Domination', 0)}\t" \
-                        f"闪击行动:{data.get('modes').get('Breakthrough', 0)}\n" \
-                        f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
-                        f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
-                        f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
-                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n" + \
-            "=" * 13
-        return result
+        return (
+                f"当前在线:{data.get('amounts').get('soldierAmount')}"
+                f"\n服务器数:{data.get('amounts').get('serverAmount')}"
+                f"\n排队总数:{data.get('amounts').get('queueAmount')}"
+                f"\n观众总数:{data.get('amounts').get('spectatorAmount')}\n"
+                + "=" * 13
+                + f"\n私服(官服):"
+                  f"\n服务器:{data.get('amounts').get('communityServerAmount', 0)}({data.get('amounts').get('diceServerAmount', 0)})"
+                  f"\n人数:{data.get('amounts').get('communitySoldierAmount', 0)}({data.get('amounts').get('diceSoldierAmount', 0)})"
+                  f"\n排队:{data.get('amounts').get('communityQueueAmount', 0)}({data.get('amounts').get('diceQueueAmount', 0)})"
+                  f"\n观众:{data.get('amounts').get('communitySpectatorAmount', 0)}({data.get('amounts').get('diceSpectatorAmount', 0)})\n"
+                + "=" * 13
+                + f"\n征服:{data.get('modes').get('Conquest', 0)}\t行动:{data.get('modes').get('BreakthroughLarge', 0)}"
+                  f"\n前线:{data.get('modes').get('TugOfWar', 0)}\t突袭:{data.get('modes').get('Rush', 0)}"
+                  f"\n抢攻:{data.get('modes').get('Domination', 0)}\t闪击行动:{data.get('modes').get('Breakthrough', 0)}"
+                  f"\n团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t战争信鸽:{data.get('modes').get('Possession', 0)}"
+                  f"\n空中突袭:{data.get('modes').get('AirAssault', 0)}\n空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
+                + "=" * 13
+        )
     return "获取数据失败"
 
 
@@ -489,3 +479,69 @@ async def download_skin(url):
                     logger.error(e)
                     i += 1
         return None
+
+
+class BF1GROUP:
+
+    @staticmethod
+    async def create(group_name: str) -> str:
+        # 群组的名字必须为英文，且不区分大小写，也就是说不能同时存在ABC和abc，返回str
+        # 查询群组是否存在
+        if await BF1DB.check_bf1_group(group_name):
+            return f"群组[{group_name}]已存在"
+        # 创建群组
+        await BF1DB.create_bf1_group(group_name)
+        return f"BF1群组[{group_name}]创建成功"
+
+    @staticmethod
+    async def delete(group_name: str) -> str:
+        # 删除群组，返回str
+        # 查询群组是否存在
+        if not await BF1DB.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 删除群组
+        await BF1DB.delete_bf1_group(group_name)
+        return f"BF1群组[{group_name}]删除成功"
+
+    @staticmethod
+    async def get_info(group_name: str) -> str:
+        return (
+            await BF1DB.get_bf1_group_info(group_name)
+            if await BF1DB.check_bf1_group(group_name)
+            else f"群组[{group_name}]不存在"
+        )
+
+    @staticmethod
+    async def rename(group_name: str, new_name: str) -> str:
+        # 查询群组是否存在
+        if not await BF1DB.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 查询新名字是否存在
+        if await BF1DB.check_bf1_group(new_name):
+            return f"群组[{new_name}]已存在"
+        # 修改群组名字
+        result = await BF1DB.modify_bf1_group_name(group_name, new_name)
+        return f"BF1群组[{group_name}]已改名为[{new_name}]" if result else f"BF1群组[{group_name}]修改失败"
+
+    @staticmethod
+    async def bind_ids(
+            group_name: str, index: int, guid: str, gameId: str,
+            serverId: str, account: str = None
+    ) -> str:
+        # 绑定玩家id，返回str
+        # 查询群组是否存在
+        if not await BF1DB.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 绑定到对应的序号
+        # index只能在1-30以内
+        if index < 1 or index > 30:
+            return "序号只能在1-30以内"
+        # 绑定到对应序号上
+        await BF1DB.bind_bf1_group_id(group_name, index, guid, gameId, serverId, account)
+        account_info = await BF1DB.get_bf1account_by_pid(int(account))
+        display_name = account_info.get("displayName") if account_info else ""
+        manager_account = f"服管账号:{display_name}" if display_name else "未识别到服管账号,请手动绑定!"
+        return f"群组[{group_name}]绑定{index}服成功!\n" \
+               f"guid:{guid}\n" \
+               f"gameId:{gameId}\n" \
+               f"serverId:{serverId}\n" + manager_account

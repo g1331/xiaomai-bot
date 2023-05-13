@@ -68,14 +68,20 @@ async def lolicon_keyword_searcher(
         return await app.send_group_message(group, msg_chain, quote=source)
     if mode == "revoke":
         msg = await app.send_group_message(group, msg_chain, quote=source)
+        if msg.id <= 0:
+            return "ERROR:工口发生!"
         await asyncio.sleep(15)
         with contextlib.suppress(UnknownTarget):
             await app.recall_message(msg)
     elif mode == "flash":
         await app.send_group_message(group, msg_chain.exclude(Image), quote=source)
-        await app.send_group_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
+        msg = await app.send_group_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
+        if msg.id <= 0:
+            return "ERROR:工口发生!"
     else:
-        await app.send_group_message(group, msg_chain, quote=source)
+        msg = await app.send_group_message(group, msg_chain, quote=source)
+        if msg.id <= 0:
+            return "ERROR:工口发生!"
 
 
 async def get_image(keyword: str, age: str) -> MessageChain:

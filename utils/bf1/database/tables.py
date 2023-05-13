@@ -42,23 +42,24 @@ class Bf1Group(orm.Base):
     id = Column(Integer, primary_key=True)
     group_name = Column(String, unique=True)
     bind_ids = Column(JSON)
-    # bind_ids格式: [
+    # 格式: {
+    #   ids:[
     #       {
     #           "guid": "guid",
     #           "gameId": "gameId",
     #           "serverId": "serverId",
     #           "account": "account",
     #       }
-    #   ]
+    #   ],
+    # }
 
 
 class Bf1GroupBind(orm.Base):
-    """bf1群组绑定信息"""
-
+    """bf1群组与QQ群绑定关系表"""
     __tablename__ = "bf1_group_bind"
     id = Column(Integer, primary_key=True)
-    group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
-    qq_group = Column(BIGINT, nullable=False)
+    qq_group_id = Column(BIGINT)
+    bf1_group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
 
 
 # 服务器信息
@@ -199,24 +200,3 @@ class Bf1MatchCache(orm.Base):
     accuracy = Column(String, nullable=False)
     headshots = Column(String, nullable=False)
     time_played = Column(Integer, nullable=False)
-
-
-# 权限
-class Bf1PermGroupBind(orm.Base):
-    """
-    一个群只能绑定一个权限组
-    """
-    __tablename__ = "bf1_perm_group_bind"
-    id = Column(Integer, primary_key=True)
-    qq_group_id = Column(BIGINT, nullable=False, unique=True)
-    bf1_group_name = Column(String, nullable=False)
-
-
-class Bf1PermMemberInfo(orm.Base):
-
-    __tablename__ = "bf1_perm_member_info"
-    id = Column(Integer, primary_key=True)
-    qq_id = Column(BIGINT, nullable=False)
-    bf1_group_name = Column(String, nullable=False)
-    # 0:管理员 1:服主
-    perm = Column(String, nullable=False)

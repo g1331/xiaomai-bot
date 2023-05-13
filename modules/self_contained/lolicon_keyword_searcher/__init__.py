@@ -12,7 +12,7 @@ from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.exception import UnknownTarget
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image, Source
-from graia.ariadne.message.parser.twilight import FullMatch, RegexMatch, RegexResult
+from graia.ariadne.message.parser.twilight import FullMatch, RegexMatch, RegexResult, ArgumentMatch, ArgResult
 from graia.ariadne.message.parser.twilight import Twilight
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -45,6 +45,8 @@ cache18_path = Path(config.functions.get("lolicon", {}).get("cache18_path", ""))
                 FullMatch("来点"),
                 RegexMatch(r"[^\s]+") @ "keyword",
                 RegexMatch(r"[色涩瑟]图$"),
+                ArgumentMatch("-r", optional=True, type=str, default="") @ "age",
+                ArgumentMatch("-m", "-mode", optional=True, type=str, default="revoke") @ "mode",
             ])
         ],
         decorators=[
@@ -56,31 +58,36 @@ cache18_path = Path(config.functions.get("lolicon", {}).get("cache18_path", ""))
         ],
     )
 )
-async def lolicon_keyword_searcher(app: Ariadne, group: Group, source: Source, keyword: RegexResult):
+async def lolicon_keyword_searcher(
+        app: Ariadne, group: Group, source: Source,
+        keyword: RegexResult, age: ArgResult, mode: ArgResult
+):
     keyword = keyword.result.display
-    msg_chain = await get_image(keyword)
+    msg_chain = await get_image(keyword, age)
     if msg_chain.only(Plain):
         return await app.send_group_message(group, msg_chain, quote=source)
-    mode = "flash"
-    r18 = False
-    if mode == "revoke" and r18:
+    if mode == "revoke":
         msg = await app.send_group_message(group, msg_chain, quote=source)
-        await asyncio.sleep(20)
+        await asyncio.sleep(15)
         with contextlib.suppress(UnknownTarget):
             await app.recall_message(msg)
-    elif mode == "flash" and r18:
+    elif mode == "flash":
         await app.send_group_message(group, msg_chain.exclude(Image), quote=source)
         await app.send_group_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
     else:
         await app.send_group_message(group, msg_chain, quote=source)
 
 
-async def get_image(keyword: str) -> MessageChain:
+async def get_image(keyword: str, age: str) -> MessageChain:
     word_filter = ("&", "r18", "&r18", "%26r18")
     r18 = False
     if any(i in keyword for i in word_filter):
         return MessageChain("你注个寄吧")
-    url = f"https://api.lolicon.app/setu/v2?r18={1 if r18 else 0}&keyword={keyword}"
+    if not age:
+        url = f"https://api.lolicon.app/setu/v2&keyword={keyword}"
+    else:
+        age = f"r{age}"
+        url = f"https://api.lolicon.app/setu/v2?{age}=1&keyword={keyword}"
     async with aiohttp.ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
         async with session.get(url=url, proxy=proxy) as resp:
             result = await resp.json()

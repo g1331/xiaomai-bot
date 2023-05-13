@@ -63,27 +63,30 @@ async def lolicon_keyword_searcher(
         keyword: RegexResult, age: ArgResult, mode: ArgResult
 ):
     keyword = keyword.result.display
+    age = age.result
+    mode = mode.result
     if age not in [0, 1]:
         age = 0
     msg_chain = await get_image(keyword, age)
+    EroMsg = MessageChain("ERROR:工口发生!")
     if msg_chain.only(Plain):
-        return await app.send_group_message(group, msg_chain, quote=source)
-    if mode == "revoke":
-        msg = await app.send_group_message(group, msg_chain, quote=source)
+        return await app.send_message(group, msg_chain, quote=source)
+    if mode == "flash":
+        await app.send_message(group, msg_chain.exclude(Image), quote=source)
+        msg = await app.send_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
         if msg.id <= 0:
-            return "ERROR:工口发生!"
+            return await app.send_message(group, EroMsg, quote=source)
+    elif mode == "revoke":
+        msg = await app.send_message(group, msg_chain, quote=source)
+        if msg.id <= 0:
+            return await app.send_message(group, EroMsg, quote=source)
         await asyncio.sleep(15)
         with contextlib.suppress(UnknownTarget):
             await app.recall_message(msg.id)
-    elif mode == "flash":
-        await app.send_group_message(group, msg_chain.exclude(Image), quote=source)
-        msg = await app.send_group_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
-        if msg.id <= 0:
-            return "ERROR:工口发生!"
     else:
-        msg = await app.send_group_message(group, msg_chain, quote=source)
+        msg = await app.send_message(group, msg_chain, quote=source)
         if msg.id <= 0:
-            return "ERROR:工口发生!"
+            return await app.send_message(group, EroMsg, quote=source)
 
 
 async def send_lolicon_request(keyword, age) -> dict:

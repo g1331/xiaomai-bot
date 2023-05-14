@@ -40,8 +40,9 @@ from core.control import (
 )
 from core.models import saya_model, response_model
 from utils.UI import *
-from utils.bf1.bf_utils import BF1GROUP
+from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount
 from utils.bf1.database import BF1DB
+from utils.bf1.default_account import BF1DA
 from utils.string import generate_random_str
 from utils.text2img import md2img
 from .api_gateway import refresh_api_client, get_player_stat_data
@@ -62,19 +63,18 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 # TODO:
-#  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,群组权限分为为拥有者和管理者,表1:群组表，表2：权限表
-#  2.群组绑定服务器，搜索服务器信息并绑定gameid和serverid，绑定服管账号pid
-#  2.群组绑定群,绑定后自动添加群主为群组拥有者，群管理员为群组管理者，
-#  3.服管账号，增删改查，登录
-#  4.踢人，日志记录
-#  5.封禁，日志记录
-#  6.换边，日志记录
-#  7.换图，日志记录
-#  8.vip，日志记录
-#  9.服务器配置修改，日志记录
+#  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,
+#    群组权限分为为拥有者和管理者,表1:群组表,表2:权限表                              [√]
+#  2.群组绑定服务器,搜索服务器信息并绑定gameid和serverid,绑定服管账号pid             [√]
+#  3.群组绑定群,绑定后自动添加群主为群组拥有者，群管理员为群组管理者，
+#  4.服管账号，增删改查，登录
+#  5.踢人，日志记录
+#  6.封禁，日志记录
+#  7.换边，日志记录
+#  8.换图，日志记录
+#  9.vip，日志记录
+#  10.服务器配置修改，日志记录
 
-
-# TODO 1：-bf群组 增删改查
 
 # 创建bf群组
 @listen(GroupMessage)
@@ -167,7 +167,7 @@ async def bfgroup_rename(app: Ariadne, group: Group, group_name: RegexResult, ne
         ]
     )
 )
-async def bfgroup_list_info(app: Ariadne, resv_group: Group, source: Source):
+async def bfgroup_list_info(app: Ariadne, group: Group, source: Source):
     bf1_group_info = await BF1DB.get_all_bf1_group_info()
     result = ["bf群组列表:"]
     group_names = [group_info['group_name'] for group_info in bf1_group_info]
@@ -183,7 +183,7 @@ async def bfgroup_list_info(app: Ariadne, resv_group: Group, source: Source):
         result.append(remaining_group_line)
 
     result = "\n".join(result)
-    return await app.send_message(resv_group, MessageChain(result), quote=source)
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
 # TODO 2:服务器绑定 增删改查
@@ -205,101 +205,62 @@ async def bfgroup_list_info(app: Ariadne, resv_group: Group, source: Source):
             FullMatch("绑服#").space(SpacePolicy.NOSPACE),
             "server_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
             "server_gameid" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-            # 示例: -bf群组 skl 绑服1 gameid
+            # 示例: -bf群组 skl 绑服#1 gameid
         ]
     )
 )
-async def bfgroup_bind_server(app: Ariadne, group: Group,
-                              group_name: RegexResult, server_rank: RegexResult, server_gameid: RegexResult,
-                              source: Source):
-    group_name = str(group_name.result)
-    server_gameid = str(server_gameid.result)
-    try:
-        server_rank = int(str(server_rank.result))
-        if server_rank > 30:
-            raise Exception
-    except:
-        await app.send_message(group, MessageChain(
-            f"请检查输入所要绑定的服务器序号(群组最大30)"
+async def bf1group_bind_server(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, server_rank: RegexResult,
+        server_gameid: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    server_gameid = server_gameid.result.display
+    if not server_rank.result.display.isdigit():
+        return await app.send_message(group, MessageChain(
+            "服务器序号只能为数字\n例: -bf群组 skl 绑服#1 gameid"
         ), quote=source)
-        return False
+    server_rank = int(server_rank.result.display)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain(
+            "服务器序号只能在1~30内"
+        ), quote=source)
     # 检查是否有bf群组
-    group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{group_name}不存在"
+    if not await BF1DB.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
         ), quote=source)
-        return False
-    # 检查gameid是否正确
-    try:
-        result = await api_gateway.get_server_fulldetails(server_gameid)
-        if result == '':
-            await app.send_message(group, MessageChain(
-                f"网络出错或检查输入的gameid"
-            ), quote=source)
-            return False
-    except:
-        await app.send_message(group, MessageChain(
-            f"网络出错或检查输入的gameid"
-        ), quote=source)
-        return False
+
+    # 检查gameId是否正确
+    server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
+    if isinstance(server_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{server_info}"),
+            quote=source
+        )
+    server_info = server_info["result"]
+    gameId = server_info.get("serverInfo").get("gameId")
+    guid = server_info.get("serverInfo").get("guid")
+    ServerId = server_info.get("rspInfo").get('server').get('serverId')
+
     # 获取管理pid列表，如果服管账号pid在里面则绑定
-    admin_list = []
-    for item in result["rspInfo"]["adminList"]:
-        temp = f"{item['personaId']}"
-        admin_list.append(temp)
+    admin_list = [f"{item['personaId']}" for item in server_info["rspInfo"]["adminList"]]
     # 获取服管账号列表
-    file_path = f'./data/battlefield/managerAccount'
-    if not (os.path.exists(file_path) or os.path.isfile(file_path)):
-        await app.send_message(group, MessageChain(
-            f'未检测到managerAccount文件夹'
-        ), quote=source)
-        return False
-    else:
-        account_list = os.listdir(file_path)
-        if len(account_list) == 0:
-            await app.send_message(group, MessageChain(
-                f'未检测到任何服管账号，请新建一个'
-            ), quote=source)
-            return False
-        managerAccount_list_temp = {}
-        for item in account_list:
-            try:
-                with open(file_path + f"/{item}/info.json", 'r', encoding="utf-8") as file_tamp:
-                    data = json.load(file_tamp)
-                    name = data["personas"]["persona"][0]["displayName"]
-                    pid = data["personas"]["persona"][0]["personaId"]
-                    managerAccount_list_temp[str(pid)] = name
-            except:
-                managerAccount_list_temp[str(pid)] = str(pid)
-    managerAccount = None
-    for i, item in enumerate(managerAccount_list_temp):
-        if str(item) in admin_list:
-            managerAccount = item
-    # 绑定服务器gameid
-    with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        # print(data)
-        if data is None:
-            data = {"servers": ["" for _ in range(30)]}
-            data["servers"][server_rank - 1] = {"gameid": server_gameid, "guid": result["serverInfo"]["guid"],
-                                                "serverid": result["rspInfo"]["server"]["serverId"],
-                                                "managerAccount": managerAccount}
-        else:
-            data["servers"][server_rank - 1] = {"gameid": server_gameid, "guid": result["serverInfo"]["guid"],
-                                                "serverid": result["rspInfo"]["server"]["serverId"],
-                                                "managerAccount": managerAccount}
-        with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'w', encoding="utf-8") as file2:
-            yaml.dump(data, file2, allow_unicode=True)
-            await app.send_message(group, MessageChain(
-                f'群组{group_name}成功绑定服务器{server_rank}:{server_gameid}\n' +
-                (f"服管账号为:{managerAccount_list_temp[managerAccount]}({managerAccount})"
-                 if managerAccount else "未检测到服管账号请手动指定!")
-            ), quote=source)
-            return True
+    account_list = await BF1ManagerAccount.get_accounts()
+    account_pid_list = [f"{account['pid']}" for account in account_list]
+    # 获取绑定的服管账号
+    bind_account = list(set(admin_list) & set(account_pid_list))
+    manager_account = bind_account[0] if bind_account else None
+
+    # 绑定
+    result = await BF1GROUP.bind_ids(
+        group_name, server_rank - 1, guid, gameId, ServerId, manager_account
+    )
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
-# 群组解绑服务器-删
+# 群组解绑服务器
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
@@ -319,42 +280,31 @@ async def bfgroup_bind_server(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_del_server(app: Ariadne, group: Group,
-                             group_name: RegexResult, server_rank: RegexResult, source: Source):
-    group_name = str(group_name.result)
-    server_rank = int(str(server_rank.result))
-    try:
-        server_rank = int(server_rank)
-        if server_rank > 30:
-            raise Exception
-    except:
-        await app.send_message(group, MessageChain(
-            f"请检查输入所要绑定的服务器序号(群组最大30)"
+async def bf1group_unbind_server(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, server_rank: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    if not server_rank.result.display.isdigit():
+        return await app.send_message(group, MessageChain(
+            "服务器序号只能为数字\n例: -bf群组 sakula 解绑#1"
         ), quote=source)
-        return False
+    server_rank = int(server_rank.result.display)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain(
+            "服务器序号只能在1~30内"
+        ), quote=source)
     # 检查是否有bf群组
-    group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{group_name}不存在"
+    if not await BF1DB.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
         ), quote=source)
-        return False
-    # 解绑服务器gameid
-    with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        # print(data)
-        if data is None:
-            data = {"servers": ["" for _ in range(30)]}
-            data["servers"][server_rank - 1] = ""
-        else:
-            data["servers"][server_rank - 1] = ""
-        with open(f'./data/battlefield/binds/bfgroups/{group_name}/servers.yaml', 'w', encoding="utf-8") as file2:
-            yaml.dump(data, file2, allow_unicode=True)
-            await app.send_message(group, MessageChain(
-                f'群组{group_name}成功解绑服务器{server_rank}'
-            ), quote=source)
-            return True
 
+    result = await BF1GROUP.unbind_ids(group_name, server_rank - 1)
+    return await app.send_message(group, MessageChain(result), quote=source)
+
+
+# ======================================================================================================================
 
 # 群组创建vban
 @listen(GroupMessage)
@@ -376,8 +326,10 @@ async def bfgroup_del_server(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_create_vban(app: Ariadne, group: Group,
-                              group_name: RegexResult, vban_rank: RegexResult, source: Source):
+async def bfgroup_create_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, vban_rank: RegexResult, source: Source
+):
     group_name = str(group_name.result)
     # 检查是否有bf群组
     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
@@ -431,8 +383,10 @@ async def bfgroup_create_vban(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_get_vban(app: Ariadne, group: Group,
-                           group_name: RegexResult, source: Source):
+async def bfgroup_get_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, source: Source
+):
     group_name = str(group_name.result)
     # 检查是否有bf群组
     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
@@ -488,8 +442,10 @@ async def bfgroup_get_vban(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_del_vban(app: Ariadne, group: Group,
-                           group_name: RegexResult, vban_rank: RegexResult, source: Source):
+async def bfgroup_del_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, vban_rank: RegexResult, source: Source
+):
     group_name = str(group_name.result)
     # 检查是否有bf群组
     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
@@ -548,9 +504,11 @@ async def bfgroup_del_vban(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_config_vban(app: Ariadne, group: Group,
-                              group_name: RegexResult, group_id: RegexResult,
-                              token: RegexResult, vban_rank: RegexResult, source: Source):
+async def bfgroup_config_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, group_id: RegexResult,
+        token: RegexResult, vban_rank: RegexResult, source: Source
+):
     group_name = str(group_name.result)
     # 检查是否有bf群组
     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
@@ -591,6 +549,8 @@ async def bfgroup_config_vban(app: Ariadne, group: Group,
             return True
 
 
+# ======================================================================================================================
+
 # qq群绑定群组
 @listen(GroupMessage)
 @decorate(
@@ -611,42 +571,18 @@ async def bfgroup_config_vban(app: Ariadne, group: Group,
         ]
     )
 )
-async def bfgroup_bind_qqgroup(app: Ariadne, group: Group,
-                               group_name: RegexResult, qqgroup_id: RegexResult, source: Source):
-    group_name = str(group_name.result)
-    qqgroup_id = str(qqgroup_id.result)
-    # 检查是否有bf群组
-    group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{group_name}不存在"
-        ), quote=source)
-        return False
-    # 检查qq群是否正确
-    target_app, target_group = await account_controller.get_app_from_total_groups(int(qqgroup_id))
-    if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"没有找到目标群:{qqgroup_id}"
-        ), quote=source)
-    # 检查qq群文件是否存在
-    group_path = f'./data/battlefield/binds/groups/{qqgroup_id}'
-    file_path = group_path + "/bfgroups.yaml"
-    if not os.path.exists(group_path):
-        os.makedirs(group_path)
-    if not os.path.isfile(file_path):
-        open(file_path, "w", encoding="utf-8")
-        await app.send_message(group, MessageChain(
-            f'已自动创建绑定文件'
-        ), quote=source)
-    with open(file_path, "w+", encoding="utf-8") as file1:
-        data = {"bfgroups": group_name}
-        yaml.dump(data, file1, allow_unicode=True)
-        await app.send_message(group, MessageChain(
-            f'{qqgroup_id}绑定bf群组{group_name}成功'
-        ))
-        return True
+async def bfgroup_bind_qqgroup(
+        app: Ariadne, group: Group, source: Source,
+        group_name: RegexResult, qqgroup_id: RegexResult
+):
+    group_name = group_name.result.display
+    qqgroup_id = qqgroup_id.result.display
+    result = await BF1GROUP.bind_qq_group(group_name, qqgroup_id)
+    # TODO: 绑定权限
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
+# TODO:通过bf1_server表自动更新
 async def auto_update_gameid(group_file_path):
     with open(group_file_path, 'r', encoding="utf-8") as file1:
         data = yaml.load(file1, yaml.Loader)

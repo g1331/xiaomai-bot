@@ -5,7 +5,7 @@ from typing import Union, List, Tuple, Dict, Any
 from loguru import logger
 from sqlalchemy import select, func
 
-from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1GroupBind, Bf1MatchCache, \
+from utils.bf1.database.tables import orm, Bf1PlayerBind, Bf1Account, Bf1Server, Bf1Group, Bf1MatchCache, \
     Bf1ServerVip, Bf1ServerBan, Bf1ServerAdmin, Bf1ServerOwner, Bf1ServerPlayerCount
 
 
@@ -949,17 +949,12 @@ class bf1_db:
     #   绑定qq群和群组名
 
     @staticmethod
-    async def get_bf1_group_by_qq(qq_group_id: int) -> Bf1Group:
+    async def get_bf1_group_by_qq(qq_group_id: int):
         """根据qq群号获取对应绑定的bf1群组"""
-        group_bind = await orm.fetch_one(
-            select(Bf1GroupBind).where(Bf1GroupBind.qq_group_id == qq_group_id)
+        group = await orm.fetch_one(
+            select(Bf1Group).where(Bf1Group.qq_group_id == qq_group_id)
         )
-        if group_bind:
-            bf1_group = await orm.fetch_one(
-                select(Bf1Group).where(Bf1Group.id == group_bind[0].bf1_group_id)
-            )
-            return bf1_group[0]
-        return None
+        return group[0] if group else None
 
     @staticmethod
     async def get_bf1_server_by_guid(guid: str) -> Bf1Server:
@@ -967,31 +962,7 @@ class bf1_db:
         server = await orm.fetch_one(
             select(Bf1Server).where(Bf1Server.persistedGameId == guid)
         )
-        if server:
-            return server[0]
-        return None
-
-    @staticmethod
-    async def bind_qq_group_to_bf1_group(qq_group_id: int, bf1_group_name: str) -> bool:
-        """绑定qq群和bf1群组"""
-        bf1_group = await orm.fetch_one(
-            select(Bf1Group).where(Bf1Group.group_name == bf1_group_name)
-        )
-        if not bf1_group:
-            return False
-        else:
-            bf1_group = bf1_group[0]
-        await orm.insert_or_update(
-            table=Bf1GroupBind,
-            data={
-                "qq_group_id": qq_group_id,
-                "bf1_group_id": bf1_group.id
-            },
-            condition=[
-                Bf1PlayerBind.qq == qq_group_id
-            ]
-        )
-        return True
+        return server[0] if server else None
 
     @staticmethod
     async def get_all_bf1_group() -> list:
@@ -1014,13 +985,14 @@ class bf1_db:
         """获取bf1群组的信息"""
         result = await orm.fetch_one(
             select(
-                Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids
+                Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids, Bf1Group.bind_qq_group
             ).where(Bf1Group.group_name == group_name)
         )
         return (
             {
                 "group_name": result[1],
                 "bind_ids": result[2],
+                "bind_qq_group": result[3]
             }
             if result
             else {}
@@ -1096,6 +1068,29 @@ class bf1_db:
             ]
         )
 
+    @staticmethod
+    async def unbind_bf1_group_id(group_name: str, index: int) -> bool:
+        """解绑bf1群组和guid"""
+        bf1_group = await orm.fetch_one(
+            select(
+                Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids
+            ).where(Bf1Group.group_name == group_name)
+        )
+        if not bf1_group:
+            return False
+        ids = bf1_group[2]
+        ids[index] = None
+        await orm.insert_or_update(
+            table=Bf1Group,
+            data={
+                "bind_ids": ids
+            },
+            condition=[
+                Bf1Group.group_name == group_name
+            ]
+        )
+        return True
+
     # 修改某个群组的名字
     @staticmethod
     async def modify_bf1_group_name(old_group_name: str, new_group_name: str) -> bool:
@@ -1131,6 +1126,35 @@ class bf1_db:
             if result
             else []
         )
+
+    # 绑定QQ群
+    @staticmethod
+    async def bind_bf1_group_qq_group(group_name: str, qq_group_id: int) -> bool:
+        """绑定bf1群组和QQ群"""
+        await orm.insert_or_update(
+            table=Bf1Group,
+            data={
+                "bind_qq_group": qq_group_id
+            },
+            condition=[
+                Bf1Group.group_name == group_name
+            ]
+        )
+        return True
+
+    @staticmethod
+    async def unbind_bf1_group_qq_group(group_name: str) -> bool:
+        """解绑bf1群组和QQ群"""
+        await orm.insert_or_update(
+            table=Bf1Group,
+            data={
+                "bind_qq_group": None
+            },
+            condition=[
+                Bf1Group.group_name == group_name
+            ]
+        )
+        return True
 
     # TODO
     #   btr对局缓存

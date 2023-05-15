@@ -6,6 +6,7 @@
 .env
 .venv
 .vscode/
+.idea/
 env/
 venv/
 ENV/
@@ -19,6 +20,7 @@ venv.bak/
 # 测试文件
 /modules/test_modules/
 auto_get_server.py
+test.py
 
 # 数据库
 data.db

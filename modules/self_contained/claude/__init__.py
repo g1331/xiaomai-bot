@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from pathlib import Path
 
@@ -28,15 +27,12 @@ account_controller = response_model.get_acc_controller()
 
 channel = Channel.current()
 channel.name("Claude")
-channel.description("一个与Claude对话的插件")
+channel.description("一个与必应AI对话的插件")
 channel.author("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
-claude_config = Path(__file__).parent / "config.json"
-config_data = json.load(claude_config.open("r", encoding="utf-8"))
-
-CLAUDE_BOT_ID = config_data.get("CLAUDE_BOT_ID")
-SLACK_USER_TOKEN = config_data.get("SLACK_USER_TOKEN")
+CLAUDE_BOT_ID = "你的slack bot id"
+SLACK_USER_TOKEN = "你的slack token"
 
 
 class SlackClient(AsyncWebClient):
@@ -48,10 +44,12 @@ class SlackClient(AsyncWebClient):
             raise TypeError("Channel not found.")
 
         resp = await self.chat_postMessage(channel=self.CHANNEL_ID, text=text)
+        print("c: ", resp)
         self.LAST_TS = resp["ts"]
 
     async def open_channel(self):
         if not self.CHANNEL_ID:
+            print(111)
             response = await self.conversations_open(users=CLAUDE_BOT_ID)
             self.CHANNEL_ID = response["channel"]["id"]
 
@@ -59,6 +57,7 @@ class SlackClient(AsyncWebClient):
         for _ in range(150):
             try:
                 resp = await self.conversations_history(channel=self.CHANNEL_ID, oldest=self.LAST_TS, limit=2)
+                print("r: ", resp)
                 msg = [msg["text"] for msg in resp["messages"] if msg["user"] == CLAUDE_BOT_ID]
                 if msg and not msg[-1].endswith("Typing…_"):
                     return msg[-1]
@@ -74,13 +73,8 @@ client = SlackClient(token=SLACK_USER_TOKEN)
 
 
 async def chat(text):
-    await client.open_channel()
     await client.chat(text)
     return await client.get_reply()
-
-
-lock = asyncio.Lock()
-running = False
 
 
 @channel.use(
@@ -109,18 +103,7 @@ async def claude_gpt(
         text: ArgResult,
         content: RegexResult
 ):
-    global running
-    if running:
-        return await app.send_group_message(group, MessageChain("Claude正在与其他人说话哦~请稍后再试!"), quote=source)
-    # 加锁，同一时间只能有一个人在和Claude对话
-    async with lock:
-        running = True
-        try:
-            response = await chat(content.result.display)
-        except RuntimeError as e:
-            response = f"Claude回复时出现了错误!{e}"
-        finally:
-            running = False
+    response = await chat(content.result.display)
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)
     else:

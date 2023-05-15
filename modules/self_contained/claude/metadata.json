@@ -1,0 +1,19 @@
+{
+  "level": 2,
+  "name": "Claude",
+  "version": "0.1",
+  "display_name": "Claude",
+  "authors": [
+    "十三"
+  ],
+  "description": "一个通过slack与claude对话的插件",
+  "usage": [
+    "在群中发送 `-claude 内容` 即可开启对话",
+  ],
+  "example": [
+    "-claude 你好",
+    "-cla 你好"
+  ],
+  "default_switch": false,
+  "default_notice": false
+}

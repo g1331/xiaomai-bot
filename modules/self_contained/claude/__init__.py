@@ -73,6 +73,7 @@ client = SlackClient(token=SLACK_USER_TOKEN)
 
 
 async def chat(text):
+    await client.open_channel()
     await client.chat(text)
     return await client.get_reply()
 

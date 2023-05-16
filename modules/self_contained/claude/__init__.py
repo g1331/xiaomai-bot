@@ -27,7 +27,7 @@ account_controller = response_model.get_acc_controller()
 
 channel = Channel.current()
 channel.name("Claude")
-channel.description("一个与必应AI对话的插件")
+channel.description("一个与Claude对话的插件")
 channel.author("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
@@ -78,6 +78,10 @@ async def chat(text):
     return await client.get_reply()
 
 
+lock = asyncio.Lock()
+running = False
+
+
 @channel.use(
     ListenerSchema(
         listening_events=[GroupMessage],
@@ -104,7 +108,18 @@ async def claude_gpt(
         text: ArgResult,
         content: RegexResult
 ):
-    response = await chat(content.result.display)
+    global running
+    if running:
+        return await app.send_group_message(group, MessageChain("Claude正在与其他人说话哦~请稍后再试!"), quote=source)
+    # 加锁，同一时间只能有一个人在和Claude对话
+    async with lock:
+        running = True
+        try:
+            response = await chat(content.result.display)
+        except RuntimeError as e:
+            response = f"Claude回复时出现了错误!{e}"
+        finally:
+            running = False
     if text.matched:
         await app.send_group_message(group, MessageChain(response), quote=source)
     else:

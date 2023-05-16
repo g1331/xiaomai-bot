@@ -48,12 +48,10 @@ class SlackClient(AsyncWebClient):
             raise TypeError("Channel not found.")
 
         resp = await self.chat_postMessage(channel=self.CHANNEL_ID, text=text)
-        print("c: ", resp)
         self.LAST_TS = resp["ts"]
 
     async def open_channel(self):
         if not self.CHANNEL_ID:
-            print(111)
             response = await self.conversations_open(users=CLAUDE_BOT_ID)
             self.CHANNEL_ID = response["channel"]["id"]
 
@@ -61,7 +59,6 @@ class SlackClient(AsyncWebClient):
         for _ in range(150):
             try:
                 resp = await self.conversations_history(channel=self.CHANNEL_ID, oldest=self.LAST_TS, limit=2)
-                print("r: ", resp)
                 msg = [msg["text"] for msg in resp["messages"] if msg["user"] == CLAUDE_BOT_ID]
                 if msg and not msg[-1].endswith("Typing…_"):
                     return msg[-1]

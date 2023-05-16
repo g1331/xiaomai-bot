@@ -63,37 +63,32 @@ async def check_default_account(app: Ariadne):
     logger.debug("正在检查默认账号信息")
     # 检查默认账号信息
     default_account_info = await BF1DA.read_default_account()
-    # pid为空,则给Master发送提示
     if not default_account_info["pid"]:
         return await app.send_friend_message(
             config.Master,
             MessageChain("BF1默认查询账号信息不完整，请使用 '-设置默认账号 pid remid=xxx,sid=xxx' 命令设置默认账号信息")
         )
+    # 登录默认账号
+    await BF1DA.get_api_instance()
+    # 更新默认账号信息
+    if account_info := await BF1DA.update_player_info():
+        logger.debug("默认账号信息检查完毕")
+        # 给Master发送提示
+        return await app.send_friend_message(
+            config.Master,
+            MessageChain(
+                f"BF1默认查询账号信息已更新，当前默认账号信息为：\n"
+                f"display_name: {account_info['display_name']}\n"
+                f"pid: {account_info['pid']}\n"
+                f"session: {account_info['session']}"
+            ),
+        )
     else:
-        # 登录默认账号
-        await BF1DA.get_api_instance()
-        # 更新默认账号信息
-        if account_info := await BF1DA.update_player_info():
-            logger.debug("默认账号信息检查完毕")
-            # 给Master发送提示
-            return await app.send_friend_message(
-                config.Master,
-                MessageChain(
-                    f"BF1默认查询账号信息已更新，当前默认账号信息为：\n"
-                    f"display_name: {account_info['display_name']}\n"
-                    f"pid: {account_info['pid']}\n"
-                    f"session: {account_info['session']}"
-                ),
-            )
-        else:
-            logger.warning("默认账号信息更新失败")
-            # 给Master发送提示
-            return await app.send_friend_message(
-                config.Master,
-                MessageChain(
-                    f"BF1更新默认查询账号失败!"
-                ),
-            )
+        logger.warning("默认账号信息更新失败")
+        # 给Master发送提示
+        return await app.send_friend_message(
+            config.Master, MessageChain("BF1更新默认查询账号失败!")
+        )
 
 
 # 设置默认账号信息
@@ -159,44 +154,43 @@ async def set_default_account(
             MessageChain(f"登录默认账号{account_pid}失败，请检查remid和sid是否正确"),
             quote=source
         )
-    if isinstance(session, str):
-        logger.success(f"登录默认账号{account_pid}成功")
-        # 登录成功,返回账号信息和session
-        player_info = await (await BF1DA.get_api_instance()).getPersonasByIds(account_pid)
-        # 如果pid不存在,则返回错误信息
-        if isinstance(player_info, str) or not player_info.get("result"):
-            return await app.send_message(
-                sender,
-                MessageChain(
-                    f"登录默认账号{account_pid}成功,但是pid不存在,请检查pid是否正确!!!\n"
-                    f"请在 utils/bf1/default_account.json 中修改默认账号的pid信息以保证账号的正常查询!"
-                ),
-                quote=source
-            )
-        displayName = f"{player_info['result'][str(account_pid)]['displayName']}"
-        pid = f"{player_info['result'][str(account_pid)]['personaId']}"
-        uid = f"{player_info['result'][str(account_pid)]['nucleusId']}"
-        return await app.send_friend_message(
-            sender,
-            MessageChain(
-                f"登录默认账号{account_pid}成功!\n"
-                f"账号信息如下:\n"
-                f"displayName: {displayName}\n"
-                f"pid: {pid}\n"
-                f"uid: {uid}\n"
-                f"remid: {remid}\n"
-                f"sid: {sid}\n"
-                f"session: {session}"
-            ),
-            quote=source
-        )
-    else:
+    if not isinstance(session, str):
         # 登录失败,返回错误信息
         return await app.send_friend_message(
             sender,
             MessageChain(f"登录默认账号{account_pid}失败，错误信息: {session}"),
             quote=source
         )
+    logger.success(f"登录默认账号{account_pid}成功")
+    # 登录成功,返回账号信息和session
+    player_info = await (await BF1DA.get_api_instance()).getPersonasByIds(account_pid)
+    # 如果pid不存在,则返回错误信息
+    if isinstance(player_info, str) or not player_info.get("result"):
+        return await app.send_message(
+            sender,
+            MessageChain(
+                f"登录默认账号{account_pid}成功,但是pid不存在,请检查pid是否正确!!!\n"
+                f"请在 utils/bf1/default_account.json 中修改默认账号的pid信息以保证账号的正常查询!"
+            ),
+            quote=source
+        )
+    displayName = f"{player_info['result'][str(account_pid)]['displayName']}"
+    pid = f"{player_info['result'][str(account_pid)]['personaId']}"
+    uid = f"{player_info['result'][str(account_pid)]['nucleusId']}"
+    return await app.send_friend_message(
+        sender,
+        MessageChain(
+            f"登录默认账号{account_pid}成功!\n"
+            f"账号信息如下:\n"
+            f"displayName: {displayName}\n"
+            f"pid: {pid}\n"
+            f"uid: {uid}\n"
+            f"remid: {remid}\n"
+            f"sid: {sid}\n"
+            f"session: {session}"
+        ),
+        quote=source
+    )
 
 
 # 绑定
@@ -263,9 +257,9 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
         await BF1DB.bind_player_qq(sender.id, pid)
         if old_display_name and (old_pid != pid):
             result = f"绑定ID变更!\n" \
-                     f"displayName: {old_display_name} -> {display_name}\n" \
-                     f"pid: {old_pid} -> {pid}\n" \
-                     f"uid: {old_uid} -> {uid}"
+                     f"displayName: {old_display_name}\n -> {display_name}\n" \
+                     f"pid: {old_pid}\n -> {pid}\n" \
+                     f"uid: {old_uid}\n -> {uid}"
         else:
             result = f"绑定成功!你的信息如下:\n" \
                      f"displayName: {display_name}\n" \
@@ -280,7 +274,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
         logger.error(e)
         return await app.send_message(
             group,
-            MessageChain(f"绑定失败!"),
+            MessageChain("绑定失败!"),
             quote=source
         )
 
@@ -311,33 +305,29 @@ async def info(
 ):
     # 如果没有参数，查询绑定信息
     if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            pid = bind_info.get("pid")
-            uid = bind_info.get("uid")
+        if not (bind_info := await check_bind(sender.id)):
+            return await app.send_message(
+                group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+            )
+        if isinstance(bind_info, str):
             return await app.send_message(
                 group,
-                MessageChain(
-                    f"你的信息如下:\n"
-                    f"玩家名: {display_name}\n"
-                    f"pid: {pid}\n"
-                    f"uid: {uid}"
-                ),
+                MessageChain(f"查询出错!{bind_info}"),
                 quote=source
             )
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    # 如果有参数，查询玩家信息
+        display_name = bind_info.get("displayName")
+        pid = bind_info.get("pid")
+        uid = bind_info.get("uid")
+        return await app.send_message(
+            group,
+            MessageChain(
+                f"你的信息如下:\n"
+                f"玩家名: {display_name}\n"
+                f"pid: {pid}\n"
+                f"uid: {uid}"
+            ),
+            quote=source
+        )
     else:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
@@ -395,23 +385,7 @@ async def player_stat_pic(
         player_name: RegexResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
-    if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            player_pid = bind_info.get("pid")
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    else:
+    if player_name.matched:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
@@ -428,8 +402,20 @@ async def player_stat_pic(
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
-
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    elif bind_info := await check_bind(sender.id):
+        if isinstance(bind_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{bind_info}"),
+                quote=source
+            )
+        display_name = bind_info.get("displayName")
+        player_pid = bind_info.get("pid")
+    else:
+        return await app.send_message(
+            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+        )
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 并发获取生涯、武器、载具信息
     tasks = [
@@ -479,98 +465,104 @@ async def player_stat_pic(
             MessageChain(Image(data_bytes=player_stat_img)),
             quote=source
         )
-    else:
-        # 发送文字
-        # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
-        # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
-        player_info = player_stat["result"]
-        rank = player_info.get('basicStats').get('rank')
-        # 转换成xx小时xx分钟
-        time_seconds = player_info.get('basicStats').get('timePlayed')
-        time_played = f"{time_seconds // 3600}小时{time_seconds % 3600 // 60}分钟"
-        kills = player_info.get('basicStats').get('kills')
-        deaths = player_info.get('basicStats').get('deaths')
-        kd = round(kills / deaths, 2) if deaths else kills
-        wins = player_info.get('basicStats').get('wins')
-        losses = player_info.get('basicStats').get('losses')
-        # 百分制
-        win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
-        kpm = player_info.get('basicStats').get('kpm')
-        spm = player_info.get('basicStats').get('spm')
-        vehicle_kill = 0
-        for item in player_info["vehicleStats"]:
-            vehicle_kill += item["killsAs"]
-        vehicle_kill = int(vehicle_kill)
-        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
-        skill = player_info.get('basicStats').get('skill')
-        longest_headshot = player_info.get('longestHeadShot')
-        killAssists = int(player_info.get('killAssists'))
-        highestKillStreak = int(player_info.get('highestKillStreak'))
-        revives = int(player_info.get('revives'))
-        heals = int(player_info.get('heals'))
-        repairs = int(player_info.get('repairs'))
-        dogtagsTaken = int(player_info.get('dogtagsTaken'))
-        if eac_info.get("stat"):
-            eac_info = f'{eac_info.get("stat")}\n案件地址:{eac_info.get("url")}\n'
-        else:
-            eac_info = "未查询到EAC信息\n"
-        result = [
-            f"玩家:{display_name}\n"
-            f"等级:{rank if rank else 0}\n"
-            f"游玩时长:{time_played}\n"
-            f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
-            f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"
-            f"KPM:{kpm}  SPM:{spm}\n"
-            f"步战击杀:{infantry_kill}  载具击杀:{vehicle_kill}\n"
-            f"技巧值:{skill}\n"
-            f"最远爆头距离:{longest_headshot}米\n"
-            f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
-            f"复活数:{revives}   治疗数:{heals}\n"
-            f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
-            f"EAC状态:{eac_info}" + "=" * 18
-        ]
-        weapon = player_weapon[0]
-        name = zhconv.convert(weapon.get('name'), 'zh-hans')
-        kills = int(weapon["stats"]["values"]["kills"])
-        seconds = weapon["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-        acc = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["shots"] * 100, 2) \
-            if weapon["stats"]["values"]["shots"] * 100 != 0 else 0
-        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
-        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
-        time_played = "{:.1f}H".format(seconds / 3600)
-        result.append(
-            f"最佳武器:{name}\n"
-            f"击杀: {kills}\tKPM: {kpm}\n"
-            f"命中率: {acc}%\t爆头率: {hs}%\n"
-            f"效率: {eff}\t时长: {time_played}\n"
-            + "=" * 18
+    # 发送文字
+    # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
+    # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
+    player_info = player_stat["result"]
+    rank = player_info.get('basicStats').get('rank')
+    # 转换成xx小时xx分钟
+    time_seconds = player_info.get('basicStats').get('timePlayed')
+    time_played = f"{time_seconds // 3600}小时{time_seconds % 3600 // 60}分钟"
+    kills = player_info.get('basicStats').get('kills')
+    deaths = player_info.get('basicStats').get('deaths')
+    kd = round(kills / deaths, 2) if deaths else kills
+    wins = player_info.get('basicStats').get('wins')
+    losses = player_info.get('basicStats').get('losses')
+    # 百分制
+    win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
+    kpm = player_info.get('basicStats').get('kpm')
+    spm = player_info.get('basicStats').get('spm')
+    vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
+    vehicle_kill = int(vehicle_kill)
+    infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
+    skill = player_info.get('basicStats').get('skill')
+    longest_headshot = player_info.get('longestHeadShot')
+    killAssists = int(player_info.get('killAssists'))
+    highestKillStreak = int(player_info.get('highestKillStreak'))
+    revives = int(player_info.get('revives'))
+    heals = int(player_info.get('heals'))
+    repairs = int(player_info.get('repairs'))
+    dogtagsTaken = int(player_info.get('dogtagsTaken'))
+    eac_info = (
+        f'{eac_info.get("stat")}\n案件地址:{eac_info.get("url")}\n'
+        if eac_info.get("stat")
+        else "未查询到EAC信息\n"
+    )
+    result = [
+        f"玩家:{display_name}\n"
+        f"等级:{rank or 0}\n"
+        f"游玩时长:{time_played}\n"
+        f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
+        f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"
+        f"KPM:{kpm}  SPM:{spm}\n"
+        f"步战击杀:{infantry_kill}  载具击杀:{vehicle_kill}\n"
+        f"技巧值:{skill}\n"
+        f"最远爆头距离:{longest_headshot}米\n"
+        f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
+        f"复活数:{revives}   治疗数:{heals}\n"
+        f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
+        f"EAC状态:{eac_info}" + "=" * 18
+    ]
+    weapon = player_weapon[0]
+    name = zhconv.convert(weapon.get('name'), 'zh-hans')
+    kills = int(weapon["stats"]["values"]["kills"])
+    seconds = weapon["stats"]["values"]["seconds"]
+    kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+    acc = (
+        round(
+            weapon["stats"]["values"]["hits"]
+            / weapon["stats"]["values"]["shots"]
+            * 100,
+            2,
         )
+        if weapon["stats"]["values"]["shots"] != 0
+        else 0
+    )
+    hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+        if weapon["stats"]["values"]["kills"] != 0 else 0
+    eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+        if weapon["stats"]["values"]["kills"] != 0 else 0
+    time_played = "{:.1f}H".format(seconds / 3600)
+    result.append(
+        f"最佳武器:{name}\n"
+        f"击杀: {kills}\tKPM: {kpm}\n"
+        f"命中率: {acc}%\t爆头率: {hs}%\n"
+        f"效率: {eff}\t时长: {time_played}\n"
+        + "=" * 18
+    )
 
-        vehicle = player_vehicle[0]
-        name = zhconv.convert(vehicle["name"], 'zh-cn')
-        kills = vehicle["stats"]["values"]["kills"]
-        seconds = vehicle["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-        destroyed = vehicle["stats"]["values"]["destroyed"]
-        time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
-        result.append(
-            f"最佳载具:{name}\n"
-            f"击杀:{kills}\tKPM:{kpm}\n"
-            f"摧毁:{destroyed}\t时长:{time_played}\n"
-            + "=" * 18
-        )
-        result = "\n".join(result)
+    vehicle = player_vehicle[0]
+    name = zhconv.convert(vehicle["name"], 'zh-cn')
+    kills = vehicle["stats"]["values"]["kills"]
+    seconds = vehicle["stats"]["values"]["seconds"]
+    kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+    destroyed = vehicle["stats"]["values"]["destroyed"]
+    time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
+    result.append(
+        f"最佳载具:{name}\n"
+        f"击杀:{kills}\tKPM:{kpm}\n"
+        f"摧毁:{destroyed}\t时长:{time_played}\n"
+        + "=" * 18
+    )
+    result = "\n".join(result)
 
-        return await app.send_message(
-            group,
-            MessageChain(
-                result
-            ),
-            quote=source
-        )
+    return await app.send_message(
+        group,
+        MessageChain(
+            result
+        ),
+        quote=source
+    )
 
 
 # 查询武器信息
@@ -613,23 +605,7 @@ async def player_weapon_pic(
         sort_type: ArgResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
-    if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            player_pid = bind_info.get("pid")
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    else:
+    if player_name.matched:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
@@ -646,8 +622,20 @@ async def player_weapon_pic(
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
-
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    elif bind_info := await check_bind(sender.id):
+        if isinstance(bind_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{bind_info}"),
+                quote=source
+            )
+        display_name = bind_info.get("displayName")
+        player_pid = bind_info.get("pid")
+    else:
+        return await app.send_message(
+            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+        )
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取武器信息
     player_weapon = await (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid)
@@ -677,49 +665,61 @@ async def player_weapon_pic(
                 )
 
     # 生成图片
-    player_weapon_img = await PlayerWeaponPic(weapon_data=player_weapon).draw(
-        display_name, row.result, col.result
-    ) if not weapon_name.matched else await PlayerWeaponPic(weapon_data=player_weapon).draw_search(
-        display_name, row.result, col.result)
+    player_weapon_img = (
+        await PlayerWeaponPic(weapon_data=player_weapon).draw_search(
+            display_name, row.result, col.result
+        )
+        if weapon_name.matched
+        else await PlayerWeaponPic(weapon_data=player_weapon).draw(
+            display_name, row.result, col.result
+        )
+    )
     if player_weapon_img:
         return await app.send_message(
             group,
             MessageChain(Image(data_bytes=player_weapon_img)),
             quote=source
         )
-    else:
-        # 发送文字数据
-        result = [f"玩家: {display_name}\n" + "=" * 18]
-        for weapon in player_weapon:
-            if not weapon.get("stats").get('values'):
-                continue
-            name = zhconv.convert(weapon.get('name'), 'zh-hans')
-            kills = int(weapon["stats"]["values"]["kills"])
-            seconds = weapon["stats"]["values"]["seconds"]
-            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-            acc = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["shots"] * 100, 2) \
-                if weapon["stats"]["values"]["shots"] * 100 != 0 else 0
-            hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
-                if weapon["stats"]["values"]["kills"] != 0 else 0
-            eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
-                if weapon["stats"]["values"]["kills"] != 0 else 0
-            time_played = "{:.1f}H".format(seconds / 3600)
-            result.append(
-                f"{name}\n"
-                f"击杀: {kills}\tKPM: {kpm}\n"
-                f"命中率: {acc}%\t爆头率: {hs}%\n"
-                f"效率: {eff}\t时长: {time_played}\n"
-                + "=" * 18
+    # 发送文字数据
+    result = [f"玩家: {display_name}\n" + "=" * 18]
+    for weapon in player_weapon:
+        if not weapon.get("stats").get('values'):
+            continue
+        name = zhconv.convert(weapon.get('name'), 'zh-hans')
+        kills = int(weapon["stats"]["values"]["kills"])
+        seconds = weapon["stats"]["values"]["seconds"]
+        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        acc = (
+            round(
+                weapon["stats"]["values"]["hits"]
+                / weapon["stats"]["values"]["shots"]
+                * 100,
+                2,
             )
-        result = result[:5]
-        result = "\n".join(result)
-        return await app.send_message(
-            group,
-            MessageChain(
-                result
-            ),
-            quote=source
+            if weapon["stats"]["values"]["shots"] != 0
+            else 0
         )
+        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        time_played = "{:.1f}H".format(seconds / 3600)
+        result.append(
+            f"{name}\n"
+            f"击杀: {kills}\tKPM: {kpm}\n"
+            f"命中率: {acc}%\t爆头率: {hs}%\n"
+            f"效率: {eff}\t时长: {time_played}\n"
+            + "=" * 18
+        )
+    result = result[:5]
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(
+            result
+        ),
+        quote=source
+    )
 
 
 # 查询载具信息
@@ -759,23 +759,7 @@ async def player_vehicle_pic(
         sort_type: ArgResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
-    if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            player_pid = bind_info.get("pid")
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    else:
+    if player_name.matched:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
@@ -792,8 +776,20 @@ async def player_vehicle_pic(
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
-
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    elif bind_info := await check_bind(sender.id):
+        if isinstance(bind_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{bind_info}"),
+                quote=source
+            )
+        display_name = bind_info.get("displayName")
+        player_pid = bind_info.get("pid")
+    else:
+        return await app.send_message(
+            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+        )
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取载具信息
     player_vehicle = await (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid)
@@ -823,41 +819,45 @@ async def player_vehicle_pic(
                 )
 
     # 生成图片
-    player_vehicle_img = await PlayerVehiclePic(vehicle_data=player_vehicle).draw(
-        display_name, row.result, col.result
-    ) if not vehicle_name.matched else await PlayerVehiclePic(vehicle_data=player_vehicle).draw_search(
-        display_name, row.result, col.result)
+    player_vehicle_img = (
+        await PlayerVehiclePic(vehicle_data=player_vehicle).draw_search(
+            display_name, row.result, col.result
+        )
+        if vehicle_name.matched
+        else await PlayerVehiclePic(vehicle_data=player_vehicle).draw(
+            display_name, row.result, col.result
+        )
+    )
     if player_vehicle_img:
         return await app.send_message(
             group,
             MessageChain(Image(data_bytes=player_vehicle_img)),
             quote=source
         )
-    else:
-        # 发送文字数据
-        result = [f"玩家: {display_name}\n" + "=" * 18]
-        for vehicle in player_vehicle:
-            name = zhconv.convert(vehicle["name"], 'zh-cn')
-            kills = int(vehicle["stats"]["values"]["kills"])
-            seconds = vehicle["stats"]["values"]["seconds"]
-            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-            destroyed = int(vehicle["stats"]["values"]["destroyed"])
-            time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
-            result.append(
-                f"{name}\n"
-                f"击杀:{kills}\tKPM:{kpm}\n"
-                f"摧毁:{destroyed}\t时长:{time_played}\n"
-                + "=" * 18
-            )
-        result = result[:5]
-        result = "\n".join(result)
-        return await app.send_message(
-            group,
-            MessageChain(
-                result
-            ),
-            quote=source
+    # 发送文字数据
+    result = [f"玩家: {display_name}\n" + "=" * 18]
+    for vehicle in player_vehicle:
+        name = zhconv.convert(vehicle["name"], 'zh-cn')
+        kills = int(vehicle["stats"]["values"]["kills"])
+        seconds = vehicle["stats"]["values"]["seconds"]
+        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        destroyed = int(vehicle["stats"]["values"]["destroyed"])
+        time_played = "{:.1f}H".format(vehicle["stats"]["values"]["seconds"] / 3600)
+        result.append(
+            f"{name}\n"
+            f"击杀:{kills}\tKPM:{kpm}\n"
+            f"摧毁:{destroyed}\t时长:{time_played}\n"
+            + "=" * 18
         )
+    result = result[:5]
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(
+            result
+        ),
+        quote=source
+    )
 
 
 # 最近数据
@@ -885,23 +885,7 @@ async def player_recent_info(
         player_name: RegexResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
-    if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            # player_pid = bind_info.get("pid")
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    else:
+    if player_name.matched:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
@@ -918,8 +902,20 @@ async def player_recent_info(
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
-
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    elif bind_info := await check_bind(sender.id):
+        if isinstance(bind_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{bind_info}"),
+                quote=source
+            )
+        display_name = bind_info.get("displayName")
+        # player_pid = bind_info.get("pid")
+    else:
+        return await app.send_message(
+            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+        )
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 从BTR获取数据
     try:
@@ -927,18 +923,17 @@ async def player_recent_info(
         if not player_recent:
             return await app.send_message(
                 group,
-                MessageChain(f"没有查询到最近记录哦~"),
+                MessageChain("没有查询到最近记录哦~"),
                 quote=source
             )
         result = [f"玩家: {display_name}\n" + "=" * 15]
-        for item in player_recent[:3]:
-            result.append(
-                f"{item['time']}\n"
-                f"得分: {item['score']}\nSPM: {item['spm']}\n"
-                f"KD: {item['kd']}  KPM: {item['kpm']}\n"
-                f"游玩时长: {item['time_play']}\n局数: {item['win_rate']}\n"
-                + "=" * 15
-            )
+        result.extend(
+            f"{item['time']}\n"
+            f"得分: {item['score']}\nSPM: {item['spm']}\n"
+            f"KD: {item['kd']}  KPM: {item['kpm']}\n"
+            f"游玩时长: {item['time_play']}\n局数: {item['win_rate']}\n" + "=" * 15
+            for item in player_recent[:3]
+        )
         return await app.send_message(
             group,
             MessageChain("\n".join(result)),
@@ -948,7 +943,7 @@ async def player_recent_info(
         logger.error(e)
         return await app.send_message(
             group,
-            MessageChain(f"查询出错!"),
+            MessageChain("查询出错!"),
             quote=source
         )
 
@@ -978,23 +973,7 @@ async def player_match_info(
         player_name: RegexResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
-    if not player_name.matched:
-        if bind_info := await check_bind(sender.id):
-            if isinstance(bind_info, str):
-                return await app.send_message(
-                    group,
-                    MessageChain(f"查询出错!{bind_info}"),
-                    quote=source
-                )
-            display_name = bind_info.get("displayName")
-            # player_pid = bind_info.get("pid")
-        else:
-            return await app.send_message(
-                group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
-                quote=source
-            )
-    else:
+    if player_name.matched:
         player_name = player_name.result.display
         player_info = await get_personas_by_name(player_name)
         if isinstance(player_info, str):
@@ -1011,8 +990,20 @@ async def player_match_info(
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
-
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    elif bind_info := await check_bind(sender.id):
+        if isinstance(bind_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{bind_info}"),
+                quote=source
+            )
+        display_name = bind_info.get("displayName")
+        # player_pid = bind_info.get("pid")
+    else:
+        return await app.send_message(
+            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+        )
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 从BTR获取数据
     try:
@@ -1020,7 +1011,7 @@ async def player_match_info(
         if not player_match:
             return await app.send_message(
                 group,
-                MessageChain(f"没有查询到对局记录哦~"),
+                MessageChain("没有查询到对局记录哦~"),
                 quote=source
             )
         result = [f"玩家: {display_name}\n" + "=" * 15]
@@ -1035,11 +1026,16 @@ async def player_match_info(
                         continue
                     map_name = game_info['map_name']
                     player["team_name"] = f"Team{player['team_name']}" if player["team_name"] else "No Team"
-                    team_name = "No Team"
-                    for key in MapData.MapTeamDict:
-                        if MapData.MapTeamDict.get(key).get("Chinese") == map_name:
-                            team_name = MapData.MapTeamDict.get(key).get(player["team_name"], "No Team")
-                            break
+                    team_name = next(
+                        (
+                            MapData.MapTeamDict.get(key).get(
+                                player["team_name"], "No Team"
+                            )
+                            for key in MapData.MapTeamDict
+                            if MapData.MapTeamDict.get(key).get("Chinese") == map_name
+                        ),
+                        "No Team",
+                    )
                     team_win = "🏆" if player['team_win'] else "🏳"
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"
@@ -1064,7 +1060,7 @@ async def player_match_info(
         logger.error(e)
         return await app.send_message(
             group,
-            MessageChain(f"查询出错!"),
+            MessageChain("查询出错!"),
             quote=source
         )
     finally:
@@ -1108,37 +1104,29 @@ async def search_server(
     else:
         server_info = server_info["result"]
 
-    # 处理数据
-    server_list = ServerData(server_info).sort()
-    if not server_list:
-        return await app.send_message(
-            group,
-            MessageChain(f"没有搜索到服务器哦~"),
-            quote=source
-        )
+    if not (server_list := ServerData(server_info).sort()):
+        return await app.send_message(group, MessageChain("没有搜索到服务器哦~"), quote=source)
+    result = []
+    # 只显示前10个
+    if len(server_list) > 10:
+        result.append(f"搜索到{len(server_list)}个服务器,显示前10个\n" + "=" * 20)
+        server_list = server_list[:10]
     else:
-        result = []
-        # 只显示前10个
-        if len(server_list) > 10:
-            result.append(f"搜索到{len(server_list)}个服务器,显示前10个\n" + "=" * 20)
-            server_list = server_list[:10]
-        else:
-            result.append(f"搜索到{len(server_list)}个服务器\n" + "=" * 20)
-        for server in server_list:
-            result.append(
-                f"{server.get('name')[:25]}\n"
-                f"人数: {server.get('SoldierCurrent')}/{server.get('SoldierMax')}"
-                f"[{server.get('QueueCurrent')}]({server.get('SpectatorCurrent')})\n"
-                f"地图: {server.get('map_name')}-{server.get('mode_name')}\n"
-                f"GameId: {server.get('game_id')}\n"
-                + "=" * 20
-            )
-        result = "\n".join(result)
-        return await app.send_message(
-            group,
-            MessageChain(result),
-            quote=source
-        )
+        result.append(f"搜索到{len(server_list)}个服务器\n" + "=" * 20)
+    result.extend(
+        f"{server.get('name')[:25]}\n"
+        f"人数: {server.get('SoldierCurrent')}/{server.get('SoldierMax')}"
+        f"[{server.get('QueueCurrent')}]({server.get('SpectatorCurrent')})\n"
+        f"地图: {server.get('map_name')}-{server.get('mode_name')}\n"
+        f"GameId: {server.get('game_id')}\n" + "=" * 20
+        for server in server_list
+    )
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(result),
+        quote=source
+    )
 
 
 # 详细服务器
@@ -1168,7 +1156,7 @@ async def detailed_server(
     if not game_id.isdigit():
         return await app.send_message(
             group,
-            MessageChain(f"GameId必须为数字!"),
+            MessageChain("GameId必须为数字!"),
             quote=source
         )
 
@@ -1802,7 +1790,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
                 f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)
-        await app.send_message(event.group_id, MessageChain([At(event.supplicant), f"{send}"]))
+        return await app.send_group_message(event.group_id, MessageChain(At(event.supplicant), '\n', send))
 
 
 # 战地一私服情况

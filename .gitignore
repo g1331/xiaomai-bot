@@ -33,6 +33,7 @@ alembic.ini
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
 /modules/self_contained/emoji_mix/assets/update.json
 /modules/self_contained/chat_gpt/gpt_mode.json
+/modules/self_contained/claude/config.json
 /core/models/saya_model/modules_data.json
 /utils/bf1/default_account.json
 /utils/bf1/manager_accounts.json

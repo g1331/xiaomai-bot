@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from pathlib import Path
 
@@ -31,8 +32,11 @@ channel.description("一个与Claude对话的插件")
 channel.author("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
-CLAUDE_BOT_ID = "你的slack bot id"
-SLACK_USER_TOKEN = "你的slack token"
+claude_config = Path(__file__).parent / "config.json"
+config_data = json.load(claude_config.open("r", encoding="utf-8"))
+
+CLAUDE_BOT_ID = config_data.get("CLAUDE_BOT_ID")
+SLACK_USER_TOKEN = config_data.get("SLACK_USER_TOKEN")
 
 
 class SlackClient(AsyncWebClient):

@@ -42,17 +42,23 @@ class Bf1Group(orm.Base):
     id = Column(Integer, primary_key=True)
     group_name = Column(String, unique=True)
     bind_ids = Column(JSON)
-    bind_qq_group = Column(BIGINT, default=None)
-    # 格式: {
-    #   ids:[
+    # bind_ids格式: [
     #       {
     #           "guid": "guid",
     #           "gameId": "gameId",
     #           "serverId": "serverId",
     #           "account": "account",
     #       }
-    #   ],
-    # }
+    #   ]
+
+
+class Bf1GroupBind(orm.Base):
+    """bf1群组绑定信息"""
+
+    __tablename__ = "bf1_group_bind"
+    id = Column(Integer, primary_key=True)
+    group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
+    qq_group = Column(BIGINT, nullable=False)
 
 
 # 服务器信息

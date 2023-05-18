@@ -1175,6 +1175,7 @@ async def detailed_server(
         f"人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
         f"[{Info.get('slots').get('Queue').get('current')}]({Info.get('slots').get('Spectator').get('current')})\n"
         f"地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        + "=" * 20 + "\n" +
         f"简介: {Info.get('description')}\n"
         f"GameId: {Info.get('gameId')}\n"
         f"Guid: {Info.get('guid')}\n"

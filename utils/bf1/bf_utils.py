@@ -539,7 +539,7 @@ class BF1GROUP:
         if index < 1 or index > 30:
             return "序号只能在1-30以内"
         # 绑定到对应序号上
-        await BF1DB.bind_bf1_group_id(group_name, index, guid, gameId, serverId, account)
+        await BF1DB.bind_bf1_group_id(group_name, index-1, guid, gameId, serverId, account)
         account_info = await BF1DB.get_bf1account_by_pid(account)
         display_name = account_info.get("displayName") if account_info else ""
         manager_account = f"服管账号:{display_name}" if display_name else "未识别到服管账号,请手动绑定!"
@@ -573,14 +573,29 @@ class BF1GROUP:
         return f"群组[{group_name}]绑定群[{group_id}]成功"
 
     @staticmethod
-    async def unbind_qq_group(group_name: str) -> str:
+    async def unbind_qq_group(group_id: int) -> str:
         # 解绑群组，返回str
+        if await BF1DB.unbind_bf1_group_qq_group(group_id):
+            return f"{group_id}解绑群组成功"
+        return f"{group_id}未绑定群组"
+
+    @staticmethod
+    async def get_bindInfo_byIndex(group_name: str, index: int) -> Union[dict, str, None]:
         # 查询群组是否存在
         if not await BF1DB.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
-        # 解绑群组
-        await BF1DB.unbind_bf1_group_qq_group(group_name)
-        return f"群组[{group_name}]解绑群成功"
+        # 查询对应序号的绑定信息
+        # index只能在1-30以内
+        if index < 1 or index > 30:
+            return "序号只能在1-30以内"
+        # 查询对应序号的绑定信息
+        return await BF1DB.get_bf1_group_bindInfo_byIndex(group_name, index-1)
+
+    @staticmethod
+    async def get_bf1Group_byQQ(group_id: int) -> Union[dict, None]:
+        # 获取群组信息
+        group_info = await BF1DB.get_bf1_group_by_qq_group(group_id)
+        return group_info or None
 
 
 class BF1ManagerAccount:

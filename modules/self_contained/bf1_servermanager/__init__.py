@@ -105,18 +105,22 @@ async def bfgroup_manager(app: Ariadne, group: Group, group_name: RegexResult, s
         result = await BF1GROUP.get_info(group_name)
         id_info = [f"群组{group_name}信息:"]
         for id_item in result["bind_ids"]:
-            if not id_item["guid"]:
-                id_info.extend(
-                    (
-                        f"{result['bind_ids'].index(id_item)}.GameID:{id_item['gameid']}",
-                        f"ServerID:{id_item['serverid']}",
-                        f"Guid:{id_item['guid']}",
-                    )
+            if not id_item:
+                continue
+            id_info.extend(
+                (
+                    f"{result['bind_ids'].index(id_item) + 1}.GameID:{id_item['gameId']}",
+                    f"ServerID:{id_item['serverId']}",
+                    f"Guid:{id_item['guid']}",
                 )
-                if id_item['account']:
-                    account_info = await BF1DB.get_bf1account_by_pid(int(id_item['account']))
-                    display_name = account_info.get("displayName") if account_info else ""
-                    id_info.append(f"服管账号:{display_name}({id_item['account']})")
+            )
+            if id_item['account']:
+                account_info = await BF1DB.get_bf1account_by_pid(int(id_item['account']))
+                display_name = account_info.get("displayName") if account_info else ""
+                id_info.append(f"服管账号:{display_name}({id_item['account']})")
+            else:
+                id_info.append("服管账号:未绑定")
+            id_info.append("=" * 20)
         result = "\n".join(id_info)
         return await app.send_message(group, MessageChain(result), quote=source)
     elif action == "删除":
@@ -169,7 +173,9 @@ async def bfgroup_rename(app: Ariadne, group: Group, group_name: RegexResult, ne
 )
 async def bfgroup_list_info(app: Ariadne, group: Group, source: Source):
     bf1_group_info = await BF1DB.get_all_bf1_group_info()
-    result = ["bf群组列表:"]
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain("当前没有BF1群组"), quote=source)
+    result = [f"当前共{len(bf1_group_info)}个群组:"]
     group_names = [group_info['group_name'] for group_info in bf1_group_info]
     group_count = len(group_names)
     line_count = group_count // 4
@@ -244,6 +250,17 @@ async def bf1group_bind_server(
     guid = server_info.get("serverInfo").get("guid")
     ServerId = server_info.get("rspInfo").get('server').get('serverId')
 
+    # 获取群组信息,遍历检查guid是否已经绑定过了
+    group_info = await BF1DB.get_bf1_group_info(group_name)
+    if group_info:
+        for server in group_info["bind_ids"]:
+            if server and server["guid"] == guid:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"群组[{group_name}]已经绑定过该服务器在序号{group_info['bind_ids'].index(server) + 1}"),
+                    quote=source
+                )
+
     # 获取管理pid列表，如果服管账号pid在里面则绑定
     admin_list = [f"{item['personaId']}" for item in server_info["rspInfo"]["adminList"]]
     # 获取服管账号列表
@@ -255,7 +272,7 @@ async def bf1group_bind_server(
 
     # 绑定
     result = await BF1GROUP.bind_ids(
-        group_name, server_rank - 1, guid, gameId, ServerId, manager_account
+        group_name, server_rank, guid, gameId, ServerId, manager_account
     )
     return await app.send_message(group, MessageChain(result), quote=source)
 
@@ -300,6 +317,10 @@ async def bf1group_unbind_server(
             f"bf群组[{group_name}]不存在"
         ), quote=source)
 
+    if not await BF1GROUP.get_bindInfo_byIndex(group_name, server_rank - 1):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]未绑定服务器{server_rank}"
+        ), quote=source)
     result = await BF1GROUP.unbind_ids(group_name, server_rank - 1)
     return await app.send_message(group, MessageChain(result), quote=source)
 
@@ -633,81 +654,46 @@ async def auto_update_gameid(group_file_path):
     )
 )
 async def check_server(app: Ariadne, group: Group, source: Source):
-    # 先检查绑定群组没
-    # 检查qq群文件是否存在
-    group_path = f'./data/battlefield/binds/groups/{group.id}'
-    file_path = group_path + "/bfgroups.yaml"
-    if not (os.path.exists(group_path) or os.path.isfile(file_path)):
-        await app.send_message(group, MessageChain(
-            f'请先绑定bf群组'
+    # 获取绑定的群组
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            "请先绑定BF1群组"
         ), quote=source)
-        return False
-    # 打开绑定的文件
-    with open(file_path, 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        try:
-            bfgroups_name = data["bfgroups"]
-        except:
-            await app.send_message(group, MessageChain(
-                f'未识别到群组，请重新绑定bf群组'
-            ), quote=source)
-    # 根据bf群组名字找到群组绑定服务器文件-获取服务器gameid
-    group_path = f"./data/battlefield/binds/bfgroups/{bfgroups_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{bfgroups_name}不存在"
-        ), quote=source)
-        return False
-    group_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml'
-    time_start = time.time()
-    # 检查更新服务器gameid
-    await auto_update_gameid(group_file_path)
-    with open(group_file_path, 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        # 检查是否servers.yaml是否为空
-        if data is None:
-            await app.send_message(group, MessageChain(
-                f"群组服务器信息为空，请先绑定服务器"
-            ), quote=source)
-            return False
-        else:
-            server_list = []
-            for item in data["servers"]:
-                if item != "":
-                    server_list.append(f'{item["gameid"]}')
-                else:
-                    server_list.append("")
+    bfgroups_name = bf1_group_info["group_name"]
+    server_list = [i["gameId"] if i else None for i in bf1_group_info["bind_ids"]]
     # 并发查找
-    scrape_index_tasks = [asyncio.ensure_future(api_gateway.get_server_details(gameid)) for gameid in server_list]
-    # scrape_index_tasks = [asyncio.ensure_future(api_gateway.get_server_fulldetails(gameid)) for gameid in server_list]
-    tasks = asyncio.gather(*scrape_index_tasks)
+    tasks = [(await BF1DA.get_api_instance()).getFullServerDetails(gameid) for gameid in server_list if gameid]
+    tasks = asyncio.gather(*tasks)
     try:
-        await tasks
+        tasks = await tasks
         logger.info(f"查询{bfgroups_name}服务器ing")
-    except:
+    except Exception as e:
+        logger.error(f"查询{bfgroups_name}服务器失败{e}")
         await app.send_message(group, MessageChain(
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
-    logger.info(f"查询{bfgroups_name}服务器完成,耗时:{(time.time() - time_start):.2f}秒")
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18]
-    counter = 1
     servers = 0
-    for i in scrape_index_tasks:
-        i = i.result()
-        if i == "":
-            counter += 1
-        else:
-            result.append(f'\n{counter}#:{i["name"][:20]}\n')
-            人数 = f'人数:{i["slots"]["Soldier"]["current"]}/{i["slots"]["Soldier"]["max"]}[{i["slots"]["Queue"]["current"]}]({i["slots"]["Spectator"]["current"]})'
-            result.append(人数)
-            result.append(f"  收藏:{i['serverBookmarkCount']}\n")
-            result.append(
-                f'地图:{i["mapModePretty"]}-{i["mapNamePretty"]}\n'.replace("流血", "流\u200b血").replace("战争", "战\u200b争"))
-            # result.append(f'GameId:{i["gameId"]} ')
-            result.append(f"=" * 18)
-            counter += 1
+    for server_info in tasks:
+        if isinstance(server_info, dict):
+            server_info = server_info.get("result").get("serverInfo")
+            result.append(f'\n{server_list.index(server_info["gameId"]) + 1}#:{server_info["name"][:20]}\n')
+            人数 = f'人数:{server_info["slots"]["Soldier"]["current"]}/{server_info["slots"]["Soldier"]["max"]}[{server_info["slots"]["Queue"]["current"]}]({server_info["slots"]["Spectator"]["current"]})'
+            result.extend(
+                (
+                    人数,
+                    f"  收藏:{server_info['serverBookmarkCount']}\n",
+                    f'地图:{server_info["mapModePretty"]}-{server_info["mapNamePretty"]}\n'.replace(
+                        "流血", "流\u200b血"
+                    ).replace("战争", "战\u200b争"),
+                    "=" * 18,
+                )
+            )
             servers += 1
+        else:
+            result.append(f"\n{server_list.index(server_info) + 1}#:{server_info}")
     if len(result) == 1:
         await app.send_message(group, MessageChain(
             GraiaImage(path='./data/bqb/狐务器无响应.jpg')
@@ -717,18 +703,18 @@ async def check_server(app: Ariadne, group: Group, source: Source):
 
     server_list_column = [
         ColumnTitle(title=f"所属群组:{bfgroups_name}"),
-        ColumnTitle(title=f"可使用-f#n获取服务器详细信息"),
+        ColumnTitle(title="可使用-f#n获取服务器详细信息"),
     ]
-    for i, item in enumerate(scrape_index_tasks):
-        item = item.result()
-        if not item:
+    for index, server_info in enumerate(tasks):
+        if not isinstance(server_info, dict):
             continue
+        server_info = server_info.get("result").get("serverInfo")
         server_list_column.append(
             ColumnUserInfo(
-                name=f"{i + 1}:{item['name'][:15]}",
-                description=f"{item['name']}",
-                avatar=item["mapImageUrl"].replace("[BB_PREFIX]",
-                                                   "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+                name=f"{index + 1}:{server_info['name'][:15]}",
+                description=f"{server_info['name']}",
+                avatar=server_info["mapImageUrl"].replace("[BB_PREFIX]",
+                                                          "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )
         )
         server_list_column.append(
@@ -736,15 +722,15 @@ async def check_server(app: Ariadne, group: Group, source: Source):
                 rows=[
                     ColumnListItem(
                         subtitle=f"当前人数："
-                                 f'{item["slots"]["Soldier"]["current"]}/{item["slots"]["Soldier"]["max"]}'
-                                 f'[{item["slots"]["Queue"]["current"]}]'
-                                 f'({item["slots"]["Spectator"]["current"]})'
+                                 f'{server_info["slots"]["Soldier"]["current"]}/{server_info["slots"]["Soldier"]["max"]}'
+                                 f'[{server_info["slots"]["Queue"]["current"]}]'
+                                 f'({server_info["slots"]["Spectator"]["current"]})'
                     ),
                     ColumnListItem(
-                        subtitle=f"地图模式：{item['mapNamePretty']}--{item['mapModePretty']}"
+                        subtitle=f"地图模式：{server_info['mapNamePretty']}--{server_info['mapModePretty']}"
                     ),
                     ColumnListItem(
-                        subtitle=f"当前收藏：{item['serverBookmarkCount']}"
+                        subtitle=f"当前收藏：{server_info['serverBookmarkCount']}"
                     )
                 ]
             )
@@ -785,102 +771,88 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         ]
     )
 )
-async def check_server_by_index(app: Ariadne, group: Group,
-                                server_index: RegexResult, source: Source):
-    try:
-        server_index = int(str(server_index.result))
-        if server_index > 30 or server_index < 1:
-            raise Exception
-    except:
-        await app.send_message(group, MessageChain(
-            f'请检测服务器序号:1~30'
+async def check_server_by_index(
+        app: Ariadne, group: Group,
+        server_index: RegexResult, source: Source
+):
+    server_index = server_index.result.display
+    if not server_index.isdigit():
+        return await app.send_message(group, MessageChain(
+            "请输入正确的服务器序号"
         ), quote=source)
-        return False
-    # 先检查绑定群组没
-    # 检查qq群文件是否存在
-    group_path = f'./data/battlefield/binds/groups/{group.id}'
-    file_path = group_path + "/bfgroups.yaml"
-    if not (os.path.exists(group_path) or os.path.isfile(file_path)):
-        await app.send_message(group, MessageChain(
-            f'请先绑定bf群组'
+    server_index = int(server_index)
+    if server_index < 1 or server_index > 30:
+        return await app.send_message(group, MessageChain(
+            "服务器序号只能在1~30内"
         ), quote=source)
-        return False
-    # 打开绑定的文件
-    with open(file_path, 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        try:
-            bfgroups_name = data["bfgroups"]
-        except:
-            await app.send_message(group, MessageChain(
-                f'未识别到群组，请重新绑定bf群组'
-            ), quote=source)
-    # 根据bf群组名字找到群组绑定服务器文件-获取服务器gameid
-    group_path = f"./data/battlefield/binds/bfgroups/{bfgroups_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{bfgroups_name}不存在"
+
+    # 获取绑定的群组
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            "请先绑定BF1群组"
         ), quote=source)
-        return False
-    with open(f'./data/battlefield/binds/bfgroups/{bfgroups_name}/servers.yaml', 'r', encoding="utf-8") as file1:
-        data = yaml.load(file1, yaml.Loader)
-        # 检查是否servers.yaml是否为空
-        if data is None:
-            await app.send_message(group, MessageChain(
-                f"群组服务器信息为空，请先绑定服务器"
-            ), quote=source)
-            return False
-    if data["servers"][server_index - 1] != '':
-        server_gameid = data["servers"][server_index - 1]["gameid"]
-    else:
-        await app.send_message(group, MessageChain(
-            f"该序号未绑定服务器，请先绑定服务器"
+    bfgroups_name = bf1_group_info.get("group_name")
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bfgroups_name, server_index)
+    if not server_info:
+        return await app.send_message(group, MessageChain(
+            f"群组[{bfgroups_name}]未绑定服务器{server_index}"
         ), quote=source)
-        return False
-    try:
-        server_info = await api_gateway.get_server_fulldetails(server_gameid)
-        if server_info == '':
-            raise Exception
-    except:
-        await app.send_message(group, MessageChain(
-            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
-        ), quote=source)
-        return False
-    result = [f"所属群组:{bfgroups_name}\n" + "=" * 18 + "\n", f'{server_index}:{server_info["serverInfo"]["name"]}\n',
-              "=" * 18 + "\n",
-              f'地图:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}\n'.replace(
-                  "流血", "流\u200b血").replace("战争", "战\u200b争"),
-              f'人数:{server_info["serverInfo"]["slots"]["Soldier"]["current"]}/{server_info["serverInfo"]["slots"]["Soldier"]["max"]}'
-              f'[{server_info["serverInfo"]["slots"]["Queue"]["current"]}]({server_info["serverInfo"]["slots"]["Spectator"]["current"]}) ',
-              f"收藏:{server_info['serverInfo']['serverBookmarkCount']}\n",
-              f'Guid:{server_info["serverInfo"]["guid"]}\n',
-              f'GId:{server_info["serverInfo"]["gameId"]}\n',
-              f'SId:{server_info["rspInfo"]["server"]["serverId"]}\n',
-              "=" * 18 + "\n",
+    game_id = server_info.get("gameId")
 
-              f'简介:{server_info["serverInfo"]["description"]}\n' + "=" * 20 + "\n"
-              if server_info['serverInfo']["description"] != ''
-              else
-              '',
+    # 调用接口获取数据
+    server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(game_id)
+    if isinstance(server_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{server_info}"),
+            quote=source
+        )
+    server_info = server_info["result"]
 
-              f'创建时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(server_info["rspInfo"]["server"]["createdDate"]) / 1000))}\n',
-              f'到期时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(server_info["rspInfo"]["server"]["expirationDate"]) / 1000))}\n',
-              f'续费时间:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(server_info["rspInfo"]["server"]["updatedDate"]) / 1000))}\n',
-              f"=" * 18]
+    # 处理数据
+    # 第一部分为serverInfo,其下:包含服务器名、简介、人数、地图、模式、gameId、guid、收藏数serverBookmarkCount
+    # 第二部分为rspInfo,其下包含owner（名字和pid）、serverId、createdDate、expirationDate、updatedDate
+    # 第三部分为platoonInfo，其下包含战队名、tag、人数、description
+    result = [f"所属群组: {bfgroups_name} -- {server_index}#\n" + "=" * 18]
+    Info = server_info["serverInfo"]
+    result.append(
+        f"服务器名: {Info.get('name')}\n"
+        f"人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
+        f"[{Info.get('slots').get('Queue').get('current')}]({Info.get('slots').get('Spectator').get('current')})\n"
+        f"地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        + "=" * 20 + "\n" +
+        f"简介: {Info.get('description')}\n"
+        f"GameId: {Info.get('gameId')}\n"
+        f"Guid: {Info.get('guid')}\n"
+        + "=" * 20
+    )
+    if rspInfo := server_info.get("rspInfo"):
+        result.append(
+            f"ServerId:{rspInfo.get('server').get('serverId')}\n"
+            f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
+            f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
+            f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
+            f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
+            f"Pid: {rspInfo.get('owner').get('personaId')}\n"
+            + "=" * 20
+        )
+    if platoonInfo := server_info.get("platoonInfo"):
+        result.append(
+            f"战队: [{platoonInfo.get('tag')}]{platoonInfo.get('name')}\n"
+            f"人数: {platoonInfo.get('soldierCount')}\n"
+            f"简介: {platoonInfo.get('description')}\n"
+            + "=" * 20
+        )
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(result),
+        quote=source
+    )
 
-    # await app.send_message(
-    #     group,
-    #     await MessageChainUtils.messagechain_to_img(
-    #         MessageChain(
-    #             result
-    #         )
-    #     ), quote=message[Source][0]
-    # )
 
-    await app.send_message(group, MessageChain(
-        result
-    ), quote=source)
-
-
+# TODO 重构为数据库查询: 1.查询绑定的pid 2.根据pid查询名字或其他信息
 async def get_group_bindList(app: Ariadne, group) -> list:
     group_member_list_temp = await app.get_member_list(group.id)
     group_member_list = []

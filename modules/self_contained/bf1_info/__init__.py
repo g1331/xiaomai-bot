@@ -254,7 +254,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
         old_uid = bind_info.get("uid")
     # 写入玩家绑定信息
     try:
-        await BF1DB.bind_player_qq(sender.id, pid)
+        await BF1DB.bf1account.bind_player_qq(sender.id, pid)
         if old_display_name and (old_pid != pid):
             result = f"绑定ID变更!\n" \
                      f"displayName: {old_display_name}\n -> {display_name}\n" \
@@ -1302,18 +1302,18 @@ async def server_info_collect():
 
     #   保存数据
     start_time = time.time()
-    await BF1DB.update_serverInfoList(server_info_list)
+    await BF1DB.server.update_serverInfoList(server_info_list)
     logger.debug(f"更新服务器信息完成，耗时{round(time.time() - start_time, 2)}秒")
     start_time = time.time()
-    await BF1DB.update_serverVipList(vip_dict)
+    await BF1DB.server.update_serverVipList(vip_dict)
     logger.debug(f"更新服务器VIP完成，耗时{round(time.time() - start_time, 2)}秒")
     start_time = time.time()
-    await BF1DB.update_serverBanList(ban_dict)
+    await BF1DB.server.update_serverBanList(ban_dict)
     logger.debug(f"更新服务器封禁完成，耗时{round(time.time() - start_time, 2)}秒")
-    await BF1DB.update_serverAdminList(admin_dict)
+    await BF1DB.server.update_serverAdminList(admin_dict)
     start_time = time.time()
     logger.debug(f"更新服务器管理员完成，耗时{round(time.time() - start_time, 2)}秒")
-    await BF1DB.update_serverOwnerList(owner_dict)
+    await BF1DB.server.update_serverOwnerList(owner_dict)
     logger.debug(f"更新服务器所有者完成，耗时{round(time.time() - start_time, 2)}秒")
     logger.success(f"共更新{len(serverId_list)}个私服详细信息，耗时{round(time.time() - time_start, 2)}秒")
 
@@ -1389,7 +1389,7 @@ async def tyc(
 
     # 如果admin/vip/ban/owner有一个匹配,就查询对应信息
     if admin.matched:
-        adminServerList = await BF1DB.get_playerAdminServerList(player_pid)
+        adminServerList = await BF1DB.server.get_playerAdminServerList(player_pid)
         if not adminServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}没有拥有admin哦~"), quote=source)
         fwd_nodeList = [
@@ -1409,7 +1409,7 @@ async def tyc(
             )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif vip.matched:
-        vipServerList = await BF1DB.get_playerVipServerList(player_pid)
+        vipServerList = await BF1DB.server.get_playerVipServerList(player_pid)
         if not vipServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}没有拥有vip哦~"), quote=source)
         fwd_nodeList = [
@@ -1431,7 +1431,7 @@ async def tyc(
     elif ban.matched:
         if not await Permission.require_user_perm(group.id, sender.id, Permission.GroupAdmin):
             return await app.send_message(group, MessageChain(f"权限不足!需要权限:{Permission.GroupAdmin}"), quote=source)
-        banServerList = await BF1DB.get_playerBanServerList(player_pid)
+        banServerList = await BF1DB.server.get_playerBanServerList(player_pid)
         if not banServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}没有封禁信息哦~"), quote=source)
         fwd_nodeList = [
@@ -1467,7 +1467,7 @@ async def tyc(
                 )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif owner.matched:
-        ownerServerList = await BF1DB.get_playerOwnerServerList(player_pid)
+        ownerServerList = await BF1DB.server.get_playerOwnerServerList(player_pid)
         if not ownerServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}未持有服务器哦~"), quote=source)
         fwd_nodeList = [
@@ -1508,10 +1508,10 @@ async def tyc(
             send.append(f'{data["name"][:25]}\n')
         send.append("=" * 20 + '\n')
 
-    vip_count = await BF1DB.get_playerVip(player_pid)
-    admin_count = await BF1DB.get_playerAdmin(player_pid)
-    owner_count = await BF1DB.get_playerOwner(player_pid)
-    ban_count = await BF1DB.get_playerBan(player_pid)
+    vip_count = await BF1DB.server.get_playerVip(player_pid)
+    admin_count = await BF1DB.server.get_playerAdmin(player_pid)
+    owner_count = await BF1DB.server.get_playerOwner(player_pid)
+    ban_count = await BF1DB.server.get_playerBan(player_pid)
     vban_count = tasks[3]
     send.append(
         f"VIP数:{vip_count}\t"
@@ -1600,7 +1600,7 @@ async def BF1Rank(
     await app.send_message(group, MessageChain(f"查询ing"), quote=source)
     if not name.matched:
         if rank_type in ["收藏", "bookmark"]:
-            bookmark_list = await BF1DB.get_server_bookmark()
+            bookmark_list = await BF1DB.server.get_server_bookmark()
             if not bookmark_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
@@ -1620,7 +1620,7 @@ async def BF1Rank(
             send = "\n".join(send)
             return await app.send_message(group, MessageChain(f"{send}"), quote=source)
         elif rank_type in ["vip"]:
-            vip_list = await BF1DB.get_allServerPlayerVipList()
+            vip_list = await BF1DB.server.get_allServerPlayerVipList()
             if not vip_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
@@ -1647,7 +1647,7 @@ async def BF1Rank(
             send = "\n".join(send)
             return await app.send_message(group, MessageChain(f"{send}"), quote=source)
         elif rank_type in ["ban", "封禁"]:
-            ban_list = await BF1DB.get_allServerPlayerBanList()
+            ban_list = await BF1DB.server.get_allServerPlayerBanList()
             if not ban_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
@@ -1665,7 +1665,7 @@ async def BF1Rank(
             send = "\n".join(send)
             return await app.send_message(group, MessageChain(f"{send}"), quote=source)
         elif rank_type in ["admin", "管理"]:
-            admin_list = await BF1DB.get_allServerPlayerAdminList()
+            admin_list = await BF1DB.server.get_allServerPlayerAdminList()
             if not admin_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
@@ -1685,7 +1685,7 @@ async def BF1Rank(
             send = "\n".join(send)
             return await app.send_message(group, MessageChain(f"{send}"), quote=source)
         elif rank_type in ["owner", "服主"]:
-            owner_list = await BF1DB.get_allServerPlayerOwnerList()
+            owner_list = await BF1DB.server.get_allServerPlayerOwnerList()
             if not owner_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
@@ -1708,7 +1708,7 @@ async def BF1Rank(
         name = name.result
         # 查询服务器/玩家对应分类的排名
         if rank_type in ["收藏", "bookmark"]:
-            bookmark_list = await BF1DB.get_server_bookmark()
+            bookmark_list = await BF1DB.server.get_server_bookmark()
             if not bookmark_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
             result = []
@@ -1728,7 +1728,7 @@ async def BF1Rank(
             send = "\n".join(send)
             return await app.send_message(group, MessageChain(f"{send}"), quote=source)
         elif rank_type in ["vip"]:
-            vip_list = await BF1DB.get_allServerPlayerVipList()
+            vip_list = await BF1DB.server.get_allServerPlayerVipList()
             if not vip_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in vip_list]
@@ -1737,7 +1737,7 @@ async def BF1Rank(
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的VIP排名为{index}"), quote=source)
         elif rank_type in ["ban", "封禁"]:
-            ban_list = await BF1DB.get_allServerPlayerBanList()
+            ban_list = await BF1DB.server.get_allServerPlayerBanList()
             if not ban_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in ban_list]
@@ -1746,7 +1746,7 @@ async def BF1Rank(
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的封禁排名为{index}"), quote=source)
         elif rank_type in ["admin", "管理"]:
-            admin_list = await BF1DB.get_allServerPlayerAdminList()
+            admin_list = await BF1DB.server.get_allServerPlayerAdminList()
             if not admin_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in admin_list]
@@ -1755,7 +1755,7 @@ async def BF1Rank(
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的管理排名为{index}"), quote=source)
         elif rank_type in ["owner", "服主"]:
-            owner_list = await BF1DB.get_allServerPlayerOwnerList()
+            owner_list = await BF1DB.server.get_allServerPlayerOwnerList()
             if not owner_list:
                 return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in owner_list]

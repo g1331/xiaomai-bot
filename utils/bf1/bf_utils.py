@@ -2,11 +2,17 @@ import asyncio
 import datetime
 import json
 import time
+from functools import wraps
 from pathlib import Path
 from typing import Union
 
 import aiohttp
 from bs4 import BeautifulSoup
+from graia.ariadne import Ariadne
+from graia.ariadne.message import Source
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.parser.twilight import MatchResult
+from graia.ariadne.model import Member, Group
 from loguru import logger
 
 from utils.bf1.data_handle import BTRMatchesData
@@ -73,7 +79,7 @@ async def check_bind(qq: int) -> Union[dict, str, None]:
     """检查玩家是否绑定
     :param qq: 玩家QQ
     :return: 返回玩家信息,如果未绑定则返回None,查询失败返回str信息"""
-    player_pid = await BF1DB.get_pid_by_qq(qq)
+    player_pid = await BF1DB.bf1account.get_pid_by_qq(qq)
     if not player_pid:
         return None
     # 修改逻辑,先从数据库中获取,如果数据库中没有则从API中获取
@@ -160,7 +166,7 @@ async def get_match_detail(session, match_url: str) -> list[dict]:
         async with session.get(match_url) as resp:
             html = await resp.text()
             # 处理网页获取失败的情况
-            return html if html else None
+            return html or None
     except Exception as e:
         logger.error(f"获取对局详情失败{e}")
         return None
@@ -174,7 +180,7 @@ async def BTR_get_match_info(player_name: str) -> list[dict]:
     """
     result = []
     # 先从数据库查询数据,如果数据库中有数据则直接返回
-    if matches := await BF1DB.get_btr_match_by_displayName(player_name):
+    if matches := await BF1DB.bf1_match_cache.get_btr_match_by_displayName(player_name):
         for data in matches:
             server_name = data['server_name']
             map_name = data['map_name']
@@ -268,7 +274,7 @@ async def BTR_update_data(player_name: str) -> None:
                             player_accuracy = player['accuracy']
                             player_time = player['time_played']
                             team_win = player['team_win']
-                            await BF1DB.update_btr_match_cache(
+                            await BF1DB.bf1_match_cache.update_btr_match_cache(
                                 # 服务器信息
                                 match_id=match_id_list[i],
                                 server_name=match_info['game_info']['server_name'],
@@ -483,46 +489,77 @@ async def download_skin(url):
         return None
 
 
+# 通过接口获取玩家列表
+async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union[str, dict]:
+    """
+    :param server_gameid: 服务器gameid
+    :return: 成功返回字典,失败返回信息
+    """
+    header = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36',
+        'ContentType': 'json',
+    }
+    api_url = "https://delivery.easb.cc/games/get_server_status"
+    data = (
+        {"gameIds": server_gameid}
+        if isinstance(server_gameid, list)
+        else {"gameIds": [server_gameid]}
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, headers=header, data=json.dumps(data), timeout=5) as response:
+                response = await response.json()
+    except TimeoutError as e:
+        logger.error(f"get_playerList_byGameid: {e}")
+        return "网络超时!"
+    if isinstance(server_gameid, list):
+        return response["data"]
+    if str(server_gameid) in response["data"]:
+        return response["data"][str(server_gameid)] if response["data"][str(server_gameid)] != '' else "服务器信息为空!"
+    else:
+        return f"获取服务器信息失败:{response}"
+
+
 class BF1GROUP:
 
     @staticmethod
     async def create(group_name: str) -> str:
         # 群组的名字必须为英文，且不区分大小写，也就是说不能同时存在ABC和abc，返回str
         # 查询群组是否存在
-        if await BF1DB.check_bf1_group(group_name):
+        if await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]已存在"
         # 创建群组
-        await BF1DB.create_bf1_group(group_name)
-        return f"BF1群组[{group_name}]创建成功"
+        await BF1DB.bf1group.create_bf1_group(group_name)
+        return f"BF1群组[{group_name}]创建成功\n默认权限组[{group_name}]创建成功"
 
     @staticmethod
     async def delete(group_name: str) -> str:
         # 删除群组，返回str
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 删除群组
-        await BF1DB.delete_bf1_group(group_name)
+        await BF1DB.bf1group.delete_bf1_group(group_name)
         return f"BF1群组[{group_name}]删除成功"
 
     @staticmethod
     async def get_info(group_name: str) -> str:
         return (
-            await BF1DB.get_bf1_group_info(group_name)
-            if await BF1DB.check_bf1_group(group_name)
+            await BF1DB.bf1group.get_bf1_group_info(group_name)
+            if await BF1DB.bf1group.check_bf1_group(group_name)
             else f"群组[{group_name}]不存在"
         )
 
     @staticmethod
     async def rename(group_name: str, new_name: str) -> str:
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 查询新名字是否存在
-        if await BF1DB.check_bf1_group(new_name):
+        if await BF1DB.bf1group.check_bf1_group(new_name):
             return f"群组[{new_name}]已存在"
         # 修改群组名字
-        result = await BF1DB.modify_bf1_group_name(group_name, new_name)
+        result = await BF1DB.bf1group.modify_bf1_group_name(group_name, new_name)
         return f"BF1群组[{group_name}]已改名为[{new_name}]" if result else f"BF1群组[{group_name}]修改失败"
 
     @staticmethod
@@ -532,14 +569,14 @@ class BF1GROUP:
     ) -> str:
         # 绑定玩家id，返回str
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 绑定到对应的序号
         # index只能在1-30以内
         if index < 1 or index > 30:
             return "序号只能在1-30以内"
         # 绑定到对应序号上
-        await BF1DB.bind_bf1_group_id(group_name, index-1, guid, gameId, serverId, account)
+        await BF1DB.bf1group.bind_bf1_group_id(group_name, index - 1, guid, gameId, serverId, account)
         account_info = await BF1DB.get_bf1account_by_pid(account)
         display_name = account_info.get("displayName") if account_info else ""
         manager_account = f"服管账号:{display_name}" if display_name else "未识别到服管账号,请手动绑定!"
@@ -552,50 +589,63 @@ class BF1GROUP:
     async def unbind_ids(group_name: str, index: int) -> str:
         # 解绑玩家id，返回str
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 解绑对应的序号
         # index只能在1-30以内
         if index < 1 or index > 30:
             return "序号只能在1-30以内"
         # 解绑对应序号
-        await BF1DB.unbind_bf1_group_id(group_name, index)
+        await BF1DB.bf1group.unbind_bf1_group_id(group_name, index)
         return f"群组[{group_name}]解绑{index}服成功!"
 
     @staticmethod
     async def bind_qq_group(group_name: str, group_id: int) -> str:
         # 绑定群组，返回str
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 绑定群组
-        await BF1DB.bind_bf1_group_qq_group(group_name, group_id)
+        await BF1DB.bf1group.bind_bf1_group_qq_group(group_name, group_id)
         return f"群组[{group_name}]绑定群[{group_id}]成功"
 
     @staticmethod
     async def unbind_qq_group(group_id: int) -> str:
         # 解绑群组，返回str
-        if await BF1DB.unbind_bf1_group_qq_group(group_id):
+        if await BF1DB.bf1group.unbind_bf1_group_qq_group(group_id):
             return f"{group_id}解绑群组成功"
         return f"{group_id}未绑定群组"
 
     @staticmethod
     async def get_bindInfo_byIndex(group_name: str, index: int) -> Union[dict, str, None]:
         # 查询群组是否存在
-        if not await BF1DB.check_bf1_group(group_name):
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
             return f"群组[{group_name}]不存在"
         # 查询对应序号的绑定信息
         # index只能在1-30以内
         if index < 1 or index > 30:
             return "序号只能在1-30以内"
         # 查询对应序号的绑定信息
-        return await BF1DB.get_bf1_group_bindInfo_byIndex(group_name, index-1)
+        return await BF1DB.bf1group.get_bf1_group_bindInfo_byIndex(group_name, index - 1)
 
     @staticmethod
     async def get_bf1Group_byQQ(group_id: int) -> Union[dict, None]:
         # 获取群组信息
-        group_info = await BF1DB.get_bf1_group_by_qq_group(group_id)
+        group_info = await BF1DB.bf1group.get_bf1_group_by_qq_group(group_id)
         return group_info or None
+
+    @staticmethod
+    async def get_bf1Group_byName(group_name: str) -> Union[dict, None]:
+        # 获取群组信息
+        group_info = await BF1DB.bf1group.get_bf1_group_by_name(group_name)
+        return group_info or None
+
+
+class BF1GROUPPERM:
+
+    @staticmethod
+    async def create(group_name: str, group_id: int) -> str:
+        ...
 
 
 class BF1ManagerAccount:
@@ -613,6 +663,34 @@ class BF1ManagerAccount:
         )
 
 
+def bf1_perm_check():
+    def decorator(fn):
+        @wraps(fn)
+        async def wrapper(
+                app: Ariadne, sender: Member, group: Group, source: Source,
+                server_rank: MatchResult, bf_group_name: MatchResult
+        ):
+            server_rank = server_rank.result.display
+            bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+            if not server_rank.isdigit():
+                return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+            server_rank = int(server_rank)
+            if server_rank < 1 or server_rank > 30:
+                return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
 
+            # 获取群组信息
+            if not bf_group_name:
+                bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+                if not bf1_group_info:
+                    return await app.send_message(group, MessageChain("请先绑定BF1群组"), quote=source)
+                bf_group_name = bf1_group_info.get("group_name")
+            # 权限判断
+            if not await BF1DB.bf1_permission_group.is_qq_in_permission_group(bf_group_name, sender.id):
+                return await app.send_message(group, MessageChain(f"您不是群组[{bf_group_name}]的成员"), quote=source)
 
+            # 调用原始函数
+            return await fn(app, sender, group, source, server_rank, bf_group_name)
 
+        return wrapper
+
+    return decorator

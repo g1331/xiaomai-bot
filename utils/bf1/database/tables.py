@@ -199,3 +199,24 @@ class Bf1MatchCache(orm.Base):
     accuracy = Column(String, nullable=False)
     headshots = Column(String, nullable=False)
     time_played = Column(Integer, nullable=False)
+
+
+# 权限
+class Bf1PermGroupBind(orm.Base):
+    """
+    一个群只能绑定一个权限组
+    """
+    __tablename__ = "bf1_perm_group_bind"
+    id = Column(Integer, primary_key=True)
+    qq_group_id = Column(BIGINT, nullable=False, unique=True)
+    bf1_group_name = Column(String, nullable=False)
+
+
+class Bf1PermMemberInfo(orm.Base):
+
+    __tablename__ = "bf1_perm_member_info"
+    id = Column(Integer, primary_key=True)
+    qq_id = Column(BIGINT, nullable=False)
+    bf1_group_name = Column(String, nullable=False)
+    # 0:管理员 1:服主
+    perm = Column(String, nullable=False)

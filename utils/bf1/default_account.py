@@ -42,7 +42,7 @@ class DefaultAccount:
                             if isinstance(session, str):
                                 self.session = session
                                 # 写入session
-                                await BF1DB.update_bf1account_loginInfo(
+                                await BF1DB.bf1account.update_bf1account_loginInfo(
                                     pid=self.pid,
                                     remid=self.remid,
                                     sid=self.sid,
@@ -89,7 +89,7 @@ class DefaultAccount:
         self.sid = sid
         self.session = session
         # 写入数据库
-        await BF1DB.update_bf1account(
+        await BF1DB.bf1account.update_bf1account(
             pid=self.pid,
             uid=self.uid,
             name=self.name,
@@ -127,7 +127,7 @@ class DefaultAccount:
                 self.sid = data["sid"]
                 self.session = data["session"]
             # 写入数据库
-            await BF1DB.update_bf1account(
+            await BF1DB.bf1account.update_bf1account(
                 pid=self.pid,
                 uid=self.uid,
                 name=self.name,

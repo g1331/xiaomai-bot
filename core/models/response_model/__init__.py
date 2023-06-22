@@ -6,6 +6,7 @@ from typing import Type, List
 from creart import create, CreateTargetInfo, AbstractCreator, exists_module, add_creator
 from graia.ariadne import Ariadne
 from graia.ariadne.model import Member, Group
+from loguru import logger
 from sqlalchemy import select
 
 from core.config import GlobalConfig
@@ -76,9 +77,7 @@ class AccountController:
 
     @staticmethod
     async def change_response_type(group_id: int, response_type: str):
-        if response_type not in ["random", "deterministic"]:
-            return
-        else:
+        if response_type in {"random", "deterministic"}:
             return await orm.insert_or_update(
                 table=GroupSetting,
                 data={"group_id": group_id, "response_type": response_type},
@@ -86,6 +85,8 @@ class AccountController:
                     GroupSetting.group_id == group_id
                 ]
             )
+        else:
+            return
 
     async def get_response_account(self, group_id: int, source_id: int = time.time()) -> int:
         if group_id not in self.account_dict:
@@ -105,7 +106,7 @@ class AccountController:
             return None, None
         app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
         group = await app.get_group(group_id)
-        if not (group_id in self.total_groups):
+        if group_id not in self.total_groups:
             return None, None
         if require_perm:
             member_list = await app.get_member_list(group_id)
@@ -126,14 +127,13 @@ class AccountController:
         """
         if self.account_dict.get(group_id, {}) == {}:
             return False
-        for k in self.account_dict[group_id]:
-            if self.account_dict[group_id][k] == bot_account:
-                return True
-        return False
+        return any(
+            self.account_dict[group_id][k] == bot_account
+            for k in self.account_dict[group_id]
+        )
 
     async def init_group(self, group_id: int, member_list: List[Member], bot_account: int):
-        self.account_dict[group_id] = {}
-        self.account_dict[group_id][0] = bot_account
+        self.account_dict[group_id] = {0: bot_account}
         self.deterministic_account[group_id] = 0
         if group_id not in self.total_groups:
             self.total_groups[group_id] = {}
@@ -159,38 +159,43 @@ class AccountController:
         self.all_initialized = True
 
     async def init_account(self, bot_account: int):
-        if self.check_account_available(bot_account):
-            app = Ariadne.current(bot_account)
-            group_list = await app.get_group_list()
-            for group in group_list:
-                if group.id not in self.total_groups:
-                    self.total_groups[group.id] = {}
-                self.total_groups[group.id][bot_account] = Ariadne.current(bot_account)
-                if len(self.total_groups[group.id].keys()) > 1:
-                    self.public_groups[group.id] = self.total_groups[group.id]
+        if not self.check_account_available(bot_account):
+            return
+        app = Ariadne.current(bot_account)
+        group_list = await app.get_group_list()
+        for group in group_list:
+            if group.id not in self.total_groups:
+                self.total_groups[group.id] = {}
+            self.total_groups[group.id][bot_account] = Ariadne.current(bot_account)
+            if len(self.total_groups[group.id].keys()) > 1:
+                self.public_groups[group.id] = self.total_groups[group.id]
+            try:
                 member_list = await app.get_member_list(group.id)
-                self.account_dict[group.id] = {}
-                self.account_dict[group.id][0] = bot_account
-                self.deterministic_account[group.id] = 0
-                for member in member_list:
-                    if self.check_account_available(member.id):
-                        self.add_account(group.id, member.id)
-                if await self.get_response_type(group.id) != "random":
-                    continue
-                await orm.insert_or_update(
-                    GroupSetting,
-                    {"group_id": group.id, "response_type": "random"},
-                    [
-                        GroupSetting.group_id == group.id,
-                    ]
-                )
-            self.initialized_bot_list.append(bot_account)
+            except Exception as e:
+                logger.error(f"获取群成员列表失败: {e}")
+                continue
+            self.account_dict[group.id] = {0: bot_account}
+            self.deterministic_account[group.id] = 0
+            for member in member_list:
+                if self.check_account_available(member.id):
+                    self.add_account(group.id, member.id)
+            if await self.get_response_type(group.id) != "random":
+                continue
+            await orm.insert_or_update(
+                GroupSetting,
+                {"group_id": group.id, "response_type": "random"},
+                [
+                    GroupSetting.group_id == group.id,
+                ]
+            )
+        self.initialized_bot_list.append(bot_account)
 
     @staticmethod
     def check_account_available(bot_account: int):
-        if (bot_account in Ariadne.service.connections) and Ariadne.current(bot_account).connection.status.available:
-            return True
-        return False
+        return bool(
+            (bot_account in Ariadne.service.connections)
+            and Ariadne.current(bot_account).connection.status.available
+        )
 
     def add_account(self, group_id: int, bot_account: int):
         for k in self.account_dict[group_id]:

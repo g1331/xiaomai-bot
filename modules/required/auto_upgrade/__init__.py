@@ -50,6 +50,7 @@ inc = InterruptControl(saya.broadcast)
 )
 async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Source):
     global upgrade_dict
+    await auto_upgrade_handle()
     upgrade_info = [f"SHA:{sha}\n {upgrade_dict[sha]}" for sha in upgrade_dict]
     logger.debug(f"【Upgrade】更新信息\n{upgrade_info}")
     if not upgrade_info:
@@ -67,7 +68,7 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
     )
     try:
         if not await asyncio.wait_for(
-            inc.wait(ConfirmWaiter(group, member)), 30
+                inc.wait(ConfirmWaiter(group, member)), 30
         ):
             return await app.send_message(group, MessageChain("未预期回复,操作退出"), quote=source)
         logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
@@ -83,7 +84,11 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
         return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
 
-@channel.use(SchedulerSchema(timers.every_custom_seconds(60)))
+@channel.use(SchedulerSchema(timers.every_custom_hours(24)))
+async def auto_upgrade():
+    await auto_upgrade_handle()
+
+
 async def auto_upgrade_handle():
     global upgrade_dict, noticed_list
     if not has_git:

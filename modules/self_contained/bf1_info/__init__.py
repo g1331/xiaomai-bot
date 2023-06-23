@@ -1007,6 +1007,7 @@ async def player_match_info(
 
     # 从BTR获取数据
     try:
+        await BTR_update_data(display_name)
         player_match = await BTR_get_match_info(display_name)
         if not player_match:
             return await app.send_message(
@@ -1063,8 +1064,7 @@ async def player_match_info(
             MessageChain("查询出错!"),
             quote=source
         )
-    finally:
-        await BTR_update_data(display_name)
+
 
 
 # 搜服务器

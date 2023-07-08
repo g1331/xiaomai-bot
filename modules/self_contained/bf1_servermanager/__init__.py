@@ -75,6 +75,18 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 #  9.vip，日志记录
 #  10.服务器配置修改，日志记录
 
+# TODO:
+#  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,
+#    群组权限分为为拥有者和管理者,表1:群组表,表2:权限表                              [√]
+#  2.群组绑定服务器,搜索服务器信息并绑定gameid和serverid,绑定服管账号pid             [√]
+#  3.群组绑定群,绑定后自动添加群主为群组拥有者，群管理员为群组管理者，
+#  4.服管账号，增删改查，登录
+#  5.踢人，日志记录
+#  6.封禁，日志记录
+#  7.换边，日志记录
+#  8.换图，日志记录
+#  9.vip，日志记录
+#  10.服务器配置修改，日志记录
 
 # 创建bf群组
 @listen(GroupMessage)
@@ -532,10 +544,9 @@ async def bfgroup_config_vban(
 ):
     group_name = str(group_name.result)
     # 检查是否有bf群组
-    group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-    if not os.path.exists(group_path):
-        await app.send_message(group, MessageChain(
-            f"群组{group_name}不存在"
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
         ), quote=source)
         return False
     try:
@@ -694,7 +705,8 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             result.append(f"\n{server_list.index(server_info) + 1}#:{server_info}")
     if len(result) == 1:
         await app.send_message(group, MessageChain(
-            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
+            # GraiaImage(path='./data/bqb/狐务器无响应.jpg')
+            "未查询到服务器信息!"
         ), quote=source)
         return False
     result.append(f"\n({generate_random_str(20)})")
@@ -851,6 +863,11 @@ async def check_server_by_index(
         quote=source
     )
 
+    # 绑定
+    result = await BF1GROUP.bind_ids(
+        group_name, server_rank, guid, gameId, ServerId, manager_account
+    )
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 async def get_group_bindList(app: Ariadne, group) -> list:
     group_member_list_temp = await app.get_member_list(group.id)
@@ -1812,6 +1829,59 @@ async def get_server_playerList_pic(
     await app.send_message(group, MessageChain(
         kick_result
     ), quote=source)
+
+    game_id = server_info.get("gameId")
+
+    # 调用接口获取数据
+    server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(game_id)
+    if isinstance(server_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{server_info}"),
+            quote=source
+        )
+    server_info = server_info["result"]
+
+    # 处理数据
+    # 第一部分为serverInfo,其下:包含服务器名、简介、人数、地图、模式、gameId、guid、收藏数serverBookmarkCount
+    # 第二部分为rspInfo,其下包含owner（名字和pid）、serverId、createdDate、expirationDate、updatedDate
+    # 第三部分为platoonInfo，其下包含战队名、tag、人数、description
+    result = [f"所属群组: {bf_group_name} -- {server_index}#\n" + "=" * 18]
+    Info = server_info["serverInfo"]
+    result.append(
+        f"服务器名: {Info.get('name')}\n"
+        f"人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
+        f"[{Info.get('slots').get('Queue').get('current')}]({Info.get('slots').get('Spectator').get('current')})\n"
+        f"地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        + "=" * 20 + "\n" +
+        f"简介: {Info.get('description')}\n"
+        f"GameId: {Info.get('gameId')}\n"
+        f"Guid: {Info.get('guid')}\n"
+        + "=" * 20
+    )
+    if rspInfo := server_info.get("rspInfo"):
+        result.append(
+            f"ServerId:{rspInfo.get('server').get('serverId')}\n"
+            f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
+            f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
+            f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
+            f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
+            f"Pid: {rspInfo.get('owner').get('personaId')}\n"
+            + "=" * 20
+        )
+    if platoonInfo := server_info.get("platoonInfo"):
+        result.append(
+            f"战队: [{platoonInfo.get('tag')}]{platoonInfo.get('name')}\n"
+            f"人数: {platoonInfo.get('soldierCount')}\n"
+            f"简介: {platoonInfo.get('description')}\n"
+            + "=" * 20
+        )
+    result = "\n".join(result)
+    return await app.send_message(
+        group,
+        MessageChain(result),
+        quote=source
+    )
 
 
 # TODO 3.服管账号相关-查增改、删、绑定到bfgroups-servers里的managerAccount

@@ -83,7 +83,7 @@ async def check_bind(qq: int) -> Union[dict, str, None]:
     if not player_pid:
         return None
     # 修改逻辑,先从数据库中获取,如果数据库中没有则从API中获取
-    player_info = await BF1DB.get_bf1account_by_pid(player_pid)
+    player_info = await BF1DB.bf1account.get_bf1account_by_pid(player_pid)
     if player_info:
         return {"displayName": player_info["display_name"], "pid": player_pid, "uid": player_info["uid"], "qq": qq}
     player_info = await get_personas_by_player_pid(player_pid)
@@ -667,9 +667,9 @@ def bf1_perm_check():
     def decorator(fn):
         @wraps(fn)
         async def wrapper(
-                app: Ariadne, sender: Member, group: Group, source: Source,
-                server_rank: MatchResult, bf_group_name: MatchResult
-        ):
+                        app: Ariadne, sender: Member, group: Group, source: Source,
+                        server_rank: MatchResult, bf_group_name: MatchResult
+                ):
             server_rank = server_rank.result.display
             bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
             if not server_rank.isdigit():
@@ -685,11 +685,19 @@ def bf1_perm_check():
                     return await app.send_message(group, MessageChain("请先绑定BF1群组"), quote=source)
                 bf_group_name = bf1_group_info.get("group_name")
             # 权限判断
-            if not await BF1DB.bf1_permission_group.is_qq_in_permission_group(bf_group_name, sender.id):
-                return await app.send_message(group, MessageChain(f"您不是群组[{bf_group_name}]的成员"), quote=source)
-
-            # 调用原始函数
-            return await fn(app, sender, group, source, server_rank, bf_group_name)
+            return (
+                await fn(
+                    app, sender, group, source, server_rank, bf_group_name
+                )
+                if await BF1DB.bf1_permission_group.is_qq_in_permission_group(
+                    bf_group_name, sender.id
+                )
+                else await app.send_message(
+                    group,
+                    MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+                    quote=source,
+                )
+            )
 
         return wrapper
 

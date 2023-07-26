@@ -582,6 +582,7 @@ async def player_stat_pic(
             ArgumentMatch("-c", "-col", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
+            ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
     )
 )
@@ -602,7 +603,8 @@ async def player_weapon_pic(
         row: ArgResult,
         col: ArgResult,
         weapon_name: ArgResult,
-        sort_type: ArgResult
+        sort_type: ArgResult,
+        text: ArgResult,
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
@@ -665,15 +667,16 @@ async def player_weapon_pic(
                 )
 
     # 生成图片
-    player_weapon_img = (await PlayerWeaponPic(
-        weapon_data=player_weapon
-    ).draw(display_name, row.result, col.result))
-    if player_weapon_img:
-        return await app.send_message(
-            group,
-            MessageChain(Image(data_bytes=player_weapon_img)),
-            quote=source
-        )
+    if not text.matched:
+        player_weapon_img = (await PlayerWeaponPic(
+            weapon_data=player_weapon
+        ).draw(display_name, row.result, col.result))
+        if player_weapon_img:
+            return await app.send_message(
+                group,
+                MessageChain(Image(data_bytes=player_weapon_img)),
+                quote=source
+            )
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for weapon in player_weapon:
@@ -726,10 +729,11 @@ async def player_weapon_pic(
                 "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点", "巨兽", "机械巨兽"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", action="store_true", optional=True, default=4) @ "row",
-            ArgumentMatch("-c", "-col", action="store_true", optional=True, default=1) @ "col",
+            ArgumentMatch("-r", "-row", optional=True, default=4) @ "row",
+            ArgumentMatch("-c", "-col", optional=True, default=1) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
+            ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
     )
 )
@@ -750,7 +754,8 @@ async def player_vehicle_pic(
         row: ArgResult,
         col: ArgResult,
         vehicle_name: ArgResult,
-        sort_type: ArgResult
+        sort_type: ArgResult,
+        text: ArgResult,
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
@@ -813,15 +818,16 @@ async def player_vehicle_pic(
                 )
 
     # 生成图片
-    player_vehicle_img = (await PlayerVehiclePic(
-        vehicle_data=player_vehicle
-    ).draw(display_name, row.result, col.result))
-    if player_vehicle_img:
-        return await app.send_message(
-            group,
-            MessageChain(Image(data_bytes=player_vehicle_img)),
-            quote=source
-        )
+    if not text.matched:
+        player_vehicle_img = (await PlayerVehiclePic(
+            vehicle_data=player_vehicle
+        ).draw(display_name, row.result, col.result))
+        if player_vehicle_img:
+            return await app.send_message(
+                group,
+                MessageChain(Image(data_bytes=player_vehicle_img)),
+                quote=source
+            )
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for vehicle in player_vehicle:

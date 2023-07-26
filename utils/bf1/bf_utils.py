@@ -440,6 +440,20 @@ async def gt_bf1_stat():
     return "获取数据失败"
 
 
+async def gt_get_player_id(player_name: str) -> Union[dict, None]:
+    url = f"https://api.gametools.network/bf1/player/?name={player_name}&platform=pc&skip_battlelog=false"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                response = await response.json()
+        if response.get("errors"):
+            return None
+    except Exception as e:
+        logger.error(f"gt_get_player_id: {e}")
+        return None
+    return response
+
+
 async def record_api(player_pid) -> dict:
     record_url = "https://record.ainios.com/getReport"
     data = {

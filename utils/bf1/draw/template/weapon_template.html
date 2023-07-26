@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WeaponPic</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* 设置字体和 body 元素的内边距 */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            /* 设置列数和列之间的间距 */
+            column-count: 4;
+            column-gap: 20px;
+            /* 设置背景图片，不重复，自适应大小 */
+            background-image: url({{ background }});
+            background-size: cover;
+            background-repeat: no-repeat;
+            /* 整个为行模式 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-container {
+            /* 添加 display:flex 和 flex-wrap: wrap，使卡片可以换行显示 */
+            display: flex;
+            flex-wrap: wrap;
+            /* 左右间距*/
+            margin: 20px 20px
+        }
+
+        /* 卡片的样式 */
+        .card {
+            /* 添加阴影 */
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            /* 添加过渡效果 */
+            transition: 0.3s;
+            /* 将卡片显示为内联块元素 */
+            display: inline-block;
+            /* 设置外边距 */
+            margin:  10px 10px 10px 10px;
+            width: 22%;
+            height: auto;
+            /* 添加圆角 */
+            border-radius: 10px;
+            /* 添加背景模糊 */
+            backdrop-filter: blur(5px);
+            /* 避免在卡片内部换行 */
+            break-inside: avoid;
+            /* 设置背景颜色 */
+            background: rgba(120, 120, 120, 0.75);
+            /* 列模式 */
+            flex-direction: column;
+            /* 居中显示 */
+            justify-content: center;
+        }
+
+        /* 鼠标悬停在卡片上时的样式 */
+        .card:hover {
+            /* 添加阴影 */
+            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        /* 容器的样式 */
+        .container {
+            /* 文本居中 */
+            text-align: center;
+            /* 将容器显示为 flexbox */
+            display: flex;
+            /* 水平居中内容 */
+            justify-content: center;
+            /* 设置内边距 */
+            padding: 10px 16px 2px;
+            /* 行模式 */
+            flex-direction: column;
+        }
+
+        .info-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        /* 图片的样式 */
+        .weapon-img {
+            /* Updated CSS to center the image horizontally */
+            display: block;
+            margin: 0 auto;
+            /* Remaining existing CSS properties */
+            border-radius: 10px 10px 10px 10px;
+            padding: 5px;
+            align-self: center;
+            position: relative;
+        }
+
+
+        /* 信息的样式 */
+        .info {
+            /* 圆角矩形+背景模糊 */
+            background: rgba(35, 27, 27, 0.5);
+            /* 添加圆角 */
+            border-radius: 5px;
+            /* 设置内边距 */
+            padding: 5px;
+            /* 设置字体颜色 */
+            color: white;
+            /* 设置字体大小 */
+            font-size: 12px;
+            /* 设置字体粗细 */
+            font-weight: bold;
+            /* 设置外边距 */
+            margin: 5px;
+            /* 背景模糊 */
+            backdrop-filter: blur(5px);
+            /* 包裹文本 */
+            white-space: nowrap;
+        }
+
+        .person-container{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            /* 添加圆角 */
+            border-radius: 10px;
+            /* 添加背景模糊 */
+            backdrop-filter: blur(5px);
+            /* 避免在卡片内部换行 */
+            break-inside: avoid;
+            /* 设置背景颜色 */
+            background: rgba(120, 120, 120, 0.75);
+            position: relative;
+        }
+
+        .person-card{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .person-info-container{
+            display: flex;
+            flex-direction: column;
+            /*    左对齐*/
+            text-align: left;
+            /*    设置内边距*/
+            padding: 5px;
+        }
+
+        .person-info{
+            background: rgba(35, 27, 27, 0.5);
+            /* 添加圆角 */
+            border-radius: 5px;
+            /* 设置内边距 */
+            padding: 5px;
+            /* 设置字体颜色 */
+            color: white;
+            /* 设置字体大小 */
+            font-size: 12px;
+            /* 设置字体粗细 */
+            font-weight: bold;
+            /* 设置外边距 */
+            margin: 5px;
+            /* 背景模糊 */
+            backdrop-filter: blur(5px);
+            /* 包裹文本 */
+            white-space: nowrap;
+        }
+
+        .avatar {
+            /*    圆形*/
+            border-radius: 50%;
+            /*    设置宽高*/
+            width: 80px;
+            height: 80px;
+            /*    设置外边距*/
+            margin: 5px;
+        }
+
+        .time {
+            padding: 5px;
+            display: flex;
+            /* 添加 position: absolute; 并将其定位在右下角 */
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <!-- 个人信息，放个头像和名字、Pid -->
+    <!--    整个是行,行容器用列，左边card容器用列，左图，右边用行-->
+    <div class="person-container">
+        <div class="person-card">
+            <img src="{{ avatar }}" alt="Image" class="avatar">
+            <div class="person-info-container">
+                <p class="person-info" title="name">Name: {{ play_name }}</p>
+                <p class="person-info" title="pid">Pid: {{ pid }}</p>
+            </div>
+        </div>
+        <div class="time">
+            <p class="person-info" title="time">更新时间：{{ update_time }}</p>
+        </div>
+    </div>
+    <div class="card-container">
+        {% for row in weapons %}
+            {% for item in row %}
+            <div class="card">
+                <img src="{{ item.url }}" alt="Image" class="weapon-img">
+                <div class="container">
+                    <p class="info" title="name">{{ item.name }} {{(item.kills // 100) }}⭐</p>
+                    <div class="info-container" title="name">
+                        <p class="info" title="kills">击杀：{{ item.kills }}</p>
+                        <p class="info" title="kpm">KPM：{{ item.kpm }}</p>
+                    </div>
+                    <div class="info-container" title="kpm">
+                        <p class="info" title="acc">命中率：{{ item.acc }}</p>
+                        <p class="info" title="hs">爆头率：{{ item.hs }}</p>
+                    </div>
+                    <div class="info-container" title="kpm">
+                        <p class="info" title="eff">效率：{{ item.eff }}</p>
+                        <p class="info" title="time_played">时长：{{ item.time_played }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            <br>
+        {% endfor %}
+    </div>
+</body>
+
+</html>

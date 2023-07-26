@@ -1,11 +1,13 @@
+import base64
 import datetime
 from io import BytesIO
+from pathlib import Path
 from typing import Union
-from loguru import logger
+
 from zhconv import zhconv
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.bf1.bf_utils import download_skin
+from utils.bf1.bf_utils import download_skin, gt_get_player_id
 
 
 class PlayerStatPic:
@@ -30,12 +32,78 @@ class PlayerWeaponPic:
         """初始化处理数据,使用模板html转图片
         :param weapon_data: 武器数据
         """
-        self.weapon_data: list = weapon_data
+        data = []
+        for weapon in weapon_data:
+            if not weapon.get("stats").get('values'):
+                continue
+            name = zhconv.convert(weapon.get('name'), 'zh-hans')
+            kills = int(weapon["stats"]["values"]["kills"])
+            seconds = weapon["stats"]["values"]["seconds"]
+            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+            acc = (
+                round(
+                    weapon["stats"]["values"]["hits"]
+                    / weapon["stats"]["values"]["shots"]
+                    * 100,
+                    2,
+                )
+                if weapon["stats"]["values"]["shots"] != 0
+                else 0
+            )
+            hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+                if weapon["stats"]["values"]["kills"] != 0 else 0
+            eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+                if weapon["stats"]["values"]["kills"] != 0 else 0
+            time_played = "{:.1f}H".format(seconds / 3600)
+            item = {
+                "name": name,
+                "kills": kills,
+                "kpm": kpm,
+                "acc": acc,
+                "hs": hs,
+                "eff": eff,
+                "time_played": time_played,
+                "url": weapon["imageUrl"].replace("[BB_PREFIX]",
+                                                  "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+            }
+            data.append(item)
+        self.weapon_data: list = data
 
-    async def draw(self, play_name: str, row: int, col: int) -> Union[bytes, None]:
-        """绘制武器数据图片"""
+    async def draw(self, play_name: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
+        """绘制武器数据图片
+        :param play_name: 玩家名
+        :param row: 行数
+        :param col: 列数
+        """
         if not self.weapon_data:
             return None
+        bg_path = Path(__file__).parent / "template" / "bg.jpg"
+        background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
+        TEMPLATE_PATH = Path(__file__).parent / "template" / "weapon_template.html"
+        weapon_data = [self.weapon_data[i * col:(i + 1) * col] for i in range(row)]
+        from jinja2 import Environment, FileSystemLoader
+        template = Environment(loader=FileSystemLoader(str(TEMPLATE_PATH.parent))).get_template(TEMPLATE_PATH.name)
+        gt_id = await gt_get_player_id(play_name)
+        avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
+        pid = gt_id.get("id") if isinstance(gt_id, dict) else None
+        rendered = template.render(
+            background=background,
+            weapons=weapon_data,
+            play_name=play_name,
+            pid=pid,
+            avatar=avatar,
+            update_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+        from playwright.async_api import async_playwright
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+            await page.set_content(rendered)
+            content = await page.screenshot(
+                full_page=True,
+            )
+            await browser.close()
+            return content
 
     async def draw_search(self, play_name: str, row: int, col: int) -> Union[bytes, None]:
         """绘制武器数据图片"""
@@ -84,7 +152,7 @@ class Exchange:
             temp_list = [item["price"], zhconv.convert(item["item"]["name"], 'zh-cn')]
             # 处理成简体
             parentName = item["item"]["parentName"] if item["item"]["parentName"] is not None else ""
-            temp_list.append(zhconv.convert(parentName + "外观", 'zh-cn'))
+            temp_list.append(zhconv.convert(f"{parentName}外观", 'zh-cn'))
             temp_list.append(
                 item["item"]["rarenessLevel"]["name"].replace(
                     "Superior", "传奇").replace(
@@ -116,8 +184,8 @@ class Exchange:
         x = 59
         y = 340
         for i in range(len(SE_list)):
-            while y + 225 < 1322:
-                while x + 220 < 2351 and i < len(SE_list):
+            while y < 1097:
+                while x < 2131 and i < len(SE_list):
                     if SE_list[i][3] == "特殊":
                         i += 1
                         continue

@@ -79,14 +79,14 @@
 
         /* 图片的样式 */
         .weapon-img {
-            /* Updated CSS to center the image horizontally */
             display: block;
             margin: 0 auto;
-            /* Remaining existing CSS properties */
             border-radius: 10px 10px 10px 10px;
             padding: 5px;
             align-self: center;
-            position: relative;
+            object-fit: contain;
+            max-width: 90%; /* 限制图片最大宽度为容器的宽度 */
+            max-height: 90%; /* 限制图片最大高度为容器的高度 */
         }
 
 
@@ -103,7 +103,7 @@
             /* 设置字体大小 */
             font-size: 10px;
             /* 设置字体粗细 */
-            font-weight: bold;
+            font-weight: normal;
             /* 设置外边距 */
             margin: 5px;
             /* 背景模糊 */

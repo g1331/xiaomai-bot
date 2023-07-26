@@ -665,15 +665,9 @@ async def player_weapon_pic(
                 )
 
     # 生成图片
-    player_weapon_img = (
-        await PlayerWeaponPic(weapon_data=player_weapon).draw_search(
-            display_name, row.result, col.result
-        )
-        if weapon_name.matched
-        else await PlayerWeaponPic(weapon_data=player_weapon).draw(
-            display_name, row.result, col.result
-        )
-    )
+    player_weapon_img = (await PlayerWeaponPic(
+        weapon_data=player_weapon
+    ).draw(display_name, row.result, col.result))
     if player_weapon_img:
         return await app.send_message(
             group,
@@ -819,15 +813,9 @@ async def player_vehicle_pic(
                 )
 
     # 生成图片
-    player_vehicle_img = (
-        await PlayerVehiclePic(vehicle_data=player_vehicle).draw_search(
-            display_name, row.result, col.result
-        )
-        if vehicle_name.matched
-        else await PlayerVehiclePic(vehicle_data=player_vehicle).draw(
-            display_name, row.result, col.result
-        )
-    )
+    player_vehicle_img = (await PlayerVehiclePic(
+        vehicle_data=player_vehicle
+    ).draw(display_name, row.result, col.result))
     if player_vehicle_img:
         return await app.send_message(
             group,

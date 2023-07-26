@@ -28,6 +28,8 @@ class PlayerStatPic:
 
 
 class PlayerWeaponPic:
+    weapon_data: list
+
     def __init__(self, weapon_data: list = None):
         """初始化处理数据,使用模板html转图片
         :param weapon_data: 武器数据
@@ -105,28 +107,68 @@ class PlayerWeaponPic:
             await browser.close()
             return content
 
-    async def draw_search(self, play_name: str, row: int, col: int) -> Union[bytes, None]:
-        """绘制武器数据图片"""
-        if not self.weapon_data:
-            return None
-
 
 class PlayerVehiclePic:
+    vehicle_data: list
+
     def __init__(self, vehicle_data: list = None):
         """初始化处理数据,使用模板html转图片
         :param vehicle_data: 载具数据
         """
         self.vehicle_data: list = vehicle_data
+        data = []
+        for vehicle in self.vehicle_data:
+            if not vehicle.get("stats").get('values'):
+                continue
+            name = zhconv.convert(vehicle.get('name'), 'zh-hans')
+            kills = int(vehicle["stats"]["values"]["kills"])
+            seconds = vehicle["stats"]["values"]["seconds"]
+            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+            destroyed = int(vehicle["stats"]["values"]["destroyed"])
+            time_played = "{:.1f}H".format(seconds / 3600)
+            item = {
+                "name": name,
+                "kills": kills,
+                "kpm": kpm,
+                "destroyed": destroyed,
+                "time_played": time_played,
+                "url": vehicle["imageUrl"].replace("[BB_PREFIX]",
+                                                   "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+            }
+            data.append(item)
+        self.vehicle_data: list = data
 
-    async def draw(self, play_name: str, row: int, col: int) -> Union[bytes, None]:
+    async def draw(self, play_name: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
         """绘制载具数据图片"""
         if not self.vehicle_data:
             return None
-
-    async def draw_search(self, play_name: str, row: int, col: int) -> Union[bytes, None]:
-        """绘制载具数据图片"""
-        if not self.vehicle_data:
-            return None
+        bg_path = Path(__file__).parent / "template" / "bg.jpg"
+        background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
+        TEMPLATE_PATH = Path(__file__).parent / "template" / "vehicle_template.html"
+        vehicle_data = [self.vehicle_data[i * col:(i + 1) * col] for i in range(row)]
+        from jinja2 import Environment, FileSystemLoader
+        template = Environment(loader=FileSystemLoader(str(TEMPLATE_PATH.parent))).get_template(TEMPLATE_PATH.name)
+        gt_id = await gt_get_player_id(play_name)
+        avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
+        pid = gt_id.get("id") if isinstance(gt_id, dict) else None
+        rendered = template.render(
+            background=background,
+            vehicles=vehicle_data,
+            play_name=play_name,
+            pid=pid,
+            avatar=avatar,
+            update_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+        from playwright.async_api import async_playwright
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+            await page.set_content(rendered)
+            content = await page.screenshot(
+                full_page=True,
+            )
+            await browser.close()
+            return content
 
 
 class Exchange:

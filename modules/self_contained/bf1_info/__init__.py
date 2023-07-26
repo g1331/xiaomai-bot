@@ -730,7 +730,7 @@ async def player_weapon_pic(
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", optional=True, default=4) @ "row",
-            ArgumentMatch("-c", "-col", optional=True, default=1) @ "col",
+            ArgumentMatch("-c", "-col", optional=True, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",

@@ -26,7 +26,9 @@
             display: flex;
             flex-wrap: wrap;
             /* 左右间距*/
-            margin: 20px 20px
+            margin: 20px 20px;
+            /* 居中 */
+            justify-content: center;
         }
 
         /* 卡片的样式 */
@@ -53,12 +55,6 @@
             flex-direction: column;
             /* 居中显示 */
             justify-content: center;
-        }
-
-        /* 鼠标悬停在卡片上时的样式 */
-        .card:hover {
-            /* 添加阴影 */
-            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
         }
 
         /* 容器的样式 */
@@ -138,6 +134,8 @@
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
+            /* 靠左 */
+            text-align: left;
         }
 
         .person-info-container{

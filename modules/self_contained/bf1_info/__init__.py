@@ -579,7 +579,7 @@ async def player_stat_pic(
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-r", "-row", optional=True, type=int, default=4) @ "row",
-            ArgumentMatch("-c", "-col", optional=True, type=int, default=1) @ "col",
+            ArgumentMatch("-c", "-col", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
         ]

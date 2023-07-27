@@ -19,6 +19,7 @@
             /* 整个为行模式 */
             display: flex;
             flex-direction: column;
+            justify-content: center; 
         }
 
         .card-container {
@@ -26,9 +27,10 @@
             display: flex;
             flex-wrap: wrap;
             /* 左右间距*/
-            margin: 20px 20px;
+            margin: 20px 10px 20px 10px;
             /* 居中 */
             justify-content: center;
+            gap: 20px;
         }
 
         /* 卡片的样式 */
@@ -39,8 +41,6 @@
             transition: 0.3s;
             /* 将卡片显示为内联块元素 */
             display: inline-block;
-            /* 设置外边距 */
-            margin:  10px 10px 10px 10px;
             width: 22%;
             height: auto;
             /* 添加圆角 */
@@ -66,7 +66,7 @@
             /* 水平居中内容 */
             justify-content: center;
             /* 设置内边距 */
-            padding: 10px 16px 2px;
+            padding: 5px 16px 2px;
             /* 行模式 */
             flex-direction: column;
         }
@@ -103,9 +103,9 @@
             /* 设置字体大小 */
             font-size: 10px;
             /* 设置字体粗细 */
-            font-weight: normal;
+            font-weight: bold;
             /* 设置外边距 */
-            margin: 5px;
+            margin: 2.9px;
             /* 背景模糊 */
             backdrop-filter: blur(5px);
             /* 包裹文本 */
@@ -117,7 +117,7 @@
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
-            margin: 30px 10px 10px 10px;
+            margin: 20px 39px 10px 40px;
             /* 添加圆角 */
             border-radius: 10px;
             /* 添加背景模糊 */
@@ -157,7 +157,7 @@
             /* 设置字体颜色 */
             color: white;
             /* 设置字体大小 */
-            font-size: 12px;
+            font-size: 10px;
             /* 设置字体粗细 */
             font-weight: bold;
             /* 设置外边距 */
@@ -224,7 +224,6 @@
                 </div>
             </div>
             {% endfor %}
-            <br>
         {% endfor %}
     </div>
 </body>

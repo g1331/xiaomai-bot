@@ -1443,7 +1443,7 @@ class bf1_db:
 
         # 获取QQ群绑定的权限组
         @staticmethod
-        async def get_permission_group(qq_group_id: int) -> str:
+        async def get_permission_group(qq_group_id: int) -> Union[str, None]:
             """
             根据QQ群号获取权限组
             :param qq_group_id: QQ群号
@@ -1455,7 +1455,7 @@ class bf1_db:
 
         # 获取权限组绑定的QQ群
         @staticmethod
-        async def get_permission_group_bind(group_name: str) -> list:
+        async def get_permission_group_bind(group_name: str) -> Union[list, None]:
             result = await orm.fetch_all(
                 select(Bf1PermGroupBind.qq_group_id).where(Bf1PermGroupBind.group_name == group_name))
             return [item[0] for item in result] if result else None
@@ -1503,10 +1503,10 @@ class bf1_db:
 
         # 获取权限组内的QQ号和权限
         @staticmethod
-        async def get_qq_from_permission_group(bf1_group_name: str) -> list:
+        async def get_qq_from_permission_group(bf1_group_name: str) -> Union[dict, None]:
             result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
                 Bf1PermMemberInfo.group_name == bf1_group_name))
-            return result or None
+            return {item[0]: item[1] for item in result} if result else None
 
         # 判断QQ号是否在权限组内
         @staticmethod
@@ -1517,10 +1517,32 @@ class bf1_db:
 
         # 获取QQ号在权限组内的权限
         @staticmethod
-        async def get_qq_perm_in_permission_group(bf1_group_name: str, qq_id: int) -> int:
+        async def get_qq_perm_in_permission_group(bf1_group_name: str, qq_id: int) -> Union[int, None]:
             result = await orm.fetch_one(select(Bf1PermMemberInfo.perm).where(
                 Bf1PermMemberInfo.group_name == bf1_group_name and Bf1PermMemberInfo.qq_id == qq_id))
             return result[0] if result else None
+
+        # 删除某个权限组
+        @staticmethod
+        async def delete_permission_group(group_name: str) -> bool:
+            if not await orm.fetch_one(select(Bf1Group.group_name).where(Bf1Group.group_name == group_name)):
+                return False
+            await orm.delete(table=Bf1Group, condition=[Bf1Group.group_name == group_name])
+            return True
+
+        # 重命名
+        @staticmethod
+        async def rename_permission_group(old_group_name: str, new_group_name: str) -> bool:
+            # 获取旧权限组的信息，循环修改其群组名
+            if not await orm.fetch_all(select(Bf1PermMemberInfo.bf1_group_name).where(
+                    Bf1PermMemberInfo.bf1_group_name == old_group_name)):
+                return False
+            await orm.update(
+                table=Bf1PermMemberInfo,
+                data={"bf1_group_name": new_group_name},
+                condition=[Bf1PermMemberInfo.bf1_group_name == old_group_name],
+            )
+            return True
 
 
 BF1DB = bf1_db()

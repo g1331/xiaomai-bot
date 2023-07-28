@@ -40,9 +40,10 @@ from core.control import (
 )
 from core.models import saya_model, response_model
 from utils.UI import *
-from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check
+from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
+from utils.parse_messagechain import get_targets
 from utils.string import generate_random_str
 from utils.text2img import md2img
 from .api_gateway import refresh_api_client, get_player_stat_data
@@ -66,14 +67,15 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 #  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,
 #    群组权限分为为拥有者和管理者,表1:群组表,表2:权限表                              [√]
 #  2.群组绑定服务器,搜索服务器信息并绑定gameid和serverid,绑定服管账号pid             [√]
-#  3.群组绑定群,绑定后自动添加群主为群组拥有者，群管理员为群组管理者，
-#  4.服管账号，增删改查，登录
-#  5.踢人，日志记录
-#  6.封禁，日志记录
-#  7.换边，日志记录
-#  8.换图，日志记录
-#  9.vip，日志记录
-#  10.服务器配置修改，日志记录
+#  3.群组绑定群,绑定后自动添加群主为群组拥有者，群管理员为群组管理者，                 [√]
+#  4.添加/删除/修改 BF1群组成员权限,查询群组权限信息                               [√]
+#  5.服管账号，增删改查，登录
+#  6.踢人，日志记录
+#  7.封禁，日志记录
+#  8.换边，日志记录
+#  9.换图，日志记录
+#  10.vip，日志记录
+#  11.服务器配置修改，日志记录
 
 
 # 创建bf群组
@@ -598,9 +600,125 @@ async def bfgroup_bind_qqgroup(
 ):
     group_name = group_name.result.display
     qqgroup_id = qqgroup_id.result.display
+    if not qqgroup_id.isdigit():
+        return await app.send_message(group, MessageChain(
+            "QQ群号必须是数字!"
+        ), quote=source)
     result = await BF1GROUP.bind_qq_group(group_name, qqgroup_id)
-    # TODO: 创建权限组，绑定绑定权限
-    return await app.send_message(group, MessageChain(result), quote=source)
+    # 绑定权限组
+    perm_result = await BF1GROUPPERM.bind_group(group_name, qqgroup_id)
+    # 自动添加群主为拥有着 1
+    # 自动添加群管为管理员 0
+    member_list = await app.get_member_list(group)
+    for member in member_list:
+        member: Member
+        if member.permission.name == "Owner":
+            await BF1GROUPPERM.add_permission(group_name, qqgroup_id, 1)
+        elif member.permission.name == "Administrator":
+            await BF1GROUPPERM.add_permission(group_name, qqgroup_id, 0)
+    return await app.send_message(
+        group,
+        MessageChain(f"{result}\n权限组绑定成功" if perm_result else "权限组绑定失败!"),
+        quote=source,
+    )
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+)
+@dispatch(
+    Twilight(
+        [
+            FullMatch("-bf群组").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            UnionMatch("aa", "ao", "del").space(SpacePolicy.FORCE) @ "action",
+            WildcardMatch() @ "qq_id"
+            # 示例: -bf群组 skl aa 123
+        ]
+    )
+)
+async def bfgroup_achange_perm(
+        app: Ariadne, group: Group, source: Source, member: Member,
+        action: RegexResult, qq_id: RegexResult, group_name: RegexResult
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    action = action.result.display
+    action_perm = await BF1GROUPPERM.get_permission(group_name, member.id)
+    if not action_perm or action_perm == 0:
+        return await app.send_message(group, MessageChain(
+            "你没有权限执行此操作!"
+        ), quote=source)
+    targets = get_targets(qq_id.result)
+    error_targets = []
+    for qq in targets:
+        if action == "aa":
+            if await BF1GROUPPERM.get_permission(group_name, qq) == 0:
+                error_targets.append((qq, "已经是管理员了"))
+                continue
+            if not await BF1GROUPPERM.add_permission(group_name, qq, 0):
+                error_targets.append((qq, "添加失败"))
+        elif action == "ao":
+            if await BF1GROUPPERM.get_permission(group_name, qq) == 1:
+                error_targets.append((qq, "已经是服主了"))
+                continue
+            if not await BF1GROUPPERM.add_permission(group_name, qq, 1):
+                error_targets.append((qq, "添加失败"))
+        elif action == "del":
+            if await BF1GROUPPERM.get_permission(group_name, qq) is None:
+                error_targets.append((qq, "非群组成员"))
+                continue
+            if not await BF1GROUPPERM.del_permission(group_name, qq):
+                error_targets.append((qq, "删除失败"))
+    response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
+    if error_targets:
+        response_text += "\n\n失败目标:"
+        for i in error_targets:
+            response_text += f"\n{i[0]}-{i[1]}"
+    return await app.send_message(group, response_text, quote=source)
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+)
+@dispatch(
+    Twilight(
+        [
+            FullMatch("-bf群组").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            UnionMatch("权限列表", "permlist").space(SpacePolicy.PRESERVE),
+            # 示例: -bf群组 skl 权限列表
+        ]
+    )
+)
+async def bfgroup_perm_list(
+        app: Ariadne, group: Group, source: Source, member: Member,
+        group_name: RegexResult
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    perminfo = await BF1GROUPPERM.get_permission_group(group_name)
+    if not perminfo:
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]权限列表为空"
+        ), quote=source)
+    result = [f"{qq}: {'服主' if perminfo[qq] == 1 else '管理员'}" for qq in perminfo]
 
 
 # TODO:通过bf1_server表自动更新
@@ -852,16 +970,6 @@ async def check_server_by_index(
     )
 
 
-async def get_group_bindList(app: Ariadne, group) -> list:
-    group_member_list_temp = await app.get_member_list(group.id)
-    group_member_list = [item.name.upper() for item in group_member_list_temp]
-    bind_infos = await BF1DB.bf1account.get_players_info_by_qqs([item.id for item in group_member_list_temp])
-    group_member_list.extend([bind_infos[key].get("display_name").upper() for key in bind_infos])
-    group_member_list = list(set(group_member_list))
-    # TODO: 数据查询绑定的玩家
-    return group_member_list
-
-
 # 谁在玩功能
 @listen(GroupMessage)
 @decorate(
@@ -886,26 +994,6 @@ async def who_are_playing(
         app: Ariadne, group: Group, message: MessageChain, source: Source,
         server_index: RegexResult, bf_group_name: RegexResult
 ):
-    server_index = server_index.result.display
-    bf_group_name = bf_group_name.result.display if bf_group_name.matched else None
-    if not server_index.isdigit():
-        return await app.send_message(group, MessageChain(
-            "请输入正确的服务器序号"
-        ), quote=source)
-    server_index = int(server_index)
-    if server_index < 1 or server_index > 30:
-        return await app.send_message(group, MessageChain(
-            "服务器序号只能在1~30内"
-        ), quote=source)
-
-    # 获取群组的对应服务器id信息
-    if not bf_group_name:
-        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
-        if not bf1_group_info:
-            return await app.send_message(group, MessageChain(
-                "请先绑定BF1群组"
-            ), quote=source)
-        bf_group_name = bf1_group_info.get("group_name")
     server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_index)
     if not server_info:
         return await app.send_message(group, MessageChain(
@@ -919,7 +1007,7 @@ async def who_are_playing(
     ), quote=source)
 
     # 获取绑定的成员列表
-    group_member_list = await get_group_bindList(app, group)
+    group_member_list = await BF1GROUP.get_group_bindList(app, group)
 
     # 获取服务器信息-fullInfo
     server_fullInfo = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
@@ -1247,7 +1335,7 @@ async def get_server_playerList_pic(
     vip_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["vipList"]]
     vip_counter = 0
     vip_color = (255, 99, 71)
-    bind_pid_list = await get_group_bindList(app, group)
+    bind_pid_list = await BF1GROUP.get_group_bindList(app, group)
     bind_color = (179, 244, 255)
     bind_counter = 0
     max_level_counter = 0
@@ -1701,7 +1789,8 @@ async def get_server_playerList_pic(
 
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (
-        await Permission.require_user_perm(waiter_group.id, waiter_member.id, 32)) and waiter_group.id == group.id and (
+                await Permission.require_user_perm(waiter_group.id, waiter_member.id,
+                                                   32)) and waiter_group.id == group.id and (
                 event.quote and event.quote.id == bot_message.id):
             saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
             return saying

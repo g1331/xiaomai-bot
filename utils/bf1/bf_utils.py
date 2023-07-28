@@ -540,6 +540,7 @@ class BF1GROUP:
             return f"群组[{group_name}]不存在"
         # 删除群组
         await BF1DB.bf1group.delete_bf1_group(group_name)
+        _ = await BF1GROUPPERM.del_permission_group(group_name)
         return f"BF1群组[{group_name}]删除成功"
 
     @staticmethod
@@ -560,6 +561,7 @@ class BF1GROUP:
             return f"群组[{new_name}]已存在"
         # 修改群组名字
         result = await BF1DB.bf1group.modify_bf1_group_name(group_name, new_name)
+        _ = await BF1GROUPPERM.rename_permission_group(group_name, new_name)
         return f"BF1群组[{group_name}]已改名为[{new_name}]" if result else f"BF1群组[{group_name}]修改失败"
 
     @staticmethod
@@ -640,12 +642,143 @@ class BF1GROUP:
         group_info = await BF1DB.bf1group.get_bf1_group_by_name(group_name)
         return group_info or None
 
+    @staticmethod
+    async def get_group_bindList(app: Ariadne, group) -> list:
+        group_member_list_temp = await app.get_member_list(group.id)
+        group_member_list = [item.name.upper() for item in group_member_list_temp]
+        bind_infos = await BF1DB.bf1account.get_players_info_by_qqs([item.id for item in group_member_list_temp])
+        group_member_list.extend([bind_infos[key].get("display_name").upper() for key in bind_infos])
+        group_member_list = list(set(group_member_list))
+        return group_member_list
+
 
 class BF1GROUPPERM:
+    ADMIN = 1
+    OWNER = 2
 
+    # 绑定权限组
     @staticmethod
-    async def create(group_name: str, group_id: int) -> str:
-        ...
+    async def bind_group(group_name: str, group_id: int) -> bool:
+        """
+        绑定权限组
+        :param group_name: BF1群组名
+        :param group_id: QQ群号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.bind_permission_group(group_name=group_name, group_id=group_id)
+
+    # 解绑权限组
+    @staticmethod
+    async def unbind_group(group_id: int) -> bool:
+        """
+        解绑权限组
+        :param group_id: QQ群号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.unbind_permission_group(group_id=group_id)
+
+    # 获取QQ群绑定的权限组名
+    @staticmethod
+    async def get_group_name(group_id: int) -> Union[str, None]:
+        """
+        获取QQ群绑定的权限组名
+        :param group_id: QQ群号
+        :return: str or None
+        """
+        return await BF1DB.bf1_permission_group.get_permission_group(qq_group_id=group_id)
+
+    # 获取权限组绑定的QQ群
+    @staticmethod
+    async def get_permission_group_bind(group_name: str) -> Union[list, None]:
+        """
+        获取权限组绑定的QQ群
+        :param group_name: BF1群组名
+        :return: list or None
+        """
+        return await BF1DB.bf1_permission_group.get_permission_group_bind(group_name=group_name)
+
+    # 添加/修改QQ号到权限组
+    @staticmethod
+    async def add_permission(group_name: str, qq: int, permission: int) -> bool:
+        """
+        添加/修改QQ号到权限组
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :param permission: 权限,0为管理员,1为服主
+        :return: bool
+        """
+        if permission in {1, 2}:
+            return await BF1DB.bf1_permission_group.update_qq_to_permission_group(
+                bf1_group_name=group_name, qq_id=qq, perm=permission)
+        else:
+            return False
+
+    # 删除QQ号到权限组
+    @staticmethod
+    async def del_permission(group_name: str, qq: int) -> bool:
+        """
+        删除QQ号到权限组
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.delete_qq_from_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 获取QQ号在权限组的权限
+    @staticmethod
+    async def get_permission(group_name: str, qq: int) -> Union[int, None]:
+        """
+        获取QQ号在权限组的权限
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: int or None
+        """
+        return await BF1DB.bf1_permission_group.get_qq_perm_in_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 获取权限组内的QQ号和权限
+    @staticmethod
+    async def get_permission_group(group_name: str) -> Union[dict, None]:
+        """
+        获取权限组内的QQ号和权限
+        :param group_name: BF1群组名
+        :return: dict or None, 结果为{qq: perm}
+        """
+        return await BF1DB.bf1_permission_group.get_qq_from_permission_group(group_name=group_name)
+
+    # 判断QQ号是否在权限组内
+    @staticmethod
+    async def check_permission(group_name: str, qq: int) -> bool:
+        """
+        判断QQ号是否在权限组内
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.is_qq_in_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 删除权限组
+    @staticmethod
+    async def del_permission_group(group_name: str) -> bool:
+        """
+        删除权限组
+        :param group_name: BF1群组名
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.delete_permission_group(group_name=group_name)
+
+    # 改名
+    @staticmethod
+    async def rename_permission_group(old_group_name: str, new_group_name: str) -> bool:
+        """
+        改名
+        :param old_group_name: BF1群组名
+        :param new_group_name: BF1群组名
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.rename_permission_group(old_group_name=old_group_name, new_group_name=new_group_name)
 
 
 class BF1ManagerAccount:
@@ -667,9 +800,9 @@ def bf1_perm_check():
     def decorator(fn):
         @wraps(fn)
         async def wrapper(
-                        app: Ariadne, sender: Member, group: Group, source: Source,
-                        server_rank: MatchResult, bf_group_name: MatchResult
-                ):
+                app: Ariadne, sender: Member, group: Group, source: Source,
+                server_rank: MatchResult, bf_group_name: MatchResult
+        ):
             server_rank = server_rank.result.display
             bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
             if not server_rank.isdigit():

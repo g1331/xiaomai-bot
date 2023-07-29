@@ -1060,7 +1060,6 @@ async def player_match_info(
         )
 
 
-
 # 搜服务器
 @listen(GroupMessage)
 @dispatch(
@@ -1407,7 +1406,7 @@ async def tyc(
                     message=MessageChain(f"{serverName}"),
                 )
             )
-        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif vip.matched:
         vipServerList = await BF1DB.get_playerVipServerList(player_pid)
         if not vipServerList:
@@ -1427,7 +1426,7 @@ async def tyc(
                     message=MessageChain(f"{serverName}"),
                 )
             )
-        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif ban.matched:
         if not await Permission.require_user_perm(group.id, sender.id, Permission.GroupAdmin):
             return await app.send_message(group, MessageChain(f"权限不足!需要权限:{Permission.GroupAdmin}"), quote=source)
@@ -1465,7 +1464,7 @@ async def tyc(
                         message=MessageChain(banServerListStr),
                     )
                 )
-        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif owner.matched:
         ownerServerList = await BF1DB.get_playerOwnerServerList(player_pid)
         if not ownerServerList:
@@ -1485,7 +1484,7 @@ async def tyc(
                     message=MessageChain(f"{serverName}"),
                 )
             )
-        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)), quote=source)
+        return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
 
     send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
     # 查询最近游玩、vip/admin/owner/ban数、bfban信息、bfeac信息、正在游玩

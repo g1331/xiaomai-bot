@@ -445,6 +445,28 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "bingimagecreator"
+version = "0.4.4"
+description = "High quality image generation by Microsoft. Reverse engineered API."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "BingImageCreator-0.4.4-py3-none-any.whl", hash = "sha256:322312c6b59af1210faa0ec2fbc2429b53add60d3a0af2da7f1ae793844521b5"},
+    {file = "BingImageCreator-0.4.4.tar.gz", hash = "sha256:3e66b0f6df6d9082ed3991f06ef1c52b327b9ecb762d2cfa0c36beb26dbbdf55"},
+]
+
+[package.dependencies]
+httpx = "*"
+regex = "*"
+requests = "*"
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "bs4"
 version = "0.0.1"
 description = "Screen-scraping library"
@@ -843,21 +865,21 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "edgegpt"
-version = "0.1.12.1"
+version = "0.1.26"
 description = "Reverse engineered Edge Chat API"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "EdgeGPT-0.1.12.1-py3-none-any.whl", hash = "sha256:8c975bc8bd0183685f4405d3c9dea627f7001c84e927fd4c5d2e278c7f0d7e90"},
-    {file = "EdgeGPT-0.1.12.1.tar.gz", hash = "sha256:8ad54a965d042bfc48e45569a6028929bcf2ff01ef861c27146472bdfc873dee"},
+    {file = "EdgeGPT-0.1.26-py3-none-any.whl", hash = "sha256:496891260f0242b5507baaf5ba150badac49d7bb1722f1a38668411f84969900"},
+    {file = "EdgeGPT-0.1.26.tar.gz", hash = "sha256:39fef9ccfa82f4c3351e33c4c9260e118a624ee23ebc85cf313a9a602e3bdf3d"},
 ]
 
 [package.dependencies]
+BingImageCreator = ">=0.1.1.1"
 certifi = "*"
 httpx = "*"
 prompt-toolkit = "*"
-regex = "*"
 requests = "*"
 rich = "*"
 websockets = "*"
@@ -4321,4 +4343,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "cb35fe8da19ddde2d5be99ae93f436b282c0dd18d5ab49a351a6e3e94ec03fc8"
+content-hash = "041a9d12e5ff4abed68a48a9eec7ad7db24f1b94fa3e36466db6278e26472653"

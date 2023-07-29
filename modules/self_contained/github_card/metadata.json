@@ -7,6 +7,6 @@
   "description": "自动解析消息中的Github链接转为图片",
   "usage": ["自动触发"],
   "example": [],
-  "default_switch": false,
+  "default_switch": true,
   "default_notice": false
 }

@@ -1193,7 +1193,7 @@ async def detailed_server(
     if platoonInfo := server_info.get("platoonInfo"):
         result.append(
             f"战队: [{platoonInfo.get('tag')}]{platoonInfo.get('name')}\n"
-            f"人数: {platoonInfo.get('soldierCount')}\n"
+            f"人数: {platoonInfo.get('size')}\n"
             f"简介: {platoonInfo.get('description')}\n"
             + "=" * 20
         )

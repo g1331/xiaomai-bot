@@ -1186,14 +1186,14 @@ async def detailed_server(
             f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
             f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
             f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
-            f"服务器拥有者: {rspInfo.get('owner').get('name')}\n"
-            f"Pid: {rspInfo.get('owner').get('pid')}\n"
+            f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
+            f"Pid: {rspInfo.get('owner').get('personaId')}\n"
             + "=" * 20
         )
     if platoonInfo := server_info.get("platoonInfo"):
         result.append(
             f"战队: [{platoonInfo.get('tag')}]{platoonInfo.get('name')}\n"
-            f"人数: {platoonInfo.get('soldierCount')}\n"
+            f"人数: {platoonInfo.get('size')}\n"
             f"简介: {platoonInfo.get('description')}\n"
             + "=" * 20
         )

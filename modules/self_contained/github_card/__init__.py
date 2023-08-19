@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Union
 
-import aiohttp
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
@@ -27,7 +26,7 @@ channel.description("自动解析消息中的Github链接转为图片")
 channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
-url_re = r"https?://github\.com/([^/]+/[^/]+)"
+url_re = r"https?://github\.com/.*"
 
 
 @channel.use(
@@ -61,15 +60,10 @@ async def github_card(app: Ariadne, group: Group, message: MessageChain, source:
 
 
 async def get_github_reposity_information(url: str) -> Union[str, None]:
-    try:
-        s_r = url.replace("https://github.com/", "").split("/")
-        UserName, RepoName = s_r[0], s_r[1]
-    except Exception:
+    if url.startswith("https://github.com"):
+        cleaned_url = url[len("https://github.com"):]
+    elif url.startswith("http://github.com"):
+        cleaned_url = url[len("http://github.com"):]
+    else:
         return None
-    headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://api.github.com/users/{UserName}", headers=headers, timeout=5) as response:
-            RawData = await response.json()
-            AvatarUrl = RawData["avatar_url"]
-            return f"https://image.thum.io/get/width/1280/crop/640/viewportWidth/1280/png/noanimate/https://socialify.git.ci/{UserName}/{RepoName}/image?description=1&font=Rokkitt&language=1&name=1&owner=1&pattern=Circuit%20Board&theme=Light&logo={AvatarUrl}"
+    return f"https://opengraph.githubassets.com/c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"

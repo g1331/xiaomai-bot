@@ -56,7 +56,7 @@ async def check_verify(player_name, player_pid, qq) -> str:
                 if display_name.upper() != player_name.upper():
                     return f"有效ID,但与其绑定ID不一致!绑定ID:{display_name}"
             else:
-                await BF1DB.bind_player_qq(qq, player_pid)
+                await BF1DB.bf1account.bind_player_qq(qq, player_pid)
         return verify
 
 

@@ -41,16 +41,24 @@ class Bf1Group(orm.Base):
     __tablename__ = "bf1_group"
     id = Column(Integer, primary_key=True)
     group_name = Column(String, unique=True)
-    bind_guids = Column(JSON)
-    bind_manager_account_pids = Column(JSON)
+    bind_ids = Column(JSON)
+    # bind_ids格式: [
+    #       {
+    #           "guid": "guid",
+    #           "gameId": "gameId",
+    #           "serverId": "serverId",
+    #           "account": "account",
+    #       }
+    #   ]
 
 
 class Bf1GroupBind(orm.Base):
-    """bf1群组与QQ群绑定关系表"""
+    """bf1群组绑定信息"""
+
     __tablename__ = "bf1_group_bind"
     id = Column(Integer, primary_key=True)
-    qq_group_id = Column(BIGINT)
-    bf1_group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("bf1_group.id"), nullable=False)
+    qq_group = Column(BIGINT, nullable=False)
 
 
 # 服务器信息
@@ -145,6 +153,9 @@ class Bf1ManagerLog(orm.Base):
 
     __tablename__ = "bf1_manager_log"
     id = Column(Integer, primary_key=True)
+    # 操作者的qq
+    operator_qq = Column(BIGINT)
+    # 服务器信息
     serverId = Column(BIGINT)
     persistedGameId = Column(String)
     gameId = Column(BIGINT, nullable=False)
@@ -152,8 +163,11 @@ class Bf1ManagerLog(orm.Base):
     persona_id = Column(BIGINT)
     # 变化
     display_name = Column(String)
-    # action
-    action = Column(String, )
+    # 操作
+    action = Column(String)
+    # 信息
+    info = Column(String)
+    # 时间
     time = Column(DateTime)
 
 
@@ -188,3 +202,36 @@ class Bf1MatchCache(orm.Base):
     accuracy = Column(String, nullable=False)
     headshots = Column(String, nullable=False)
     time_played = Column(Integer, nullable=False)
+
+
+# 权限
+class Bf1PermGroupBind(orm.Base):
+    """
+    一个群只能绑定一个权限组
+    """
+    __tablename__ = "bf1_perm_group_bind"
+    id = Column(Integer, primary_key=True)
+    qq_group_id = Column(BIGINT, nullable=False, unique=True)
+    bf1_group_name = Column(String, nullable=False)
+
+
+class Bf1PermMemberInfo(orm.Base):
+    __tablename__ = "bf1_perm_member_info"
+    id = Column(Integer, primary_key=True)
+    qq_id = Column(BIGINT, nullable=False)
+    bf1_group_name = Column(String, nullable=False)
+    # 0:管理员 1:服主
+    perm = Column(BIGINT, nullable=False)
+
+
+class Bf1ServerManagerVip(orm.Base):
+    """VIP表,用于记录服管vip信息"""
+
+    __tablename__ = "bf1_server_manager_vip"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
+    expire_time = Column(DateTime, default=None)
+    valid = Column(Boolean, default=True)
+    time = Column(DateTime)

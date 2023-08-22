@@ -36,6 +36,7 @@ alembic.ini
 /modules/self_contained/claude/config.json
 /core/models/saya_model/modules_data.json
 /utils/bf1/default_account.json
+/utils/bf1/manager_accounts.json
 
 # 第三方插件
 /modules/third_party/

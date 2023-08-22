@@ -433,16 +433,16 @@ async def bfgroup_get_vban(
                         f"群组{group_name}vban信息为空!"
                     ), quote=source)
                     return False
-    if len(send_temp) == 0:
+    if not send_temp:
         await app.send_message(group, MessageChain(
             f"群组{group_name}没有找到vban信息"
         ), quote=source)
-        return True
     else:
         await app.send_message(group, MessageChain(
             f"群组{group_name}vban有:\n", send_temp
         ), quote=source)
-        return True
+
+    return True
 
 
 # 群组删除vban

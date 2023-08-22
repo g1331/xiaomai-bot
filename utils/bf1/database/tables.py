@@ -153,6 +153,9 @@ class Bf1ManagerLog(orm.Base):
 
     __tablename__ = "bf1_manager_log"
     id = Column(Integer, primary_key=True)
+    # 操作者的qq
+    operator_qq = Column(BIGINT)
+    # 服务器信息
     serverId = Column(BIGINT)
     persistedGameId = Column(String)
     gameId = Column(BIGINT, nullable=False)
@@ -213,10 +216,22 @@ class Bf1PermGroupBind(orm.Base):
 
 
 class Bf1PermMemberInfo(orm.Base):
-
     __tablename__ = "bf1_perm_member_info"
     id = Column(Integer, primary_key=True)
     qq_id = Column(BIGINT, nullable=False)
     bf1_group_name = Column(String, nullable=False)
     # 0:管理员 1:服主
-    perm = Column(String, nullable=False)
+    perm = Column(BIGINT, nullable=False)
+
+
+class Bf1ServerManagerVip(orm.Base):
+    """VIP表,用于记录服管vip信息"""
+
+    __tablename__ = "bf1_server_manager_vip"
+    id = Column(Integer, primary_key=True)
+    serverId = Column(BIGINT, ForeignKey("bf1_server.serverId"), nullable=False)
+    personaId = Column(BIGINT, ForeignKey("bf1_account.persona_id"), nullable=False)
+    displayName = Column(String, nullable=False)
+    expire_time = Column(DateTime, default=None)
+    valid = Column(Boolean, default=True)
+    time = Column(DateTime)

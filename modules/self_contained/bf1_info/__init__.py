@@ -69,7 +69,8 @@ async def check_default_account(app: Ariadne):
             MessageChain("BF1默认查询账号信息不完整，请使用 '-设置默认账号 pid remid=xxx,sid=xxx' 命令设置默认账号信息")
         )
     # 登录默认账号
-    await BF1DA.get_api_instance()
+    account_instance = await BF1DA.get_api_instance()
+    await account_instance.login(account_instance.remid, account_instance.sid)
     # 更新默认账号信息
     if account_info := await BF1DA.update_player_info():
         logger.debug("默认账号信息检查完毕")

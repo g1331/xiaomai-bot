@@ -222,7 +222,7 @@ async def bfgroup_list_info(app: Ariadne, group: Group, source: Source):
         [
             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
-            FullMatch("绑服#", "bind#").space(SpacePolicy.NOSPACE),
+            UnionMatch("绑服#", "bind#").space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
             ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "server_gameid",
             # 示例: -bf群组 skl 绑服#1 gameid

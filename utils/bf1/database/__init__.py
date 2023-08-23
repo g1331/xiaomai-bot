@@ -1368,7 +1368,7 @@ class bf1_db:
             await orm.insert_or_update(
                 table=Bf1Group,
                 data={"group_name": group_name, "bind_ids": [None for _ in range(30)]},
-                condition=[Bf1Group.group_name == group_name],
+                condition=[func.lower(Bf1Group.group_name) == group_name.lower()],
             )
             return True
 
@@ -1423,7 +1423,7 @@ class bf1_db:
             await orm.insert_or_update(
                 table=Bf1Group,
                 data={"bind_ids": ids},
-                condition=[Bf1Group.group_name == group_name],
+                condition=[func.lower(Bf1Group.group_name) == group_name.lower()],
             )
 
         @staticmethod
@@ -1441,7 +1441,7 @@ class bf1_db:
             await orm.insert_or_update(
                 table=Bf1Group,
                 data={"bind_ids": ids},
-                condition=[Bf1Group.group_name == bf1_group[1]],
+                condition=[func.lower(Bf1Group.group_name) == bf1_group[1].lower()],
             )
             return True
 

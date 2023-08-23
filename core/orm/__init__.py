@@ -198,7 +198,9 @@ class AsyncORM:
         exist = (await self.execute(select(table).where(*condition))).all()
         if exist:
             # 如果存在，则执行更新操作
-            await self.execute(update(table).where(*condition).values(**data))
+            stmt = update(table).where(*condition).values(**data)
+            stmt = stmt.execution_options(synchronize_session='fetch')
+            await self.execute(stmt)
         else:
             # 否则执行插入操作
             await self.execute(insert(table).values(**data))

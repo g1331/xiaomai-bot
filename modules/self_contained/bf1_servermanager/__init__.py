@@ -1349,11 +1349,26 @@ def get_width(o):
         ]
     )
 )
-@bf1_perm_check()
 async def get_server_playerList_pic(
         app: Ariadne, sender: Member, group: Group, source: Source,
         server_rank: MatchResult, bf_group_name: MatchResult
 ):
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
     server_info_temp = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
     if not server_info_temp:
         return await app.send_message(group, MessageChain(

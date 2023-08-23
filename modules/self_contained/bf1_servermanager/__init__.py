@@ -98,7 +98,7 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Twilight(
         [
             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.FORCE),
-            UnionMatch("新建", "new", "删除", "del", "信息", "ingo").space(SpacePolicy.FORCE) @ "action",
+            UnionMatch("新建", "new", "删除", "del", "信息", "info").space(SpacePolicy.FORCE) @ "action",
             ParamMatch(optional=True) @ "group_name"
         ]
     )
@@ -655,7 +655,7 @@ async def bfgroup_bind_qqgroup(
         ]
     )
 )
-async def bfgroup_achange_perm(
+async def bfgroup_change_perm(
         app: Ariadne, group: Group, source: Source, member: Member,
         action: RegexResult, qq_id: RegexResult, group_name: RegexResult
 ):

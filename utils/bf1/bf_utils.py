@@ -741,8 +741,7 @@ class BF1GROUPPERM:
         if permission in {0, 1}:
             return await BF1DB.bf1_permission_group.update_qq_to_permission_group(
                 bf1_group_name=group_name, qq_id=qq, perm=permission)
-        else:
-            return False
+        return False
 
     # 删除QQ号到权限组
     @staticmethod

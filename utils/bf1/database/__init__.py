@@ -2,7 +2,7 @@ import datetime
 from typing import Union, List, Tuple, Dict, Any
 
 from loguru import logger
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 
 from utils.bf1.database.tables import (
     orm,
@@ -1298,7 +1298,7 @@ class bf1_db:
                     Bf1Group.id,
                     Bf1Group.group_name,
                     Bf1Group.bind_ids,
-                ).where(Bf1Group.group_name == group_name)
+                ).where(func.lower(Bf1Group.group_name) == group_name.lower())
             )
             if result:
                 return {
@@ -1321,7 +1321,9 @@ class bf1_db:
         @staticmethod
         async def delete_bf1_group(group_name: str) -> bool:
             """删除bf1群组"""
-            await orm.delete(table=Bf1Group, condition=[Bf1Group.group_name == group_name])
+            stmt = delete(Bf1Group).where(func.lower(Bf1Group.group_name) == group_name.lower())
+            stmt = stmt.execution_options(synchronize_session='fetch')
+            await orm.execute(stmt)
             return True
 
         # 绑定群组信息
@@ -1352,7 +1354,7 @@ class bf1_db:
             # 不能重复绑定
             bf1_group = await orm.fetch_one(
                 select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
-                    Bf1Group.group_name == group_name
+                    func.lower(Bf1Group.group_name) == group_name.lower()
                 )
             )
             if not bf1_group:
@@ -1375,7 +1377,7 @@ class bf1_db:
             """解绑bf1群组和guid"""
             bf1_group = await orm.fetch_one(
                 select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
-                    Bf1Group.group_name == group_name
+                    func.lower(Bf1Group.group_name) == group_name.lower()
                 )
             )
             if not bf1_group:
@@ -1385,7 +1387,7 @@ class bf1_db:
             await orm.insert_or_update(
                 table=Bf1Group,
                 data={"bind_ids": ids},
-                condition=[Bf1Group.group_name == group_name],
+                condition=[Bf1Group.group_name == bf1_group[1]],
             )
             return True
 
@@ -1398,7 +1400,7 @@ class bf1_db:
                 data={
                     "group_name": new_group_name,
                 },
-                condition=[Bf1Group.group_name == old_group_name],
+                condition=[func.lower(Bf1Group.group_name) == old_group_name.lower()],
             )
             return True
 
@@ -1428,7 +1430,7 @@ class bf1_db:
             一个群只能绑定一个群组
             """
             group_id = await orm.fetch_one(
-                select(Bf1Group.id).where(Bf1Group.group_name == group_name)
+                select(Bf1Group.id).where(func.lower(Bf1Group.group_name) == group_name.lower())
             )
             if not group_id:
                 return False
@@ -1475,7 +1477,7 @@ class bf1_db:
         async def get_bf1_group_by_name(group_name: str) -> Union[dict, None]:
             """获取bf1群组绑定的QQ群"""
             group_name = await orm.fetch_one(
-                select(Bf1Group.group_name, Bf1Group.bind_ids).where(Bf1Group.group_name == group_name)
+                select(Bf1Group.group_name, Bf1Group.bind_ids).where(func.lower(Bf1Group.group_name) == group_name.lower())
             )
             return (
                 {
@@ -1491,7 +1493,7 @@ class bf1_db:
             """根据群组名和index获取绑定信息"""
             bf1_group = await orm.fetch_one(
                 select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
-                    Bf1Group.group_name == group_name
+                    func.lower(Bf1Group.group_name) == group_name.lower()
                 )
             )
             if not bf1_group:
@@ -1637,7 +1639,7 @@ class bf1_db:
             :param qq_group_id:
             :return:
             """
-            if not await orm.fetch_one(select(Bf1Group.group_name).where(Bf1Group.group_name == group_name)):
+            if not await orm.fetch_one(select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == group_name.lower())):
                 return False
             await orm.insert_or_update(
                 table=Bf1PermGroupBind,
@@ -1689,7 +1691,7 @@ class bf1_db:
         @staticmethod
         async def update_qq_to_permission_group(bf1_group_name: str, qq_id: int, perm: int) -> bool:
             if not await orm.fetch_one(
-                    select(Bf1Group.group_name).where(Bf1Group.group_name == bf1_group_name)):
+                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
                 return False
             await orm.insert_or_update(
                 table=Bf1PermMemberInfo,
@@ -1709,7 +1711,7 @@ class bf1_db:
         @staticmethod
         async def delete_qq_from_permission_group(bf1_group_name: str, qq_id: int) -> bool:
             if not await orm.fetch_one(
-                    select(Bf1Group.group_name).where(Bf1Group.group_name == bf1_group_name)):
+                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
                 return False
             await orm.delete(
                 table=Bf1PermMemberInfo,

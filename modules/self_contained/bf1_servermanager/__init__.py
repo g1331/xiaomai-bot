@@ -1347,16 +1347,16 @@ async def get_server_playerList_pic(
         app: Ariadne, sender: Member, group: Group, source: Source,
         server_rank: MatchResult, bf_group_name: MatchResult
 ):
-    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
-    if not server_info:
+    server_info_temp = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+    if not server_info_temp:
         return await app.send_message(group, MessageChain(
             f"群组[{bf_group_name}]未绑定服务器{server_rank}"
         ), quote=source)
-    elif isinstance(server_info, str):
-        return await app.send_message(group, MessageChain(server_info), quote=source)
-    server_id = server_info["serverId"]
-    server_gameid = server_info["gameId"]
-    server_guid = server_info["guid"]
+    elif isinstance(server_info_temp, str):
+        return await app.send_message(group, MessageChain(server_info_temp), quote=source)
+    server_id = server_info_temp["serverId"]
+    server_gameid = server_info_temp["gameId"]
+    server_guid = server_info_temp["guid"]
 
     await app.send_message(group, MessageChain(
         f"查询ing"
@@ -1872,11 +1872,11 @@ async def get_server_playerList_pic(
         reason = "违反规则"
     reason = reason.replace("ADMINPRIORITY", "违反规则")
     # 获取服管帐号实例
-    if not server_info["account"]:
+    if not server_info_temp["account"]:
         return await app.send_message(group, MessageChain(
             f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
         ), quote=source)
-    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info_temp["account"])
     # 并发踢出
     scrape_index_tasks = []
     name_temp = []

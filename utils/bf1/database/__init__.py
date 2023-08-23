@@ -261,10 +261,10 @@ class bf1_db:
                     select(Bf1PlayerBind.qq, Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq.in_(qqs))
             ):
                 if result := await orm.fetch_one(
-                    select(
-                        Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name,
-                        Bf1Account.display_name, Bf1Account.remid, Bf1Account.sid, Bf1Account.session
-                    ).where(Bf1Account.persona_id == bind[1])
+                        select(
+                            Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name,
+                            Bf1Account.display_name, Bf1Account.remid, Bf1Account.sid, Bf1Account.session
+                        ).where(Bf1Account.persona_id == bind[1])
                 ):
                     players_info[bind[0]] = {
                         "pid": result[0],
@@ -1477,7 +1477,8 @@ class bf1_db:
         async def get_bf1_group_by_name(group_name: str) -> Union[dict, None]:
             """获取bf1群组绑定的QQ群"""
             group_name = await orm.fetch_one(
-                select(Bf1Group.group_name, Bf1Group.bind_ids).where(func.lower(Bf1Group.group_name) == group_name.lower())
+                select(Bf1Group.group_name, Bf1Group.bind_ids).where(
+                    func.lower(Bf1Group.group_name) == group_name.lower())
             )
             return (
                 {
@@ -1639,7 +1640,8 @@ class bf1_db:
             :param qq_group_id:
             :return:
             """
-            if not await orm.fetch_one(select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == group_name.lower())):
+            if not await orm.fetch_one(
+                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == group_name.lower())):
                 return False
             await orm.insert_or_update(
                 table=Bf1PermGroupBind,
@@ -1690,43 +1692,43 @@ class bf1_db:
         # 添加/修改QQ号到权限组
         @staticmethod
         async def update_qq_to_permission_group(bf1_group_name: str, qq_id: int, perm: int) -> bool:
-            if not await orm.fetch_one(
+            if result := await orm.fetch_one(
                     select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
-                return False
-            await orm.insert_or_update(
-                table=Bf1PermMemberInfo,
-                data={
-                    "bf1_group_name": bf1_group_name,
-                    "qq_id": qq_id,
-                    "perm": perm,
-                },
-                condition=[
-                    Bf1PermMemberInfo.bf1_group_name == bf1_group_name,
-                    Bf1PermMemberInfo.qq_id == qq_id,
-                ],
-            )
-            return True
+                await orm.insert_or_update(
+                    table=Bf1PermMemberInfo,
+                    data={
+                        "bf1_group_name": result[0],
+                        "qq_id": qq_id,
+                        "perm": perm,
+                    },
+                    condition=[
+                        Bf1PermMemberInfo.bf1_group_name == result[0],
+                        Bf1PermMemberInfo.qq_id == qq_id,
+                    ],
+                )
+                return True
+            return False
 
         # 从权限组删除QQ号
         @staticmethod
         async def delete_qq_from_permission_group(bf1_group_name: str, qq_id: int) -> bool:
-            if not await orm.fetch_one(
+            if result := await orm.fetch_one(
                     select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
-                return False
-            await orm.delete(
-                table=Bf1PermMemberInfo,
-                condition=[
-                    Bf1PermMemberInfo.bf1_group_name == bf1_group_name,
-                    Bf1PermMemberInfo.qq_id == qq_id,
-                ],
-            )
-            return True
+                await orm.delete(
+                    table=Bf1PermMemberInfo,
+                    condition=[
+                        Bf1PermMemberInfo.bf1_group_name == result[0],
+                        Bf1PermMemberInfo.qq_id == qq_id,
+                    ],
+                )
+                return True
+            return False
 
         # 获取权限组内的QQ号和权限
         @staticmethod
         async def get_qq_from_permission_group(bf1_group_name: str) -> Union[dict, None]:
             query = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
-                Bf1PermMemberInfo.bf1_group_name == bf1_group_name))
+                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower()))
             result = {item[0]: item[1] for item in query}
             return result or None
 
@@ -1734,7 +1736,7 @@ class bf1_db:
         @staticmethod
         async def is_qq_in_permission_group(bf1_group_name: str, qq_id: int) -> bool:
             result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id).where(
-                Bf1PermMemberInfo.bf1_group_name == bf1_group_name and Bf1PermMemberInfo.qq_id == qq_id))
+                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
             if result:
                 for item in result:
                     if item[0] == qq_id:
@@ -1745,13 +1747,13 @@ class bf1_db:
         @staticmethod
         async def get_qq_perm_in_permission_group(bf1_group_name: str, qq_id: int) -> int:
             result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
-                Bf1PermMemberInfo.bf1_group_name == bf1_group_name and Bf1PermMemberInfo.qq_id == qq_id))
+                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
             return next((item[1] for item in result if item[0] == qq_id), -1)
 
         @staticmethod
         async def delete_permission_group(group_name: str) -> bool:
             if not await orm.fetch_one(select(Bf1PermMemberInfo.bf1_group_name).where(
-                    Bf1PermMemberInfo.bf1_group_name == group_name)):
+                    func.lower(Bf1PermMemberInfo.bf1_group_name) == group_name.lower())):
                 return False
             await orm.delete(table=Bf1PermMemberInfo, condition=[Bf1PermMemberInfo.bf1_group_name == group_name])
             return True
@@ -1759,7 +1761,7 @@ class bf1_db:
         @staticmethod
         async def rename_permission_group(old_group_name: str, new_group_name: str) -> bool:
             if not await orm.fetch_one(select(Bf1PermMemberInfo.bf1_group_name).where(
-                    Bf1PermMemberInfo.bf1_group_name == old_group_name)):
+                    func.lower(Bf1PermMemberInfo.bf1_group_name) == old_group_name.lower())):
                 return False
             await orm.update(
                 table=Bf1PermMemberInfo,

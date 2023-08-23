@@ -336,7 +336,7 @@ async def bf1group_unbind_server(
             f"bf群组[{group_name}]未绑定服务器{server_rank}"
         ), quote=source)
 
-    result = await BF1GROUP.unbind_ids(group_name, server_rank - 1)
+    result = await BF1GROUP.unbind_ids(group_name, server_rank)
     return await app.send_message(group, MessageChain(result), quote=source)
 
 

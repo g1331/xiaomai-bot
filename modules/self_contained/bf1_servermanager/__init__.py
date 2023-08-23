@@ -619,16 +619,17 @@ async def bfgroup_bind_qqgroup(
             "QQ群号必须是数字!"
         ), quote=source)
     qqgroup_id = int(qqgroup_id)
-    result = await BF1GROUP.bind_qq_group(group_name, qqgroup_id)
-    # 绑定权限组
-    perm_result = await BF1GROUPPERM.bind_group(group_name, qqgroup_id)
-    # 自动添加群主为拥有着 1
-    # 自动添加群管为管理员 0
     target_app, target_group = await account_controller.get_app_from_total_groups(qqgroup_id)
     if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
             f"没有找到目标群:{qqgroup_id}"
         ), quote=source)
+    # 绑定群组
+    result = await BF1GROUP.bind_qq_group(group_name, qqgroup_id)
+    # 绑定权限组
+    perm_result = await BF1GROUPPERM.bind_group(group_name, qqgroup_id)
+    # 自动添加群主为拥有着 1
+    # 自动添加群管为管理员 0
     member_list = await target_app.get_member_list(target_group)
     for member in member_list:
         member: Member

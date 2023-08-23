@@ -2402,18 +2402,18 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "openaiauth"
-version = "0.3.6"
+version = "3.0.0"
 description = "OpenAI Authentication Reverse Engineered"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "OpenAIAuth-0.3.6-py3-none-any.whl", hash = "sha256:a0da39a6ed1f2830b687432d222452add8ddd76e161f61fb1cd2ffecdc3ed8e4"},
-    {file = "OpenAIAuth-0.3.6.tar.gz", hash = "sha256:49a893aacd8756fe5a8d492b2c9bf6e1e775fa2260e47aac08d7b42044e4034d"},
+    {file = "OpenAIAuth-3.0.0-py3-none-any.whl", hash = "sha256:a013dac29099f1000c457e953d8319d5d21186228864290786f2ed386c2500d6"},
+    {file = "OpenAIAuth-3.0.0.tar.gz", hash = "sha256:f52ae9b6285e88ce6cf5823a1edebc6a10c630500359f050800594058dc4109f"},
 ]
 
 [package.dependencies]
-requests = "*"
+tls-client = "*"
 
 [package.source]
 type = "legacy"
@@ -3417,22 +3417,23 @@ reference = "tuna-tsinghua"
 
 [[package]]
 name = "revchatgpt"
-version = "4.2.5"
+version = "6.8.6"
 description = "ChatGPT is a reverse engineering of OpenAI's ChatGPT API"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "revChatGPT-4.2.5-py3-none-any.whl", hash = "sha256:642e7bb23da0db964a0d0987b56f939c2a011c91f02d95365449ee39c309bc96"},
-    {file = "revChatGPT-4.2.5.tar.gz", hash = "sha256:e4027656130d918c4d2173a1154133011b56d73efe6c373bd58ec7a32548721a"},
+    {file = "revChatGPT-6.8.6-py3-none-any.whl", hash = "sha256:ee215d4cc6383d499e8bd761fe6de80570cdee21db52b1e2f218f355576b5621"},
+    {file = "revChatGPT-6.8.6.tar.gz", hash = "sha256:69e7fa02d318548099dcb6bdffb4fa788dcd12c1816f09a5716c44bf10e44ac9"},
 ]
 
 [package.dependencies]
 httpx = {version = "*", extras = ["socks"]}
 openai = "*"
-OpenAIAuth = "0.3.6"
+OpenAIAuth = ">=3.0.0"
 prompt-toolkit = "*"
 requests = {version = "*", extras = ["socks"]}
+rich = "*"
 tiktoken = ">=0.3.0"
 
 [package.source]
@@ -3831,6 +3832,23 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 reference = "tuna-tsinghua"
 
 [[package]]
+name = "tls-client"
+version = "0.2.1"
+description = "Advanced Python HTTP Client."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "tls_client-0.2.1-py3-none-any.whl", hash = "sha256:124a710952b979d5e20b4e2b7879b7958d6e48a259d0f5b83101055eb173f0bd"},
+    {file = "tls_client-0.2.1.tar.gz", hash = "sha256:473fb4c671d9d4ca6b818548ab6e955640dd589767bfce520830c5618c2f2e2b"},
+]
+
+[package.source]
+type = "legacy"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
+
+[[package]]
 name = "tornado"
 version = "6.3.2"
 description = "Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed."
@@ -3853,8 +3871,8 @@ files = [
 
 [package.source]
 type = "legacy"
-url = "https://pypi.org/simple"
-reference = "pypi-public"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+reference = "tuna-tsinghua"
 
 [[package]]
 name = "tqdm"
@@ -4257,4 +4275,4 @@ reference = "tuna-tsinghua"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a459d64580711c39aba61c48859376242961214bb050e337fe50f08b0bc8b385"
+content-hash = "e7bbaef31e9618bb6caf928d7f66ae477714e37a91fa361341e74c992b18b5c0"

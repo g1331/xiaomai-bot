@@ -260,21 +260,21 @@ class bf1_db:
             for bind in await orm.fetch_all(
                     select(Bf1PlayerBind.qq, Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq.in_(qqs))
             ):
-                result = await orm.fetch_one(
+                if result := await orm.fetch_one(
                     select(
                         Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name,
                         Bf1Account.display_name, Bf1Account.remid, Bf1Account.sid, Bf1Account.session
                     ).where(Bf1Account.persona_id == bind[1])
-                )
-                players_info[bind[0]] = {
-                    "pid": result[0],
-                    "uid": result[1],
-                    "name": result[2],
-                    "display_name": result[3],
-                    "remid": result[4],
-                    "sid": result[5],
-                    "session": result[6],
-                }
+                ):
+                    players_info[bind[0]] = {
+                        "pid": result[0],
+                        "uid": result[1],
+                        "name": result[2],
+                        "display_name": result[3],
+                        "remid": result[4],
+                        "sid": result[5],
+                        "session": result[6],
+                    }
             return players_info
 
     # TODO:

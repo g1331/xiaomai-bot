@@ -1130,41 +1130,45 @@ class bf1_db:
 
             pid_list = [str(item["personaId"]) for item in vipList]
             displayName_dict = {item["personaId"]: item["displayName"] for item in vipList}
+            update_task = []
+            delete_task = []
             for vip in vipList:
                 # 如果玩家不在表中则添加到表中
                 if str(vip["personaId"]) not in pid_cache:
-                    await bf1_db.server_manager.update_vip(
-                        serverId=serverId,
-                        personaId=vip["personaId"],
-                        displayName=vip["displayName"],
-                        expire_time=None,
-                    )
+                    update_task.append({
+                        "serverId": serverId,
+                        "personaId": vip["personaId"],
+                        "displayName": vip["displayName"],
+                        "expire_time": None
+                    })
                     logger.debug(f"服务器{serverId}新增vip源{vip['displayName']}({vip['personaId']})")
                 # 如果玩家在表中且缓存中的valid为False(未生效)则更新为True(已生效),不更新expire_time
                 elif vip_cache_dict[str(vip["personaId"])]["valid"] is False:
-                    await bf1_db.server_manager.update_vip(
-                        serverId=serverId,
-                        personaId=vip["personaId"],
-                        displayName=vip["displayName"],
-                        expire_time=vip_cache_dict[vip["personaId"]]["expire_time"],
-                        valid=True,
-                    )
+                    update_task.append({
+                        "serverId": serverId,
+                        "personaId": vip["personaId"],
+                        "displayName": vip["displayName"],
+                        "expire_time": vip_cache_dict[str(vip["personaId"])]["expire_time"]
+                    })
             for vip in vip_cache:
                 # 如果玩家在表中但是不在服务器则考虑valid,如果valid为True则删除
                 if (str(vip["personaId"]) not in pid_list) and vip["valid"]:
-                    await bf1_db.server_manager.delete_vip(
-                        serverId=serverId, personaId=vip["personaId"]
-                    )
+                    delete_task.append({
+                        "serverId": serverId,
+                        "personaId": vip["personaId"]
+                    })
                     logger.debug(f"服务器{serverId}删除vip源{vip['displayName']}({vip['personaId']})")
                 # 更新displayName
                 if str(vip["personaId"]) in displayName_dict:
-                    await bf1_db.server_manager.update_vip(
-                        serverId=serverId,
-                        personaId=vip["personaId"],
-                        displayName=displayName_dict[str(vip["personaId"])],
-                        expire_time=vip["expire_time"],
-                        valid=vip["valid"],
-                    )
+                    update_task.append({
+                        "serverId": serverId,
+                        "personaId": vip["personaId"],
+                        "displayName": displayName_dict[str(vip["personaId"])],
+                        "expire_time": vip["expire_time"],
+                        "valid": vip["valid"],
+                    })
+            await bf1_db.server_manager.update_vip_batch(update_task)
+            await bf1_db.server_manager.delete_vip_batch(delete_task)
 
         # 查询指定serverId的vip列表
         @staticmethod
@@ -1232,6 +1236,38 @@ class bf1_db:
             return True
 
         @staticmethod
+        async def update_vip_batch(
+                vip_list: list
+        ) -> bool:
+            """
+            批量修改vip信息
+            :param vip_list: [{personaId: personaId, displayName: displayName, expire_time: expire_time, valid: bool},...]
+            :return:
+            """
+            await orm.insert_or_update_batch(
+                table=Bf1ServerManagerVip,
+                data=[
+                    {
+                        "serverId": item["serverId"],
+                        "personaId": item["personaId"],
+                        "displayName": item["displayName"],
+                        "expire_time": item["expire_time"],
+                        "time": datetime.datetime.now(),
+                        "valid": item["valid"],
+                    }
+                    for item in vip_list
+                ],
+                conditions_list=[
+                    (
+                        Bf1ServerManagerVip.serverId == item["serverId"],
+                        Bf1ServerManagerVip.personaId == item["personaId"],
+                    )
+                    for item in vip_list
+                ],
+            )
+            return True
+
+        @staticmethod
         async def delete_vip(serverId: int, personaId: int):
             """
             删除vip信息
@@ -1245,6 +1281,24 @@ class bf1_db:
                     Bf1ServerManagerVip.serverId == serverId,
                     Bf1ServerManagerVip.personaId == personaId,
                 ),
+            )
+
+        @staticmethod
+        async def delete_vip_batch(delete_task: list):
+            """
+            批量删除vip信息
+            :param delete_task: [{serverId: serverId, personaId: personaId},...]
+            :return:
+            """
+            await orm.delete_batch(
+                table=Bf1ServerManagerVip,
+                conditions_list=[
+                    (
+                        Bf1ServerManagerVip.serverId == item["serverId"],
+                        Bf1ServerManagerVip.personaId == item["personaId"],
+                    )
+                    for item in delete_task
+                ],
             )
 
     # TODO:

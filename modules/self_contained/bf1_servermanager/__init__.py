@@ -2048,7 +2048,7 @@ async def managerAccount_login(
     display_name = player_info["personas"]["persona"][0]["displayName"]
     remid = remid.result.display
     sid = sid.result.display
-    await BF1DB.bf1account.update_bf1account(pid=player_pid, display_name=display_name)
+    await BF1DB.bf1account.update_bf1account(pid=player_pid, display_name=display_name, remid=remid, sid=sid)
     account_instance = await BF1ManagerAccount.login(player_pid, remid, sid)
     if not await account_instance.check_session_expire():
         return await app.send_message(group, MessageChain(

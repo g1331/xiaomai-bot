@@ -1246,7 +1246,7 @@ class bf1_db:
             """
             await orm.insert_or_update_batch(
                 table=Bf1ServerManagerVip,
-                data=[
+                data_list=[
                     {
                         "serverId": item["serverId"],
                         "personaId": item["personaId"],

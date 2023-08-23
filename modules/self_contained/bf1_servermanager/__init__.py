@@ -35,7 +35,7 @@ from core.control import (
     Permission,
     Function,
     FrequencyLimitation,
-    Distribute
+    Distribute, QuoteReply
 )
 from core.models import saya_model, response_model
 from utils.UI import *
@@ -2492,6 +2492,7 @@ async def bfgroup_refresh(
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
     Permission.user_require(Permission.User, if_noticed=True),
+    QuoteReply.require_not()
 )
 @dispatch(
     Twilight(

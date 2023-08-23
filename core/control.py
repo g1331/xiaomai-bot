@@ -473,3 +473,12 @@ class QuoteReply(object):
                 raise ExecutionStop
 
         return Depend(wrapper)
+
+    # 只有不是回复消息的时候才会执行
+    @classmethod
+    def require_not(cls):
+        async def wrapper(event: GroupMessage):
+            if event.quote:
+                raise ExecutionStop
+
+        return Depend(wrapper)

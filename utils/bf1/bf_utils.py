@@ -837,9 +837,9 @@ class BF1ManagerAccount:
     async def login(player_pid: int, remid: str, sid: str) -> Union[api_instance, None]:
         """登录"""
         account_instance = api_instance.get_api_instance(pid=player_pid, remid=remid, sid=sid)
-        await account_instance.login(
-            remid=account_instance.remid, sid=account_instance.sid
-        )
+        account_instance.remid = remid
+        account_instance.sid = sid
+        await account_instance.login(remid=account_instance.remid, sid=account_instance.sid)
         return account_instance
 
     @staticmethod

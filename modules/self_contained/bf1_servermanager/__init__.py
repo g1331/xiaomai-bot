@@ -237,9 +237,7 @@ async def bf1group_bind_server(
     group_name = group_name.result.display
     server_gameid = server_gameid.result.display
     if not server_rank.result.display.isdigit():
-        return await app.send_message(group, MessageChain(
-            "服务器序号只能为数字\n例: -bf群组 skl 绑服#1 gameid"
-        ), quote=source)
+        return
     server_rank = int(server_rank.result.display)
     if server_rank < 1 or server_rank > 30:
         return await app.send_message(group, MessageChain(
@@ -999,22 +997,26 @@ async def who_are_playing(
         app: Ariadne, group: Group, source: Source, message: MessageChain,
         server_rank: RegexResult, bf_group_name: RegexResult
 ):
-    bf_group_name = bf_group_name.result.display
-    server_index = server_rank.result.display
-    if not server_index.isdigit():
-        return await app.send_message(group, MessageChain(
-            "请输入正确的服务器序号"
-        ), quote=source)
-    server_index = int(server_index)
-    if server_index < 1 or server_index > 30:
-        return await app.send_message(group, MessageChain(
-            "服务器序号只能在1~30内"
-        ), quote=source)
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
 
-    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_index)
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
     if not server_info:
         return await app.send_message(group, MessageChain(
-            f"群组[{bf_group_name}]未绑定服务器{server_index}"
+            f"群组[{bf_group_name}]未绑定服务器{server_rank}"
         ), quote=source)
     elif isinstance(server_info, str):
         return await app.send_message(group, MessageChain(server_info), quote=source)
@@ -2165,7 +2167,7 @@ async def bfgroup_bind_managerAccount(
     group_name = group_name.result.display
     if not server_rank.result.display.isdigit():
         return await app.send_message(group, MessageChain(
-            "服务器序号只能为数字\n例: -bf群组 skl 绑服#1 gameid"
+            "服务器序号只能为数字\n例: -bf群组 sakula#1 使用服管pid"
         ), quote=source)
     server_rank = int(server_rank.result.display)
     if server_rank < 1 or server_rank > 30:

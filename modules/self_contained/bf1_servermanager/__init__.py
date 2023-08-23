@@ -172,6 +172,7 @@ async def bfgroup_rename(app: Ariadne, group: Group, group_name: RegexResult, ne
 # bf群组名单
 @listen(GroupMessage)
 @decorate(
+    Distribute.require(),
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),

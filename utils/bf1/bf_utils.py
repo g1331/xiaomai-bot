@@ -891,10 +891,10 @@ class BF1ServerVipManager:
     async def get_server_vip(server_id: int, player_pid: int) -> Union[dict, None]:
         """获取一个玩家在指定服务器的VIP信息"""
         vip_list = await BF1DB.server_manager.get_server_vip_list(serverId=server_id)
-        for vip in vip_list:
-            if str(vip["personaId"]) == str(player_pid):
-                return vip
-        return None
+        return next(
+            (vip for vip in vip_list if str(vip["personaId"]) == str(player_pid)),
+            None,
+        )
 
     # 更新一个玩家在指定服务器的VIP信息
     @staticmethod

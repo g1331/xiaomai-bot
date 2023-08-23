@@ -40,24 +40,23 @@ async def check_verify(player_name, player_pid, qq) -> str:
     timePlayed = player_stat.get("basicStats").get('timePlayed')
     if timePlayed == 0:
         return "有效橘子ID,但该ID没有游玩过BF1"
+    eac_info = await bfeac_checkBan(player_name)
+    if eac_info.get("stat") == "已封禁":
+        ban_url = eac_info.get("url")
+        verify = f"有效ID,但该ID已被EAC封禁!封禁地址:{ban_url}"
     else:
-        eac_info = await bfeac_checkBan(player_name)
-        if eac_info.get("stat") == "已封禁":
-            ban_url = eac_info.get("url")
-            verify = f"有效ID,但该ID已被EAC封禁!封禁地址:{ban_url}"
+        verify = "有效ID"
+        # 没有绑定就绑定
+        if bind_info := await check_bind(qq):
+            if isinstance(bind_info, str):
+                return verify
+            display_name = bind_info.get("displayName")
+            # player_pid = bind_info.get("pid")
+            if display_name.upper() != player_name.upper():
+                return f"有效ID,但与其绑定ID不一致!绑定ID:{display_name}"
         else:
-            verify = "有效ID"
-            # 没有绑定就绑定
-            if bind_info := await check_bind(qq):
-                if isinstance(bind_info, str):
-                    return verify
-                display_name = bind_info.get("displayName")
-                # player_pid = bind_info.get("pid")
-                if display_name.upper() != player_name.upper():
-                    return f"有效ID,但与其绑定ID不一致!绑定ID:{display_name}"
-            else:
-                await BF1DB.bind_player_qq(qq, player_pid)
-        return verify
+            await BF1DB.bf1account.bind_player_qq(qq, player_pid)
+    return verify
 
 
 @listen(MemberJoinRequestEvent)

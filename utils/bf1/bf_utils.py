@@ -1,15 +1,26 @@
 import asyncio
 import datetime
+import json
 import time
+from functools import wraps
+from pathlib import Path
 from typing import Union
 
 import aiohttp
+import httpx
 from bs4 import BeautifulSoup
+from graia.ariadne import Ariadne
+from graia.ariadne.message import Source
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.parser.twilight import MatchResult
+from graia.ariadne.model import Member, Group
 from loguru import logger
 
+from core.control import Permission
 from utils.bf1.data_handle import BTRMatchesData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.database import BF1DB
+from utils.bf1.gateway_api import api_instance
 
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
@@ -31,7 +42,7 @@ async def get_personas_by_name(player_name: str) -> Union[dict, None]:
         # lastAuthenticated = player_info["personas"]["persona"][0]["lastAuthenticated"]
         # 写入数据库
         try:
-            await BF1DB.update_bf1account(
+            await BF1DB.bf1account.update_bf1account(
                 pid=pid,
                 uid=uid,
                 name=name,
@@ -57,7 +68,7 @@ async def get_personas_by_player_pid(player_pid: int) -> Union[dict, str, None]:
         try:
             display_name = player_info['result'][str(player_pid)]['displayName']
             uid = player_info['result'][str(player_pid)]['nucleusId']
-            await BF1DB.update_bf1account(
+            await BF1DB.bf1account.update_bf1account(
                 pid=player_pid,
                 uid=uid,
                 display_name=display_name,
@@ -71,30 +82,29 @@ async def check_bind(qq: int) -> Union[dict, str, None]:
     """检查玩家是否绑定
     :param qq: 玩家QQ
     :return: 返回玩家信息,如果未绑定则返回None,查询失败返回str信息"""
-    player_pid = await BF1DB.get_pid_by_qq(qq)
+    player_pid = await BF1DB.bf1account.get_pid_by_qq(qq)
     if not player_pid:
         return None
     # 修改逻辑,先从数据库中获取,如果数据库中没有则从API中获取
-    player_info = await BF1DB.get_bf1account_by_pid(player_pid)
+    player_info = await BF1DB.bf1account.get_bf1account_by_pid(player_pid)
     if player_info:
-        return {"displayName": player_info["display_name"], "pid": player_pid, "uid": player_info["uid"], "qq": qq}
+        return {"displayName": player_info["displayName"], "pid": player_pid, "uid": player_info["uid"], "qq": qq}
+    player_info = await get_personas_by_player_pid(player_pid)
+    if isinstance(player_info, str):
+        return player_info
+    elif not player_info:
+        return None
     else:
-        player_info = await get_personas_by_player_pid(player_pid)
-        if isinstance(player_info, str):
-            return player_info
-        elif not player_info:
-            return None
-        else:
-            # 更新该pid的信息
-            await BF1DB.update_bf1account(
-                pid=player_pid,
-                uid=player_info['result'][str(player_pid)]['nucleusId'],
-                display_name=player_info['result'][str(player_pid)]['displayName'],
-            )
-            displayName = player_info['result'][str(player_pid)]['displayName']
-            pid = player_info['result'][str(player_pid)]['personaId']
-            uid = player_info['result'][str(player_pid)]['nucleusId']
-            return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
+        # 更新该pid的信息
+        await BF1DB.bf1account.update_bf1account(
+            pid=player_pid,
+            uid=player_info['result'][str(player_pid)]['nucleusId'],
+            display_name=player_info['result'][str(player_pid)]['displayName'],
+        )
+        displayName = player_info['result'][str(player_pid)]['displayName']
+        pid = player_info['result'][str(player_pid)]['personaId']
+        uid = player_info['result'][str(player_pid)]['nucleusId']
+        return {"displayName": displayName, "pid": pid, "uid": uid, "qq": qq}
 
 
 async def BTR_get_recent_info(player_name: str) -> list[dict]:
@@ -159,7 +169,7 @@ async def get_match_detail(session, match_url: str) -> list[dict]:
         async with session.get(match_url) as resp:
             html = await resp.text()
             # 处理网页获取失败的情况
-            return html if html else None
+            return html or None
     except Exception as e:
         logger.error(f"获取对局详情失败{e}")
         return None
@@ -173,7 +183,7 @@ async def BTR_get_match_info(player_name: str) -> list[dict]:
     """
     result = []
     # 先从数据库查询数据,如果数据库中有数据则直接返回
-    if matches := await BF1DB.get_btr_match_by_displayName(player_name):
+    if matches := await BF1DB.bf1_match_cache.get_btr_match_by_displayName(player_name):
         for data in matches:
             server_name = data['server_name']
             map_name = data['map_name']
@@ -210,14 +220,14 @@ async def BTR_update_data(player_name: str) -> None:
     :param player_name: 玩家名称
     :return: None
     """
-    logger.debug(f"开始更新BTR对局数据")
+    logger.debug("开始更新BTR对局数据")
     result = []
     # BTR玩家最近对局列表页面
     header = {
         "Connection": "keep-alive",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
     }
-    matches_url = 'https://battlefieldtracker.com/bf1/profile/pc/' + player_name + '/matches'
+    matches_url = f'https://battlefieldtracker.com/bf1/profile/pc/{player_name}/matches'
     # 网络请求
     async with aiohttp.ClientSession(headers=header) as session:
         async with session.get(matches_url) as resp:
@@ -238,7 +248,7 @@ async def BTR_update_data(player_name: str) -> None:
                 # match_url: bf1/matches/pc/1639959006078647616?context=playerName
                 # 只取?context=playerName前面的部分
                 match_url = match_url.split('?')[0]
-                match_url = 'https://battlefieldtracker.com' + match_url
+                match_url = f'https://battlefieldtracker.com{match_url}'
                 matches_url_list.append(match_url)
                 match_id_list.append(match_url.split('pc/')[1].split('?')[0])
 
@@ -267,7 +277,7 @@ async def BTR_update_data(player_name: str) -> None:
                             player_accuracy = player['accuracy']
                             player_time = player['time_played']
                             team_win = player['team_win']
-                            await BF1DB.update_btr_match_cache(
+                            await BF1DB.bf1_match_cache.update_btr_match_cache(
                                 # 服务器信息
                                 match_id=match_id_list[i],
                                 server_name=match_info['game_info']['server_name'],
@@ -342,7 +352,7 @@ async def bfban_checkBan(player_pid: str) -> dict:
     :param player_pid: 玩家pid
     :return: {"stat": "状态", "url": "案件链接"}
     """
-    player_pid = str(player_pid)
+    player_pid = player_pid
     bfban_url = f'https://api.gametools.network/bfban/checkban?personaids={player_pid}'
     header = {
         "Connection": "keep-alive"
@@ -391,7 +401,7 @@ async def gt_checkVban(player_pid) -> int:
     return len(response["vban"])
 
 
-async def gt_bf1_stat():
+async def gt_bf1_stat() -> str:
     url = "https://api.gametools.network/bf1/status/?platform=pc"
     head = {
         "Connection": "Keep-Alive"
@@ -409,34 +419,25 @@ async def gt_bf1_stat():
         logger.error(f"gt_bf1_stat: {e}")
         data = None
     if data:
-        result = \
-            f"当前在线:{data.get('amounts').get('soldierAmount')}\n" \
-            f"服务器数:{data.get('amounts').get('serverAmount')}\n" \
-            f"排队总数:{data.get('amounts').get('queueAmount')}\n" \
-            f"观众总数:{data.get('amounts').get('spectatorAmount')}\n" + \
-            f"=" * 13 + "\n" \
-                        "私服(官服):\n" \
-                        f"服务器:{data.get('amounts').get('communityServerAmount', 0)}" \
-                        f"({data.get('amounts').get('diceServerAmount', 0)})\n" \
-                        f"人数:{data.get('amounts').get('communitySoldierAmount', 0)}" \
-                        f"({data.get('amounts').get('diceSoldierAmount', 0)})\n" \
-                        f"排队:{data.get('amounts').get('communityQueueAmount', 0)}" \
-                        f"({data.get('amounts').get('diceQueueAmount', 0)})\n" \
-                        f"观众:{data.get('amounts').get('communitySpectatorAmount', 0)}" \
-                        f"({data.get('amounts').get('diceSpectatorAmount', 0)})\n" + \
-            f"=" * 13 + "\n" \
-                        f"征服:{data.get('modes').get('Conquest', 0)}\t" \
-                        f"行动:{data.get('modes').get('BreakthroughLarge', 0)}\n" \
-                        f"前线:{data.get('modes').get('TugOfWar', 0)}\t" \
-                        f"突袭:{data.get('modes').get('Rush', 0)}\n" \
-                        f"抢攻:{data.get('modes').get('Domination', 0)}\t" \
-                        f"闪击行动:{data.get('modes').get('Breakthrough', 0)}\n" \
-                        f"团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t" \
-                        f"战争信鸽:{data.get('modes').get('Possession', 0)}\n" \
-                        f"空中突袭:{data.get('modes').get('AirAssault', 0)}\n" \
-                        f"空降补给:{data.get('modes').get('ZoneControl', 0)}\n" + \
-            "=" * 13
-        return result
+        return (
+                f"当前在线:{data.get('amounts').get('soldierAmount')}"
+                f"\n服务器数:{data.get('amounts').get('serverAmount')}"
+                f"\n排队总数:{data.get('amounts').get('queueAmount')}"
+                f"\n观众总数:{data.get('amounts').get('spectatorAmount')}\n"
+                + "=" * 13
+                + f"\n私服(官服):"
+                  f"\n服务器:{data.get('amounts').get('communityServerAmount', 0)}({data.get('amounts').get('diceServerAmount', 0)})"
+                  f"\n人数:{data.get('amounts').get('communitySoldierAmount', 0)}({data.get('amounts').get('diceSoldierAmount', 0)})"
+                  f"\n排队:{data.get('amounts').get('communityQueueAmount', 0)}({data.get('amounts').get('diceQueueAmount', 0)})"
+                  f"\n观众:{data.get('amounts').get('communitySpectatorAmount', 0)}({data.get('amounts').get('diceSpectatorAmount', 0)})\n"
+                + "=" * 13
+                + f"\n征服:{data.get('modes').get('Conquest', 0)}\t行动:{data.get('modes').get('BreakthroughLarge', 0)}"
+                  f"\n前线:{data.get('modes').get('TugOfWar', 0)}\t突袭:{data.get('modes').get('Rush', 0)}"
+                  f"\n抢攻:{data.get('modes').get('Domination', 0)}\t闪击行动:{data.get('modes').get('Breakthrough', 0)}"
+                  f"\n团队死斗:{data.get('modes').get('TeamDeathMatch', 0)}\t战争信鸽:{data.get('modes').get('Possession', 0)}"
+                  f"\n空中突袭:{data.get('modes').get('AirAssault', 0)}\n空降补给:{data.get('modes').get('ZoneControl', 0)}\n"
+                + "=" * 13
+        )
     return "获取数据失败"
 
 
@@ -452,6 +453,28 @@ async def gt_get_player_id(player_name: str) -> Union[dict, None]:
         logger.error(f"gt_get_player_id: {e}")
         return None
     return response
+
+
+async def check_vban(player_pid) -> dict or str:
+    """
+    vban_num = len(vban_info["vban"])
+    :param player_pid:
+    :return:
+    """
+    url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
+    head = {
+        'accept': 'application/json',
+        "Connection": "Keep-Alive"
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=head, timeout=5)
+        try:
+            return eval(response.text)
+        except:
+            return "获取出错!"
+    except:
+        return '网络出错!'
 
 
 async def record_api(player_pid) -> dict:
@@ -489,3 +512,457 @@ async def download_skin(url):
                     logger.error(e)
                     i += 1
         return None
+
+
+# 通过接口获取玩家列表
+async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union[str, dict, None]:
+    """
+    :param server_gameid: 服务器gameid
+    :return: 成功返回字典,失败返回信息
+    """
+    header = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36',
+        'ContentType': 'json',
+    }
+    api_url = "https://delivery.easb.cc/games/get_server_status"
+    data = {"gameIds": [server_gameid] if isinstance(server_gameid, (str, int)) else server_gameid}
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(api_url, headers=header, json=data, timeout=5) as response:
+                response = await response.json()
+    except TimeoutError as e:
+        logger.error(f"get_playerList_byGameid: {e}")
+        return "网络超时!"
+    if isinstance(server_gameid, list):
+        return response["data"]
+    if str(server_gameid) in response["data"]:
+        return response["data"][str(server_gameid)] if response["data"][str(server_gameid)] != '' else "服务器信息为空!"
+    else:
+        return f"获取服务器信息失败:{response}"
+
+
+class BF1GROUP:
+
+    @staticmethod
+    async def create(group_name: str) -> str:
+        # 群组的名字必须为英文，且不区分大小写，也就是说不能同时存在ABC和abc，返回str
+        # 查询群组是否存在
+        if await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]已存在"
+        # 创建群组
+        await BF1DB.bf1group.create_bf1_group(group_name)
+        return f"BF1群组[{group_name}]创建成功\n默认权限组[{group_name}]创建成功"
+
+    @staticmethod
+    async def delete(group_name: str) -> str:
+        # 删除群组，返回str
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 删除群组
+        await BF1DB.bf1group.delete_bf1_group(group_name)
+        _ = await BF1GROUPPERM.del_permission_group(group_name)
+        return f"BF1群组[{group_name}]删除成功"
+
+    @staticmethod
+    async def get_info(group_name: str) -> Union[str, dict]:
+        return (
+            await BF1DB.bf1group.get_bf1_group_info(group_name)
+            if await BF1DB.bf1group.check_bf1_group(group_name)
+            else f"群组[{group_name}]不存在"
+        )
+
+    @staticmethod
+    async def rename(group_name: str, new_name: str) -> str:
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 查询新名字是否存在
+        if await BF1DB.bf1group.check_bf1_group(new_name):
+            return f"群组[{new_name}]已存在"
+        # 修改群组名字
+        result = await BF1DB.bf1group.modify_bf1_group_name(group_name, new_name)
+        _ = await BF1GROUPPERM.rename_permission_group(group_name, new_name)
+        return f"BF1群组[{group_name}]已改名为[{new_name}]" if result else f"BF1群组[{group_name}]修改失败"
+
+    @staticmethod
+    async def bind_ids(
+            group_name: str, index: int, guid: str, gameId: str,
+            serverId: str, account_pid: str = None
+    ) -> str:
+        """
+
+        :param group_name:
+        :param index: index只能在1-30以内(非下标)
+        :param guid:
+        :param gameId:
+        :param serverId:
+        :param account_pid:
+        :return:
+        """
+        # 绑定玩家id，返回str
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 绑定到对应的序号
+        # index只能在1-30以内
+        if index < 1 or index > 30:
+            return "序号只能在1-30以内"
+        # 绑定到对应序号上
+        await BF1DB.bf1group.bind_bf1_group_id(group_name, index - 1, guid, gameId, serverId, account_pid)
+        account_info = await BF1DB.bf1account.get_bf1account_by_pid(account_pid)
+        display_name = account_info.get("displayName") if account_info else ""
+        manager_account = f"服管账号:{display_name} ({account_pid})" if display_name else "未识别到服管账号,请手动绑定!"
+        return f"群组[{group_name}]绑定{index}服成功!\n" \
+               f"guid:{guid}\n" \
+               f"gameId:{gameId}\n" \
+               f"serverId:{serverId}\n" + manager_account
+
+    @staticmethod
+    async def unbind_ids(group_name: str, index: int) -> str:
+        # 解绑玩家id，返回str
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 解绑对应的序号
+        # index只能在1-30以内
+        if index < 1 or index > 30:
+            return "序号只能在1-30以内"
+        # 解绑对应序号
+        await BF1DB.bf1group.unbind_bf1_group_id(group_name, index)
+        return f"群组[{group_name}]解绑{index}服成功!"
+
+    @staticmethod
+    async def bind_qq_group(group_name: str, group_id: int) -> str:
+        # 绑定群组，返回str
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 绑定群组
+        await BF1DB.bf1group.bind_bf1_group_qq_group(group_name, group_id)
+        return f"群组[{group_name}]绑定群[{group_id}]成功"
+
+    @staticmethod
+    async def unbind_qq_group(group_id: int) -> str:
+        # 解绑群组，返回str
+        if await BF1DB.bf1group.unbind_bf1_group_qq_group(group_id):
+            return f"{group_id}解绑群组成功"
+        return f"{group_id}未绑定群组"
+
+    @staticmethod
+    async def get_bindInfo_byIndex(group_name: str, index: int) -> Union[dict, str, None]:
+        # 查询群组是否存在
+        if not await BF1DB.bf1group.check_bf1_group(group_name):
+            return f"群组[{group_name}]不存在"
+        # 查询对应序号的绑定信息
+        # index只能在1-30以内
+        if index < 1 or index > 30:
+            return "序号只能在1-30以内"
+        # 查询对应序号的绑定信息
+        return await BF1DB.bf1group.get_bf1_group_bindInfo_byIndex(group_name, index - 1)
+
+    @staticmethod
+    async def get_bf1Group_byQQ(group_id: int) -> Union[dict, None]:
+        # 获取群组信息
+        group_info = await BF1DB.bf1group.get_bf1_group_by_qq_group(group_id)
+        return group_info or None
+
+    @staticmethod
+    async def get_bf1Group_byName(group_name: str) -> Union[dict, None]:
+        # 获取群组信息
+        group_info = await BF1DB.bf1group.get_bf1_group_by_name(group_name)
+        return group_info or None
+
+    @staticmethod
+    async def get_group_bindList(app: Ariadne, group) -> list:
+        group_member_list_temp = await app.get_member_list(group.id)
+        group_member_list = [item.name.upper() for item in group_member_list_temp]
+        bind_infos = await BF1DB.bf1account.get_players_info_by_qqs([item.id for item in group_member_list_temp])
+        group_member_list.extend([bind_infos[key].get("display_name").upper() for key in bind_infos])
+        group_member_list = list(set(group_member_list))
+        return group_member_list
+
+
+class BF1GROUPPERM:
+    ADMIN = 1
+    OWNER = 2
+
+    # 绑定权限组
+    @staticmethod
+    async def bind_group(group_name: str, group_id: int) -> bool:
+        """
+        绑定权限组
+        :param group_name: BF1群组名
+        :param group_id: QQ群号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.bind_permission_group(group_name=group_name, qq_group_id=group_id)
+
+    # 解绑权限组
+    @staticmethod
+    async def unbind_group(group_id: int) -> bool:
+        """
+        解绑权限组
+        :param group_id: QQ群号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.unbind_permission_group(qq_group_id=group_id)
+
+    # 获取QQ群绑定的权限组名
+    @staticmethod
+    async def get_group_name(group_id: int) -> Union[str, None]:
+        """
+        获取QQ群绑定的权限组名
+        :param group_id: QQ群号
+        :return: str or None
+        """
+        return await BF1DB.bf1_permission_group.get_permission_group(qq_group_id=group_id)
+
+    # 获取权限组绑定的QQ群
+    @staticmethod
+    async def get_permission_group_bind(group_name: str) -> Union[list, None]:
+        """
+        获取权限组绑定的QQ群
+        :param group_name: BF1群组名
+        :return: list or None
+        """
+        return await BF1DB.bf1_permission_group.get_permission_group_bind(group_name=group_name)
+
+    # 添加/修改QQ号到权限组
+    @staticmethod
+    async def add_permission(group_name: str, qq: int, permission: int) -> bool:
+        """
+        添加/修改QQ号到权限组
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :param permission: 权限,0为管理员,1为服主
+        :return: bool
+        """
+        if permission in {0, 1}:
+            return await BF1DB.bf1_permission_group.update_qq_to_permission_group(
+                bf1_group_name=group_name, qq_id=qq, perm=permission)
+        else:
+            return False
+
+    # 删除QQ号到权限组
+    @staticmethod
+    async def del_permission(group_name: str, qq: int) -> bool:
+        """
+        删除QQ号到权限组
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.delete_qq_from_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 获取QQ号在权限组的权限
+    @staticmethod
+    async def get_permission(group_name: str, qq: int) -> Union[int, None]:
+        """
+        获取QQ号在权限组的权限
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: int or None
+        """
+        return await BF1DB.bf1_permission_group.get_qq_perm_in_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 获取权限组内的QQ号和权限
+    @staticmethod
+    async def get_permission_group(group_name: str) -> Union[dict, None]:
+        """
+        获取权限组内的QQ号和权限
+        :param group_name: BF1群组名
+        :return: dict or None, 结果为{qq: perm}
+        """
+        return await BF1DB.bf1_permission_group.get_qq_from_permission_group(bf1_group_name=group_name)
+
+    # 判断QQ号是否在权限组内
+    @staticmethod
+    async def check_permission(group_name: str, qq: int) -> bool:
+        """
+        判断QQ号是否在权限组内
+        :param group_name: BF1群组名
+        :param qq: QQ号
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.is_qq_in_permission_group(
+            bf1_group_name=group_name, qq_id=qq)
+
+    # 删除权限组
+    @staticmethod
+    async def del_permission_group(group_name: str) -> bool:
+        """
+        删除权限组
+        :param group_name: BF1群组名
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.delete_permission_group(group_name=group_name)
+
+    # 改名
+    @staticmethod
+    async def rename_permission_group(old_group_name: str, new_group_name: str) -> bool:
+        """
+        改名
+        :param old_group_name: BF1群组名
+        :param new_group_name: BF1群组名
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.rename_permission_group(old_group_name=old_group_name,
+                                                                        new_group_name=new_group_name)
+
+
+class BF1ManagerAccount:
+    """BF1服管账号相关操作"""
+
+    # accounts_file_path = Path("./data/battlefield/accounts.json")
+    # if not accounts_file_path.exists():
+    #     accounts_file_path.touch()
+    #     accounts_file_path.write_text(json.dumps({"accounts": []}, indent=4, ensure_ascii=False))
+
+    @staticmethod
+    async def get_accounts() -> Union[list, None]:
+        """获取所有服管账号
+        有结果时,返回list,无结果时返回None,每个元素为dict,包含pid,uid,name,display_name,remid,sid,session"""
+        return await BF1DB.bf1account.get_manager_account_info()
+
+    @staticmethod
+    async def get_account(player_pid: int) -> Union[dict, None]:
+        """获取服管账号
+        元素为dict,包含pid,uid,name,display_name,remid,sid,session
+        """
+        return await BF1DB.bf1account.get_manager_account_info(pid=player_pid)
+
+    @staticmethod
+    async def login(player_pid: int, remid: str, sid: str) -> Union[api_instance, None]:
+        """登录"""
+        account_instance = api_instance.get_api_instance(pid=player_pid, remid=remid, sid=sid)
+        await account_instance.login(
+            remid=account_instance.remid, sid=account_instance.sid
+        )
+        return account_instance
+
+    @staticmethod
+    async def del_account(player_pid: int) -> bool:
+        """删除账号cookie信息"""
+        return await BF1DB.bf1account.update_bf1account_loginInfo(player_pid=player_pid)
+
+    @staticmethod
+    async def get_manager_account_instance(player_pid) -> api_instance:
+        account_instance = api_instance.get_api_instance(pid=player_pid)
+        if not account_instance.remid:
+            account_info = await BF1ManagerAccount.get_account(player_pid=player_pid)
+            if account_info:
+                account_instance.remid = account_info["remid"]
+                account_instance.sid = account_info["sid"]
+                account_instance.session = account_info["session"]
+        return account_instance
+
+
+class BF1Log:
+
+    @staticmethod
+    async def record(
+            serverId: int, persistedGameId: str, gameId: int,
+            operator_qq: int, pid: int, display_name: str, action: str, info: str = None
+    ):
+        await BF1DB.manager_log.record(
+            operator_qq=operator_qq,
+            serverId=serverId,
+            persistedGameId=persistedGameId,
+            gameId=gameId,
+            pid=pid,
+            display_name=display_name,
+            action=action,
+            info=info,
+        )
+
+
+class BF1ServerVipManager:
+
+    @staticmethod
+    async def update_server_vip(server_full_info: dict):
+        """更新服务器VIP信息"""
+        return await BF1DB.server_manager.update_server_vip(server_full_info=server_full_info)
+
+    # 从表里获取一个玩家在指定服务器的VIP信息
+    @staticmethod
+    async def get_server_vip(server_id: int, player_pid: int) -> Union[dict, None]:
+        """获取一个玩家在指定服务器的VIP信息"""
+        vip_list = await BF1DB.server_manager.get_server_vip_list(serverId=server_id)
+        return next(
+            (vip for vip in vip_list if str(vip["personaId"]) == str(player_pid)),
+            None,
+        )
+
+    # 更新一个玩家在指定服务器的VIP信息
+    @staticmethod
+    async def update_server_vip_by_pid(
+            server_id: int, player_pid: int, displayName: str, expire_time: datetime.datetime, valid: bool
+    ) -> bool:
+        """更新一个玩家在指定服务器的VIP信息"""
+        return await BF1DB.server_manager.update_vip(
+            serverId=server_id, personaId=player_pid, displayName=displayName, expire_time=expire_time, valid=valid
+        )
+
+    # 获取指定服务器的VIP列表
+    @staticmethod
+    async def get_server_vip_list(server_id: int) -> list:
+        return await BF1DB.server_manager.get_server_vip_list(serverId=server_id)
+
+    # 删除一个玩家在指定服务器的VIP信息
+    @staticmethod
+    async def del_server_vip_by_pid(server_id: int, player_pid: int) -> bool:
+        return await BF1DB.server_manager.delete_vip(serverId=server_id, personaId=player_pid)
+
+
+async def perm_judge(bf_group_name: str, group: Group, sender: Member) -> bool:
+    group_perm = await Permission.get_user_perm_byID(group.id, sender.id)
+    over_perm = group_perm >= Permission.BotAdmin
+    in_group = await BF1DB.bf1_permission_group.is_qq_in_permission_group(bf_group_name, sender.id)
+    return bool(in_group or over_perm)
+
+
+def bf1_perm_check():
+    def decorator(fn):
+        @wraps(fn)
+        async def wrapper(
+                app: Ariadne, sender: Member, group: Group, source: Source,
+                server_rank: MatchResult, bf_group_name: MatchResult
+        ):
+            server_rank = server_rank.result.display
+            bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+            if not server_rank.isdigit():
+                return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+            server_rank = int(server_rank)
+            if server_rank < 1 or server_rank > 30:
+                return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+            # 获取群组信息
+            if not bf_group_name:
+                bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+                if not bf1_group_info:
+                    return await app.send_message(group, MessageChain("请先绑定BF1群组"), quote=source)
+                bf_group_name = bf1_group_info.get("group_name")
+
+            # 权限判断
+            return (
+                await fn(
+                    app, sender, group, source, server_rank, bf_group_name
+                )
+                if await perm_judge(bf_group_name, group, sender)
+                else await app.send_message(
+                    group,
+                    MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+                    quote=source,
+                )
+            )
+
+        return wrapper
+
+    return decorator
+
+
+async def dummy_coroutine():
+    return None

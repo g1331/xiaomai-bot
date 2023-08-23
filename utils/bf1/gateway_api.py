@@ -59,13 +59,14 @@ class bf1_api(object):
             -35150: "战队不存在",
             -35160: "无权限",
             -32603: "此code为多个错误共用,请查阅error_msg_dict",
+            # -32850: "服务器栏位已满/玩家已在栏位",
             -32851: "服务器不存在/已过期",
             -32856: "玩家不存在",
             -32857: "无法处置管理员",
             -32858: "服务器未开启",
         }
         self.error_msg_dict = {
-            "Internal Error: org.apache.thrift.TApplicationException": "一般错误/无权限",
+            "Internal Error: org.apache.thrift.TApplicationException": "一般错误/无权限/无法处置管理员",
             "Internal Error: java.lang.NumberFormatException": "EA后端未知错误",
             "Internal Error: java.lang.NullPointerException": "EA后端未知错误",
             "Invalid Params: no valid session": "Session无效",
@@ -240,7 +241,7 @@ class bf1_api(object):
 
     async def get_session(self) -> str:
         if (not self.remid) or (not self.pid):
-            logger.warning(f"BF1账号{self.pid}未登录!请传入remid和sid使用login进行登录!")
+            # logger.warning(f"BF1账号{self.pid}未登录!请传入remid和sid使用login进行登录!")
             return str(self.session)
         if await self.check_session_expire():
             return str(await self.login(self.remid, self.sid))
@@ -329,6 +330,8 @@ class bf1_api(object):
         self.access_token_time = time.time()
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
+        from utils.bf1.database import BF1DB
+        await BF1DB.bf1account.update_bf1account_loginInfo(self.pid, self.remid, self.sid, self.session)
         return self.session
 
     async def getBlazeAuthcode(self, remid: str = None, sid: str = None) -> str:
@@ -515,6 +518,27 @@ class bf1_api(object):
             }
         )
 
+    async def Companion_isLoggedIn_noLogin(self):
+        body = {
+            "jsonrpc": "2.0",
+            "method": "Companion.isLoggedIn",
+            "id": await get_a_uuid()
+        }
+        self.api_header["X-Gatewaysession"] = self.session
+        logger.debug("调用api:Companion.isLoggedIn")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                        url=self.api_url,
+                        headers=self.api_header,
+                        data=json.dumps(body),
+                        timeout=10,
+                        ssl=False
+                ) as response:
+                    return await self.error_handle(await response.json())
+        except asyncio.exceptions.TimeoutError:
+            return "网络超时!"
+
     # 返回数据前进行错误处理
     async def error_handle(self, data: dict) -> Union[dict, str]:
         """
@@ -534,7 +558,7 @@ class bf1_api(object):
             return data
         if error_msg := self.error_msg_dict.get(str(error_data.get("message")), error_data.get("message")):
             return error_msg
-        elif error_msg := self.error_code_dict.get(str(error_data.get("code")), error_data.get("code")):
+        elif error_msg := self.error_code_dict.get(error_data.get("code"), error_data.get("code")):
             if error_data.get("code") == -32501:
                 self.check_login = False
                 logger.warning(f"BF1账号{self.pid}session失效,尝试重新登录")
@@ -1102,7 +1126,7 @@ class GameServer(bf1_api):
 class RSP(bf1_api):
     """服管相关"""
 
-    async def getServerDetails(self, serverId: Union[int, str]) -> dict:
+    async def RSPgetServerDetails(self, serverId: Union[int, str]) -> dict:
         """
         服务器RSP信息
         :param serverId: serverId
@@ -1506,6 +1530,30 @@ class RSP(bf1_api):
             }
         return await self.api_call(
             config
+        )
+
+    async def movePlayer(self, gameId: Union[int, str], personaId: Union[int, str], teamId: int) -> dict:
+        """
+        移动玩家
+        :param gameId:
+        :param personaId:
+        :param teamId:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "RSP.movePlayer",
+                "params": {
+                    "game": "tunguska",
+                    "gameId": gameId,
+                    "teamId": teamId,
+                    "personaId": personaId,
+                    "forceKill": True,
+                    "moveParty": False
+                },
+                "id": await get_a_uuid()
+            }
         )
 
 

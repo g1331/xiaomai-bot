@@ -274,7 +274,7 @@ class bf1_api(object):
         :param sid: 玩家登录时cookie的sid
         :return: 成功登录后的session
         """
-        logger.debug(f"BF1账号{self.pid}登录ing")
+        logger.debug(f"BF1账号{self.pid}登录ing\nremid={remid}\nsid={sid}")
         self.remid = remid
         self.sid = sid
         # 获取access_token
@@ -293,6 +293,7 @@ class bf1_api(object):
             )
         try:
             res = eval(await response.text())
+            logger.debug(res)
             self.access_token = res["access_token"]
             self.access_token_expires_time = res["expires_in"]
             logger.success(f"获取access_token成功!access_token:{self.access_token}")
@@ -331,7 +332,7 @@ class bf1_api(object):
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
         from utils.bf1.database import BF1DB
-        await BF1DB.bf1account.update_bf1account_loginInfo(self.pid, self.remid, self.sid, self.session)
+        await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
 
     async def getBlazeAuthcode(self, remid: str = None, sid: str = None) -> str:
@@ -1639,6 +1640,7 @@ class api_instance(
     @staticmethod
     def get_api_instance(pid, remid=None, sid=None, session=None) -> "api_instance":
         # 如果实例已经存在，则返回它，否则创建一个新实例
+        pid = str(pid)
         if pid not in api_instance.instances:
             api_instance.instances[pid] = api_instance(pid, remid, sid, session)
         return api_instance.instances[pid]

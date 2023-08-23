@@ -96,6 +96,9 @@ class PlayerWeaponPic:
                 "pid": pid,
                 "avatar": avatar,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            page_option={
+                "device_scale_factor": 2,
             }
         )
 
@@ -150,6 +153,9 @@ class PlayerVehiclePic:
                 "pid": pid,
                 "avatar": avatar,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            page_option={
+                "device_scale_factor": 2,
             }
         )
 

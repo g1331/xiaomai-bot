@@ -1852,7 +1852,7 @@ async def get_server_playerList_pic(
     logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     message_send = MessageChain(
         GraiaImage(path=SavePic),
-        "\n回复'-k 序号 原因'可踢出玩家(60秒内有效)"
+        "\n回复'-k 序号 原因'可踢出玩家(120秒内有效)"
     )
     bot_message = await app.send_group_message(group, message_send, quote=source)
     os.remove(SavePic)
@@ -1865,7 +1865,7 @@ async def get_server_playerList_pic(
             return saying
 
     try:
-        result = await FunctionWaiter(waiter, [GroupMessage]).wait(60)
+        result = await FunctionWaiter(waiter, [GroupMessage]).wait(120)
     except asyncio.exceptions.TimeoutError:
         return
     if not result:

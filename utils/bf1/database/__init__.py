@@ -1139,7 +1139,8 @@ class bf1_db:
                         "serverId": serverId,
                         "personaId": vip["personaId"],
                         "displayName": vip["displayName"],
-                        "expire_time": None
+                        "expire_time": None,
+                        "valid": True
                     })
                     logger.debug(f"服务器{serverId}新增vip源{vip['displayName']}({vip['personaId']})")
                 # 如果玩家在表中且缓存中的valid为False(未生效)则更新为True(已生效),不更新expire_time
@@ -1148,7 +1149,8 @@ class bf1_db:
                         "serverId": serverId,
                         "personaId": vip["personaId"],
                         "displayName": vip["displayName"],
-                        "expire_time": vip_cache_dict[str(vip["personaId"])]["expire_time"]
+                        "expire_time": vip_cache_dict[str(vip["personaId"])]["expire_time"],
+                        "valid": True
                     })
             for vip in vip_cache:
                 # 如果玩家在表中但是不在服务器则考虑valid,如果valid为True则删除

@@ -5521,6 +5521,138 @@ async def get_adminList(
     return app.send_message(group, MessageChain([At(sender.id), "请点击转发消息查看!"]), quote=source)
 
 
+# 查岗
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-查岗", "-谁在管", "-我管理呢"),
+            ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
+        ]
+    )
+)
+async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source: Source, bf_group_name: RegexResult):
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+    server_info = await BF1GROUP.get_info(bf_group_name)
+    if isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(f"{server_info}"), quote=source)
+    task_list = []
+    guid_dict = {}
+    for i, id_item in enumerate(server_info["bind_ids"]):
+        if not id_item:
+            task_list.append(None)
+            continue
+        task_list.append({
+            "guid": id_item['guid'],
+            "sid": id_item['serverId'],
+            "gid": id_item['gameId'],
+            "account:": id_item['account'],
+            "result": None,
+            "admin_list": []
+        })
+        guid_dict[id_item['guid']] = i + 1
+    # 获取每个服务器的信息，并写入管理列表
+    server_info_task = []
+    for i, item in enumerate(task_list):
+        if isinstance(item, dict):
+            server_info_task.append((i, await (await BF1DA.get_api_instance()).getServerDetails(item["gid"])))
+        else:
+            server_info_task.append((i, asyncio.ensure_future(dummy_coroutine())))
+    server_info_task_results = await asyncio.gather(*[task for _, task in server_info_task])
+    # 循环依次把结果写入到对应的result的位置
+    for index, result in enumerate(server_info_task_results):
+        if isinstance(server_info_task_results[index], dict):
+            server_info_temp = server_info_task_results[index]["result"]
+            if not isinstance(server_info_temp, dict):
+                task_list[index]["result"] = f"查询失败{server_info_temp}"
+                continue
+            task_list[index]["result"] = server_info_temp
+
+    # 管理总表
+    admin_list_all = []
+    admin_dict = {}
+    for i, item in enumerate(task_list):
+        if isinstance(item, dict):
+            admin_list_all.extend(item["result"]["rspInfo"]["adminList"])
+            for admin in item["result"]["rspInfo"]["adminList"]:
+                admin_dict[admin["personaId"]] = admin
+
+    # 获取全部管理正在玩的服务器
+    playing_server = await (await BF1DA.get_api_instance()).getServersByPersonaIds(personaIds=[i["personaId"] for i in admin_list_all])
+    if not isinstance(playing_server, dict):
+        return await app.send_message(
+            group,
+            MessageChain(f"获取失败!{playing_server}"),
+            quote=source,
+        )
+    playing_server_result = playing_server["result"]
+    # 遍历结果
+    in_group = {}
+    in_counter = 0
+    out_group = {}
+    out_counter = 0
+    for pid in playing_server_result:
+        if not playing_server_result[pid]:
+            continue
+        else:
+            guid_temp = playing_server_result[pid]["guid"]
+            server_name = playing_server_result[pid]["name"]
+            if guid_temp in guid_dict:
+                index_temp = guid_dict.get(guid_temp)
+                if index_temp not in in_group:
+                    in_group[index_temp] = []
+                in_group[index_temp].append(admin_dict[pid])
+                in_counter += 1
+            else:
+                if server_name not in out_group:
+                    out_group[server_name] = []
+                out_group[server_name].append(admin_dict[pid])
+                out_counter += 1
+
+    send = []
+    if not in_group:
+        send.append("当前群组无人在岗")
+    else:
+        send.append(f"在岗{in_counter}人:")
+        for index in in_group:
+            send.append(f"{index}服:")
+            for admin in in_group[index]:
+                send.append(f"{admin['displayName']}")
+    if not out_group:
+        pass
+    else:
+        send.append(f"离岗{out_counter}人:")
+        for server_name in out_group:
+            send.append(f"{server_name[:15]}")
+            for admin in out_group[server_name]:
+                send.append(f"{admin['displayName']}")
+    send = "\n".join(send)
+    return await app.send_message(
+        group,
+        MessageChain(send),
+        quote=source,
+    )
+
 # 帮助
 @listen(GroupMessage)
 @decorate(

@@ -5592,7 +5592,7 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
     admin_list_all = []
     admin_dict = {}
     for i, item in enumerate(task_list):
-        if isinstance(item["result"], dict):
+        if isinstance(item, dict) and isinstance(item["result"], dict):
             admin_list_all.extend(item["result"]["rspInfo"]["adminList"])
             for admin in item["result"]["rspInfo"]["adminList"]:
                 admin_dict[admin["personaId"]] = admin

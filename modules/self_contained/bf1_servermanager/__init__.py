@@ -5631,9 +5631,9 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
 
     send = []
     if not in_group:
-        send.append("当前群组无人在岗!")
+        send.append(f"群组{bf_group_name}无人在岗!")
     else:
-        send.append(f"在岗{in_counter}人:")
+        send.append(f"群组{bf_group_name}在岗{in_counter}人:")
         for index in in_group:
             send.append(f" {index}服:")
             for admin in in_group[index]:

@@ -319,20 +319,20 @@ class Umaru(object):
 
     # 更新master权限
     async def update_master_permission(self):
+        group_id_list = [group.id for bot_account in self.total_groups for group in self.total_groups[bot_account]]
+        group_id_list = list(set(group_id_list))
         await orm.insert_or_update_batch(
             table=MemberPerm,
             data_list=[
-                {"qq": self.config.Master, "group_id": group.id, "perm": 256}
-                for bot_account in self.total_groups
-                for group in self.total_groups[bot_account]
+                {"qq": self.config.Master, "group_id": group_id, "perm": 256}
+                for group_id in group_id_list
             ],
             conditions_list=[
                 [
                     MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group.id
+                    MemberPerm.group_id == group_id
                 ]
-                for bot_account in self.total_groups
-                for group in self.total_groups[bot_account]
+                for group_id in group_id_list
             ]
         )
 
@@ -347,21 +347,23 @@ class Umaru(object):
                 admin_list = [item[0] for item in result]
             else:
                 return
+        group_id_list = [group.id for bot_account in self.total_groups for group in self.total_groups[bot_account]]
+        # 去重
+        admin_list = list(set(admin_list))
+        group_id_list = list(set(group_id_list))
         await orm.insert_or_update_batch(
             table=MemberPerm,
             data_list=[
-                {"qq": admin, "group_id": group.id, "perm": 128}
-                for bot_account in self.total_groups
-                for group in self.total_groups[bot_account]
+                {"qq": admin, "group_id": group_id, "perm": 128}
+                for group_id in group_id_list
                 for admin in admin_list
             ],
             conditions_list=[
                 [
                     MemberPerm.qq == admin,
-                    MemberPerm.group_id == group.id,
+                    MemberPerm.group_id == group_id,
                 ]
-                for bot_account in self.total_groups
-                for group in self.total_groups[bot_account]
+                for group_id in group_id_list
                 for admin in admin_list
             ]
         )

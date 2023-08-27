@@ -5575,7 +5575,7 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
     server_info_task = []
     for i, item in enumerate(task_list):
         if isinstance(item, dict):
-            server_info_task.append((i, await (await BF1DA.get_api_instance()).getServerDetails(item["gid"])))
+            server_info_task.append((i, (await BF1DA.get_api_instance()).getServerDetails(item["gid"])))
         else:
             server_info_task.append((i, asyncio.ensure_future(dummy_coroutine())))
     server_info_task_results = await asyncio.gather(*[task for _, task in server_info_task])

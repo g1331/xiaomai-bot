@@ -755,6 +755,17 @@ class BF1GROUPPERM:
         return await BF1DB.bf1_permission_group.delete_qq_from_permission_group(
             bf1_group_name=group_name, qq_id=qq)
 
+    @staticmethod
+    async def del_permission_batch(group_name: str, qq_list: list) -> bool:
+        """
+        批量删除QQ号到权限组
+        :param group_name: BF1群组名
+        :param qq_list: QQ号列表
+        :return: bool
+        """
+        return await BF1DB.bf1_permission_group.delete_qq_from_permission_group_batch(
+            bf1_group_name=group_name, qq_id_list=qq_list)
+
     # 获取QQ号在权限组的权限
     @staticmethod
     async def get_permission(group_name: str, qq: int) -> Union[int, None]:

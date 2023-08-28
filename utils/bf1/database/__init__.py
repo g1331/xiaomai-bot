@@ -1805,6 +1805,20 @@ class bf1_db:
                 return True
             return False
 
+        @staticmethod
+        async def delete_qq_from_permission_group_batch(bf1_group_name: str, qq_id_list: list) -> bool:
+            if result := await orm.fetch_one(
+                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
+                await orm.delete(
+                    table=Bf1PermMemberInfo,
+                    condition=[
+                        Bf1PermMemberInfo.bf1_group_name == result[0],
+                        Bf1PermMemberInfo.qq_id.in_(qq_id_list),
+                    ],
+                )
+                return True
+            return False
+
         # 获取权限组内的QQ号和权限
         @staticmethod
         async def get_qq_from_permission_group(bf1_group_name: str) -> Union[dict, None]:

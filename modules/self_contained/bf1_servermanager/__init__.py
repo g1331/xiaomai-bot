@@ -687,8 +687,8 @@ async def bfgroup_unbind_qqgroup(
         if not (target_app and target_group):
             logger.warning(f"解绑群组时没有找到目标群:{qqgroup_id}")
         member_list = await target_app.get_member_list(target_group)
-        for member in member_list:
-            await BF1GROUPPERM.del_permission(bfgroups_name, member.id)
+        member_id_list = [member.id for member in member_list]
+        await BF1GROUPPERM.del_permission_batch(bfgroups_name, member_id_list)
         return await app.send_message(
             group,
             MessageChain(

@@ -641,9 +641,64 @@ async def bfgroup_bind_qqgroup(
             await BF1GROUPPERM.add_permission(group_name, member.id, 0)
     return await app.send_message(
         group,
-        MessageChain(f"{result}\n权限组绑定成功" if perm_result else "权限组绑定失败!"),
+        MessageChain(f"{result}\n" + ("权限组绑定成功" if perm_result else "权限组绑定失败!")),
         quote=source,
     )
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
+            FullMatch("解绑群").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "qqgroup_id",
+            # 示例: -bf群组 解绑群 123
+        ]
+    )
+)
+async def bfgroup_unbind_qqgroup(
+        app: Ariadne, group: Group, source: Source,
+        qqgroup_id: RegexResult
+):
+    qqgroup_id = qqgroup_id.result.display
+    if not qqgroup_id.isdigit():
+        return await app.send_message(group, MessageChain(
+            "QQ群号必须是数字!"
+        ), quote=source)
+    qqgroup_id = int(qqgroup_id)
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(qqgroup_id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            f"群{qqgroup_id}没有绑定BF1群组!"
+        ), quote=source)
+    bfgroups_name = bf1_group_info["group_name"]
+    result = await BF1GROUP.unbind_qq_group(qqgroup_id)
+    perm_result = await BF1GROUPPERM.unbind_group(qqgroup_id)
+    if "成功" in result:
+        target_app, target_group = await account_controller.get_app_from_total_groups(qqgroup_id)
+        if not (target_app and target_group):
+            logger.warning(f"解绑群组时没有找到目标群:{qqgroup_id}")
+            return await app.send_message(
+                group,
+                MessageChain(
+                    f"源群组：{bfgroups_name}\n{result}"
+                    + ("\n权限组解绑成功" if perm_result else "\n权限组解绑失败")
+                ),
+                quote=source,
+            )
+        member_list = await target_app.get_member_list(target_group)
+        for member in member_list:
+            await BF1GROUPPERM.del_permission(bfgroups_name, member.id)
+            logger.debug(f"解绑群组时删除权限组：{bfgroups_name} 成员：{member.id}")
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
 @listen(GroupMessage)
@@ -5768,6 +5823,9 @@ async def bfgroup_help(app: Ariadne, group: Group, source: Source):
 
 -bfg 群组名 绑群 QQ群号
 如：-bfg sakula 绑群 123123
+
+-bfg 解绑群 QQ群号
+如：-bfg 解绑群 123123
 ===================
 #权限相关：
 

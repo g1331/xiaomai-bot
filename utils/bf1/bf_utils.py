@@ -629,7 +629,7 @@ class BF1GROUP:
         if index < 1 or index > 30:
             return "序号只能在1-30以内"
         # 解绑对应序号
-        await BF1DB.bf1group.unbind_bf1_group_id(group_name, index)
+        await BF1DB.bf1group.unbind_bf1_group_id(group_name, index - 1)
         return f"群组[{group_name}]解绑{index}服成功!"
 
     @staticmethod

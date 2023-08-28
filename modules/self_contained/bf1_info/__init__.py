@@ -1566,8 +1566,8 @@ async def tyc(
         send.append("=" * 20 + '\n')
 
     # 去掉最后一个换行
-    if send[-1] == '\n':
-        send = send[:-1]
+    if send[-1].endswith("\n"):
+        send[-1] = send[-1][:-1]
     return await app.send_message(group, MessageChain(f"{''.join(send)}"), quote=source)
 
 

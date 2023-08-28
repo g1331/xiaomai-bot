@@ -5635,15 +5635,13 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
     else:
         send.append(f"群组{bf_group_name}在岗{in_counter}人:")
         for index in in_group:
-            send.append(f" {index}服:")
+            send.append(f"{index}服:")
             for admin in in_group[index]:
                 send.append(f"  {admin['displayName']}")
-    if not out_group:
-        pass
-    else:
+    if out_group:
         send.append(f"离岗{out_counter}人:")
         for server_name in out_group:
-            send.append(f" {server_name[:15]}:")
+            send.append(f"{server_name[:17]}:")
             for admin in out_group[server_name]:
                 send.append(f"  {admin['displayName']}")
     send = "\n".join(send)

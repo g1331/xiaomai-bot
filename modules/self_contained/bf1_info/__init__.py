@@ -1560,7 +1560,7 @@ async def tyc(
         playing_data: dict = playing_data["result"]
         send.append("正在游玩:\n")
         if not playing_data[f"{player_pid}"]:
-            send.append("玩家未在线/未进入服务器游玩")
+            send.append("玩家未在线/未进入服务器游玩\n")
         else:
             send.append(playing_data[f"{player_pid}"]['name'] + '\n')
         send.append("=" * 20 + '\n')

@@ -686,18 +686,17 @@ async def bfgroup_unbind_qqgroup(
         target_app, target_group = await account_controller.get_app_from_total_groups(qqgroup_id)
         if not (target_app and target_group):
             logger.warning(f"解绑群组时没有找到目标群:{qqgroup_id}")
-            return await app.send_message(
-                group,
-                MessageChain(
-                    f"源群组：{bfgroups_name}\n{result}"
-                    + ("\n权限组解绑成功" if perm_result else "\n权限组解绑失败")
-                ),
-                quote=source,
-            )
         member_list = await target_app.get_member_list(target_group)
         for member in member_list:
             await BF1GROUPPERM.del_permission(bfgroups_name, member.id)
-            logger.debug(f"解绑群组时删除权限组：{bfgroups_name} 成员：{member.id}")
+        return await app.send_message(
+            group,
+            MessageChain(
+                f"源群组：{bfgroups_name}\n{result}"
+                + ("\n权限组解绑成功" if perm_result else "\n权限组解绑失败")
+            ),
+            quote=source,
+        )
     return await app.send_message(group, MessageChain(result), quote=source)
 
 

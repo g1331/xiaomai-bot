@@ -191,6 +191,8 @@ async def bfgroup_list_info(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain("当前没有BF1群组"), quote=source)
     result = [f"当前共{len(bf1_group_info)}个群组:"]
     group_names = [group_info['group_name'] for group_info in bf1_group_info]
+    # 排序
+    group_names.sort()
     group_count = len(group_names)
     line_count = group_count // 4
 

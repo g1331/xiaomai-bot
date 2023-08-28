@@ -376,7 +376,7 @@ class bf1_db:
             await orm.add_batch(table=Bf1ServerPlayerCount, data_list=player_records)
 
         @staticmethod
-        async def get_serverInfo_byServerId(serverId: str) -> Bf1Server:
+        async def get_serverInfo_byServerId(serverId: str) -> Union[dict, None]:
             if server := await orm.fetch_one(
                     select(
                         Bf1Server.serverName,
@@ -385,7 +385,12 @@ class bf1_db:
                         Bf1Server.gameId,
                     ).where(Bf1Server.serverId == serverId)
             ):
-                return {}
+                return {
+                    "serverName": server[0],
+                    "serverId": server[1],
+                    "persistedGameId": server[2],
+                    "gameId": server[3],
+                }
             else:
                 return None
 
@@ -1427,6 +1432,26 @@ class bf1_db:
                 data={"bind_ids": ids},
                 condition=[func.lower(Bf1Group.group_name) == group_name.lower()],
             )
+
+        # 更新指定下标的gameId
+        @staticmethod
+        async def update_bf1_group_id_gameId(group_name: str, index: int, gameId: str) -> bool:
+            """更新指定下标的gameId"""
+            bf1_group = await orm.fetch_one(
+                select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
+                    func.lower(Bf1Group.group_name) == group_name.lower()
+                )
+            )
+            if not bf1_group:
+                return False
+            ids = bf1_group[2]
+            ids[index]["gameId"] = gameId
+            await orm.insert_or_update(
+                table=Bf1Group,
+                data={"bind_ids": ids},
+                condition=[func.lower(Bf1Group.group_name) == group_name.lower()],
+            )
+            return True
 
         @staticmethod
         async def unbind_bf1_group_id(group_name: str, index: int) -> bool:

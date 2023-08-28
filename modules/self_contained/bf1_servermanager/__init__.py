@@ -784,6 +784,24 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         ), quote=source)
     bfgroups_name = bf1_group_info["group_name"]
     server_list = [i["gameId"] if i else None for i in bf1_group_info["bind_ids"]]
+    serverId_list = [i["serverId"] if i else None for i in bf1_group_info["bind_ids"]]
+
+    # 更新gameId
+    gameId_cache_task = [
+        BF1DB.server.get_serverInfo_byServerId(i) if i else asyncio.ensure_future(dummy_coroutine())
+        for i in serverId_list
+    ]
+    gameId_cache_list = await asyncio.gather(*gameId_cache_task)
+    for index, server_info in enumerate(gameId_cache_list):
+        if server_info:
+            gameId_cache = server_info["gameId"]
+            if int(gameId_cache) > int(server_list[index]):
+                server_list[index] = str(gameId_cache)
+                if await BF1DB.bf1group.update_bf1_group_id_gameId(
+                        group_name=bfgroups_name, index=index, gameId=str(gameId_cache)
+                ):
+                    logger.success(f"更新群组{bfgroups_name}[{index}]服GameId为{gameId_cache}")
+
     # 并发查找
     tasks = [(await BF1DA.get_api_instance()).getFullServerDetails(gameid) for gameid in server_list if gameid]
     tasks = asyncio.gather(*tasks)
@@ -829,7 +847,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
 
     server_list_column = [
         ColumnTitle(title=f"所属群组:{bfgroups_name}"),
-        ColumnTitle(title="可使用-f#n获取服务器详细信息"),
+        ColumnTitle(title="可使用-fn获取服务器详细信息"),
     ]
     for index, server_info in enumerate(tasks):
         if not isinstance(server_info, dict):
@@ -5600,7 +5618,8 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
                 admin_dict[admin["personaId"]] = admin
 
     # 获取全部管理正在玩的服务器
-    playing_server = await (await BF1DA.get_api_instance()).getServersByPersonaIds(personaIds=[i["personaId"] for i in admin_list_all])
+    playing_server = await (await BF1DA.get_api_instance()).getServersByPersonaIds(
+        personaIds=[i["personaId"] for i in admin_list_all])
     if not isinstance(playing_server, dict):
         return await app.send_message(
             group,
@@ -5652,6 +5671,7 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
         MessageChain(send),
         quote=source,
     )
+
 
 # 帮助
 @listen(GroupMessage)

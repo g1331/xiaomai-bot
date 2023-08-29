@@ -1497,17 +1497,39 @@ async def tyc(
         gt_checkVban(player_pid),
         record_api(player_pid),
         (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
+        (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
+        (await BF1DA.get_api_instance()).getPlatoons(player_pid),
     ]
     tasks = await asyncio.gather(*tasks)
 
     # 最近游玩
     recent_play_data = tasks[0]
-    if not isinstance(recent_play_data, str):
+    if isinstance(recent_play_data, dict):
         recent_play_data: dict = recent_play_data
         send.append("最近游玩:\n")
         for data in recent_play_data["result"][:3]:
             send.append(f'{data["name"][:25]}\n')
         send.append("=" * 20 + '\n')
+
+    platoon_data = tasks[6]
+    if isinstance(platoon_data, dict):
+        platoon_data: dict = platoon_data
+        send.append("战排信息:\n")
+        if platoon_data["result"]:
+            platoon_count_data = tasks[7]
+            if isinstance(platoon_count_data, dict):
+                platoon_count = len(platoon_count_data["result"])
+                send.append(f"累计加入战排{platoon_count}个\n")
+            tag = platoon_data["result"]["tag"]
+            name = platoon_data["result"]["name"]
+            size = platoon_data["result"]["size"]
+            isFreeJoin = platoon_data["result"]["joinConfig"]["isFreeJoin"]
+            description = platoon_data["result"]["description"]
+            send.append(f"代表战排: [{tag}]{name}\n")
+            send.append(f"人数: {size}\t是否开放加入: {'是' if isFreeJoin else '否'}\n")
+            send.append(f"描述: {description}\n")
+            send.append("=" * 20 + '\n')
+
 
     vip_count = await BF1DB.server.get_playerVip(player_pid)
     admin_count = await BF1DB.server.get_playerAdmin(player_pid)

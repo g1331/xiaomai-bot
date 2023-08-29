@@ -1699,6 +1699,11 @@ class Platoons(bf1_api):
         获取玩家所在战排列表
         :param personaId:
         :return:
+        eg:
+        如果没有：
+            "result": []
+        加入的话：
+            为非空列表
         """
         return await self.api_call(
             {

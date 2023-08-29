@@ -43,14 +43,10 @@ from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGam
     get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
+from utils.bf1.map_team_info import MapData
 from utils.parse_messagechain import get_targets
 from utils.string import generate_random_str
 from utils.timeutils import DateTimeUtils
-from .api_gateway import refresh_api_client, get_player_stat_data
-from .bfgroups_log import rsp_log
-from .main_session_auto_refresh import auto_refresh_account
-from .map_team_info import MapData
-from .utils import getPid_byName, server_playing, app_blocked
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
@@ -934,7 +930,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             )
         )
     server_list_column = [Column(elements=server_list_column[i: i + 6]) for i in range(0, len(server_list_column), 6)]
-    if await app_blocked(app.account) or servers > 5:
+    if servers > 5:
         return await app.send_message(
             group,
             MessageChain(
@@ -1522,7 +1518,7 @@ async def get_server_playerList_pic(
 
     # 获取玩家生涯战绩
     # 队伍1
-    scrape_index_tasks_t1 = [asyncio.ensure_future(get_player_stat_data(player_item['pid'])) for
+    scrape_index_tasks_t1 = [asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
                              player_item in playerlist_data["teams"][0]]
     tasks = asyncio.gather(*scrape_index_tasks_t1)
     try:
@@ -1531,7 +1527,7 @@ async def get_server_playerList_pic(
         pass
 
     # 队伍2
-    scrape_index_tasks_t2 = [asyncio.ensure_future(get_player_stat_data(player_item['pid'])) for
+    scrape_index_tasks_t2 = [asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
                              player_item in playerlist_data["teams"][1]]
     tasks = asyncio.gather(*scrape_index_tasks_t2)
     try:
@@ -1544,11 +1540,11 @@ async def get_server_playerList_pic(
     # MP_xxx
     server_mapName = server_info["serverInfo"]["mapName"]
 
-    team1_name = MapData.Map_Team_dict[server_info["serverInfo"]["mapName"]]["Team1"]
+    team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
     team1_pic = get_team_pic(team1_name)
     team1_pic = PIL_Image.open(team1_pic).convert('RGBA')
     team1_pic = team1_pic.resize((40, 40), PIL_Image.ANTIALIAS)
-    team2_name = MapData.Map_Team_dict[server_info["serverInfo"]["mapName"]]["Team2"]
+    team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
     team2_pic = get_team_pic(team2_name)
     team2_pic = PIL_Image.open(team2_pic).convert('RGBA')
     team2_pic = team2_pic.resize((40, 40), PIL_Image.ANTIALIAS)

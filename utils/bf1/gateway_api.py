@@ -1,12 +1,11 @@
+import asyncio
 import json
 import time
 import uuid
-import aiohttp
-import asyncio
-import httpx
 from typing import Union
 
-import requests
+import aiohttp
+import httpx
 from loguru import logger
 
 
@@ -233,10 +232,10 @@ class bf1_api(object):
                 self.check_login = True
                 return False
         return (
-            not self.check_login
-            or self.access_token is None
-            or (time.time() - self.access_token_time)
-            >= int(self.access_token_expires_time)
+                not self.check_login
+                or self.access_token is None
+                or (time.time() - self.access_token_time)
+                >= int(self.access_token_expires_time)
         )
 
     async def get_session(self) -> str:
@@ -386,7 +385,6 @@ class bf1_api(object):
         }
         header = {
             "Host": "sparta-gw.battlelog.com",
-            "Content-Length": "291",
             "Connection": "close",
             "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
             "X-Guest": "no-session-id",
@@ -399,13 +397,9 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
         }
         try:
-            # 不知道为什么不能运作的废弃的异步方法
-            # async with aiohttp.ClientSession() as session:
-            #     async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10) as response:
-            #         res_json = await response.text()
-            #         return await self.error_handle(res_json)
-            res = await asyncio.to_thread(requests.post, self.api_url, headers=header, data=json.dumps(body))
-            return await self.error_handle(res.json())
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10) as response:
+                    return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -1559,8 +1553,10 @@ class RSP(bf1_api):
 
 
 class Platoons(bf1_api):
+    """
+    战队相关
+    """
 
-    # 战队相关
     async def getPlatoonForRspServer(self, serverId: Union[int, str]) -> dict:
         """
         服务器战队信息
@@ -1604,6 +1600,15 @@ class Platoons(bf1_api):
         获取代表战队图章
         :param personaIds: PID列表
         :return:
+        eg:
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": {
+                "1004198901469": "EA",
+                "1003517866915": ""
+            }
+        }
         """
         return await self.api_call(
             {
@@ -1616,8 +1621,366 @@ class Platoons(bf1_api):
             }
         )
 
-    async def getActivePlatoon(self):
-        ...
+    async def getActivePlatoon(self, personaId: Union[int, str]) -> dict:
+        """
+        获取玩家所在战队
+        :param personaId:
+        :return:
+        eg:
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": {
+                "guid": "66485c9e-01a9-4aeb-a30d-f02488fa357c",
+                "name": "Electronic Arts",
+                "size": 68,
+                "joinConfig": {
+                    "canApplyMembership": false,
+                    "isFreeJoin": false
+                },
+                "description": "Employees of Electronic Arts - Invite Only.",
+                "tag": "EA",
+                "emblem": "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/[SIZE]/EA.[FORMAT]",
+                "verified": true,
+                "creatorId": "173507079",
+                "dateCreated": 1490805628
+            }
+        }
+
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Platoons.getActivePlatoon",
+                "params": {
+                    "personaId": personaId
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+    async def getPlatoon(self, platoon_guid: str) -> dict:
+        """
+        获取战队信息
+        :param platoon_guid:
+        :return:
+        eg:
+        {
+            "jsonrpc": "2.0",
+            "id": "3d5c46cd-63d8-4035-9598-bd7984e963a1",
+            "result": {
+                "guid": "66485c9e-01a9-4aeb-a30d-f02488fa357c",
+                "name": "Electronic Arts",
+                "size": 68,
+                "joinConfig": {
+                    "canApplyMembership": false,
+                    "isFreeJoin": false
+                },
+                "description": "Employees of Electronic Arts - Invite Only.",
+                "tag": "EA",
+                "emblem": "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/[SIZE]/EA.[FORMAT]",
+                "verified": true,
+                "creatorId": "173507079",
+                "dateCreated": 1490805628
+            }
+        }
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Platoons.getPlatoon",
+                "params": {"guid": platoon_guid},
+                "id": await get_a_uuid()
+            }
+        )
+
+    async def getPlatoons(self, personaId: Union[int, str]) -> dict:
+        """
+        获取玩家所在战排列表
+        :param personaId:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Platoons.getPlatoons",
+                "params": {"personaId": personaId},
+                "id": await get_a_uuid()
+            }
+        )
+
+    async def getServersWithPlayers(self, platoon_guid: str) -> dict:
+        """
+        获取战队正在游玩的服务器
+        :param platoon_guid:
+        :return:
+        eg:
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": [
+                {
+                    "server": {
+                        "gameId": "8623425550964",
+                        "guid": "8389408e-214c-4f4c-8e5f-d6af7a7f8782",
+                        "protocolVersion": "3779779",
+                        "name": "[op]Operation/no limit/noob welcome/qq:192704059",
+                        "description": "歡迎所有原批，本服為無限制服務器",
+                        "region": "Asia",
+                        "country": "JP",
+                        "ranked": false,
+                        "slots": {
+                            "Soldier": {
+                                "current": 64,
+                                "max": 64
+                            },
+                            "Spectator": {
+                                "current": 0,
+                                "max": 4
+                            },
+                            "Queue": {
+                                "current": 2,
+                                "max": 10
+                            }
+                        },
+                        "mapName": "MP_Forest",
+                        "mapNamePretty": "阿爾貢森林",
+                        "mapMode": "BreakthroughLarge",
+                        "mapModePretty": "行動模式",
+                        "mapImageUrl": "[BB_PREFIX]/gamedata/Tunguska/33/69/MP_Forest_LandscapeLarge-dfbbe910.jpg",
+                        "mapExpansion": {
+                            "name": "DEFAULT",
+                            "mask": 1,
+                            "license": "",
+                            "prettyName": ""
+                        },
+                        "expansions": [
+                            {
+                                "name": "DEFAULT",
+                                "mask": 1,
+                                "license": "",
+                                "prettyName": ""
+                            },
+                            {
+                                "name": "XPACK0",
+                                "mask": 2,
+                                "license": "xp0",
+                                "prettyName": "龐然闇影"
+                            },
+                            {
+                                "name": "XPACK1",
+                                "mask": 4,
+                                "license": "xp1",
+                                "prettyName": "誓死堅守"
+                            },
+                            {
+                                "name": "XPACK2",
+                                "mask": 8,
+                                "license": "xp2",
+                                "prettyName": "以沙皇之名"
+                            },
+                            {
+                                "name": "XPACK3",
+                                "mask": 16,
+                                "license": "xp3",
+                                "prettyName": "力挽狂瀾"
+                            },
+                            {
+                                "name": "XPACK4",
+                                "mask": 32,
+                                "license": "xp4",
+                                "prettyName": "啟示錄"
+                            }
+                        ],
+                        "game": "tunguska",
+                        "platform": "pc",
+                        "passwordProtected": false,
+                        "ip": "",
+                        "pingSiteAlias": "nrt",
+                        "isFavorite": false,
+                        "custom": false,
+                        "preset": "",
+                        "tickRate": 60,
+                        "serverType": "RANKED",
+                        "experience": "",
+                        "officialExperienceId": "",
+                        "operationIndex": 0,
+                        "mixId": null,
+                        "serverMode": null,
+                        "ownerId": null,
+                        "playgroundId": null,
+                        "overallGameMode": null,
+                        "mapRotation": [],
+                        "secret": "",
+                        "settings": {}
+                    },
+                    "platoon": {
+                        "guid": "66485c9e-01a9-4aeb-a30d-f02488fa357c",
+                        "name": "Electronic Arts",
+                        "size": 68,
+                        "tag": "EA",
+                        "emblem": "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/[SIZE]/EA.[FORMAT]",
+                        "verified": true,
+                        "displayMembers": [
+                            {
+                                "personaId": "1002944411826",
+                                "platformId": "1005642811826",
+                                "role": "role-2",
+                                "displayName": "Leader_Qne",
+                                "avatar": "",
+                                "accountId": "0"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "server": {
+                        "gameId": "8623425650203",
+                        "guid": "ae639590-440d-481c-9fed-985b4b93ea2e",
+                        "protocolVersion": "3779779",
+                        "name": "SHUAQIANG",
+                        "description": "你好",
+                        "region": "Asia",
+                        "country": "JP",
+                        "ranked": false,
+                        "slots": {
+                            "Soldier": {
+                                "current": 5,
+                                "max": 64
+                            },
+                            "Spectator": {
+                                "current": 0,
+                                "max": 4
+                            },
+                            "Queue": {
+                                "current": 0,
+                                "max": 10
+                            }
+                        },
+                        "mapName": "MP_Islands",
+                        "mapNamePretty": "阿爾比恩",
+                        "mapMode": "Conquest",
+                        "mapModePretty": "征服",
+                        "mapImageUrl": "[BB_PREFIX]/gamedata/Tunguska/55/40/MP_Islands_LandscapeLarge-c9d8272b.jpg",
+                        "mapExpansion": {
+                            "name": "XPACK2",
+                            "mask": 8,
+                            "license": "xp2",
+                            "prettyName": "以沙皇之名"
+                        },
+                        "expansions": [
+                            {
+                                "name": "XPACK2",
+                                "mask": 8,
+                                "license": "xp2",
+                                "prettyName": "以沙皇之名"
+                            }
+                        ],
+                        "game": "tunguska",
+                        "platform": "pc",
+                        "passwordProtected": false,
+                        "ip": "",
+                        "pingSiteAlias": "nrt",
+                        "isFavorite": false,
+                        "custom": true,
+                        "preset": "",
+                        "tickRate": 60,
+                        "serverType": "RANKED",
+                        "experience": "",
+                        "officialExperienceId": "",
+                        "operationIndex": 8,
+                        "mixId": null,
+                        "serverMode": null,
+                        "ownerId": null,
+                        "playgroundId": null,
+                        "overallGameMode": null,
+                        "mapRotation": [],
+                        "secret": "",
+                        "settings": {}
+                    },
+                    "platoon": {
+                        "guid": "66485c9e-01a9-4aeb-a30d-f02488fa357c",
+                        "name": "Electronic Arts",
+                        "size": 68,
+                        "tag": "EA",
+                        "emblem": "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/[SIZE]/EA.[FORMAT]",
+                        "verified": true,
+                        "displayMembers": [
+                            {
+                                "personaId": "1004807814705",
+                                "platformId": "1009542214705",
+                                "role": "role-2",
+                                "displayName": "Azuki_Azusa",
+                                "avatar": "",
+                                "accountId": "0"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Platoons.getServersWithPlayers",
+                "params": {"game": "tunguska", "guid": platoon_guid},
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class Emblems(bf1_api):
+    """
+    图章
+    """
+
+    async def getEquippedEmblem(self, personaId: Union[int, str]) -> dict:
+        """
+        获取玩家当前装备的图章
+        :param personaId:
+        :return:
+        eg:
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": "https://eaassets-a.akamaihd.net/battlelog/bf-emblems/prod_default/exclusive/[SIZE]/EA.[FORMAT]"
+        }
+        推荐 SIZE: 128/512 FORMAT: PNG
+        如果没有装备图章则result为null
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Emblems.getEquippedEmblem",
+                "params": {
+                    "personaId": personaId,
+                    "platform": "pc"
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class Loadout(bf1_api):
+    """
+    装备
+    """
+
+    async def getEquippedDogtagsByPersonaId(self, personaId: Union[int, str]) -> dict:
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Loadout.getEquippedDogtagsByPersonaId",
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class InstanceExistsError(Exception):
+    """Raised when an instance already exists for the given pid."""
+    pass
 
 
 class api_instance(
@@ -1630,7 +1993,7 @@ class api_instance(
     def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
         # 如果实例已经存在，则抛出异常，否则创建一个新实例
         if pid in api_instance.instances:
-            raise Exception(f"api_instance already exists for pid: {pid}")
+            raise InstanceExistsError(f"api_instance already exists for pid: {pid}")
         super().__init__(pid=pid, remid=remid, sid=sid, session=session)
 
         # 将实例添加到字典中

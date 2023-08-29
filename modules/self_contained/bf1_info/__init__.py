@@ -1514,12 +1514,12 @@ async def tyc(
     platoon_data = tasks[6]
     if isinstance(platoon_data, dict):
         platoon_data: dict = platoon_data
-        send.append("战排信息:\n")
         if platoon_data["result"]:
+            send.append("战排信息:\n")
             platoon_count_data = tasks[7]
             if isinstance(platoon_count_data, dict):
                 platoon_count = len(platoon_count_data["result"])
-                send.append(f"累计加入战排{platoon_count}个\n")
+                send.append(f"累计加入{platoon_count}个战排\n")
             tag = platoon_data["result"]["tag"]
             name = platoon_data["result"]["name"]
             size = platoon_data["result"]["size"]

@@ -1530,7 +1530,6 @@ async def tyc(
             send.append(f"描述: {description}\n")
             send.append("=" * 20 + '\n')
 
-
     vip_count = await BF1DB.server.get_playerVip(player_pid)
     admin_count = await BF1DB.server.get_playerAdmin(player_pid)
     owner_count = await BF1DB.server.get_playerOwner(player_pid)

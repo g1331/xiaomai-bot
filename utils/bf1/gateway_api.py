@@ -1188,7 +1188,6 @@ class RSP(bf1_api):
                     "personaId": personaId,
                     "gameId": gameId,
                     "reason": reason
-
                 },
                 "id": await get_a_uuid()
             }

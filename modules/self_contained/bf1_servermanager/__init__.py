@@ -3088,7 +3088,7 @@ async def add_banall(
         else:
             server_info_task.append((i, asyncio.ensure_future(dummy_coroutine())))
     server_info_task_results = await asyncio.gather(*[task for _, task in server_info_task])
-    logger.debug(f"查询任务信息耗时: {time.time() - start_time}")
+    logger.debug(f"查询任务信息耗时: {round(time.time() - start_time, 2)}s")
     # 循环依次把结果写入到对应的result的位置
     for index, result in enumerate(server_info_task_results):
         if isinstance(server_info_task_results[index], dict):
@@ -3116,6 +3116,7 @@ async def add_banall(
             task_list[index]["result"] = result
         elif ban_task_results[index] is not None:
             task_list[index] = result
+            logger.debug(f"{index} {result}")
 
     # 封禁玩家
     end_time = time.time()
@@ -3138,9 +3139,10 @@ async def add_banall(
             )
         elif isinstance(result, str):
             send.append(f"{i + 1}服: {result}")
-    send.append(f"封禁原因: {reason}")
-    send = "\n".join(send)
-    if not send:
+    if send:
+        send.append(f"封禁原因: {reason}")
+        send = "\n".join(send)
+    else:
         return await app.send_message(group, MessageChain(
             "封禁出现未知错误!(查询服务器失败/服管号失效)"
         ), quote=source)
@@ -3236,7 +3238,7 @@ async def del_banall(
         else:
             server_info_task.append((i, asyncio.ensure_future(dummy_coroutine())))
     server_info_task_results = await asyncio.gather(*[task for _, task in server_info_task])
-    logger.debug(f"查询任务信息耗时: {time.time() - start_time}")
+    logger.debug(f"查询任务信息耗时: {round(time.time() - start_time, 2)}s")
     # 循环依次把结果写入到对应的result的位置
     for index, result in enumerate(server_info_task_results):
         if isinstance(server_info_task_results[index], dict):

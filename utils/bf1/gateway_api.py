@@ -65,7 +65,7 @@ class bf1_api(object):
             -32858: "服务器未开启",
         }
         self.error_msg_dict = {
-            "Internal Error: org.apache.thrift.TApplicationException": "一般错误/无权限/无法处置管理员",
+            "Internal Error: org.apache.thrift.TApplicationException": "账号无权限",  # 一般错误
             "Internal Error: java.lang.NumberFormatException": "EA后端未知错误",
             "Internal Error: java.lang.NullPointerException": "EA后端未知错误",
             "Invalid Params: no valid session": "Session无效",

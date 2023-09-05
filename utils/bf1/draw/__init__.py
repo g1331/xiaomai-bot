@@ -1,5 +1,6 @@
 import base64
 import datetime
+import random
 from io import BytesIO
 from pathlib import Path
 from typing import Union
@@ -80,7 +81,10 @@ class PlayerWeaponPic:
         """
         if not self.weapon_data:
             return None
-        bg_path = Path(__file__).parent / "template" / "bg.jpg"
+        # 从bg_path文件夹内中随机选择一张图片
+        bg_path = Path(__file__).parent / "template" / "background"
+        bg_list = [x for x in bg_path.iterdir() if x.is_file()]
+        bg_path = random.choice(bg_list)
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "weapon_template.html"
         weapon_data = [self.weapon_data[i * col:(i + 1) * col] for i in range(row)]
@@ -137,7 +141,10 @@ class PlayerVehiclePic:
         """绘制载具数据图片"""
         if not self.vehicle_data:
             return None
-        bg_path = Path(__file__).parent / "template" / "bg.jpg"
+        # 从bg_path文件夹内中随机选择一张图片
+        bg_path = Path(__file__).parent / "template" / "background"
+        bg_list = [x for x in bg_path.iterdir() if x.is_file()]
+        bg_path = random.choice(bg_list)
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "vehicle_template.html"
         vehicle_data = [self.vehicle_data[i * col:(i + 1) * col] for i in range(row)]

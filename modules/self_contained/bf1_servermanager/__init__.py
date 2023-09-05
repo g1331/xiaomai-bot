@@ -2344,7 +2344,7 @@ async def bfgroup_bind_managerAccount_all(
         if server:
             _ = await BF1GROUP.bind_ids(
                 group_name=group_name,
-                index=i,
+                index=i + 1,
                 guid=server["guid"],
                 gameId=server["gameId"],
                 serverId=server["serverId"],

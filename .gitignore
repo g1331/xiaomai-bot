@@ -30,6 +30,7 @@ data.db
 alembic.ini
 
 # 数据文件
+/data/
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
 /modules/self_contained/emoji_mix/assets/update.json
 /modules/self_contained/chat_gpt/gpt_mode.json

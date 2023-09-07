@@ -329,7 +329,7 @@ async def bf1group_unbind_server(
             f"bf群组[{group_name}]不存在"
         ), quote=source)
 
-    if not await BF1GROUP.get_bindInfo_byIndex(group_name, server_rank - 1):
+    if not await BF1GROUP.get_bindInfo_byIndex(group_name, server_rank):
         return await app.send_message(group, MessageChain(
             f"bf群组[{group_name}]未绑定服务器{server_rank}"
         ), quote=source)

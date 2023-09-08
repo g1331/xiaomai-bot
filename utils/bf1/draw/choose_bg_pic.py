@@ -2,6 +2,8 @@ import json
 import os
 import random
 import time
+from ctypes import Union
+from pathlib import Path
 
 
 class bg_pic(object):
@@ -24,10 +26,7 @@ class bg_pic(object):
             bg_path = f'./data/battlefield/players/{player_pid}/bg'
             if not os.path.exists(bg_path):
                 os.mkdir(f'./data/battlefield/players/{player_pid}/bg')
-            if date == 0:
-                date = "永久"
-            else:
-                date = time.strftime('%Y年%m月%d日', time.localtime(date))
+            date = "永久" if date == 0 else time.strftime('%Y年%m月%d日', time.localtime(date))
             return f"成功为qq:{qq}创建pid:{player_pid}的{bg_num}张背景\n到期时间:{date}"
         except Exception as e:
             return f"出错了!{e}"
@@ -40,14 +39,13 @@ class bg_pic(object):
             if not os.path.exists(player_path):
                 return "玩家档案不存在,请先查询一次战绩!"
             bg_file_path = f"./data/battlefield/players/{player_pid}/bg.json"
-            if os.path.exists(bg_file_path):
-                try:
-                    os.remove(bg_file_path)
-                    return f"成功注销{player_pid}的背景！"
-                except Exception as e:
-                    return f"注销{player_pid}背景失败{e}"
-            else:
+            if not os.path.exists(bg_file_path):
                 return f"{player_pid}背景未注册!"
+            try:
+                os.remove(bg_file_path)
+                return f"成功注销{player_pid}的背景！"
+            except Exception as e:
+                return f"注销{player_pid}背景失败{e}"
         except Exception as e:
             return f"出错了!{e}"
 
@@ -72,32 +70,23 @@ class bg_pic(object):
         :return: 没过期返回true
         """
         json_path = f"./data/battlefield/players/{player_pid}/bg.json"
-        if os.path.exists(json_path):
-            with open(f"./data/battlefield/players/{player_pid}/bg.json", 'r', encoding="utf-8") as file:
-                data = json.load(file)
-                if data["date"] != 0:
-                    if data["date"] < time.time():
-                        return False
-                return True
-        else:
+        if not os.path.exists(json_path):
             return False
+        with open(f"./data/battlefield/players/{player_pid}/bg.json", 'r', encoding="utf-8") as file:
+            data = json.load(file)
+            return data["date"] == 0 or data["date"] >= time.time()
 
     # 选择背景
     @staticmethod
-    def choose_bg(player_pid: int, bg_type: str) -> str:
+    def choose_bg(player_pid: int) -> Union[Path, None]:
         if bg_pic.check_date(player_pid):
             bg_path = f'./data/battlefield/players/{player_pid}/bg'
             if os.path.exists(bg_path):
                 bg_list = os.listdir(bg_path)
                 if len(bg_list) != 0:
                     bg = random.choice(bg_list)
-                    return f"./data/battlefield/players/{player_pid}/bg/{bg}"
-        # path = './data/battlefield/pic/bg/'
-        # file_name_list = os.listdir(path)
-        # bg = random.choice(bg_list)
-        if bg_type == "stat":
-            return f"./data/battlefield/pic/bg2/" + str(random.randint(1, 10)) + ".png"
-        return "./data/battlefield/pic/bg/" + str(random.randint(1, 10)) + ".png"
+                    return Path(f"./data/battlefield/players/{player_pid}/bg/{bg}")
+        return None
 
     # 检查序号
     @staticmethod
@@ -112,6 +101,4 @@ class bg_pic(object):
     def check_qq_pid(player_pid, qq: int) -> bool:
         with open(f"./data/battlefield/players/{player_pid}/bg.json", 'r', encoding="utf-8") as file:
             data = json.load(file)
-            if data['qq'] != qq:
-                return False
-            return True
+            return data['qq'] == qq

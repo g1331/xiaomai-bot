@@ -9,6 +9,7 @@ from zhconv import zhconv
 from PIL import Image, ImageDraw, ImageFont
 
 from utils.bf1.bf_utils import download_skin, gt_get_player_id
+from utils.bf1.draw.choose_bg_pic import bg_pic
 from utils.text2img import template2img
 
 
@@ -73,22 +74,26 @@ class PlayerWeaponPic:
             data.append(item)
         self.weapon_data: list = data
 
-    async def draw(self, play_name: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
+    async def draw(self, player_name: str, player_pid: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
         """绘制武器数据图片
-        :param play_name: 玩家名
+        :param player_pid: 玩家pid
+        :param player_name: 玩家名
         :param row: 行数
         :param col: 列数
         """
         if not self.weapon_data:
             return None
         # 从bg_path文件夹内中随机选择一张图片
-        bg_path = Path(__file__).parent / "template" / "background"
-        bg_list = [x for x in bg_path.iterdir() if x.is_file()]
-        bg_path = random.choice(bg_list)
+        bg_path: Path
+        bg_path = bg_pic.choose_bg(player_pid)
+        if not bg_path:
+            bg_path = Path(__file__).parent / "template" / "background"
+            bg_list = [x for x in bg_path.iterdir() if x.is_file()]
+            bg_path = random.choice(bg_list)
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "weapon_template.html"
         weapon_data = [self.weapon_data[i * col:(i + 1) * col] for i in range(row)]
-        gt_id = await gt_get_player_id(play_name)
+        gt_id = await gt_get_player_id(player_name)
         avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
         pid = gt_id.get("id") if isinstance(gt_id, dict) else None
         return await template2img(
@@ -96,7 +101,7 @@ class PlayerWeaponPic:
             {
                 "background": background,
                 "weapons": weapon_data,
-                "play_name": play_name,
+                "play_name": player_name,
                 "pid": pid,
                 "avatar": avatar,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -137,14 +142,17 @@ class PlayerVehiclePic:
             data.append(item)
         self.vehicle_data: list = data
 
-    async def draw(self, play_name: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
+    async def draw(self, player_name: str, player_pid: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
         """绘制载具数据图片"""
         if not self.vehicle_data:
             return None
         # 从bg_path文件夹内中随机选择一张图片
-        bg_path = Path(__file__).parent / "template" / "background"
-        bg_list = [x for x in bg_path.iterdir() if x.is_file()]
-        bg_path = random.choice(bg_list)
+        bg_path: Path
+        bg_path = bg_pic.choose_bg(player_pid)
+        if not bg_path:
+            bg_path = Path(__file__).parent / "template" / "background"
+            bg_list = [x for x in bg_path.iterdir() if x.is_file()]
+            bg_path = random.choice(bg_list)
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "vehicle_template.html"
         vehicle_data = [self.vehicle_data[i * col:(i + 1) * col] for i in range(row)]

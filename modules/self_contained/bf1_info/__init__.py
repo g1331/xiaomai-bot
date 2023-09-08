@@ -15,7 +15,7 @@ from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message.element import Source, Image, At, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
-    RegexResult, ArgumentMatch, ArgResult
+    RegexResult, ArgumentMatch, ArgResult, WildcardMatch
 from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.scheduler.saya.schema import SchedulerSchema
@@ -671,7 +671,7 @@ async def player_weapon_pic(
     if not text.matched:
         player_weapon_img = (await PlayerWeaponPic(
             weapon_data=player_weapon
-        ).draw(display_name, row.result, col.result))
+        ).draw(display_name, player_pid, row.result, col.result))
         if player_weapon_img:
             return await app.send_message(
                 group,
@@ -822,7 +822,7 @@ async def player_vehicle_pic(
     if not text.matched:
         player_vehicle_img = (await PlayerVehiclePic(
             vehicle_data=player_vehicle
-        ).draw(display_name, row.result, col.result))
+        ).draw(display_name, player_pid, row.result, col.result))
         if player_vehicle_img:
             return await app.send_message(
                 group,
@@ -1067,7 +1067,7 @@ async def player_match_info(
     Twilight(
         [
             UnionMatch("-搜服务器", "-ss").space(SpacePolicy.PRESERVE),
-            ParamMatch(optional=False) @ "server_name",
+            WildcardMatch(optional=True) @ "server_name",
         ]
     )
 )
@@ -1084,7 +1084,10 @@ async def search_server(
         source: Source,
         server_name: RegexResult
 ):
-    server_name = server_name.result.display
+    if (not server_name.matched) or (server_name.result.display == ""):
+        return await app.send_message(group, MessageChain("请输入服务器名称!"), quote=source)
+    else:
+        server_name = server_name.result.display
 
     # 调用接口获取数据
     filter_dict = {"name": server_name}

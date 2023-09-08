@@ -2,8 +2,8 @@ import json
 import os
 import random
 import time
-from ctypes import Union
 from pathlib import Path
+from typing import Union
 
 
 class bg_pic(object):

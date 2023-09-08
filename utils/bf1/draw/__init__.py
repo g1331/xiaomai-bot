@@ -101,7 +101,7 @@ class PlayerWeaponPic:
             {
                 "background": background,
                 "weapons": weapon_data,
-                "play_name": player_name,
+                "player_name": player_name,
                 "pid": pid,
                 "avatar": avatar,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -156,7 +156,7 @@ class PlayerVehiclePic:
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "vehicle_template.html"
         vehicle_data = [self.vehicle_data[i * col:(i + 1) * col] for i in range(row)]
-        gt_id = await gt_get_player_id(play_name)
+        gt_id = await gt_get_player_id(player_name)
         avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
         pid = gt_id.get("id") if isinstance(gt_id, dict) else None
         return await template2img(
@@ -164,7 +164,7 @@ class PlayerVehiclePic:
             {
                 "background": background,
                 "vehicles": vehicle_data,
-                "play_name": play_name,
+                "player_name": player_name,
                 "pid": pid,
                 "avatar": avatar,
                 "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

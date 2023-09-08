@@ -906,7 +906,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         server_list_column.append(
             ColumnUserInfo(
                 name=f"{index + 1}:{server_info['name'][:15]}",
-                description=f"{server_info['name']}",
+                description=f"{server_info['description'][:50]}",
                 avatar=server_info["mapImageUrl"].replace("[BB_PREFIX]",
                                                           "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
             )

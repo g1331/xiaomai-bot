@@ -4189,7 +4189,7 @@ async def change_map(
             .replace("噗噗噗山口", "武普库夫山口").replace("绞肉机", "凡爾登高地") \
             .replace("狙利西亞", "加利西亞").replace("沼气池", "法烏克斯要塞") \
             .replace("烧烤摊", "聖康坦的傷痕")
-        map_index = zhconv.convert(map_index, 'zh-hk').replace("徵", "征").replace("託", "托")
+        map_index = zhconv.convert(map_index, 'zh-hk').replace("徵", "征").replace("託", "托").replace("暗", "闇")
         # 1.地图池
         result = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
         if not isinstance(result, dict):

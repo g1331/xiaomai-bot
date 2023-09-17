@@ -120,10 +120,6 @@ async def auto_upgrade_handle():
         if not config.auto_upgrade:
             return
         committer_name = f'{update[0].get("commit", {}).get("committer", {}).get("name")}'
-        if update[0]:
-            committer_avatar_url = f'{update[0].get("committer", {}).get("avatar_url")}'
-        else:
-            committer_avatar_url = ""
         utc_time_str = f'{update[0].get("commit", {}).get("committer", {}).get("date", "")}'
         committer_time = (
                 datetime.fromisoformat(utc_time_str.replace("Z", "+00:00")) + timedelta(hours=8)).strftime(
@@ -136,14 +132,16 @@ async def auto_upgrade_handle():
                 target_group,
                 MessageChain(
                     f"【自动更新】发现新的提交!\n",
+                    Image(
+                        f"https://opengraph.githubassets.com/"
+                        f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{url}"
+                    ),
                     f"提交时间：{committer_time}\n",
                     f"提交信息：{message}\n",
-                    Image(url=committer_avatar_url) if committer_avatar_url else "",
-                    "\n" if committer_avatar_url else "",
                     f"提交者：{committer_name}\n",
                     f"sha：{sha}\n",
                     f"链接：{url}\n"
-                    f"请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
+                    f"--请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
                 )
             )
             noticed_list.append(sha)

@@ -127,6 +127,7 @@ async def auto_upgrade_handle():
         sha = update[0].get("sha", "")[:7]
         message = update[0].get("commit", {}).get("message", "").replace("<", r"\<").splitlines()[0]
         url = f'{update[0].get("html_url")}'
+        clean_url = url.replace("https://github.com", "")
         if target_app and target_group and sha not in noticed_list:
             await target_app.send_message(
                 target_group,
@@ -134,7 +135,7 @@ async def auto_upgrade_handle():
                     f"【自动更新】发现新的提交!\n",
                     Image(
                         f"https://opengraph.githubassets.com/"
-                        f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{url}"
+                        f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{clean_url}"
                     ),
                     f"提交时间：{committer_time}\n",
                     f"提交信息：{message}\n",

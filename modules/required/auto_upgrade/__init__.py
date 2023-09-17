@@ -134,8 +134,8 @@ async def auto_upgrade_handle():
                 MessageChain(
                     f"【自动更新】发现新的提交!\n",
                     Image(
-                        f"https://opengraph.githubassets.com/"
-                        f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"
+                        url=f"https://opengraph.githubassets.com/"
+                            f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"
                     ),
                     f"提交时间：{committer_time}\n",
                     f"提交信息：{message}\n",

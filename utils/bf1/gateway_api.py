@@ -314,12 +314,13 @@ class bf1_api(object):
                 response2 = await client.get(url2, headers=header2)
             authcode = response2.headers['location']
             authcode = authcode[authcode.rfind('=') + 1:]
-            logger.success(f"获取authcode成功!authcode:{authcode}")
+            self.authcode = authcode
+            logger.success(f"获取authcode成功!authcode:{self.authcode}")
         except Exception as e:
             logger.error(f"获取authcode失败!{e}")
             return None
         # 使用authcode登录获取session
-        login_info = await self.Authentication_getEnvIdViaAuthCode(authcode)
+        login_info = await self.Authentication_getEnvIdViaAuthCode(self.authcode)
         # 如果返回的是str说明出错了
         if isinstance(login_info, str):
             logger.error(login_info)
@@ -333,6 +334,44 @@ class bf1_api(object):
         from utils.bf1.database import BF1DB
         await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
+
+    @staticmethod
+    async def ap_login(email, password) -> dict:
+        """
+        使用账号密码登录获取remid和sid
+        :param email: ea账号
+        :param password: ea账号密码
+        :return:
+        eg: {
+                "remid": "xxx",
+                "sid": "xxx",
+                "sessionId": "xxx"
+            }
+        """
+        url = 'https://login.2788.pro/login'
+        headers = {
+            'authority': 'login.2788.pro',
+            'accept': '*/*',
+            'accept-language': 'zh-CN,zh;q=0.9',
+            'content-type': 'application/x-www-form-urlencoded',
+            'origin': 'https://login.2788.pro',
+            'referer': 'https://login.2788.pro/',
+            'sec-ch-ua': '"Chromium";v="118", "Microsoft Edge";v="118", "Not=A?Brand";v="99"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.0.0',
+        }
+        data = {
+            'email': email,
+            'password': password,
+            'bypass2fa': 'true',
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, data=data) as response:
+                return await response.json()
 
     async def getBlazeAuthcode(self, remid: str = None, sid: str = None) -> str:
         if not remid:
@@ -355,12 +394,11 @@ class bf1_api(object):
                 url=url,
                 headers=header,
                 timeout=60,
-                ssl=False
+                allow_redirects=False
             )
         try:
-            res = str(response.url)
-            self.authcode = res.replace('http://127.0.0.1/success?code=', "")
-            return self.authcode
+            authcode = response.headers['location']
+            return authcode[authcode.rfind('=') + 1:]
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
@@ -1515,10 +1553,88 @@ class RSP(bf1_api):
                     "name": "Frontline Test Server",  # 服务器名 需低于64字节
                     "description": "",  # 简介 需低于256字符且低于512字节
                     "message": "",
-                    "password": "1234",  # 密码
+                    "password": "",  # 密码
                     "bannerUrl": "",
                     "mapRotationId": "100",
-                    "customGameSettings": "{\"version\":10,\"kits\":{\"8\":\"off\",\"4\":\"on\",\"9\":\"off\",\"5\":\"off\",\"6\":\"off\",\"HERO\":\"on\",\"1\":\"on\",\"2\":\"on\",\"7\":\"off\",\"3\":\"on\"},\"vehicles\":{\"L\":\"on\",\"A\":\"on\"},\"weaponClasses\":{\"E\":\"on\",\"SIR\":\"off\",\"SAR\":\"on\",\"KG\":\"on\",\"M\":\"on\",\"LMG\":\"on\",\"SMG\":\"on\",\"H\":\"on\",\"S\":\"on\",\"SR\":\"on\"},\"serverType\":{\"SERVER_TYPE_RANKED\":\"on\"},\"misc\":{\"RWM\":\"off\",\"UM\":\"off\",\"LL\":\"off\",\"AAS\":\"off\",\"LNL\":\"off\",\"3S\":\"off\",\"KC\":\"off\",\"MV\":\"off\",\"BH\":\"on\",\"F\":\"off\",\"MM\":\"on\",\"DTB\":\"on\",\"FF\":\"off\",\"RH\":\"on\",\"3VC\":\"on\",\"SLSO\":\"off\",\"DSD\":\"on\",\"AAR\":\"off\",\"NT\":\"on\",\"BPL\":\"off\",\"MS\":\"on\"},\"scales\":{\"RT3\":\"off\",\"BD3\":\"off\",\"VR3\":\"off\",\"BD4\":\"off\",\"BD2\":\"on\",\"TC1\":\"off\",\"SR1\":\"off\",\"SR2\":\"on\",\"VR2\":\"off\",\"RT1\":\"on\",\"BD1\":\"off\",\"RT5\":\"off\",\"RT2\":\"off\",\"TC2\":\"on\",\"TC3\":\"off\",\"SR3\":\"off\",\"RT4\":\"off\",\"VR1\":\"on\"}}"
+                    "customGameSettings": json.dumps(
+                        {
+                            'version': 10,
+                            'kits': {
+                                '8': 'off',
+                                '4': 'on',
+                                '9': 'off',
+                                '5': 'off',
+                                '6': 'off',
+                                'HERO': 'on',
+                                '1': 'on',
+                                '2': 'on',
+                                '7': 'off',
+                                '3': 'on'
+                            },
+                            'vehicles': {
+                                'L': 'on',
+                                'A': 'on'
+                            },
+                            'weaponClasses': {
+                                'E': 'on',
+                                'SIR': 'off',
+                                'SAR': 'on',
+                                'KG': 'on',
+                                'M': 'on',
+                                'LMG': 'on',
+                                'SMG': 'on',
+                                'H': 'on',
+                                'S': 'on',
+                                'SR': 'on'
+                            },
+                            'serverType': {
+                                'SERVER_TYPE_RANKED': 'on'
+                            },
+                            'misc': {
+                                'RWM': 'off',
+                                'UM': 'off',
+                                'LL': 'off',
+                                'AAS': 'off',
+                                'LNL': 'off',
+                                '3S': 'off',
+                                'KC': 'off',
+                                'MV': 'off',
+                                'BH': 'on',
+                                'F': 'off',
+                                'MM': 'on',
+                                'DTB': 'on',
+                                'FF': 'off',
+                                'RH': 'on',
+                                '3VC': 'on',
+                                'SLSO': 'off',
+                                'DSD': 'on',
+                                'AAR': 'off',
+                                'NT': 'on',
+                                'BPL': 'off',
+                                'MS': 'on'
+                            },
+                            'scales': {
+                                'RT3': 'off',
+                                'BD3': 'off',
+                                'VR3': 'off',
+                                'BD4': 'off',
+                                'BD2': 'on',
+                                'TC1': 'off',
+                                'SR1': 'off',
+                                'SR2': 'on',
+                                'VR2': 'off',
+                                'RT1': 'on',
+                                'BD1': 'off',
+                                'RT5': 'off',
+                                'RT2': 'off',
+                                'TC2': 'on',
+                                'TC3': 'off',
+                                'SR3': 'off',
+                                'RT4': 'off',
+                                'VR1': 'on'
+                            }
+                        }
+                    )
                     # 自定义设置, GameData那有
                 }
             }

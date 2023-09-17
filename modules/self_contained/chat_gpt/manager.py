@@ -217,7 +217,7 @@ class ConversationManager(object):
                 result = await asyncio.to_thread(self.data[group][member]["gpt"].ask, content)
                 api_counter()
                 token_cost = self.data[group][member]["gpt"].get_token_count()
-                result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation) - 1) / 2)})'
+                result += f'\n\n(消耗token:{token_cost}/{self.data[group][member]["gpt"].max_tokens},对话轮次:{int((len(self.data[group][member]["gpt"].conversation["default"]) - 1) / 2)})'
             else:
                 async for response in self.data[group][member]["gpt"].ask(prompt=content):
                     result = response["message"]

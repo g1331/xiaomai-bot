@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.element import Image
@@ -69,7 +67,7 @@ async def chat_gpt(
 ):
     if mode.matched:
         if not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin):
-            return await app.send_group_message(group, MessageChain(f"权限不足!"), quote=source)
+            return await app.send_group_message(group, MessageChain("权限不足!"), quote=source)
         target_mode = mode.result
         await manager.change_mode(target_mode)
         return await app.send_group_message(group, MessageChain(f"已清空所有对话并切换模式为:{target_mode}模式"), quote=source)
@@ -84,13 +82,15 @@ async def chat_gpt(
                 use_proxy=True))),
             quote=source
         )
-    if (get_gpt_mode() == "api") and (not gpt_api_available) and (not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin)):
-        return await app.send_group_message(group, MessageChain(f"小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
+    if (get_gpt_mode() == "api") and (not gpt_api_available) and (not await Permission.require_user_perm(
+            group.id, member.id, Permission.BotAdmin
+    )):
+        return await app.send_group_message(group, MessageChain("小埋忙不过来啦,请晚点再试试吧qwq~"), quote=source)
     if get_gpt_mode() == "gpt" and preset.matched:
-        return await app.send_group_message(group, MessageChain(f"gpt模式下请直接对话进行预设~"), quote=source)
+        return await app.send_group_message(group, MessageChain("gpt模式下请直接对话进行预设~"), quote=source)
     if new_thread.matched:
         _ = await manager.new(group, member, (preset.result.display.strip() if preset.matched else ""))
-        await app.send_group_message(group, MessageChain(f"已重置对话~"), quote=source)
+        await app.send_group_message(group, MessageChain("已重置对话~"), quote=source)
     content = content.result.display.strip()
     if web.matched:
         content = await web_handle(content)

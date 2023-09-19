@@ -1011,9 +1011,11 @@ async def check_server_by_index(
     Info = server_info["serverInfo"]
     result.append(
         f"服务器名: {Info.get('name')}\n"
-        f"人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
+        f"当前人数: {Info.get('slots').get('Soldier').get('current')}/{Info.get('slots').get('Soldier').get('max')}"
         f"[{Info.get('slots').get('Queue').get('current')}]({Info.get('slots').get('Spectator').get('current')})\n"
-        f"地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        f"当前地图: {Info.get('mapNamePretty')}-{Info.get('mapModePretty')}\n"
+        f"地图数量: {len(Info.get('rotation'))}\n"
+        f"收藏: {Info.get('serverBookmarkCount')}\n"
         + "=" * 20 + "\n" +
         f"简介: {Info.get('description')}\n"
         f"GameId: {Info.get('gameId')}\n"
@@ -1028,6 +1030,9 @@ async def check_server_by_index(
             f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
             f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
             f"Pid: {rspInfo.get('owner').get('personaId')}\n"
+            f"管理数量: {len(rspInfo.get('adminList'))}/50\n"
+            f"VIP数量: {len(rspInfo.get('vipList'))}/50\n"
+            f"Ban数量: {len(rspInfo.get('bannedList'))}/200\n"
             + "=" * 20
         )
     if platoonInfo := server_info.get("platoonInfo"):

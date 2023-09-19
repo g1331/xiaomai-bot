@@ -4519,6 +4519,8 @@ async def add_vip(
         app: Ariadne, sender: Member, group: Group, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult, days: RegexResult
 ):
+    if bf_group_name.matched and bf_group_name.result.display in ["ban", "b", "ba"]:
+        return
     if server_rank.matched and server_rank.result.display in ["iplis", "lis", "ip列", "l", "列", "ban", "b", "ba"]:
         logger.debug(server_rank)
         return

@@ -966,12 +966,8 @@ async def check_server_by_index(
 ):
     # 服务器序号检查
     server_index = server_index.result.display
-    if server_index in ['务器']:
-        return
     if not server_index.isdigit():
-        return await app.send_message(group, MessageChain(
-            "请输入正确的服务器序号"
-        ), quote=source)
+        return
     server_index = int(server_index)
     if server_index < 1 or server_index > 30:
         return await app.send_message(group, MessageChain(
@@ -3626,13 +3622,15 @@ async def add_vban(
         async with httpx.AsyncClient() as client:
             response = await client.post('https://manager-api.gametools.network/api/addautoban', headers=headers,
                                          json=json_data)
+            response.raise_for_status()
+            response = response.json()
     except:
         await app.send_message(group, MessageChain(
             f"网络出错,请稍后再试!"
         ), quote=source)
         return False
     try:
-        if "message" in eval(response.text):
+        if "message" in response:
             await app.send_message(group, MessageChain(
                 f"vban封禁成功!原因:{reason}"
             ), quote=source)
@@ -3642,27 +3640,27 @@ async def add_vban(
     except Exception as e:
         logger.warning(e)
         try:
-            result = eval(response.text)["error"]["code"]
+            result = response["error"]["code"]
             if result == -9960:
-                if eval(response.text)["error"]["message"] == "Player already in autoban for this group":
+                if response["error"]["message"] == "Player already in autoban for this group":
                     await app.send_message(group, MessageChain(
                         f"该玩家已在vban"
                     ), quote=source)
                     return False
-                elif eval(response.text)["error"]["message"] == "Player not found":
+                elif response["error"]["message"] == "Player not found":
                     await app.send_message(group, MessageChain(
                         f"无效的玩家名字"
                     ), quote=source)
                     return False
                 else:
-                    error_message = eval(response.text)["error"]["message"]
+                    error_message = response["error"]["message"]
                     await app.send_message(group, MessageChain(
                         f"token无效/参数错误\n错误信息:{error_message}"
                     ), quote=source)
                     return False
             elif result == -9900:
                 try:
-                    error_message = eval(response.text)["error"]["message"]
+                    error_message = response["error"]["message"]
                     await app.send_message(group, MessageChain(
                         f"token无效/参数错误\n错误信息:{error_message}"
                     ), quote=source)
@@ -3777,13 +3775,15 @@ async def del_vban(
         async with httpx.AsyncClient() as client:
             response = await client.post('https://manager-api.gametools.network/api/delautoban', headers=headers,
                                          json=json_data)
+            response.raise_for_status()
+            response = response.json()
     except:
         await app.send_message(group, MessageChain(
             f"网络出错,请稍后再试!"
         ), quote=source)
         return False
     try:
-        if "message" in eval(response.text):
+        if "message" in response:
             await app.send_message(group, MessageChain(
                 f"vban解封成功!解封原因:{reason}"
             ), quote=source)
@@ -3805,7 +3805,7 @@ async def del_vban(
                 ), quote=str)
                 return False
             elif result == -9961:
-                if eval(response.text)["error"]["message"] == "'id'":
+                if response["error"]["message"] == "'id'":
                     await app.send_message(group, MessageChain(
                         f"无效的玩家名字"
                     ), quote=source)
@@ -3907,12 +3907,13 @@ async def get_vban_list(app: Ariadne, group: Group, sender: Member, vban_rank: R
         async with httpx.AsyncClient() as client:
             response = await client.get('https://manager-api.gametools.network/api/autoban', headers=headers,
                                         params=params)
+            response.raise_for_status()
+            response = response.json()
     except:
         await app.send_message(group, MessageChain(
             "网络出错请稍后再试!"
         ), quote=source)
         return False
-    response = eval(response.text)
     if "error" in response:
         if response["error"]["code"] == -9900:
             if response["error"]["message"] == "permission denied":
@@ -4518,7 +4519,7 @@ async def add_vip(
         app: Ariadne, sender: Member, group: Group, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult, days: RegexResult
 ):
-    if server_rank.matched and server_rank.result.display in ["iplis", "lis", "ip列", "l", "列"]:
+    if server_rank.matched and server_rank.result.display in ["iplis", "lis", "ip列", "l", "列", "ban", "b", "ba"]:
         logger.debug(server_rank)
         return
 

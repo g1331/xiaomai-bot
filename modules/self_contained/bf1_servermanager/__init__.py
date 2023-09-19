@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Union
 
 import aiohttp
+import httpx
 import zhconv
 from PIL import Image as PIL_Image
 from PIL import ImageFont, ImageDraw, ImageFilter, ImageEnhance
@@ -340,248 +341,244 @@ async def bf1group_unbind_server(
 
 # ======================================================================================================================
 # TODO: vban重构
-#
-# # 群组创建vban
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.BotAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
-#             "group_name" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             FullMatch("创建vban#").space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             # 示例: -bf群组 skl 创建vban
-#         ]
-#     )
-# )
-# async def bfgroup_create_vban(
-#         app: Ariadne, group: Group,
-#         group_name: RegexResult, vban_rank: RegexResult, source: Source
-# ):
-#     group_name = str(group_name.result)
-#     # 检查是否有bf群组
-#     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}不存在"
-#         ), quote=source)
-#         return False
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
-#     if os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             "vban配置已存在,请勿重复创建"
-#         ), quote=source)
-#         return False
-#     else:
-#         open(f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json', 'w', encoding="utf-8")
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}创建vban配置文件成功,请手动配置groupid和token"
-#         ), quote=source)
-#         return True
-#
-#
-# # 群组查询vban
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
-#             "group_name" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             FullMatch("vban信息").space(SpacePolicy.PRESERVE),
-#             # 示例: -bf群组 skl vban信息
-#         ]
-#     )
-# )
-# async def bfgroup_get_vban(
-#         app: Ariadne, group: Group,
-#         group_name: RegexResult, source: Source
-# ):
-#     group_name = str(group_name.result)
-#     # 检查是否有bf群组
-#     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}不存在"
-#         ), quote=source)
-#         return False
-#     send_temp = []
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}'
-#     file_list = os.listdir(vban_file_path)
-#     for file in file_list:
-#         if "vban" in file:
-#             with open(f"{vban_file_path}/{file}", 'r', encoding='utf-8') as file1:
-#                 try:
-#                     data = json.load(file1)["groupid"]
-#                     send_temp.append(f"{data}\n")
-#                 except:
-#                     await app.send_message(group, MessageChain(
-#                         f"群组{group_name}vban信息为空!"
-#                     ), quote=source)
-#                     return False
-#     if len(send_temp) == 0:
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}没有找到vban信息"
-#         ), quote=source)
-#         return True
-#     else:
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}vban有:\n", send_temp
-#         ), quote=source)
-#         return True
-#
-#
-# # 群组删除vban
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.BotAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
-#             "group_name" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             FullMatch("删除vban#").space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             # 示例: -bf群组 skl 删除vban#1
-#         ]
-#     )
-# )
-# async def bfgroup_del_vban(
-#         app: Ariadne, group: Group,
-#         group_name: RegexResult, vban_rank: RegexResult, source: Source
-# ):
-#     group_name = str(group_name.result)
-#     # 检查是否有bf群组
-#     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}不存在"
-#         ), quote=source)
-#         return False
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
-#     if not os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             f"vban{vban_rank}配置不存在!"
-#         ), quote=source)
-#         return False
-#     else:
-#         os.remove(vban_file_path)
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}删除vban{vban_rank}成功!"
-#         ), quote=source)
-#         return True
-#
-#
-# # 配置vban的群组id和token
-# @listen(GroupMessage, FriendMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.BotAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             UnionMatch("-bf群组", "-bfg").space(SpacePolicy.FORCE),
-#             "group_name" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             FullMatch("配置vban#").space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             FullMatch("gid=").space(SpacePolicy.NOSPACE),
-#             "group_id" @ ParamMatch(optional=False).space(SpacePolicy.NOSPACE),
-#             FullMatch(",token=").space(SpacePolicy.NOSPACE),
-#             "token" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             # 示例: -bf群组 skl 配置vban#n gid=xxx,token=xxx
-#         ]
-#     )
-# )
-# async def bfgroup_config_vban(
-#         app: Ariadne, group: Group,
-#         group_name: RegexResult, group_id: RegexResult,
-#         token: RegexResult, vban_rank: RegexResult, source: Source
-# ):
-#     group_name = str(group_name.result)
-#     # 检查是否有bf群组
-#     group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{group_name}不存在"
-#         ), quote=source)
-#         return False
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
-#     if not os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             f"没有找到群组vban{vban_rank}文件,请先为群组创建vban{vban_rank}"
-#         ), quote=source)
-#         return False
-#     # 有的话就写入数据
-#     else:
-#         data = {
-#             "groupid": group_id.result.display.replace("\n", ""),
-#             "token": token.result.display.replace("\n", "")
-#         }
-#         with open(vban_file_path, 'w', encoding="utf-8") as file1:
-#             json.dump(data, file1, indent=4)
-#             await app.send_message(group, MessageChain(
-#                 f"群组{group_name}写入vban{vban_rank}配置成功!"
-#             ), quote=source)
-#             return True
+
+# 群组创建vban
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            FullMatch("创建vban#").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "vban_rank",
+            # 示例: -bf群组 skl 创建vban#1
+        ]
+    )
+)
+async def bfgroup_create_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, vban_rank: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    group_path = f"./data/battlefield/binds/bfgroups/{group_name}"
+    # 如果没有群组文件夹则创建
+    if not os.path.isdir(group_path):
+        os.mkdir(group_path)
+    try:
+        vban_rank = int(vban_rank.result.display)
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
+    if os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            "vban配置已存在,请勿重复创建"
+        ), quote=source)
+        return False
+    else:
+        open(f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json', 'w', encoding="utf-8")
+        await app.send_message(group, MessageChain(
+            f"群组{group_name}创建vban配置文件成功,请手动配置groupid和token"
+        ), quote=source)
+        return True
+
+
+# 群组查询vban
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            FullMatch("vban信息").space(SpacePolicy.PRESERVE),
+            # 示例: -bf群组 skl vban信息
+        ]
+    )
+)
+async def bfgroup_get_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    send_temp = []
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}'
+    file_list = os.listdir(vban_file_path)
+    for file in file_list:
+        if "vban" in file:
+            with open(f"{vban_file_path}/{file}", 'r', encoding='utf-8') as file1:
+                try:
+                    data = json.load(file1)["groupid"]
+                    send_temp.append(f"{data}\n")
+                except Exception:
+                    await app.send_message(group, MessageChain(
+                        f"群组{group_name}vban信息为空!"
+                    ), quote=source)
+                    return False
+    if not send_temp:
+        await app.send_message(group, MessageChain(
+            f"群组{group_name}没有找到vban信息"
+        ), quote=source)
+    else:
+        await app.send_message(group, MessageChain(
+            f"群组{group_name}vban有:\n", send_temp
+        ), quote=source)
+
+    return True
+
+
+# 群组删除vban
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf群组", "-bfg").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            FullMatch("删除vban#").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "vban_rank",
+            # 示例: -bf群组 skl 删除vban#1
+        ]
+    )
+)
+async def bfgroup_del_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, vban_rank: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    try:
+        vban_rank = int(vban_rank.result.display)
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
+    if not os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            f"vban{vban_rank}配置不存在!"
+        ), quote=source)
+        return False
+    else:
+        os.remove(vban_file_path)
+        await app.send_message(group, MessageChain(
+            f"群组{group_name}删除vban{vban_rank}成功!"
+        ), quote=source)
+        return True
+
+
+# 配置vban的群组id和token
+@listen(GroupMessage, FriendMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-bf群组", "-bfg").space(SpacePolicy.FORCE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_name",
+            FullMatch("配置vban#").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "vban_rank",
+            FullMatch("gid=").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.NOSPACE) @ "group_id",
+            FullMatch(",token=").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "token",
+            # 示例: -bf群组 skl 配置vban#n gid=xxx,token=xxx
+        ]
+    )
+)
+async def bfgroup_config_vban(
+        app: Ariadne, group: Group,
+        group_name: RegexResult, group_id: RegexResult,
+        token: RegexResult, vban_rank: RegexResult, source: Source
+):
+    group_name = group_name.result.display
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{group_name}]不存在"
+        ), quote=source)
+    try:
+        vban_rank = int(vban_rank.result.display)
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except Exception:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{group_name}/vban{vban_rank}.json'
+    if not os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            f"没有找到群组vban{vban_rank}文件,请先为群组创建vban{vban_rank}"
+        ), quote=source)
+        return False
+    # 有的话就写入数据
+    else:
+        data = {
+            "groupid": group_id.result.display.replace("\n", ""),
+            "token": token.result.display.replace("\n", "")
+        }
+        with open(vban_file_path, 'w', encoding="utf-8") as file1:
+            json.dump(data, file1, indent=4)
+            await app.send_message(group, MessageChain(
+                f"群组{group_name}写入vban{vban_rank}配置成功!"
+            ), quote=source)
+            return True
 
 
 # ======================================================================================================================
@@ -969,6 +966,8 @@ async def check_server_by_index(
 ):
     # 服务器序号检查
     server_index = server_index.result.display
+    if server_index in ['务器']:
+        return
     if not server_index.isdigit():
         return await app.send_message(group, MessageChain(
             "请输入正确的服务器序号"
@@ -1518,8 +1517,9 @@ async def get_server_playerList_pic(
 
     # 获取玩家生涯战绩
     # 队伍1
-    scrape_index_tasks_t1 = [asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
-                             player_item in playerlist_data["teams"][0]]
+    scrape_index_tasks_t1 = [
+        asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
+        player_item in playerlist_data["teams"][0]]
     tasks = asyncio.gather(*scrape_index_tasks_t1)
     try:
         await tasks
@@ -1527,8 +1527,9 @@ async def get_server_playerList_pic(
         pass
 
     # 队伍2
-    scrape_index_tasks_t2 = [asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
-                             player_item in playerlist_data["teams"][1]]
+    scrape_index_tasks_t2 = [
+        asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
+        player_item in playerlist_data["teams"][1]]
     tasks = asyncio.gather(*scrape_index_tasks_t2)
     try:
         await tasks
@@ -3534,461 +3535,443 @@ async def clear_ban(
 # =======================================================================================================================
 # TODO 重构VBAN
 # 加vban
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             "action" @ UnionMatch("-vban", "-加vban", "-vb").space(SpacePolicy.NOSPACE),
-#             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             "player_name" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             "reason" @ ParamMatch(optional=True).space(SpacePolicy.PRESERVE),
-#             # 示例: -vban xiaoxiao test 1
-#         ]
-#     )
-# )
-# async def add_vban(app: Ariadne, group: Group, player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult,
-#                    source: Source):
-#     if not reason.matched:
-#         reason = "违反规则"
-#     else:
-#         reason = str(reason.result)
-#     # 寻找vban配置
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 先检查绑定群组没
-#     group_path = f'./data/battlefield/binds/groups/{group.id}'
-#     file_path = group_path + "/bfgroups.yaml"
-#     if not (os.path.exists(group_path) or os.path.isfile(file_path)):
-#         await app.send_message(group, MessageChain(
-#             f'请先绑定bf群组'
-#         ), quote=source)
-#         return False
-#     # 打开绑定的文件
-#     with open(file_path, 'r', encoding="utf-8") as file1:
-#         data = yaml.load(file1, yaml.Loader)
-#         try:
-#             bfgroups_name = data["bfgroups"]
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f'未识别到群组，请重新绑定bf群组'
-#             ), quote=source)
-#     # 根据bf群组名字找到群组绑定服务器文件-获取vban配置
-#     group_path = f"./data/battlefield/binds/bfgroups/{bfgroups_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{bfgroups_name}不存在"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
-#     if not os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
-#         ), quote=source)
-#         return False
-#     else:
-#         with open(vban_file_path, 'r', encoding="utf-8") as file1:
-#             data = json.load(file1)
-#             if data is None:
-#                 await app.send_message(group, MessageChain(
-#                     f"群组vban{vban_rank}配置为空,请先配置"
-#                 ), quote=source)
-#                 return False
-#             else:
-#                 group_id = data["groupid"]
-#                 token = data["token"]
-#
-#     # 调用接口
-#     headers = {
-#         'accept': 'application/json',
-#         'token': token,
-#     }
-#     json_data = {
-#         'groupid': group_id,
-#         'reason': '%s' % reason,
-#         'playername': '%s' % str(player_name.result),
-#         'time': 0
-#     }
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.post('https://manager-api.gametools.network/api/addautoban', headers=headers,
-#                                          json=json_data)
-#     except:
-#         await app.send_message(group, MessageChain(
-#             f"网络出错,请稍后再试!"
-#         ), quote=source)
-#         return False
-#     try:
-#         if "message" in eval(response.text):
-#             await app.send_message(group, MessageChain(
-#                 f"vban封禁成功!原因:{reason}"
-#             ), quote=source)
-#             return True
-#         else:
-#             raise Exception("封禁出错")
-#     except Exception as e:
-#         logger.warning(e)
-#         try:
-#             result = eval(response.text)["error"]["code"]
-#             if result == -9960:
-#                 if eval(response.text)["error"]["message"] == "Player already in autoban for this group":
-#                     await app.send_message(group, MessageChain(
-#                         f"该玩家已在vban"
-#                     ), quote=source)
-#                     return False
-#                 elif eval(response.text)["error"]["message"] == "Player not found":
-#                     await app.send_message(group, MessageChain(
-#                         f"无效的玩家名字"
-#                     ), quote=source)
-#                     return False
-#                 else:
-#                     error_message = eval(response.text)["error"]["message"]
-#                     await app.send_message(group, MessageChain(
-#                         f"token无效/参数错误\n错误信息:{error_message}"
-#                     ), quote=source)
-#                     return False
-#             elif result == -9900:
-#                 try:
-#                     error_message = eval(response.text)["error"]["message"]
-#                     await app.send_message(group, MessageChain(
-#                         f"token无效/参数错误\n错误信息:{error_message}"
-#                     ), quote=source)
-#                     return False
-#                 except:
-#                     await app.send_message(group, MessageChain(
-#                         f"token无效/参数错误"
-#                     ), quote=source)
-#                     return False
-#             else:
-#                 await app.send_message(group, MessageChain(
-#                     f"该玩家已在vban"
-#                 ), quote=source)
-#                 return False
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f"token出错或该玩家已在vban"
-#             ), quote=source)
-#             return False
-#
-#
-# # 减vban
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             "action" @ UnionMatch("-unvban", "-uvb", "-减vban").space(
-#                 SpacePolicy.NOSPACE),
-#             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-#             "player_name" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             "reason" @ WildcardMatch(optional=True),
-#             # 示例: -unvban xiaoxiao test
-#         ]
-#     )
-# )
-# async def del_vban(app: Ariadne, group: Group, player_name: RegexResult, reason: RegexResult,
-#                    vban_rank: RegexResult, source: Source):
-#     if not reason.matched:
-#         reason = "解封"
-#     else:
-#         reason = str(reason.result)
-#     # 寻找vban配置
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 先检查绑定群组没
-#     group_path = f'./data/battlefield/binds/groups/{group.id}'
-#     file_path = group_path + "/bfgroups.yaml"
-#     if not (os.path.exists(group_path) or os.path.isfile(file_path)):
-#         await app.send_message(group, MessageChain(
-#             f'请先绑定bf群组'
-#         ), quote=source)
-#         return False
-#     # 打开绑定的文件
-#     with open(file_path, 'r', encoding="utf-8") as file1:
-#         data = yaml.load(file1, yaml.Loader)
-#         try:
-#             bfgroups_name = data["bfgroups"]
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f'未识别到群组，请重新绑定bf群组'
-#             ), quote=source)
-#     # 根据bf群组名字找到群组绑定服务器文件-获取vban配置
-#     group_path = f"./data/battlefield/binds/bfgroups/{bfgroups_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{bfgroups_name}不存在"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
-#     if not os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
-#         ), quote=source)
-#         return False
-#     else:
-#         with open(vban_file_path, 'r', encoding="utf-8") as file1:
-#             data = json.load(file1)
-#             if data is None:
-#                 await app.send_message(group, MessageChain(
-#                     f"群组vban{vban_rank}配置为空,请先配置"
-#                 ), quote=source)
-#                 return False
-#             else:
-#                 group_id = data["groupid"]
-#                 token = data["token"]
-#
-#     # 调用接口
-#     headers = {
-#         'accept': 'application/json',
-#         'token': token,
-#     }
-#     json_data = {
-#         'groupid': group_id,
-#         'reason': '%s' % reason,
-#         'playername': '%s' % str(player_name.result),
-#         'time': 0
-#     }
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.post('https://manager-api.gametools.network/api/delautoban', headers=headers,
-#                                          json=json_data)
-#     except:
-#         await app.send_message(group, MessageChain(
-#             f"网络出错,请稍后再试!"
-#         ), quote=source)
-#         return False
-#     try:
-#         if "message" in eval(response.text):
-#             await app.send_message(group, MessageChain(
-#                 f"vban解封成功!解封原因:{reason}"
-#             ), quote=source)
-#             return True
-#         else:
-#             raise Exception("解封出错")
-#     except Exception as e:
-#         logger.warning(e)
-#         try:
-#             result = eval(response.content.decode())["error"]["code"]
-#             if result == -9960:
-#                 await app.send_message(group, MessageChain(
-#                     f"token无效/参数错误"
-#                 ), quote=source)
-#                 return False
-#             elif result == -9900:
-#                 await app.send_message(group, MessageChain(
-#                     f"token无效/参数错误"
-#                 ), quote=str)
-#                 return False
-#             elif result == -9961:
-#                 if eval(response.text)["error"]["message"] == "'id'":
-#                     await app.send_message(group, MessageChain(
-#                         f"无效的玩家名字"
-#                     ), quote=source)
-#                     return False
-#                 else:
-#                     await app.send_message(group, MessageChain(
-#                         f"该玩家未在vban"
-#                     ), quote=source)
-#                     return False
-#             else:
-#                 await app.send_message(group, MessageChain(
-#                     f"该玩家未在vban"
-#                 ), quote=source)
-#                 return False
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f"token出错或该玩家未在vban"
-#             ), quote=source)
-#             return False
-#
-#
-# # vban列表
-# @listen(GroupMessage)
-# @decorate(
-#     Distribute.require(),
-#     Function.require(channel.module),
-#     FrequencyLimitation.require(channel.module),
-#     Permission.group_require(channel.metadata.level),
-#     Permission.user_require(Permission.GroupAdmin, if_noticed=True),
-# )
-# @dispatch(
-#     Twilight(
-#         [
-#             "action" @ UnionMatch("-vbanlist", "-vban列表").space(SpacePolicy.NOSPACE),
-#             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
-#             "vban_rank" @ ParamMatch(optional=False).space(SpacePolicy.PRESERVE),
-#             # 示例: -vbanlist#1
-#         ]
-#     )
-# )
-# async def get_vban_list(app: Ariadne, group: Group, vban_rank: RegexResult, source: Source):
-#     # 寻找vban配置
-#     try:
-#         vban_rank = int(str(vban_rank.result))
-#         if vban_rank < 1 or vban_rank > 10:
-#             raise Exception
-#         if vban_rank == 1:
-#             vban_rank = ''
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "请检查vban序号:1~10"
-#         ), quote=source)
-#         return False
-#     # 先检查绑定群组没
-#     group_path = f'./data/battlefield/binds/groups/{group.id}'
-#     file_path = group_path + "/bfgroups.yaml"
-#     if not (os.path.exists(group_path) or os.path.isfile(file_path)):
-#         await app.send_message(group, MessageChain(
-#             f'请先绑定bf群组'
-#         ), quote=source)
-#         return False
-#     # 打开绑定的文件
-#     with open(file_path, 'r', encoding="utf-8") as file1:
-#         data = yaml.load(file1, yaml.Loader)
-#         try:
-#             bfgroups_name = data["bfgroups"]
-#         except:
-#             await app.send_message(group, MessageChain(
-#                 f'未识别到群组，请重新绑定bf群组'
-#             ), quote=source)
-#     # 根据bf群组名字找到群组绑定服务器文件-获取vban配置
-#     group_path = f"./data/battlefield/binds/bfgroups/{bfgroups_name}"
-#     if not os.path.exists(group_path):
-#         await app.send_message(group, MessageChain(
-#             f"群组{bfgroups_name}不存在"
-#         ), quote=source)
-#         return False
-#     # 是否有vban的文件
-#     vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
-#     if not os.path.isfile(vban_file_path):
-#         await app.send_message(group, MessageChain(
-#             f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
-#         ), quote=source)
-#         return False
-#     else:
-#         with open(vban_file_path, 'r', encoding="utf-8") as file1:
-#             data = json.load(file1)
-#             if data is None:
-#                 await app.send_message(group, MessageChain(
-#                     f"群组vban{vban_rank}配置为空,请先配置vban"
-#                 ), quote=source)
-#                 return False
-#             else:
-#                 group_id = data["groupid"]
-#                 token = data["token"]
-#
-#     # 调用接口
-#     headers = {
-#         'accept': 'application/json',
-#         'token': token,
-#     }
-#     params = (
-#         ('groupid', group_id),
-#     )
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get('https://manager-api.gametools.network/api/autoban', headers=headers,
-#                                         params=params)
-#     except:
-#         await app.send_message(group, MessageChain(
-#             "网络出错请稍后再试!"
-#         ), quote=source)
-#         return False
-#     response = eval(response.text)
-#     if "error" in response:
-#         if response["error"]["code"] == -9900:
-#             if response["error"]["message"] == "permission denied":
-#                 await app.send_message(group, MessageChain(
-#                     "token无效/参数错误"
-#                 ), quote=source)
-#                 return False
-#             else:
-#                 await app.send_message(group, MessageChain(
-#                     "token无效/参数错误"
-#                 ), quote=source)
-#                 return False
-#         else:
-#             await app.send_message(group, MessageChain(
-#                 f"错误代码:{response['error']['code']}\n"
-#                 f"可能token无效/参数错误!"
-#             ), quote=source)
-#             return False
-#     vban_list = []
-#     vban_len = 0
-#     player_num = 0
-#     for item in response["data"]:
-#         temp = [f"名字:{item['playerName']}\n", f"Pid:{item['id']}\n"]
-#         # vban_len += 1
-#         try:
-#             temp.append(f"原因:{item['reason'].encode().decode()}\n")
-#         except Exception as e:
-#             logger.warning(e)
-#             pass
-#         temp.append(f"封禁来源:{item['admin']}\n")
-#         temp.append(f"封禁时间:{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(item['unixTimeStamp'])))}")
-#         # vban_len += 1
-#         vban_len += 1
-#         player_num += 1
-#         vban_list.append(temp)
-#
-#     vban_list.reverse()
-#     sender_member = await app.get_member(group, app.account)
-#     fwd_nodeList = [ForwardNode(
-#         target=sender_member,
-#         time=datetime.now(),
-#         message=MessageChain(f"vban人数:{player_num}" if len(vban_list) < 100 else f"vban人数:{player_num}\n当前显示最新100条数据"),
-#     )]
-#     vban_list = vban_list[:100]
-#     for item in vban_list:
-#         fwd_nodeList.append(ForwardNode(
-#             target=sender_member,
-#             time=datetime.now(),
-#             message=MessageChain(item),
-#         ))
-#     message = MessageChain(Forward(nodeList=fwd_nodeList))
-#     try:
-#         await app.send_message(group, message)
-#     except Exception as e:
-#         await app.send_message(
-#             group,
-#             MessageChain(
-#                 f"发送时出现一个错误:{e}"
-#             )
-#         )
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-vban", "-加vban", "-vb").space(SpacePolicy.NOSPACE),
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "vban_rank",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "player_name",
+            ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "reason",
+            # 示例: -vban xiaoxiao test 1
+        ]
+    )
+)
+async def add_vban(
+        app: Ariadne, group: Group, sender: Member, source: Source,
+        player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult
+):
+    # 先检查绑定群组没
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            "请先绑定BF1群组"
+        ), quote=source)
+    bfgroups_name = bf1_group_info["group_name"]
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(bfgroups_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{bfgroups_name}]不存在"
+        ), quote=source)
+    if not await perm_judge(bfgroups_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bfgroups_name}]的成员"),
+            quote=source,
+        )
+    if not reason.matched:
+        reason = "违反规则"
+    else:
+        reason = reason.result.display
+    try:
+        vban_rank = int(str(vban_rank.result))
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 根据bf群组名字找到群组绑定服务器文件-获取vban配置
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
+    if not os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
+        ), quote=source)
+        return False
+    else:
+        with open(vban_file_path, 'r', encoding="utf-8") as file1:
+            data = json.load(file1)
+            if data is None:
+                await app.send_message(group, MessageChain(
+                    f"群组vban{vban_rank}配置为空,请先配置"
+                ), quote=source)
+                return False
+            else:
+                group_id = data["groupid"]
+                token = data["token"]
+    # 调用接口
+    headers = {
+        'accept': 'application/json',
+        'token': token,
+    }
+    json_data = {
+        'groupid': group_id,
+        'reason': '%s' % reason,
+        'playername': '%s' % str(player_name.result),
+        'time': 0
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post('https://manager-api.gametools.network/api/addautoban', headers=headers,
+                                         json=json_data)
+    except:
+        await app.send_message(group, MessageChain(
+            f"网络出错,请稍后再试!"
+        ), quote=source)
+        return False
+    try:
+        if "message" in eval(response.text):
+            await app.send_message(group, MessageChain(
+                f"vban封禁成功!原因:{reason}"
+            ), quote=source)
+            return True
+        else:
+            raise Exception("封禁出错")
+    except Exception as e:
+        logger.warning(e)
+        try:
+            result = eval(response.text)["error"]["code"]
+            if result == -9960:
+                if eval(response.text)["error"]["message"] == "Player already in autoban for this group":
+                    await app.send_message(group, MessageChain(
+                        f"该玩家已在vban"
+                    ), quote=source)
+                    return False
+                elif eval(response.text)["error"]["message"] == "Player not found":
+                    await app.send_message(group, MessageChain(
+                        f"无效的玩家名字"
+                    ), quote=source)
+                    return False
+                else:
+                    error_message = eval(response.text)["error"]["message"]
+                    await app.send_message(group, MessageChain(
+                        f"token无效/参数错误\n错误信息:{error_message}"
+                    ), quote=source)
+                    return False
+            elif result == -9900:
+                try:
+                    error_message = eval(response.text)["error"]["message"]
+                    await app.send_message(group, MessageChain(
+                        f"token无效/参数错误\n错误信息:{error_message}"
+                    ), quote=source)
+                    return False
+                except:
+                    await app.send_message(group, MessageChain(
+                        f"token无效/参数错误"
+                    ), quote=source)
+                    return False
+            else:
+                await app.send_message(group, MessageChain(
+                    f"该玩家已在vban"
+                ), quote=source)
+                return False
+        except:
+            await app.send_message(group, MessageChain(
+                f"token出错或该玩家已在vban"
+            ), quote=source)
+            return False
+
+
+# 减vban
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-unvban", "-uvb", "-减vban").space(SpacePolicy.NOSPACE),
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "vban_rank",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "player_name",
+            WildcardMatch(optional=True) @ "reason",
+            # 示例: -unvban xiaoxiao test
+        ]
+    )
+)
+async def del_vban(
+        app: Ariadne, group: Group, sender: Member, source: Source,
+        player_name: RegexResult, reason: RegexResult, vban_rank: RegexResult
+):
+    # 先检查绑定群组没
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            "请先绑定BF1群组"
+        ), quote=source)
+    bfgroups_name = bf1_group_info["group_name"]
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(bfgroups_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{bfgroups_name}]不存在"
+        ), quote=source)
+    if not await perm_judge(bfgroups_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bfgroups_name}]的成员"),
+            quote=source,
+        )
+    if not reason.matched:
+        reason = "解封"
+    else:
+        reason = reason.result.display
+    # 寻找vban配置
+    try:
+        vban_rank = int(str(vban_rank.result))
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
+    if not os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
+        ), quote=source)
+        return False
+    else:
+        with open(vban_file_path, 'r', encoding="utf-8") as file1:
+            data = json.load(file1)
+            if data is None:
+                await app.send_message(group, MessageChain(
+                    f"群组vban{vban_rank}配置为空,请先配置"
+                ), quote=source)
+                return False
+            else:
+                group_id = data["groupid"]
+                token = data["token"]
+
+    # 调用接口
+    headers = {
+        'accept': 'application/json',
+        'token': token,
+    }
+    json_data = {
+        'groupid': group_id,
+        'reason': '%s' % reason,
+        'playername': '%s' % str(player_name.result),
+        'time': 0
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post('https://manager-api.gametools.network/api/delautoban', headers=headers,
+                                         json=json_data)
+    except:
+        await app.send_message(group, MessageChain(
+            f"网络出错,请稍后再试!"
+        ), quote=source)
+        return False
+    try:
+        if "message" in eval(response.text):
+            await app.send_message(group, MessageChain(
+                f"vban解封成功!解封原因:{reason}"
+            ), quote=source)
+            return True
+        else:
+            raise Exception("解封出错")
+    except Exception as e:
+        logger.warning(e)
+        try:
+            result = eval(response.content.decode())["error"]["code"]
+            if result == -9960:
+                await app.send_message(group, MessageChain(
+                    f"token无效/参数错误"
+                ), quote=source)
+                return False
+            elif result == -9900:
+                await app.send_message(group, MessageChain(
+                    f"token无效/参数错误"
+                ), quote=str)
+                return False
+            elif result == -9961:
+                if eval(response.text)["error"]["message"] == "'id'":
+                    await app.send_message(group, MessageChain(
+                        f"无效的玩家名字"
+                    ), quote=source)
+                    return False
+                else:
+                    await app.send_message(group, MessageChain(
+                        f"该玩家未在vban"
+                    ), quote=source)
+                    return False
+            else:
+                await app.send_message(group, MessageChain(
+                    f"该玩家未在vban"
+                ), quote=source)
+                return False
+        except:
+            await app.send_message(group, MessageChain(
+                f"token出错或该玩家未在vban"
+            ), quote=source)
+            return False
+
+
+# vban列表
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-vbanlist", "-vban列表").space(SpacePolicy.NOSPACE) @ "action",
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "vban_rank",
+            # 示例: -vbanlist#1
+        ]
+    )
+)
+async def get_vban_list(app: Ariadne, group: Group, sender: Member, vban_rank: RegexResult, source: Source):
+    # 先检查绑定群组没
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain(
+            "请先绑定BF1群组"
+        ), quote=source)
+    bfgroups_name = bf1_group_info["group_name"]
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(bfgroups_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{bfgroups_name}]不存在"
+        ), quote=source)
+    if not await perm_judge(bfgroups_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bfgroups_name}]的成员"),
+            quote=source,
+        )
+    # 寻找vban配置
+    try:
+        vban_rank = int(str(vban_rank.result))
+        if vban_rank < 1 or vban_rank > 10:
+            raise Exception
+        if vban_rank == 1:
+            vban_rank = ''
+    except:
+        await app.send_message(group, MessageChain(
+            "请检查vban序号:1~10"
+        ), quote=source)
+        return False
+    # 是否有vban的文件
+    vban_file_path = f'./data/battlefield/binds/bfgroups/{bfgroups_name}/vban{vban_rank}.json'
+    if not os.path.isfile(vban_file_path):
+        await app.send_message(group, MessageChain(
+            f"没有找到群组vban{vban_rank}文件,请先为群组创建vban"
+        ), quote=source)
+        return False
+    else:
+        with open(vban_file_path, 'r', encoding="utf-8") as file1:
+            data = json.load(file1)
+            if data is None:
+                await app.send_message(group, MessageChain(
+                    f"群组vban{vban_rank}配置为空,请先配置vban"
+                ), quote=source)
+                return False
+            else:
+                group_id = data["groupid"]
+                token = data["token"]
+    # 调用接口
+    headers = {
+        'accept': 'application/json',
+        'token': token,
+    }
+    params = (
+        ('groupid', group_id),
+    )
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get('https://manager-api.gametools.network/api/autoban', headers=headers,
+                                        params=params)
+    except:
+        await app.send_message(group, MessageChain(
+            "网络出错请稍后再试!"
+        ), quote=source)
+        return False
+    response = eval(response.text)
+    if "error" in response:
+        if response["error"]["code"] == -9900:
+            if response["error"]["message"] == "permission denied":
+                await app.send_message(group, MessageChain(
+                    "token无效/参数错误"
+                ), quote=source)
+                return False
+            else:
+                await app.send_message(group, MessageChain(
+                    "token无效/参数错误"
+                ), quote=source)
+                return False
+        else:
+            await app.send_message(group, MessageChain(
+                f"错误代码:{response['error']['code']}\n"
+                f"可能token无效/参数错误!"
+            ), quote=source)
+            return False
+    vban_list = []
+    vban_len = 0
+    player_num = 0
+    for item in response["data"]:
+        temp = [f"名字:{item['playerName']}\n", f"Pid:{item['id']}\n"]
+        # vban_len += 1
+        try:
+            temp.append(f"原因:{item['reason'].encode().decode()}\n")
+        except Exception as e:
+            logger.warning(e)
+            pass
+        temp.append(f"封禁来源:{item['admin']}\n")
+        temp.append(f"封禁时间:{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(item['unixTimeStamp'])))}")
+        # vban_len += 1
+        vban_len += 1
+        player_num += 1
+        vban_list.append(temp)
+
+    vban_list.reverse()
+    fwd_nodeList = [ForwardNode(
+        target=sender,
+        time=datetime.now(),
+        message=MessageChain(f"vban人数:{player_num}" if len(vban_list) < 100 else f"vban人数:{player_num}\n当前显示最新100条数据"),
+    )]
+    vban_list = vban_list[:100]
+    for item in vban_list:
+        fwd_nodeList.append(ForwardNode(
+            target=sender,
+            time=datetime.now(),
+            message=MessageChain(item),
+        ))
+    message = MessageChain(Forward(nodeList=fwd_nodeList))
+    try:
+        await app.send_message(group, message)
+    except Exception as e:
+        await app.send_message(
+            group,
+            MessageChain(
+                f"发送时出现一个错误:{e}"
+            )
+        )
 
 
 # =======================================================================================================================
@@ -4535,7 +4518,7 @@ async def add_vip(
         app: Ariadne, sender: Member, group: Group, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult, days: RegexResult
 ):
-    if server_rank.matched and server_rank.result.display in ["iplist", "list", "ip列表", "l", "列表"]:
+    if server_rank.matched and server_rank.result.display in ["iplis", "lis", "ip列", "l", "列"]:
         logger.debug(server_rank)
         return
 
@@ -5740,7 +5723,9 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
 async def bf1_help(app: Ariadne, group: Group, source: Source):
     send = [
         "查询服务器：-服务器/-fwq/-FWQ/-服/-f/-狐务器/-负无穷",
-        "查询服务器详情：上述查询指令后面加上 群组名和服务器序号",
+        "查询服务器详情：上述查询指令后面加上 群组名和服务器序号"
+        "添加服主/管理员：-bfg 群组名 ao/aa @成员 ,ao为添加服主，aa为添加管理员,可同时@多个对象"
+        "删除服主/管理员：-bfg 群组名 del @成员 ,可同时@多个对象",
         "如：-服务器 sakula1 即可查询群组sakula群组的第一个服务器的详情，如果当前QQ群绑定了群组，则可以省略群组名，如：-f1",
         "查询服内群友：-谁在玩/-谁在捞 群组名(可选)服务器序号",
         "如：-谁在玩sakula1 1, -谁在捞1",
@@ -5866,5 +5851,18 @@ async def bfgroup_help(app: Ariadne, group: Group, source: Source):
 
 -bf群组 群组名 解绑服管
 如：-bfg sakula 解绑服管
+===================
+# vban相关：
+-bf群组 群组名 创建vban#序号
+如：-bfg sakula 创建vban#1
+
+-bf群组 群组名 vban信息
+如：-bfg sakula vban信息
+
+-bf群组 群组名 删除vban#序号
+如：-bfg sakula 删除vban#1
+
+-bf群组 群组名 配置vban#序号 gid=xxx,token=xxx
+如：-bfg sakula 配置vban#1 gid=123,token=abc
 """
     ), quote=source)

@@ -41,7 +41,7 @@ from core.control import (
 from core.models import saya_model, response_model
 from utils.UI import *
 from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM, \
-    get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager
+    get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from utils.bf1.map_team_info import MapData
@@ -1165,11 +1165,22 @@ async def who_are_playing(
     #     return False
 
     # easb接口:
-    playerlist_data = await get_playerList_byGameid(server_gameid=server_gameid)
-    if type(playerlist_data) != dict:
+    # playerlist_data = await get_playerList_byGameid(server_gameid=server_gameid)
+    # if type(playerlist_data) != dict:
+    #     return await app.send_message(group, MessageChain(
+    #         "服务器信息为空" if playerlist_data is None else playerlist_data
+    #     ), quote=source)
+
+    # 本地blaze接口:
+    playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid)
+    if playerlist_data is None:
         return await app.send_message(group, MessageChain(
-            "服务器信息为空" if playerlist_data is None else playerlist_data
+            "Blaze后端查询出错!"
         ), quote=source)
+    elif isinstance(playerlist_data, str):
+        return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
+    playerlist_data = playerlist_data[server_gameid]
+
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],
         1: [item for item in playerlist_data["players"] if item["team"] == 1]
@@ -1185,13 +1196,13 @@ async def who_are_playing(
     while i < team1_num:
         player_list1[
             f'[{playerlist_data["teams"][0][i]["rank"]}]{playerlist_data["teams"][0][i]["display_name"]}'
-        ] = f'{playerlist_data["teams"][0][i]["time"]}'
+        ] = f'{playerlist_data["teams"][0][i]["join_time"]}'
         i += 1
     i = 0
     while i < team2_num:
         player_list2[
             f'[{playerlist_data["teams"][1][i]["rank"]}]{playerlist_data["teams"][1][i]["display_name"]}'
-        ] = f'{playerlist_data["teams"][1][i]["time"]}'
+        ] = f'{playerlist_data["teams"][1][i]["join_time"]}'
         i += 1
     player_dict_all = player_list1 | player_list2
     # 按照加入时间排序
@@ -1504,11 +1515,21 @@ async def get_server_playerList_pic(
     #     return False
 
     # easb接口:
-    playerlist_data = await get_playerList_byGameid(server_gameid=server_gameid)
-    if type(playerlist_data) != dict:
+    # playerlist_data = await get_playerList_byGameid(server_gameid=server_gameid)
+    # if type(playerlist_data) != dict:
+    #     return await app.send_message(group, MessageChain(
+    #         "服务器信息为空" if playerlist_data is None else playerlist_data
+    #     ), quote=source)
+
+    # 本地blaze接口:
+    playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid)
+    if playerlist_data is None:
         return await app.send_message(group, MessageChain(
-            "服务器信息为空" if playerlist_data is None else playerlist_data
+            "Blaze后端查询出错!"
         ), quote=source)
+    elif isinstance(playerlist_data, str):
+        return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
+    playerlist_data = playerlist_data[server_gameid]
 
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],

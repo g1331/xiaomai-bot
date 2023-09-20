@@ -140,7 +140,11 @@ class BlazeSocket:
     async def receive_data(self):
         # 接收数据
         while self.connect:
-            data = await self.reader.read(65565)
+            try:
+                data = await self.reader.read(65565)
+            except Exception:
+                self.connect = False
+                break
             if not data:
                 self.connect = False
                 break

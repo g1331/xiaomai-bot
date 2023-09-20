@@ -3,6 +3,7 @@ import re
 import time
 
 from bs4 import BeautifulSoup
+from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
 
@@ -358,7 +359,7 @@ class BTRMatchesData:
                 .replace("Nivelle Nights", "尼维尔之夜").replace("MP_Naval", "黑尔戈兰湾").strip()
             # 游戏模式,并将模式名字翻译成中文
             mode_name = soup.select('div.match-info')[0].select('span.type')[0].text \
-                .replace("BreakthroughLarge0", "行动模式").replace("Frontlines", "前线")\
+                .replace("BreakthroughLarge0", "行动模式").replace("Frontlines", "前线") \
                 .replace("Domination", "抢攻").replace("Team Deathmatch", "团队死斗") \
                 .replace("War Pigeons", "战争信鸽").replace("Conquest", "征服") \
                 .replace("AirAssault0", "空中突袭").replace("Rush", "突袭") \
@@ -385,7 +386,8 @@ class BTRMatchesData:
             # 循环获取team1和team2的胜负情况
             for team_item in soup.select('div.match-teams')[0].select('div.team'):
                 # 获取team1和team2的胜负情况，如果赢了转换为True，否则为False
-                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text.strip().replace(" ", "")
+                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text.strip().replace(" ",
+                                                                                                                    "")
                 # team1命名为1，team2命名为2，NO TEAM命名为0
                 if team_name == 'Team1':
                     team_name = 1
@@ -555,3 +557,102 @@ class ServerData:
             server_list.sort(key=lambda x: x.get("name"), reverse=True)
 
         return server_list
+
+
+class BlazeData:
+
+    @staticmethod
+    def player_list_handle(data: dict) -> dict:
+        """
+        处理玩家列表数据
+        origin:
+        {
+        "method": "GameManager.getGameDataFromId",
+        "type": "Result",
+        "id": 7,
+        "length": 55126,
+        "data": {
+            "GDAT 43": []
+        }
+        :param data:
+        :return:
+        eg:
+        {
+            "8622724970463": {
+            "server_name": "[JIAOYUAN#3]Noob welcome/NO SMG0818/qun642283064",
+            "game_id": 8622724970463,
+            "players": [
+                {
+                    "display_name": "Saber-master520",
+                    "pid": 1004755893484,
+                    "uid": 1009760693484,
+                    "role": "spectator",
+                    "rank": "28",
+                    "latency": "27",
+                    "team": 65535
+                }
+            ],
+            "queues": 0,
+            "spectator": 1,
+            "max_player": 64
+        }
+        """
+        result = {}
+        if not data["data"]:
+            return result
+        for server_data in data["data"]["GDAT 43"]:
+            game_id = server_data["GID  0"]
+            server_name = server_data["GNAM 1"]
+            # queue = server_data["QCNT 0"]
+            # spectator = server_data["PCNT 40"][2]
+            max_player = server_data["CAP  40"][0]
+            players = []
+            queues = []
+            spectators = []
+            for player in server_data["ROST 43"]:
+                role = player["ROLE 1"]
+                if role == "":
+                    role = "spectator"
+                try:
+                    rank = player["PATT 511"].get("rank", -1)
+                except KeyError:
+                    logger.debug(player)
+                    rank = -1
+                try:
+                    latency = player["PATT 511"].get("latency", -1)
+                except KeyError:
+                    logger.debug(player)
+                    latency = -1
+                join_time = player["JGTS 0"]/1000000
+                display_name = player["NAME 1"]
+                pid = player["PID  0"]
+                uid = player["EXID 0"]
+                team = player["TIDX 0"]
+                if team == 65535 and rank == -1:
+                    role = "queue"
+                player_data = {
+                    "display_name": display_name,
+                    "pid": pid,
+                    "uid": uid,
+                    "role": role,
+                    "rank": rank,
+                    "latency": latency,
+                    "team": team,
+                    "join_time": join_time,
+                }
+                if role == "queue":
+                    queues.append(player_data)
+                elif role == "spectator":
+                    spectators.append(player_data)
+                else:
+                    players.append(player_data)
+            result[game_id] = {
+                "server_name": server_name,
+                "game_id": game_id,
+                "players": players,
+                "queues": queues,
+                "spectators": spectators,
+                "max_player": max_player,
+                "time": time.time(),
+            }
+        return result

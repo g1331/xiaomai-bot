@@ -17,7 +17,9 @@ from graia.ariadne.model import Member, Group
 from loguru import logger
 
 from core.control import Permission
-from utils.bf1.data_handle import BTRMatchesData
+from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
+from utils.bf1.blaze.BlazeSocket import BlazeSocket
+from utils.bf1.data_handle import BTRMatchesData, BlazeData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.database import BF1DB
 from utils.bf1.gateway_api import api_instance
@@ -925,6 +927,77 @@ class BF1ServerVipManager:
     @staticmethod
     async def del_server_vip_by_pid(server_id: int, player_pid: int) -> bool:
         return await BF1DB.server_manager.delete_vip(serverId=server_id, personaId=player_pid)
+
+
+class BF1BlazeManager:
+
+    @staticmethod
+    async def init_socket(pid: Union[str, int], remid: str, sid: str) -> Union[BlazeSocket, None]:
+        pid = int(pid)
+        if pid in BlazeClientManagerInstance.clients_by_pid:
+            return BlazeClientManagerInstance.clients_by_pid[pid]
+        # 连接blaze
+        blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
+        if not blaze_socket:
+            logger.error("无法获取到BlazeSocket")
+            return
+        # 1.获取账号实例
+        bf1_account = api_instance.get_api_instance(
+            pid=pid,
+            remid=remid,
+            sid=sid
+        )
+        # 2.获取BlazeAuthcode
+        auth_code = await bf1_account.getBlazeAuthcode()
+        logger.success(f"获取到Blaze AuthCode: {auth_code}")
+        # 3.Blaze登录
+        login_packet = {
+            "method": "Authentication.login",
+            "type": "Command",
+            "id": 0,
+            "length": 28,
+            "data": {
+                "AUTH 1": auth_code,
+                "EXTB 2": "",
+                "EXTI 0": 0
+            }
+        }
+        response = await blaze_socket.send(login_packet)
+        try:
+            name = response["DSNM 1"]
+            pid = response["PID  0"]
+            uid = response["UID  0"]
+            CGID = response["CGID 9"][2]
+            logger.success(f"Blaze登录成功: Name:{name} Pid:{pid} Uid:{uid} CGID:{CGID}")
+            BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
+            return blaze_socket
+        except Exception as e:
+            logger.error(f"Blaze登录失败: {response}, {e}")
+            return None
+
+    @staticmethod
+    async def get_player_list(game_ids: list[int]) -> Union[dict, None, str]:
+        """获取玩家列表"""
+        # 检查game_ids类型
+        if not isinstance(game_ids, list):
+            game_ids = [game_ids]
+        game_ids = [int(game_id) for game_id in game_ids]
+        blaze_socket = await BF1BlazeManager.init_socket(BF1DA.pid, BF1DA.remid, BF1DA.sid)
+        if not blaze_socket:
+            return "BlazeClient初始化出错!"
+        packet = {
+            "method": "GameManager.getGameDataFromId",
+            "type": "Command",
+            "id": 7,
+            "length": 49,
+            "data": {
+                "DNAM 1": "csFullGameList",
+                "GLST 40": game_ids,
+            }
+        }
+        response = await blaze_socket.send(packet)
+        response = BlazeData.player_list_handle(response)
+        return response
 
 
 async def perm_judge(bf_group_name: str, group: Group, sender: Member) -> bool:

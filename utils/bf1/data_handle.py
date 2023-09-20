@@ -609,43 +609,44 @@ class BlazeData:
             players = []
             queues = []
             spectators = []
-            for player in server_data["ROST 43"]:
-                role = player["ROLE 1"]
-                if role == "":
-                    role = "spectator"
-                try:
-                    rank = int(player["PATT 511"].get("rank", -1))
-                except KeyError:
-                    logger.debug(player)
-                    rank = -1
-                try:
-                    latency = int(player["PATT 511"].get("latency", -1))
-                except KeyError:
-                    logger.debug(player)
-                    latency = -1
-                join_time = player["JGTS 0"]/1000000
-                display_name = player["NAME 1"]
-                pid = player["PID  0"]
-                uid = player["EXID 0"]
-                team = player["TIDX 0"]
-                if team == 65535 and rank == -1:
-                    role = "queue"
-                player_data = {
-                    "display_name": display_name,
-                    "pid": pid,
-                    "uid": uid,
-                    "role": role,
-                    "rank": rank,
-                    "latency": latency,
-                    "team": team,
-                    "join_time": join_time,
-                }
-                if role == "queue":
-                    queues.append(player_data)
-                elif role == "spectator":
-                    spectators.append(player_data)
-                else:
-                    players.append(player_data)
+            if "ROST 43" in server_data:
+                for player in server_data["ROST 43"]:
+                    role = player["ROLE 1"]
+                    if role == "":
+                        role = "spectator"
+                    try:
+                        rank = int(player["PATT 511"].get("rank", -1))
+                    except KeyError:
+                        logger.debug(player)
+                        rank = -1
+                    try:
+                        latency = int(player["PATT 511"].get("latency", -1))
+                    except KeyError:
+                        logger.debug(player)
+                        latency = -1
+                    join_time = player["JGTS 0"]/1000000
+                    display_name = player["NAME 1"]
+                    pid = player["PID  0"]
+                    uid = player["EXID 0"]
+                    team = player["TIDX 0"]
+                    if team == 65535 and rank == -1:
+                        role = "queue"
+                    player_data = {
+                        "display_name": display_name,
+                        "pid": pid,
+                        "uid": uid,
+                        "role": role,
+                        "rank": rank,
+                        "latency": latency,
+                        "team": team,
+                        "join_time": join_time,
+                    }
+                    if role == "queue":
+                        queues.append(player_data)
+                    elif role == "spectator":
+                        spectators.append(player_data)
+                    else:
+                        players.append(player_data)
             result[game_id] = {
                 "server_name": server_name,
                 "game_id": game_id,

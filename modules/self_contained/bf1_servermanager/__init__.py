@@ -1179,7 +1179,7 @@ async def who_are_playing(
         ), quote=source)
     elif isinstance(playerlist_data, str):
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
-    playerlist_data = playerlist_data[server_gameid]
+    playerlist_data = playerlist_data[int(server_gameid)]
 
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],
@@ -1529,7 +1529,7 @@ async def get_server_playerList_pic(
         ), quote=source)
     elif isinstance(playerlist_data, str):
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
-    playerlist_data = playerlist_data[server_gameid]
+    playerlist_data = playerlist_data[int(server_gameid)]
 
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],

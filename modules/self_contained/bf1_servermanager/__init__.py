@@ -1181,7 +1181,7 @@ async def who_are_playing(
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
     playerlist_data = playerlist_data[int(server_gameid)]
     if not playerlist_data["players"]:
-        return await app.send_message(group, MessageChain(f"服务器未开启!"), quote=source)
+        return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
 
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],
@@ -1533,12 +1533,14 @@ async def get_server_playerList_pic(
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
     playerlist_data = playerlist_data[int(server_gameid)]
     if not playerlist_data["players"]:
-        return await app.send_message(group, MessageChain(f"服务器未开启!"), quote=source)
+        return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
 
     playerlist_data["teams"] = {
         0: [item for item in playerlist_data["players"] if item["team"] == 0],
         1: [item for item in playerlist_data["players"] if item["team"] == 1]
     }
+    playerlist_data["teams"][0].sort(key=lambda x: x["rank"], reverse=True)
+    playerlist_data["teams"][1].sort(key=lambda x: x["rank"], reverse=True)
     update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"]))
 
     # 获取玩家生涯战绩

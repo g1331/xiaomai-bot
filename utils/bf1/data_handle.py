@@ -614,12 +614,12 @@ class BlazeData:
                 if role == "":
                     role = "spectator"
                 try:
-                    rank = player["PATT 511"].get("rank", -1)
+                    rank = int(player["PATT 511"].get("rank", -1))
                 except KeyError:
                     logger.debug(player)
                     rank = -1
                 try:
-                    latency = player["PATT 511"].get("latency", -1)
+                    latency = int(player["PATT 511"].get("latency", -1))
                 except KeyError:
                     logger.debug(player)
                     latency = -1

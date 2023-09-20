@@ -1672,16 +1672,16 @@ async def get_server_playerList_pic(
 
         # 延迟 靠右显示
         ping_pic = Ping5
-        if player_item['ping'] <= 50:
+        if player_item['latency'] <= 50:
             ping_pic = Ping1
-        elif 50 < player_item['ping'] <= 100:
+        elif 50 < player_item['latency'] <= 100:
             ping_pic = Ping2
-        elif 100 < player_item['ping'] <= 150:
+        elif 100 < player_item['latency'] <= 150:
             ping_pic = Ping3
-        elif 150 < player_item['ping']:
+        elif 150 < player_item['latency']:
             ping_pic = Ping4
         IMG.paste(ping_pic, (880, 158 + i * 23), ping_pic)
-        draw.text((930, 155 + i * 23), f"{player_item['ping']}", anchor="ra", fill='white', font=player_font)
+        draw.text((930, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
 
         # KD KPM 时长
         try:
@@ -1767,16 +1767,16 @@ async def get_server_playerList_pic(
         draw.text((1055, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
         # 延迟 靠右显示
         ping_pic = Ping5
-        if player_item['ping'] <= 50:
+        if player_item['latency'] <= 50:
             ping_pic = Ping1
-        elif 50 < player_item['ping'] <= 100:
+        elif 50 < player_item['latency'] <= 100:
             ping_pic = Ping2
-        elif 100 < player_item['ping'] <= 150:
+        elif 100 < player_item['latency'] <= 150:
             ping_pic = Ping3
-        elif 150 < player_item['ping']:
+        elif 150 < player_item['latency']:
             ping_pic = Ping4
         IMG.paste(ping_pic, (1740, 158 + i * 23), ping_pic)
-        draw.text((1790, 155 + i * 23), f"{player_item['ping']}", anchor="ra", fill='white', font=player_font)
+        draw.text((1790, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
         # 生涯数据
         try:
             player_stat_data = scrape_index_tasks_t2[i].result()["result"]

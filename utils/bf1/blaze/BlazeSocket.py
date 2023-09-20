@@ -187,7 +187,10 @@ class BlazeSocket:
         elif packet['type'] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
         else:
-            logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
+            if packet['type'] == "Pong":
+                logger.debug("BlazeSocket working normally")
+            else:
+                logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
         if self.callback:
             self.callback(packet)
 

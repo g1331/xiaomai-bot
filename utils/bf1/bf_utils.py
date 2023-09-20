@@ -1,9 +1,7 @@
 import asyncio
 import datetime
-import json
 import time
 from functools import wraps
-from pathlib import Path
 from typing import Union
 
 import aiohttp
@@ -20,8 +18,8 @@ from core.control import Permission
 from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
 from utils.bf1.blaze.BlazeSocket import BlazeSocket
 from utils.bf1.data_handle import BTRMatchesData, BlazeData
-from utils.bf1.default_account import BF1DA
 from utils.bf1.database import BF1DB
+from utils.bf1.default_account import BF1DA
 from utils.bf1.gateway_api import api_instance
 
 
@@ -964,10 +962,10 @@ class BF1BlazeManager:
         }
         response = await blaze_socket.send(login_packet)
         try:
-            name = response["DSNM 1"]
-            pid = response["PID  0"]
-            uid = response["UID  0"]
-            CGID = response["CGID 9"][2]
+            name = response["data"]["DSNM 1"]
+            pid = response["data"]["PID  0"]
+            uid = response["data"]["UID  0"]
+            CGID = response["data"]["CGID 9"][2]
             logger.success(f"Blaze登录成功: Name:{name} Pid:{pid} Uid:{uid} CGID:{CGID}")
             BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
             return blaze_socket

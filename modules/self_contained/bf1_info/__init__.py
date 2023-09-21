@@ -1438,8 +1438,6 @@ async def tyc(
             )
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
     elif ban.matched:
-        if not await Permission.require_user_perm(group.id, sender.id, Permission.GroupAdmin):
-            return await app.send_message(group, MessageChain(f"权限不足!需要权限:{Permission.GroupAdmin}"), quote=source)
         banServerList = await BF1DB.server.get_playerBanServerList(player_pid)
         if not banServerList:
             return await app.send_message(group, MessageChain(f"玩家{display_name}没有封禁信息哦~"), quote=source)

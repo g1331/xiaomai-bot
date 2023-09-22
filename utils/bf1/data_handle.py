@@ -1,6 +1,7 @@
 import datetime
 import re
 import time
+from typing import Union
 
 from bs4 import BeautifulSoup
 from loguru import logger
@@ -562,7 +563,7 @@ class ServerData:
 class BlazeData:
 
     @staticmethod
-    def player_list_handle(data: dict) -> dict:
+    def player_list_handle(data: dict) -> Union[dict, str]:
         """
         处理玩家列表数据
         origin:
@@ -600,6 +601,10 @@ class BlazeData:
         result = {}
         if not data["data"]:
             return result
+        if data["type"] == "Error":
+            error_code = data.get("data", {}).get("ERRC 0", "Known")
+            error_msg = f"Blaze查询出错!错误代码:{error_code}"
+            return error_msg
         for server_data in data["data"]["GDAT 43"]:
             game_id = server_data["GID  0"]
             server_name = server_data["GNAM 1"]

@@ -620,21 +620,21 @@ class BlazeData:
                     if role == "":
                         role = "spectator"
                     try:
-                        rank = int(player["PATT 511"].get("rank", -1))
+                        rank = int(player["PATT 511"].get("rank", 0))
                     except KeyError:
                         logger.debug(player)
-                        rank = -1
+                        rank = 0
                     try:
-                        latency = int(player["PATT 511"].get("latency", -1))
+                        latency = int(player["PATT 511"].get("latency", 0))
                     except KeyError:
                         logger.debug(player)
-                        latency = -1
+                        latency = 0
                     join_time = player["JGTS 0"]/1000000
                     display_name = player["NAME 1"]
                     pid = player["PID  0"]
                     uid = player["EXID 0"]
                     team = player["TIDX 0"]
-                    if team == 65535 and rank == -1:
+                    if team == 65535 and rank == 0:
                         role = "queue"
                     player_data = {
                         "display_name": display_name,

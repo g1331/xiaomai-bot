@@ -2783,7 +2783,7 @@ async def kick_by_searched(
                     "guid": id_item['guid'],
                     "sid": int(id_item['serverId']),
                     "gid": int(id_item['gameId']),
-                    "account:": id_item['account'],
+                    "account": id_item['account'],
                 }
     result_dict = {
         # server_rank :{
@@ -2804,20 +2804,34 @@ async def kick_by_searched(
         if not isinstance(info_dict[server_index], dict):
             continue
         result_dict[server_index] = {}
+        if not player_list_info.get(info_dict[server_index]["gid"]):
+            continue
         player_list_data_temp = player_list_info[info_dict[server_index]["gid"]]
         if player_list_data_temp["players"]:
             player_list_temp = []
-            for player_item in player_list_data_temp["players"]:
-                player_list_temp.append(player_item["display_name"].lower())
-                player_pid_dict[player_item["display_name"].lower()] = player_item["pid"]
             if player_name == "条形码":
+                for player_item in player_list_data_temp["players"]:
+                    player_list_temp.append(player_item["display_name"])
+                    player_pid_dict[player_item["display_name"].lower()] = player_item["pid"]
                 player_matched = []
                 for display_name in player_list_temp:
-                    display_name_temp = display_name.replace("i", "1").replace("l", "1")
-                    if ("111" in display_name_temp) or display_name_temp.count("1") >= 4:
-                        player_matched.append(display_name)
+                    display_name_temp = display_name
+                    substrings = ["Ill", "IIl", "IlI", "lII", "llI", "lIl"]
+                    for substring in substrings:
+                        if (substring in display_name_temp) or display_name_temp.count("l") >= 5:
+                            player_matched.append(display_name)
             else:
-                player_matched = list(set(difflib.get_close_matches(player_name, player_list_temp)))
+                for player_item in player_list_data_temp["players"]:
+                    player_list_temp.append(player_item["display_name"].lower().replace("-", ""))
+                    player_pid_dict[player_item["display_name"].lower()] = player_item["pid"]
+                player_name = player_name.lower().replace("-", "")
+                player_matched = list(set(difflib.get_close_matches(
+                    player_name.lower(), player_list_temp)
+                ))
+                for display_name in player_list_temp:
+                    if player_name in display_name:
+                        player_matched.append(display_name)
+                player_matched = list(set(player_matched))
             for player_matched_item in player_matched:
                 player_matched_list.append(player_matched_item)
             result_dict[server_index]["player_matched"] = player_matched
@@ -2828,8 +2842,8 @@ async def kick_by_searched(
     search_send_temp = []
     choices_dict = {}
     for server_index in result_dict:
-        if result_dict[server_index]["player_matched"]:
-            search_send_temp.append(f"在{server_index}服搜索到玩家:\n")
+        if result_dict[server_index].get("player_matched"):
+            search_send_temp.append(f"在{server_index + 1}服搜索到玩家:\n")
             for display_name in result_dict[server_index]["player_matched"]:
                 index = len(choices_dict.keys())
                 search_send_temp.append(f"{index}#{display_name.upper()}\n")
@@ -2837,8 +2851,10 @@ async def kick_by_searched(
                     "display_name": display_name.lower(),
                     "server_index": server_index
                 }
+    if not search_send_temp:
+        return await app.send_message(group, MessageChain("未搜索到符合条件的玩家!"), quote=source)
     await app.send_message(group, MessageChain(
-        search_send_temp, "\n60秒内发送'#'前的序号进行踢出,发送其他消息可退出"
+        search_send_temp, "60秒内发送'#'前的序号进行踢出,发送其他消息可退出"
     ), quote=source)
 
     async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
@@ -2883,11 +2899,12 @@ async def kick_by_searched(
         if isinstance(info_dict[server_index_temp], str):
             kick_info = info_dict[server_index_temp]
         else:
-            gid = info_dict[server_index_temp]["gid"]
-            guid = info_dict[server_index_temp]["guid"]
-            sid = info_dict[server_index_temp]["sid"]
+            item = info_dict[server_index_temp]
+            gid = item["gid"]
+            guid = item["guid"]
+            sid = item["sid"]
             pid = player_pid_dict[display_name_temp]
-            account = await BF1ManagerAccount.get_manager_account_instance(info_dict[server_index_temp]["account"])
+            account = await BF1ManagerAccount.get_manager_account_instance(item["account"])
             kick_info = {
                 "gid": gid,
                 "guid": guid,
@@ -2944,14 +2961,24 @@ async def kick_by_searched(
                 info=reason,
             )
         else:
-            failure_messages.append(f"失败{i}#: {kick_handle[i]}")
-    if len(kick_result) >= 5:
-        await app.send_message(group, MessageChain(
-            f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}\n"  "\n".join(failure_messages)
-        ), quote=source)
+            if isinstance(result, str):
+                failure_messages.append(f"失败{i}#: {result}")
+            elif isinstance(kick_handle[i], str):
+                failure_messages.append(f"失败{i}#: {kick_handle[i]}")
+            else:
+                failure_messages.append(f"失败{i}#: 未知错误")
+    if success_messages:
+        if len(kick_result) >= 5:
+            await app.send_message(group, MessageChain(
+                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}\n"  "\n".join(failure_messages)
+            ), quote=source)
+        else:
+            await app.send_message(group, MessageChain(
+                "\n".join(success_messages) + f"\n踢出原因:{reason}\n" + "\n".join(failure_messages)
+            ), quote=source)
     else:
         await app.send_message(group, MessageChain(
-            "\n".join(success_messages) + f"\n踢出原因:{reason}\n" + "\n".join(failure_messages)
+            "\n".join(failure_messages)
         ), quote=source)
 
 

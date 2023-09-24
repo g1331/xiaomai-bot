@@ -21,7 +21,7 @@ from graia.ariadne.message.element import Image as GraiaImage, At
 from graia.ariadne.message.element import Source, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import (
     Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, MatchResult,
-    UnionMatch, WildcardMatch, RegexMatch, ArgumentMatch
+    UnionMatch, WildcardMatch, RegexMatch, ArgumentMatch, ArgResult
 )
 from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
@@ -2713,6 +2713,17 @@ async def kick(
     ), quote=source)
 
 
+sk_twilight = Twilight(
+    [
+        UnionMatch("-sk", "-searchkick").space(SpacePolicy.FORCE) @ "action",
+        ArgumentMatch("--help", "-h", action="store_true").help("显示该帮助") @ "sk_help",
+        ParamMatch(optional=False).space(SpacePolicy.PRESERVE).help("玩家名") @ "player_name",
+        WildcardMatch(optional=True).help("踢出原因,可选参数,默认为'违反规则'") @ "reason",
+        # 示例: -sk xiao7xiao test
+    ]
+)
+
+
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
@@ -2721,21 +2732,16 @@ async def kick(
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User, if_noticed=True),
 )
-@dispatch(
-    Twilight(
-        [
-            UnionMatch("-sk", "-searchkick").space(SpacePolicy.FORCE).help("指令前缀"),
-            ArgumentMatch("--help", "-h", action="store_true").help("显示该帮助"),
-            ParamMatch(optional=False).space(SpacePolicy.PRESERVE).help("玩家名") @ "player_name",
-            WildcardMatch(optional=True).help("踢出原因 可选") @ "reason",
-            # 示例: -sk xiao7xiao test
-        ]
-    )
-)
+@dispatch(sk_twilight)
 async def kick_by_searched(
         app: Ariadne, sender: Member, group: Group, source: Source,
+        sk_help: ArgResult,
         player_name: RegexResult, reason: RegexResult
 ):
+    if sk_help.matched:
+        return await app.send_message(group, MessageChain(
+            sk_twilight.get_help("用法字符串", "描述", "总结")
+        ), quote=source)
     # 获取群组信息
     bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
     if not bf1_group_info:
@@ -2822,14 +2828,14 @@ async def kick_by_searched(
                             player_matched.append(display_name)
             else:
                 for player_item in player_list_data_temp["players"]:
-                    player_list_temp.append(player_item["display_name"].lower().replace("-", ""))
+                    player_list_temp.append(player_item["display_name"].lower())
                     player_pid_dict[player_item["display_name"].lower()] = player_item["pid"]
-                player_name = player_name.lower().replace("-", "")
+                player_name_temp = player_name.lower()
                 player_matched = list(set(difflib.get_close_matches(
-                    player_name.lower(), player_list_temp)
+                    player_name_temp, player_list_temp)
                 ))
                 for display_name in player_list_temp:
-                    if player_name in display_name:
+                    if player_name_temp.replace("-", "") in display_name.replace("-", ""):
                         player_matched.append(display_name)
                 player_matched = list(set(player_matched))
             for player_matched_item in player_matched:
@@ -2894,7 +2900,7 @@ async def kick_by_searched(
         if not choices_dict.get(index):
             no_valid_index.append(str(index))
             continue
-        display_name_temp = choices_dict[index]["display_name"]
+        display_name_temp = choices_dict[index]["display_name"].lower()
         server_index_temp = choices_dict[index]["server_index"]
         if isinstance(info_dict[server_index_temp], str):
             kick_info = info_dict[server_index_temp]
@@ -6013,6 +6019,8 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
         "如：-refresh1, -refresh 1, -refresh sakula1",
         "踢出玩家：-kick/-踢/-k/-滚出+可选群组名+服务器序号+空格+玩家名+可选原因",
         "如：-kick sakula1 shlsan13 你好 (注意这里的sakula1的sakula为群组名,1为服务器序号，中间不加任何符号，服务器序号后一定要跟空格), -k1 shlsan13 你好",
+        "模糊搜索踢出: -sk/-searchkick+玩家名+可选原因",
+        "如：-sk shlsan13 你好 ,-sk 条形码 不准条形码! (sk不能加服务器序号和群组名，只能在绑定了群组的群使用)",
         "封禁玩家：-ban/-封禁+可选群组名+服务器序号+空格+玩家名+可选原因",
         "如：-ban sakula1 shlsan13 你好, -ban1 shlsan13 你好",
         "解封玩家：-unban/-uban/-解封+可选群组名+服务器序号+空格+玩家名,解封不能加原因！",

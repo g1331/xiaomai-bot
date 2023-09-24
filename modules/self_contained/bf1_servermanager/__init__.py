@@ -21,7 +21,7 @@ from graia.ariadne.message.element import Image as GraiaImage, At
 from graia.ariadne.message.element import Source, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import (
     Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, MatchResult,
-    UnionMatch, WildcardMatch, RegexMatch
+    UnionMatch, WildcardMatch, RegexMatch, ArgumentMatch
 )
 from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
@@ -2713,7 +2713,6 @@ async def kick(
     ), quote=source)
 
 
-# TODO: 待重构
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
@@ -2725,18 +2724,235 @@ async def kick(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-sk").space(SpacePolicy.FORCE),
-            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "player_name",
-            WildcardMatch(optional=True) @ "reason",
+            UnionMatch("-sk", "-searchkick").space(SpacePolicy.FORCE).help("指令前缀"),
+            ArgumentMatch("--help", "-h", action="store_true").help("显示该帮助"),
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE).help("玩家名") @ "player_name",
+            WildcardMatch(optional=True).help("踢出原因 可选") @ "reason",
             # 示例: -sk xiao7xiao test
         ]
     )
 )
 async def kick_by_searched(
         app: Ariadne, sender: Member, group: Group, source: Source,
-        action: RegexResult, player_name: RegexResult, reason: RegexResult
+        player_name: RegexResult, reason: RegexResult
 ):
-    return
+    # 获取群组信息
+    bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+    if not bf1_group_info:
+        return await app.send_message(group, MessageChain("sk只能在绑定过群组的群使用!"), quote=source)
+    bf_group_name = bf1_group_info.get("group_name")
+    # 检查是否有bf群组
+    if not await BF1DB.bf1group.check_bf1_group(bf_group_name):
+        return await app.send_message(group, MessageChain(
+            f"bf群组[{bf_group_name}]不存在"
+        ), quote=source)
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+
+    player_name = player_name.result.display
+
+    reason = reason.result.display if reason.matched else "违反规则"
+    reason = reason.replace("ADMINPRIORITY", "违反规则")
+    reason = zhconv.convert(reason, 'zh-tw')
+    if ("空間" or "寬帶" or "帶寬" or "網絡" or "錯誤代碼" or "位置") in reason:
+        await app.send_message(group, MessageChain(
+            "操作失败:踢出原因包含违禁词"
+        ), quote=source)
+        return False
+    # 字数检测
+    if 30 < len(reason.encode("utf-8")):
+        return await app.send_message(group, MessageChain(
+            "原因字数过长(汉字10个以内)"
+        ), quote=source)
+
+    # 获取服务器-序号-session-gameid字典
+    server_info = await BF1GROUP.get_info(bf_group_name)
+    if isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(f"{server_info}"), quote=source)
+    info_dict = {}
+    for i, id_item in enumerate(server_info["bind_ids"]):
+        if id_item:
+            if not id_item['account']:
+                info_dict[i] = "未绑定服管账号"
+            else:
+                info_dict[i] = {
+                    "guid": id_item['guid'],
+                    "sid": int(id_item['serverId']),
+                    "gid": int(id_item['gameId']),
+                    "account:": id_item['account'],
+                }
+    result_dict = {
+        # server_rank :{
+        #       player_matched:[] name_str list
+        # }
+    }
+    player_matched_list = []  # name_str list
+    player_pid_dict = {}  # name:pid
+    player_list_info = await BF1BlazeManager.get_player_list(
+        game_ids=[info_dict[key]["gid"] for key in info_dict if isinstance(info_dict[key], dict)])
+    if player_list_info is None:
+        return await app.send_message(group, MessageChain(
+            "Blaze后端查询出错!"
+        ), quote=source)
+    elif isinstance(player_list_info, str):
+        return await app.send_message(group, MessageChain(f"查询出错!{player_list_info}"), quote=source)
+    for server_index in info_dict:
+        if not isinstance(info_dict[server_index], dict):
+            continue
+        result_dict[server_index] = {}
+        player_list_data_temp = player_list_info[info_dict[server_index]["gid"]]
+        if player_list_data_temp["players"]:
+            player_list_temp = []
+            for player_item in player_list_data_temp["players"]:
+                player_list_temp.append(player_item["display_name"].lower())
+                player_pid_dict[player_item["display_name"].lower()] = player_item["pid"]
+            if player_name == "条形码":
+                player_matched = []
+                for display_name in player_list_temp:
+                    display_name_temp = display_name.replace("i", "1").replace("l", "1")
+                    if ("111" in display_name_temp) or display_name_temp.count("1") >= 4:
+                        player_matched.append(display_name)
+            else:
+                player_matched = list(set(difflib.get_close_matches(player_name, player_list_temp)))
+            for player_matched_item in player_matched:
+                player_matched_list.append(player_matched_item)
+            result_dict[server_index]["player_matched"] = player_matched
+        else:
+            result_dict[server_index]["player_matched"] = []
+
+    # 发送搜索结果，处理回复
+    search_send_temp = []
+    choices_dict = {}
+    for server_index in result_dict:
+        if result_dict[server_index]["player_matched"]:
+            search_send_temp.append(f"在{server_index}服搜索到玩家:\n")
+            for display_name in result_dict[server_index]["player_matched"]:
+                index = len(choices_dict.keys())
+                search_send_temp.append(f"{index}#{display_name.upper()}\n")
+                choices_dict[index] = {
+                    "display_name": display_name.lower(),
+                    "server_index": server_index
+                }
+    await app.send_message(group, MessageChain(
+        search_send_temp, "\n60秒内发送'#'前的序号进行踢出,发送其他消息可退出"
+    ), quote=source)
+
+    async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+        if waiter_member.id == sender.id and waiter_group.id == group.id:
+            waiter_message = waiter_message.replace(At(app.account), "")
+            saying = waiter_message.display.strip()
+            items = saying.split()
+            # 仅保留是数字的元素
+            valid_indices = [int(item) for item in items if item.isdigit() and int(item) in choices_dict]
+            return waiter_member.id, valid_indices
+
+    try:
+        result = await FunctionWaiter(waiter, [GroupMessage], block_propagation=True).wait(timeout=30)
+        if result:
+            member_id, kick_list = result
+            if not kick_list:
+                return await app.send_message(group, MessageChain(
+                    "未识别到有效序号,取消踢出"
+                ), quote=source)
+            temp = ",".join([str(item) for item in kick_list])
+            await app.send_message(group, MessageChain(
+                f"识别到序号:{temp},正在尝试踢出"
+            ), quote=source)
+        else:
+            return await app.send_message(group, MessageChain(
+                "未识别到有效序号,取消踢出"
+            ), quote=source)
+    except asyncio.exceptions.TimeoutError:
+        return await app.send_message(group, MessageChain(
+            "操作超时!已取消踢出!"
+        ), quote=source)
+
+    # 整理踢出列表,并发踢出并发送结果
+    kick_handle = []
+    no_valid_index = []
+    for index in kick_list:
+        if not choices_dict.get(index):
+            no_valid_index.append(str(index))
+            continue
+        display_name_temp = choices_dict[index]["display_name"]
+        server_index_temp = choices_dict[index]["server_index"]
+        if isinstance(info_dict[server_index_temp], str):
+            kick_info = info_dict[server_index_temp]
+        else:
+            gid = info_dict[server_index_temp]["gid"]
+            guid = info_dict[server_index_temp]["guid"]
+            sid = info_dict[server_index_temp]["sid"]
+            pid = player_pid_dict[display_name_temp]
+            account = await BF1ManagerAccount.get_manager_account_instance(info_dict[server_index_temp]["account"])
+            kick_info = {
+                "gid": gid,
+                "guid": guid,
+                "sid": sid,
+                "account": account,
+                "result": None,
+                "server_index": server_index_temp,
+                "display_name": display_name_temp,
+                "pid": pid
+            }
+        kick_handle.append(kick_info)
+
+    kick_tasks = []
+    for item in kick_handle:
+        if isinstance(item, dict):
+            kick_tasks.append(
+                asyncio.ensure_future(
+                    item["account"].kickPlayer(
+                        gameId=item["gid"],
+                        personaId=item["pid"],
+                        reason=reason
+                    )
+                )
+            )
+        else:
+            kick_tasks.append(asyncio.ensure_future(dummy_coroutine()))
+
+    try:
+        kick_result = await asyncio.gather(*kick_tasks)
+    except Exception:
+        return await app.send_message(group, MessageChain(
+            "网络出错!"
+        ), quote=source)
+
+    successful_kicks = 0
+    failure_messages = []
+    success_messages = []
+    for i, result in enumerate(kick_result):
+        if result is None:
+            continue
+        if isinstance(result, dict):  # 成功的情况
+            successful_kicks += 1
+            success_messages.append(f"{i}#: 踢出成功!")
+            # 日志记录
+            item = kick_handle[i]
+            await BF1Log.record(
+                operator_qq=sender.id,
+                serverId=item["sid"],
+                persistedGameId=item["guid"],
+                gameId=item["gid"],
+                pid=item["pid"],
+                display_name=item["display_name"],
+                action="kick",
+                info=reason,
+            )
+        else:
+            failure_messages.append(f"失败{i}#: {kick_handle[i]}")
+    if len(kick_result) >= 5:
+        await app.send_message(group, MessageChain(
+            f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}\n"  "\n".join(failure_messages)
+        ), quote=source)
+    else:
+        await app.send_message(group, MessageChain(
+            "\n".join(success_messages) + f"\n踢出原因:{reason}\n" + "\n".join(failure_messages)
+        ), quote=source)
 
 
 # 封禁

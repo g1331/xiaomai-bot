@@ -103,7 +103,7 @@ class BlazeSocket:
             if self.writer:
                 self.writer.write(keepalive)
 
-    async def send(self, packet, timeout=10):
+    async def send(self, packet, timeout=60):
         # 发送数据包
         if not self.connect:
             raise ConnectionError("连接已关闭")
@@ -113,9 +113,13 @@ class BlazeSocket:
             packet = Blaze(packet).decode()
 
         future = asyncio.Future()
+        if "id" not in packet:
+            packet["id"] = self.id
+            self.id += 1
+        if packet["id"] in self.map:
+            packet["id"] = self.id
+            self.id += 1
         self.map[packet['id']] = future
-        # packet['id'] = self.id
-        # logger.debug(f"packet id: {packet['id']}")
         self.id += 1
         await self.request(packet)
         try:

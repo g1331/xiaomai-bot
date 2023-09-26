@@ -1779,7 +1779,7 @@ async def get_server_playerList_pic(
             admin_counter += 1
         if player_item["platoon"]:
             draw.text(
-                (195, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
+                (1055, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
                 fill=color_temp,
                 font=player_font
             )

@@ -962,10 +962,10 @@ class BF1BlazeManager:
         }
         response = await blaze_socket.send(login_packet)
         try:
-            name = response["data"]["DSNM 1"]
-            pid = response["data"]["PID  0"]
-            uid = response["data"]["UID  0"]
-            CGID = response["data"]["CGID 9"][2]
+            name = response["data"]["DSNM"]
+            pid = response["data"]["PID"]
+            uid = response["data"]["UID"]
+            CGID = response["data"]["CGID"][2]
             logger.success(f"Blaze登录成功: Name:{name} Pid:{pid} Uid:{uid} CGID:{CGID}")
             BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
             return blaze_socket

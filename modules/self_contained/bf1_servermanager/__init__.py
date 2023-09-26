@@ -1784,7 +1784,7 @@ async def get_server_playerList_pic(
                 font=player_font
             )
         else:
-            draw.text((195, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
+            draw.text((1055, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
         # 延迟 靠右显示
         ping_pic = Ping5
         if player_item['latency'] <= 50:

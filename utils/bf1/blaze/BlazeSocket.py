@@ -61,6 +61,8 @@ class BlazeServerREQ:
 
 
 class BlazeSocket:
+    readable = True
+
     def __init__(self, host: str, port: int, callback=None):
         self.callback = callback
         self.connect = True
@@ -74,6 +76,8 @@ class BlazeSocket:
         self.ssl_context.set_ciphers('ALL')
         self.host = host
         self.port = port
+        self.reader: asyncio.StreamReader = None
+        self.writer: asyncio.StreamWriter = None
 
     @classmethod
     async def create(cls, host: str = "diceprodblapp-08.ea.com", port: int = 10539, callback=None):
@@ -103,7 +107,8 @@ class BlazeSocket:
             if self.writer:
                 self.writer.write(keepalive)
 
-    async def send(self, packet, timeout=60):
+    async def send(self, packet, timeout=60, readable: bool = True):
+        BlazeSocket.readable = readable
         # 发送数据包
         if not self.connect:
             raise ConnectionError("连接已关闭")
@@ -146,7 +151,7 @@ class BlazeSocket:
         while self.connect:
             try:
                 data = await self.reader.read(65565)
-            except Exception:
+            except ConnectionResetError:
                 self.connect = False
                 break
             if not data:
@@ -165,7 +170,7 @@ class BlazeSocket:
                 self.finish = False
                 self.temp['data'][:len(buffer)] = buffer
             else:
-                self.response(Blaze(buffer).decode())
+                self.response(Blaze(buffer).decode(BlazeSocket.readable))
                 self.temp = {}
         elif self.temp['length'] >= self.temp['origin']:
             # 超长了
@@ -176,7 +181,7 @@ class BlazeSocket:
             self.temp['length'] += len(buffer)
             if self.temp['length'] >= self.temp['origin']:
                 self.finish = True
-                self.response(Blaze(self.temp['data']).decode())
+                self.response(Blaze(self.temp['data']).decode(BlazeSocket.readable))
                 self.temp = {}
 
     def response(self, packet):
@@ -190,11 +195,10 @@ class BlazeSocket:
             del self.map[packet['id']]
         elif packet['type'] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
+        elif packet['type'] == "Pong":
+            logger.debug("BlazeSocket working normally")
         else:
-            if packet['type'] == "Pong":
-                logger.debug("BlazeSocket working normally")
-            else:
-                logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
+            logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
         if self.callback:
             self.callback(packet)
 

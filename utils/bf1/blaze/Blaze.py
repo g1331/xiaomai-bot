@@ -60,12 +60,14 @@ keepalive[13] = 128
 
 class Blaze:
     packet = None
+    readable = False
 
     def __init__(self, data):
         self.packet = data
 
-    def decode(self) -> dict:
+    def decode(self, readable: bool = False) -> dict:
         byte_data = self.packet
+        Blaze.readable = readable
         offset = 16
         length = int.from_bytes(byte_data[:4], byteorder='big') + int.from_bytes(
             byte_data[4:6], byteorder='big'
@@ -110,7 +112,7 @@ class Blaze:
         #     )
 
         if offset < len(byte_data):
-            data = self.parse_struct(byte_data, offset)
+            data = self.parse_struct(byte_data, offset, Blaze.readable)
         else:
             data = {'struct': {}}
         return {'method': method, 'type': type_, 'id': id_, 'length': length, 'data': data['struct']}
@@ -184,7 +186,7 @@ class Blaze:
             offset += 1
             header["type"] += "2"
         for _ in range(size):
-            item_value, offset = Blaze.parse_block(byte_data, {"type": str(type_)}, offset)
+            item_value, offset = Blaze.parse_block(byte_data, {"type": str(type_)}, offset, Blaze.readable)
             data.append(item_value)
         return data, offset
 
@@ -201,8 +203,8 @@ class Blaze:
         size, offset = Blaze.parse_integer(byte_data, offset)
         data = {}
         for _ in range(size):
-            key_value, offset = Blaze.parse_block(byte_data, {"type": key_type}, offset)
-            val_value, offset = Blaze.parse_block(byte_data, {"type": val_type}, offset)
+            key_value, offset = Blaze.parse_block(byte_data, {"type": key_type}, offset, Blaze.readable)
+            val_value, offset = Blaze.parse_block(byte_data, {"type": val_type}, offset, Blaze.readable)
             data[key_value] = val_value
         return data, offset
 
@@ -221,7 +223,7 @@ class Blaze:
             'type': str(byte_data[offset + 3])
         }
         offset += 4
-        result, offset = Blaze.parse_block(byte_data, u_header, offset)
+        result, offset = Blaze.parse_block(byte_data, u_header, offset, Blaze.readable)
         data[f"{u_header['tag'].ljust(4)} {u_header['type']}"] = result
         return data, offset
 
@@ -283,14 +285,14 @@ class Blaze:
         return float_value, offset
 
     @staticmethod
-    def parse_block(byte_data, header, offset):
+    def parse_block(byte_data, header, offset, readable: bool):
         type_ = TYPE.get(header["type"], "Unknown")
         if type_ == "Integer":
             value, offset = Blaze.parse_integer(byte_data, offset)
         elif type_ == "String":
             value, offset = Blaze.parse_string(byte_data, offset)
         elif type_ == "Struct":
-            data: dict = Blaze.parse_struct(byte_data, offset)
+            data: dict = Blaze.parse_struct(byte_data, offset, readable)
             value, offset = data["struct"], data["offset"]
         elif type_ == "Blob":
             value, offset = Blaze.parse_blob(byte_data, offset)
@@ -318,16 +320,18 @@ class Blaze:
         return value, offset
 
     @staticmethod
-    def parse_struct(byte_data, offset) -> dict:
+    def parse_struct(byte_data, offset, readable: bool = False) -> dict:
         data = {}
         while byte_data[offset]:
             tag = Blaze.decode_tag(byte_data[offset:offset + 3].hex())
             type_ = str(byte_data[offset + 3])
             header = {'tag': tag, 'type': type_}
             offset += 4
-            result, offset = Blaze.parse_block(byte_data, header, offset)
-            data[f"{header['tag'].ljust(4, ' ')} {str(header['type'])}"] = result
-            # data[f"{header['tag'].ljust(4, ' ')}"] = result
+            result, offset = Blaze.parse_block(byte_data, header, offset, readable)
+            if readable:
+                data[f"{header['tag']}".strip()] = result
+            else:
+                data[f"{header['tag'].ljust(4, ' ')} {str(header['type'])}"] = result
             if offset >= len(byte_data):
                 break
         offset += 1

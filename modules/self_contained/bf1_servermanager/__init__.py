@@ -1,5 +1,6 @@
 import asyncio
 import difflib
+import io
 import json
 import os
 import random
@@ -130,7 +131,8 @@ async def bfgroup_manager(app: Ariadne, group: Group, group_name: RegexResult, s
                 id_info.append("服管账号:未绑定")
             id_info.append("=" * 20)
         if len(id_info) == 1:
-            return await app.send_message(group, MessageChain(f"群组[{group_name}]信息为空!请绑定服务器!"), quote=source)
+            return await app.send_message(group, MessageChain(f"群组[{group_name}]信息为空!请绑定服务器!"),
+                                          quote=source)
         result = "\n".join(id_info)
         return await app.send_message(group, MessageChain(result), quote=source)
     elif action in ["删除", "del"]:
@@ -867,10 +869,10 @@ async def check_server(app: Ariadne, group: Group, source: Source):
         if isinstance(server_info, dict):
             server_info = server_info.get("result").get("serverInfo")
             result.append(f'\n{server_list.index(server_info["gameId"]) + 1}#:{server_info["name"][:20]}\n')
-            人数 = f'人数:{server_info["slots"]["Soldier"]["current"]}/{server_info["slots"]["Soldier"]["max"]}[{server_info["slots"]["Queue"]["current"]}]({server_info["slots"]["Spectator"]["current"]})'
+            players = f'人数:{server_info["slots"]["Soldier"]["current"]}/{server_info["slots"]["Soldier"]["max"]}[{server_info["slots"]["Queue"]["current"]}]({server_info["slots"]["Spectator"]["current"]})'
             result.extend(
                 (
-                    人数,
+                    players,
                     f"  收藏:{server_info['serverBookmarkCount']}\n",
                     f'地图:{server_info["mapModePretty"]}-{server_info["mapNamePretty"]}\n'.replace(
                         "流血", "流\u200b血"
@@ -1234,7 +1236,8 @@ async def who_are_playing(
     if player_num != 0:
         player_list_filter[-1] = player_list_filter[-1].replace("\n", '')
         await app.send_message(group, MessageChain(
-            f"服内群友数:{player_num}\n" if "捞" not in message.display else f"服内捞b数:{player_num}\n", player_list_filter,
+            f"服内群友数:{player_num}\n" if "捞" not in message.display else f"服内捞b数:{player_num}\n",
+            player_list_filter,
             f"\n{update_time}"
         ), quote=source)
     else:
@@ -1531,7 +1534,7 @@ async def get_server_playerList_pic(
         ), quote=source)
     elif isinstance(playerlist_data, str):
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
-    playerlist_data = playerlist_data[int(server_gameid)]
+    playerlist_data: dict = playerlist_data[int(server_gameid)]
     if not playerlist_data["players"]:
         return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
 
@@ -1634,10 +1637,11 @@ async def get_server_playerList_pic(
     # 队伍1名
     draw.text((152, 105), team1_name, fill='white', font=team_font)
     draw.text((520, 113), f"胜率", fill='white', font=title_font_small)
-    draw.text((610, 113), f"K/D", fill='white', font=title_font_small)
-    draw.text((700, 113), f"KPM", fill='white', font=title_font_small)
-    draw.text((790, 113), f"时长(h)", fill='white', font=title_font_small)
-    draw.text((890, 113), f"延迟", fill='white', font=title_font_small)
+    draw.text((600, 113), f"K/D", fill='white', font=title_font_small)
+    draw.text((670, 113), f"KPM", fill='white', font=title_font_small)
+    draw.text((750, 113), f"时长(h)", fill='white', font=title_font_small)
+    draw.text((840, 113), f"延迟", fill='white', font=title_font_small)
+    draw.text((900, 113), f"语言", fill='white', font=title_font_small)
     # 队伍1横线
     draw.line([100, 141, 950, 141], fill=(114, 114, 114), width=2, joint=None)
     # 队伍1竖线
@@ -1670,11 +1674,14 @@ async def get_server_playerList_pic(
         if str(player_item["pid"]) in admin_pid_list:
             color_temp = admin_color
             admin_counter += 1
-        # if player_item["platoon"] != "":
-        #     draw.text((195, 155 + i * 23), f"[{player_item['platoon']}]{player_item['name']}", fill=color_temp,
-        #               font=player_font)
-        # else:
-        draw.text((195, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
+        if player_item["platoon"]:
+            draw.text(
+                (195, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['name']}",
+                fill=color_temp,
+                font=player_font
+            )
+        else:
+            draw.text((195, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
 
         # 延迟 靠右显示
         ping_pic = Ping5
@@ -1686,8 +1693,11 @@ async def get_server_playerList_pic(
             ping_pic = Ping3
         elif 150 < player_item['latency']:
             ping_pic = Ping4
-        IMG.paste(ping_pic, (880, 158 + i * 23), ping_pic)
-        draw.text((930, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+        IMG.paste(ping_pic, (830, 158 + i * 23), ping_pic)
+        draw.text((880, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+
+        # 语言
+        draw.text((940, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
 
         # KD KPM 时长
         try:
@@ -1701,17 +1711,17 @@ async def get_server_playerList_pic(
             # kd
             kd = player_stat_data['kdr']
             KD_counter1 += kd
-            draw.text((645, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
+            draw.text((635, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
                       font=player_font)
             # kpm
             kpm = player_stat_data['basicStats']["kpm"]
             KPM_counter1 += kpm
-            draw.text((740, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
+            draw.text((710, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
                       font=player_font)
             # 时长
             time_played = "{:.1f}".format(player_stat_data['basicStats']["timePlayed"] / 3600)
             TIME_counter1 += float(time_played)
-            draw.text((850, 155 + i * 23), f"{time_played}", anchor="ra",
+            draw.text((810, 155 + i * 23), f"{time_played}", anchor="ra",
                       fill=max_level_color if float(time_played) >= 1000 else 'white',
                       font=player_font)
         except:
@@ -1730,10 +1740,11 @@ async def get_server_playerList_pic(
     # 队伍2名
     draw.text((1012, 105), team2_name, fill='white', font=team_font)
     draw.text((1380, 113), f"胜率", fill='white', font=title_font_small)
-    draw.text((1470, 113), f"K/D", fill='white', font=title_font_small)
-    draw.text((1560, 113), f"KPM", fill='white', font=title_font_small)
-    draw.text((1650, 113), f"时长(h)", fill='white', font=title_font_small)
-    draw.text((1750, 113), f"延迟", fill='white', font=title_font_small)
+    draw.text((1460, 113), f"K/D", fill='white', font=title_font_small)
+    draw.text((1530, 113), f"KPM", fill='white', font=title_font_small)
+    draw.text((1610, 113), f"时长(h)", fill='white', font=title_font_small)
+    draw.text((1700, 113), f"延迟", fill='white', font=title_font_small)
+    draw.text((1760, 113), f"语言", fill='white', font=title_font_small)
     # 队伍2横线
     draw.line([960, 141, 1810, 141], fill=(114, 114, 114), width=2, joint=None)
     # 队伍2竖线
@@ -1766,11 +1777,14 @@ async def get_server_playerList_pic(
         if str(player_item["pid"]) in admin_pid_list:
             color_temp = admin_color
             admin_counter += 1
-        # if player_item["platoon"] != "":
-        #     draw.text((1055, 155 + i * 23), f"[{player_item['platoon']}]{player_item['name']}", fill=color_temp,
-        #               font=player_font)
-        # else:
-        draw.text((1055, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
+        if player_item["platoon"]:
+            draw.text(
+                (195, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['name']}",
+                fill=color_temp,
+                font=player_font
+            )
+        else:
+            draw.text((195, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
         # 延迟 靠右显示
         ping_pic = Ping5
         if player_item['latency'] <= 50:
@@ -1781,8 +1795,11 @@ async def get_server_playerList_pic(
             ping_pic = Ping3
         elif 150 < player_item['latency']:
             ping_pic = Ping4
-        IMG.paste(ping_pic, (1740, 158 + i * 23), ping_pic)
-        draw.text((1790, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+        IMG.paste(ping_pic, (1690, 158 + i * 23), ping_pic)
+        draw.text((1740, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+
+        # 语言
+        draw.text((1800, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
         # 生涯数据
         try:
             player_stat_data = scrape_index_tasks_t2[i].result()["result"]
@@ -1795,17 +1812,17 @@ async def get_server_playerList_pic(
             # kd
             kd = player_stat_data['kdr']
             KD_counter2 += kd
-            draw.text((1505, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
+            draw.text((1495, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
                       font=player_font)
             # kpm
             kpm = player_stat_data['basicStats']["kpm"]
             KPM_counter2 += kpm
-            draw.text((1600, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
+            draw.text((1570, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
                       font=player_font)
             # 时长
             time_played = "{:.1f}".format(player_stat_data['basicStats']["timePlayed"] / 3600)
             TIME_counter2 += float(time_played)
-            draw.text((1710, 155 + i * 23), f"{time_played}", anchor="ra",
+            draw.text((1670, 155 + i * 23), f"{time_played}", anchor="ra",
                       fill=max_level_color if float(time_played) >= 1000 else 'white',
                       font=player_font)
         except:
@@ -1854,19 +1871,19 @@ async def get_server_playerList_pic(
                       fill=avg_color if avg_1_5 > avg_2_5 else "white",
                       font=player_font)
         if KD_counter1 != 0:
-            draw.text((645, 156 + i_temp * 23),
+            draw.text((635, 156 + i_temp * 23),
                       "{:.2f}".format(KD_counter1 / len(playerlist_data['teams'][0])),
                       anchor="ra",
                       fill=avg_color if avg_1_2 > avg_2_2 else "white",
                       font=player_font)
         if KPM_counter1 != 0:
-            draw.text((740, 156 + i_temp * 23),
+            draw.text((710, 156 + i_temp * 23),
                       "{:.2f}".format(KPM_counter1 / len(playerlist_data['teams'][0])),
                       anchor="ra",
                       fill=avg_color if avg_1_3 > avg_2_3 else "white",
                       font=player_font)
         if TIME_counter1 != 0:
-            draw.text((850, 156 + i_temp * 23),
+            draw.text((810, 156 + i_temp * 23),
                       "{:.1f}".format(TIME_counter1 / len(playerlist_data['teams'][0])),
                       anchor="ra",
                       fill=avg_color if avg_1_4 > avg_2_4 else "white",
@@ -1889,19 +1906,19 @@ async def get_server_playerList_pic(
                       fill=avg_color if avg_1_5 < avg_2_5 else "white",
                       font=player_font)
         if KD_counter2 != 0:
-            draw.text((1505, 156 + i_temp * 23),
+            draw.text((1495, 156 + i_temp * 23),
                       "{:.2f}".format(KD_counter2 / len(playerlist_data['teams'][1])),
                       anchor="ra",
                       fill=avg_color if avg_1_2 < avg_2_2 else "white",
                       font=player_font)
         if KPM_counter2 != 0:
-            draw.text((1600, 156 + i_temp * 23),
+            draw.text((1570, 156 + i_temp * 23),
                       "{:.2f}".format(KPM_counter2 / len(playerlist_data['teams'][1])),
                       anchor="ra",
                       fill=avg_color if avg_1_3 < avg_2_3 else "white",
                       font=player_font)
         if TIME_counter2 != 0:
-            draw.text((1710, 156 + i_temp * 23),
+            draw.text((1670, 156 + i_temp * 23),
                       "{:.1f}".format(TIME_counter2 / len(playerlist_data['teams'][1])),
                       anchor="ra",
                       fill=avg_color if avg_1_4 < avg_2_4 else "white",
@@ -1945,16 +1962,18 @@ async def get_server_playerList_pic(
     draw.text((1860, 1060), f"by.13", fill=(114, 114, 114), font=player_font)
 
     # IMG.show()
-    SavePic = f"./data/battlefield/Temp/{time.time()}.png"
-    SavePic = SavePic.replace(".png", ".jpg")
-    IMG.save(SavePic, quality=100)
+    # SavePic = f"./data/battlefield/Temp/{time.time()}.png"
+    # SavePic = SavePic.replace(".png", ".jpg")
+    # IMG.save(SavePic, quality=100)
+    # 直接IO流发送
+    img_bytes = io.BytesIO()
+    IMG.save(img_bytes, format='PNG')
     logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     message_send = MessageChain(
-        GraiaImage(path=SavePic),
+        GraiaImage(data_bytes=img_bytes.getvalue()),
         "\n回复'-k 序号 原因'可踢出玩家(120秒内有效)"
     )
     bot_message = await app.send_group_message(group, message_send, quote=source)
-    os.remove(SavePic)
 
     # TODO 待重构的回复踢出
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
@@ -3307,7 +3326,8 @@ async def add_banall(
         )
     server_info = await BF1GROUP.get_info(bf_group_name)
     if isinstance(server_info, str):
-        return await app.send_message(group, MessageChain(f"{server_info} 使用banall时必须指定群组名且不加服务器序号!"), quote=source)
+        return await app.send_message(group, MessageChain(f"{server_info} 使用banall时必须指定群组名且不加服务器序号!"),
+                                      quote=source)
     task_list = []
     for i, id_item in enumerate(server_info["bind_ids"]):
         if not id_item:
@@ -3468,7 +3488,9 @@ async def del_banall(
         )
     server_info = await BF1GROUP.get_info(bf_group_name)
     if isinstance(server_info, str):
-        return await app.send_message(group, MessageChain(f"{server_info} 使用unbanall时必须指定群组名且不加服务器序号!"), quote=source)
+        return await app.send_message(group,
+                                      MessageChain(f"{server_info} 使用unbanall时必须指定群组名且不加服务器序号!"),
+                                      quote=source)
     task_list = []
     for i, id_item in enumerate(server_info["bind_ids"]):
         if not id_item:
@@ -3615,7 +3637,9 @@ async def check_ban(
         )
     server_info = await BF1GROUP.get_info(bf_group_name)
     if isinstance(server_info, str):
-        return await app.send_message(group, MessageChain(f"{server_info} 使用unbanall时必须指定群组名且不加服务器序号!"), quote=source)
+        return await app.send_message(group,
+                                      MessageChain(f"{server_info} 使用unbanall时必须指定群组名且不加服务器序号!"),
+                                      quote=source)
     id_list = []
     for i, id_item in enumerate(server_info["bind_ids"]):
         if not id_item:
@@ -4235,7 +4259,8 @@ async def get_vban_list(app: Ariadne, group: Group, sender: Member, vban_rank: R
     fwd_nodeList = [ForwardNode(
         target=sender,
         time=datetime.now(),
-        message=MessageChain(f"vban人数:{player_num}" if len(vban_list) < 100 else f"vban人数:{player_num}\n当前显示最新100条数据"),
+        message=MessageChain(
+            f"vban人数:{player_num}" if len(vban_list) < 100 else f"vban人数:{player_num}\n当前显示最新100条数据"),
     )]
     vban_list = vban_list[:100]
     for item in vban_list:
@@ -4592,8 +4617,10 @@ async def change_map(
             )
             return
         else:
-            suc_str = f"成功更换服务器{server_rank}地图为:{map_list[int(map_index)]}".replace('流血', '流\u200b血').replace('\n',
-                                                                                                              '')
+            suc_str = f"成功更换服务器{server_rank}地图为:{map_list[int(map_index)]}".replace('流血',
+                                                                                              '流\u200b血').replace(
+                '\n',
+                '')
             await app.send_message(group, MessageChain(
                 suc_str
             ), quote=source)
@@ -5329,7 +5356,8 @@ async def check_vip(
                 add_task.append(vip)
         if not add_task and not del_task:
             return await app.send_message(group, MessageChain("当前没有过期的VIP和待生效的VIP!"), quote=source)
-        await app.send_message(group, MessageChain(f"预计清理{len(del_task)}个VIP,添加{len(add_task)}个VIP~"), quote=source)
+        await app.send_message(group, MessageChain(f"预计清理{len(del_task)}个VIP,添加{len(add_task)}个VIP~"),
+                               quote=source)
         del_task_result = await asyncio.gather(
             *[account_instance.removeServerVip(task["personaId"], server_id) for task in del_task])
         for i in range(len(del_task)):
@@ -5380,7 +5408,8 @@ async def check_vip(
             else:
                 add_task[i]["result"] = f"添加失败!{add_task_result[i]}"
                 add_fail_count += 1
-        send = [f"操作完成!\n成功添加{add_suc_count}个,失败{add_fail_count}个\n成功删除{del_suc_count}个,失败{del_fail_count}个"]
+        send = [
+            f"操作完成!\n成功添加{add_suc_count}个,失败{add_fail_count}个\n成功删除{del_suc_count}个,失败{del_fail_count}个"]
         if del_fail_count:
             for i in range(len(del_task)):
                 if del_task[i]["result"].startswith("删除失败"):
@@ -5496,7 +5525,8 @@ async def auto_del_vip_timedOut():
                 else:
                     del_task[index]["result"] = f"删除失败!{del_task_result[index]}"
                     del_fail_count += 1
-            logger.debug(f"群组{group_info['group_name']}的服务器{i + 1}清理过期的VIP完成,成功{del_suc_count}个,失败{del_fail_count}个")
+            logger.debug(
+                f"群组{group_info['group_name']}的服务器{i + 1}清理过期的VIP完成,成功{del_suc_count}个,失败{del_fail_count}个")
 
 
 # 查vip列表

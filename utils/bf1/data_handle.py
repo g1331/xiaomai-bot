@@ -234,7 +234,8 @@ class VehicleData:
                     vehicle_list.append(vehicle)
             elif rule in ["地面"]:
                 if vehicle.get("category") in [
-                    "重型坦克", "巡航坦克", "輕型坦克", "火砲裝甲車", "攻擊坦克", "突擊裝甲車", "地面載具", "馬匹", "定點武器"
+                    "重型坦克", "巡航坦克", "輕型坦克", "火砲裝甲車", "攻擊坦克", "突擊裝甲車", "地面載具", "馬匹",
+                    "定點武器"
                 ] or vehicle.get("guid") in [
                     "A3ED808E-1525-412B-8E77-9EB6902A55D2",  # 装甲列车
                     "BBFC5A91-B2FC-48D2-8913-658C08072E6E"  # Char 2C
@@ -249,7 +250,8 @@ class VehicleData:
                 ]:
                     vehicle_list.append(vehicle)
             elif rule in ["空中"]:
-                if vehicle.get("category") in ["攻擊機", "轟炸機", "戰鬥機", "重型轟炸機", "飛船"] or vehicle.get("guid") in [
+                if vehicle.get("category") in ["攻擊機", "轟炸機", "戰鬥機", "重型轟炸機", "飛船"] or vehicle.get(
+                        "guid") in [
                     "1A7DEECF-4F0E-E343-9644-D6D91DCAEC12",  # 飞艇
                 ]:
                     vehicle_list.append(vehicle)
@@ -561,6 +563,30 @@ class ServerData:
 
 
 class BlazeData:
+    language_dict = {
+        "zh": "中",
+        "ru": "俄",
+        "en": "英",
+        "th": "泰",
+        "de": "德",
+        "fr": "法",
+        "it": "意",
+        "pl": "波",
+        "dk": "力",
+        "cs": "捷",
+        "hu": "匈",
+        "ko": "韩",
+        "es": "西",
+        "ja": "日",
+        "pt": "葡",
+        "nl": "荷",
+        "tr": "土",
+        "sv": "瑞",
+        "no": "挪",
+        "fi": "芬",
+        "ro": "罗",
+        "ar": "阿",
+    }
 
     @staticmethod
     def player_list_handle(data: dict) -> Union[dict, str]:
@@ -602,38 +628,39 @@ class BlazeData:
         if not data["data"]:
             return result
         if data["type"] == "Error":
-            error_code = data.get("data", {}).get("ERRC 0", "Known")
-            error_msg = f"Blaze查询出错!错误代码:{error_code}"
-            return error_msg
-        for server_data in data["data"]["GDAT 43"]:
-            game_id = server_data["GID  0"]
-            server_name = server_data["GNAM 1"]
+            error_code = data.get("data", {}).get("ERRC", "Known")
+            return f"Blaze查询出错!错误代码:{error_code}"
+        for server_data in data["data"]["GDAT"]:
+            game_id = server_data["GID"]
+            server_name = server_data["GNAM"]
             # queue = server_data["QCNT 0"]
             # spectator = server_data["PCNT 40"][2]
-            max_player = server_data["CAP  40"][0]
+            max_player = server_data["CAP"][0]
             players = []
             queues = []
             spectators = []
-            if "ROST 43" in server_data:
-                for player in server_data["ROST 43"]:
-                    role = player["ROLE 1"]
+            if "ROST" in server_data:
+                for player in server_data["ROST"]:
+                    role = player["ROLE"]
                     if role == "":
                         role = "spectator"
                     try:
-                        rank = int(player["PATT 511"].get("rank", 0))
+                        rank = int(player["PATT"].get("rank", 0))
                     except KeyError:
                         logger.debug(player)
                         rank = 0
                     try:
-                        latency = int(player["PATT 511"].get("latency", 0))
+                        latency = int(player["PATT"].get("latency", 0))
                     except KeyError:
                         logger.debug(player)
                         latency = 0
-                    join_time = player["JGTS 0"]/1000000
-                    display_name = player["NAME 1"]
-                    pid = player["PID  0"]
-                    uid = player["EXID 0"]
-                    team = player["TIDX 0"]
+                    join_time = player["JGTS"] / 1000000
+                    display_name = player["NAME"]
+                    pid = player["PID"]
+                    uid = player["EXID"]
+                    team = player["TIDX"]
+                    language = player["LOC"].to_bytes(4, byteorder="big").decode("ascii")
+                    language = BlazeData.language_dict.get(language[:2], language[:2])
                     if team == 65535 and rank == 0:
                         role = "queue"
                     player_data = {
@@ -645,6 +672,8 @@ class BlazeData:
                         "latency": latency,
                         "team": team,
                         "join_time": join_time,
+                        "platoon": {},
+                        "language": language,
                     }
                     if role == "queue":
                         queues.append(player_data)

@@ -405,7 +405,7 @@ class bf1_api(object):
             logger.error(f"BF1账号{self.pid}登录获取authcode失败!")
             return await response.text()
 
-    async def Authentication_getEnvIdViaAuthCode(self, authcode) -> dict:
+    async def Authentication_getEnvIdViaAuthCode(self, authcode) -> dict | str:
         """
         登录获取session和pid
         result:
@@ -436,7 +436,7 @@ class bf1_api(object):
         }
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10) as response:
+                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10, ssl=False) as response:
                     return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"

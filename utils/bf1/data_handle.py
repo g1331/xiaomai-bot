@@ -635,6 +635,13 @@ class BlazeData:
             server_name = server_data["GNAM"]
             # queue = server_data["QCNT 0"]
             # spectator = server_data["PCNT 40"][2]
+            server_attribute = server_data["ATTR"]
+            operation_info = {}
+            if server_attribute.get("operationstate"):
+                operation_info["operationindex"] = server_attribute["operationindex"]
+                operation_info["operationstate"] = server_attribute["operationstate"]
+                operation_info["progress"] = server_attribute["progress"]
+
             max_player = server_data["CAP"][0]
             players = []
             queues = []
@@ -689,5 +696,6 @@ class BlazeData:
                 "spectators": spectators,
                 "max_player": max_player,
                 "time": time.time(),
+                "operation_info": operation_info
             }
         return result

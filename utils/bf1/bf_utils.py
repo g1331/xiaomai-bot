@@ -933,7 +933,11 @@ class BF1BlazeManager:
     async def init_socket(pid: Union[str, int], remid: str, sid: str) -> Union[BlazeSocket, None]:
         pid = int(pid)
         if pid in BlazeClientManagerInstance.clients_by_pid:
-            return await BlazeClientManagerInstance.get_socket_for_pid(pid)
+            blaze_socket = BlazeClientManagerInstance.clients_by_pid[pid]
+            if blaze_socket.connect:
+                return await BlazeClientManagerInstance.get_socket_for_pid(pid)
+            else:
+                await BlazeClientManagerInstance.remove_client(pid)
         # 连接blaze
         blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
         if not blaze_socket:

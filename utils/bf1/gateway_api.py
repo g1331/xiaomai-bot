@@ -217,6 +217,7 @@ class bf1_api(object):
                 "144": "on"
             }
         }
+        self.auto_login_count = 0
 
     # api调用
     async def check_session_expire(self) -> bool:
@@ -299,6 +300,16 @@ class bf1_api(object):
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
+            try:
+                error_data = await response.json()
+                if error_data.get("error") == "login_required":
+                    if self.auto_login_count <= 2:
+                        await self.auto_login(str(self.pid))
+                    else:
+                        logger.error(f"BF1账号:{self.pid}登录失败次数过多!请检查账密信息是否正确!")
+                        return await response.text()
+            except Exception:
+                pass
             logger.error(f"BF1账号{self.pid}登录刷新session失败!")
             return await response.text()
         # 获取authcode
@@ -331,6 +342,7 @@ class bf1_api(object):
         self.access_token_time = time.time()
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
+        self.auto_login_count = 0
         from utils.bf1.database import BF1DB
         await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
@@ -372,6 +384,30 @@ class bf1_api(object):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, data=data) as response:
                 return await response.json()
+
+    async def auto_login(self, pid):
+        file_path = "utils/bf1/ap_info.json"
+        with open(file_path, "r", encoding="utf-8") as f:
+            ap_info = json.load(f)
+        if not ap_info.get(pid):
+            logger.error(f"BF1账号:{pid}没有账密信息!取消更新remid和sid!")
+            return
+        else:
+            email = ap_info[pid]["email"]
+            password = ap_info[pid]["password"]
+        try:
+            login_info = await self.ap_login(email, password)
+            if not login_info.get("remid"):
+                logger.error(f"BF1账号:{pid}登录失败!{login_info}")
+                return
+            self.remid = login_info["remid"]
+            self.sid = login_info["sid"]
+            self.session = login_info["sessionId"]
+            await self.login(self.remid, self.sid)
+            self.auto_login_count += 1
+        except Exception as e:
+            logger.error(f"BF1账号:{pid}登录失败!{e}")
+            return
 
     async def getBlazeAuthcode(self, remid: str = None, sid: str = None) -> str:
         if not remid:
@@ -436,7 +472,8 @@ class bf1_api(object):
         }
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10, ssl=False) as response:
+                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10,
+                                        ssl=False) as response:
                     return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"

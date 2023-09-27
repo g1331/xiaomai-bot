@@ -301,8 +301,9 @@ class bf1_api(object):
             logger.error(e)
             logger.error(await response.text())
             try:
-                error_data = await response.json()
+                error_data = eval(await response.text())
                 if error_data.get("error") == "login_required":
+                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count+1}次刷新")
                     if self.auto_login_count <= 2:
                         await self.auto_login(str(self.pid))
                     else:
@@ -395,6 +396,7 @@ class bf1_api(object):
         else:
             email = ap_info[pid]["email"]
             password = ap_info[pid]["password"]
+            logger.debug(f"获取到BF1账号:{pid}账密")
         try:
             login_info = await self.ap_login(email, password)
             if not login_info.get("remid"):
@@ -403,6 +405,7 @@ class bf1_api(object):
             self.remid = login_info["remid"]
             self.sid = login_info["sid"]
             self.session = login_info["sessionId"]
+            logger.success(f"BF1账号:{pid}刷新cookie成功!正在尝试重新登录!")
             await self.login(self.remid, self.sid)
             self.auto_login_count += 1
         except Exception as e:

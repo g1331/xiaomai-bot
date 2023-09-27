@@ -3605,7 +3605,7 @@ async def del_banall(
     Function.require(channel.module),
     FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.GroupAdmin, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
     Twilight(

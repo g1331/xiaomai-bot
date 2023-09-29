@@ -78,7 +78,7 @@ class bg_pic(object):
 
     # 选择背景
     @staticmethod
-    def choose_bg(player_pid: int) -> Union[Path, None]:
+    def choose_bg(player_pid) -> Union[Path, None]:
         if bg_pic.check_date(player_pid):
             bg_path = f'./data/battlefield/players/{player_pid}/bg'
             if os.path.exists(bg_path):

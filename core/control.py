@@ -3,7 +3,7 @@ from typing import Union
 
 import sqlalchemy.exc
 from creart import create
-from graia.amnesia.message import MessageChain
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message import Source
@@ -387,14 +387,17 @@ class FrequencyLimitation(object):
                 return Depend(judge)
             group_id = event.sender.group.id
             sender_id = event.sender.id
+            # 是否开启频率限制
             if frequency_limitation_switch := await orm.fetch_one(
                     select(GroupSetting.frequency_limitation).where(GroupSetting.group_id == group_id)
             ):
                 frequency_limitation_switch = frequency_limitation_switch[0]
             if not frequency_limitation_switch:
                 return
+            # 是否越权
             if await Permission.get_user_perm(event) >= override_perm:
                 return
+
             frequency_controller = frequency_model.get_frequency_controller()
             frequency_controller.add_weight(module_name, group_id, sender_id, weight)
             # 如果已经在黑名单则返回
@@ -402,7 +405,7 @@ class FrequencyLimitation(object):
                 if not frequency_controller.blacklist_noticed_judge(group_id, sender_id):
                     await app.send_message(
                         event.sender.group,
-                        MessageChain(f"检测到大量请求,加入黑名单5分钟!"),
+                        MessageChain("检测到大量请求,加入黑名单5分钟!"),
                         quote=src
                     )
                     frequency_controller.blacklist_notice(group_id, sender_id)
@@ -412,7 +415,7 @@ class FrequencyLimitation(object):
                 await app.send_message(
                     event.sender.group,
                     MessageChain(f"超过频率调用限制!({current_weight + weight}/{total_weights})\n"
-                                 f"休息一会儿吧~继续高频访问会被加入临时黑名单哦~"),
+                                 f"休息一会儿吧~继续高频访问会被加入临时全局黑名单哦~"),
                     quote=src,
                 )
                 raise ExecutionStop

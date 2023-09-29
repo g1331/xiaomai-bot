@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import argparse
-import httpx
 from pathlib import Path
+
+import httpx
 from loguru import logger
 
 if __name__ == '__main__':
@@ -42,7 +43,6 @@ from graia.saya import Saya
 
 from core.bot import Umaru
 from core.config import GlobalConfig
-from core.models import frequency_model
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -128,7 +128,6 @@ async def stranger_message_listener(app: Ariadne, stranger: Stranger, message: M
 @bcc.receiver(AccountLaunch)
 async def init():
     await core.initialize()
-    await frequency_model.get_frequency_controller().limited()
 
 
 # BOT加入新群时,进行初始化

@@ -427,16 +427,16 @@ class PlayerListPic:
         server_mapName = server_info["serverInfo"]["mapName"]
 
         team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
-        team1_pic = playerlist_data.get_team_pic(team1_name)
+        team1_pic = PlayerListPic.get_team_pic(team1_name)
         team1_pic = Image.open(team1_pic).convert('RGBA')
         team1_pic = team1_pic.resize((40, 40), Image.ANTIALIAS)
         team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
-        team2_pic = playerlist_data.get_team_pic(team2_name)
+        team2_pic = PlayerListPic.get_team_pic(team2_name)
         team2_pic = Image.open(team2_pic).convert('RGBA')
         team2_pic = team2_pic.resize((40, 40), Image.ANTIALIAS)
 
         # 地图路径
-        server_map_pic = await playerlist_data.get_server_map_pic(server_mapName)
+        server_map_pic = await PlayerListPic.get_server_map_pic(server_mapName)
         # 地图作为画布底图并且高斯模糊化
         if server_map_pic is None:
             logger.warning(f"获取地图{server_mapName}图片出错")
@@ -795,7 +795,7 @@ class PlayerListPic:
             if i * 11 % 125 == 0 or (i + 1) * 11 % 125 == 0:
                 test_temp += '\n'
                 i = 0
-            i += playerlist_data.get_width(ord(letter))
+            i += PlayerListPic.get_width(ord(letter))
             test_temp += letter
         draw.text((240, 955), f"服务器简介:{test_temp}", fill="white", font=info_font)
 

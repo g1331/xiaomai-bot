@@ -8,6 +8,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Union
 
+import aiohttp
 import httpx
 import zhconv
 from creart import create
@@ -800,9 +801,6 @@ async def bfgroup_perm_list(
     ), quote=source)
 
 
-# TODO 通过bf1_server表自动更新gameid
-
-
 # 绑定过群组的群-查服务器
 @listen(GroupMessage)
 @decorate(
@@ -1480,6 +1478,7 @@ async def get_server_playerList_pic(
     async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (await perm_judge(bf_group_name, waiter_group, waiter_member)) and waiter_group.id == group.id and (
                 event.quote and event.quote.id == bot_message.id):
+            waiter_message = waiter_message.replace(At(app.account), "")
             saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
             return saying
 
@@ -4018,9 +4017,9 @@ async def change_map(
                 f"匹配到多个选项,30秒内发送'#'前的序号进行换图,发送其他消息可退出,匹配结果如下:\n", map_index_list
             ), quote=source)
 
-            async def waiter(waiter_member: Member, waiter_group: Group,
-                             waiter_message: MessageChain):
+            async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
                 if waiter_member.id == sender.id and waiter_group.id == group.id:
+                    waiter_message = waiter_message.replace(At(app.account), "")
                     saying = waiter_message.display
                     if saying in choices:
                         map_index_temp = map_list.index(
@@ -4248,6 +4247,7 @@ async def change_map_byList(
 
     async def waiter(waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if waiter_member.id == sender.id and waiter_group.id == group.id:
+            waiter_message = waiter_message.replace(At(app.account), "")
             saying = waiter_message.display
             if saying in choices:
                 return True, waiter_member.id, saying

@@ -5657,6 +5657,9 @@ async def bf1_log(
             MessageChain("没有查询到相关日志!"),
             quote=source,
         )
+    else:
+        # 倒序
+        log_list = sorted(log_list, reverse=True)
 
     fwd_node_list = [ForwardNode(
         target=sender,

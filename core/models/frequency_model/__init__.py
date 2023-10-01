@@ -65,6 +65,8 @@ class FrequencyController(object):
         total_weight = sum(w for _, w in self.frequency_dict[module_name][group_id][sender_id])
 
         if total_weight >= 12:
+            if self.blacklist_judge(group_id, sender_id):
+                return
             self.add_blacklist(group_id, sender_id)
 
     def get_weight(self, module_name, group_id, sender_id) -> int:

@@ -5737,7 +5737,7 @@ async def bf1_log(
                 log_member = None
         fwd_node_list.append(ForwardNode(
             target=sender if not log_member else log_member,
-            time=log['action_time'],
+            time=log['time'],
             message=MessageChain(
                 f"服务器序号: {server_index_dict.get(log['serverId'], 'Error')}\n"
                 f"ServerId: {log['serverId']}\n"
@@ -5747,7 +5747,7 @@ async def bf1_log(
                 f"被操作者: {log['pid']}\n"
                 f"被操作者名字: {log['display_name']}\n"
                 f"信息: {log['info']}\n"
-                f"时间: {log['action_time']}\n"
+                f"时间: {log['time']}\n"
             ),
         ))
     message = MessageChain(Forward(nodeList=fwd_node_list))
@@ -5772,6 +5772,8 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
     send = [
         "查询服务器：-服务器/-fwq/-FWQ/-服/-f/-狐务器/-负无穷",
         "查询服务器详情：上述查询指令后面加上 群组名和服务器序号"
+        "查询服管日志：-bflog+群组名(可选)+服务器序号(可选)+ -qq=qq号 -pid=pid -name=displayName",
+        "如：-bflog",
         "添加服主/管理员：-bfg 群组名 ao/aa @成员 ,ao为添加服主，aa为添加管理员,可同时@多个对象"
         "删除服主/管理员：-bfg 群组名 del @成员 ,可同时@多个对象",
         "如：-服务器 sakula1 即可查询群组sakula群组的第一个服务器的详情，如果当前QQ群绑定了群组，则可以省略群组名，如：-f1",

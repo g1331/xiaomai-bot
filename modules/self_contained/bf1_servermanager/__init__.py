@@ -5712,8 +5712,7 @@ async def bf1_log(
             quote=source,
         )
     else:
-        # 只获取前200条
-        log_list = log_list[:200]
+        log_list = log_list[:150]
 
     fwd_node_list = [ForwardNode(
         target=sender,

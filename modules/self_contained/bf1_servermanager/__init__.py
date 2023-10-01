@@ -5744,7 +5744,7 @@ async def bf1_log(
                 f"GameId: {log['gameId']}\n"
                 f"操作: {log['action']}\n"
                 f"操作者: {log['operator_qq']}\n"
-                f"被操作者: {log['pid']}\n"
+                f"被操作者PID: {log['persona_id']}\n"
                 f"被操作者名字: {log['display_name']}\n"
                 f"信息: {log['info']}\n"
                 f"时间: {log['time']}\n"

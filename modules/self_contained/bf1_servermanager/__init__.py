@@ -5659,7 +5659,7 @@ async def bf1_log(
         )
     else:
         # 倒序
-        log_list = sorted(log_list, reverse=True)
+        log_list = sorted(log_list, key=lambda x: x["time"], reverse=True)
 
     fwd_node_list = [ForwardNode(
         target=sender,

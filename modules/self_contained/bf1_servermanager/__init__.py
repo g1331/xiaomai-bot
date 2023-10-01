@@ -5505,13 +5505,13 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
         [
             # 删除vip一般会记录 操作者: qq, 被执行者: pid、名字，操作: unvip, 信息: 成功/失败
             UnionMatch("-bflog", "-服管日志").space(SpacePolicy.PRESERVE),
-            ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "bf_group_name",
             # 操作
             UnionMatch(
                 "kick", "ban", "unban", "change_map", "vip", "unvip",
                 "踢出", "封禁", "解封", "换图", "上v", "下v",
                 optional=True
             ).space(SpacePolicy.PRESERVE) @ "action",
+            ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "bf_group_name",
             ArgumentMatch("-i", "-index", optional=True, type=int) @ "server_rank",
             # 操作人
             ArgumentMatch("-q", "-qq", optional=True, type=int) @ "operator_qq",
@@ -5529,6 +5529,27 @@ async def bf1_log(
         action: RegexResult, operator_qq: RegexResult,
         pid: RegexResult, display_name: RegexResult, action_time: RegexResult
 ):
+    """
+    前缀：-bflog/-服管日志
+    操作（可选）："kick", "ban", "unban", "change_map", "vip", "unvip",
+                    "踢出", "封禁", "解封", "换图", "上v", "下v"
+    群组名（可选）
+    可选参数：
+    服务器序号：i/index
+    操作人qq：q/qq
+    被操作人pid: p/pid
+    名字：n/name
+
+    参数是由 减号'-' + 参数名(如你想查qq就是q/qq) + 可选等号(=) +参数(qq就是对应qq)
+    所以假如你想查qq=123的操作日志，对应参数指令就是 -q=123
+    同理得-i=5
+
+    由此我们可以得出以下指令
+    -bflog 换图 -i=1 -q=123
+    这个指令是：查询qq为123的人在1服换图的日志
+    -bflog -n=123
+    这个指令是：名字为123的玩家在整个群组被操作的日志(包括上下v封禁踢出)
+    """
     # 获取群组信息
     bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
     if not bf_group_name:
@@ -5599,8 +5620,8 @@ async def bf1_log(
         action = action_dict.get(action, action)
         log_list = [i for i in log_list if i["action"] == action]
     if operator_qq.matched:
-        operator_qq = operator_qq.result.display
-        if not operator_qq.isdigit():
+        operator_qq = operator_qq.result
+        if not operator_qq:
             return await app.send_message(
                 group,
                 MessageChain("请输入正确的QQ号!"),
@@ -5636,21 +5657,25 @@ async def bf1_log(
             MessageChain("没有查询到相关日志!"),
             quote=source,
         )
-    else:
-        log_list = log_list[:60]
 
     fwd_node_list = [ForwardNode(
         target=sender,
         time=datetime.now(),
         message=MessageChain(
             f"群组: {bf_group_name}\n"
-            f"查询到{len(log_list)}条日志"
+            f"查询到{len(log_list[:60])}/{len(log_list)}条日志"
         ),
     )]
-    log_member_dict = {
-
+    log_member_dict = {}
+    action_name_dict = {
+        "kick": "踢出",
+        "ban": "封禁",
+        "unban": "解封",
+        "change_map": "换图",
+        "vip": "上v",
+        "unvip": "下v",
     }
-    for log in log_list:
+    for log in log_list[:60]:
         log_member = log_member_dict.get(log["operator_qq"])
         if not log_member:
             try:
@@ -5666,12 +5691,13 @@ async def bf1_log(
                 f"服务器序号: {server_index_dict.get(log['serverId'], 'Error')}\n" +
                 f"ServerId: {log['serverId']}\n" +
                 f"GameId: {log['gameId']}\n" +
-                f"操作: {log['action']}\n" +
-                f"操作者: {log['operator_qq']}\n" +
+                f"操作: {action_name_dict.get(log['action'], log['action'])}\n" +
+                f"操作者QQ: {log['operator_qq']}\n" +
                 (f"被操作者PID: {log['persona_id']}\n" if log['persona_id'] else '') +
                 (f"被操作者名字: {log['display_name']}\n" if log['display_name'] else '') +
                 f"信息: {log['info']}\n" +
-                f"时间: {log['time']}"
+                # 格式化输出时间
+                f"时间: {log['time'].strftime('%Y-%m-%d %H:%M:%S') }"
             ),
         ))
     message = MessageChain(Forward(nodeList=fwd_node_list))
@@ -5695,7 +5721,7 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
     send = [
         "查询服务器：-服务器/-fwq/-FWQ/-服/-f/-狐务器/-负无穷",
         "查询服务器详情：上述查询指令后面加上 群组名和服务器序号"
-        "查询服管日志：-bflog+群组名(可选)+服务器序号(可选)+ -qq=qq号 -pid=pid -name=displayName",
+        "查询服管日志：-bflog+操作(可选)+群组名(可选)+ -qq=qq号 -pid=pid -name=displayName",
         "如：-bflog",
         "添加服主/管理员：-bfg 群组名 ao/aa @成员 ,ao为添加服主，aa为添加管理员,可同时@多个对象"
         "删除服主/管理员：-bfg 群组名 del @成员 ,可同时@多个对象",

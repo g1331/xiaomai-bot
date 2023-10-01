@@ -1912,5 +1912,36 @@ class bf1_db:
                 },
             )
 
+        # 将传入server_id_list
+        @staticmethod
+        async def get_log_by_server_id_list(server_id_list: list) -> list:
+            result = await orm.fetch_all(
+                select(
+                    Bf1ManagerLog.operator_qq,
+                    Bf1ManagerLog.serverId,
+                    Bf1ManagerLog.persistedGameId,
+                    Bf1ManagerLog.gameId,
+                    Bf1ManagerLog.persona_id,
+                    Bf1ManagerLog.display_name,
+                    Bf1ManagerLog.action,
+                    Bf1ManagerLog.info,
+                    Bf1ManagerLog.time,
+                ).where(Bf1ManagerLog.serverId.in_(server_id_list)).order_by(-Bf1ManagerLog.time)
+            )
+            return [
+                {
+                    "operator_qq": item[0],
+                    "serverId": item[1],
+                    "persistedGameId": item[2],
+                    "gameId": item[3],
+                    "persona_id": item[4],
+                    "display_name": item[5],
+                    "action": item[6],
+                    "info": item[7],
+                    "time": item[8],
+                }
+                for item in result
+            ] if result else []
+
 
 BF1DB = bf1_db()

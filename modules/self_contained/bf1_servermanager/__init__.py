@@ -5523,6 +5523,239 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
     )
 
 
+# 查询服管操作日志
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            #         await BF1Log.record(
+            #             operator_qq=sender.id,
+            #             serverId=server_id,
+            #             persistedGameId=server_guid,
+            #             gameId=server_gameid,
+            #             pid=pid,
+            #             display_name=player_name,
+            #             action="kick",
+            #             info=reason,
+            #         )
+            # 踢出一般会记录 操作者: qq, 被执行者: pid、名字，操作: kick/ban/unban, 信息: 原因等
+            #               await BF1Log.record(
+            #                 operator_qq=sender.id,
+            #                 serverId=result["sid"],
+            #                 persistedGameId=result["guid"],
+            #                 gameId=result["gid"],
+            #                 pid=pid,
+            #                 display_name=player_name,
+            #                 action="ban",
+            #                 info=reason,
+            #             )
+            # 封禁一般会记录 操作者: qq, 被执行者: pid、名字，操作: kick/ban/unban, 信息: 原因等
+            #               await BF1Log.record(
+            #                 operator_qq=sender.id,
+            #                 serverId=server_id,
+            #                 persistedGameId=server_guid,
+            #                 gameId=server_gameid,
+            #                 pid=None,
+            #                 display_name=None,
+            #                 action="change_map",
+            #                 info=suc_str,
+            #             )
+            # 切换地图一般会记录 操作者: qq, 操作: change_map, 信息: 成功/失败
+            #                   await BF1Log.record(
+            #                     operator_qq=sender.id,
+            #                     serverId=server_id,
+            #                     persistedGameId=server_guid,
+            #                     gameId=server_gameid,
+            #                     pid=add_task[i]["personaId"],
+            #                     display_name=add_task[i]["displayName"],
+            #                     action="vip",
+            #                     info="添加成功(checkvip)",
+            #                 )
+            # 添加vip一般会记录 操作者: qq, 被执行者: pid、名字，操作: vip, 信息: 成功/失败
+            #                   await BF1Log.record(
+            #                     operator_qq=sender.id,
+            #                     serverId=server_id,
+            #                     persistedGameId=server_guid,
+            #                     gameId=server_gameid,
+            #                     pid=del_task[i]["personaId"],
+            #                     display_name=del_task[i]["displayName"],
+            #                     action="unvip",
+            #                     info="删除成功(checkvip)",
+            #                 )
+            # 删除vip一般会记录 操作者: qq, 被执行者: pid、名字，操作: unvip, 信息: 成功/失败
+            UnionMatch("-bflog", "-服管日志").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "bf_group_name",
+            ParamMatch(optional=True) @ "server_rank",
+            # 操作
+            UnionMatch(
+                "kick", "ban", "unban", "change_map", "vip", "unvip",
+                "踢出", "封禁", "解封", "换图", "上v", "下v",
+                optional=True
+            ).space(SpacePolicy.PRESERVE) @ "action",
+            # 操作人
+            ArgumentMatch("-q", "-qq", optional=True) @ "operator_qq",
+            # 被操作人
+            ArgumentMatch("-p", "-pid", optional=True) @ "pid",
+            ArgumentMatch("-n", "-name", optional=True) @ "display_name",
+            # 时间
+            ArgumentMatch("-t", "-time", optional=True) @ "action_time",
+        ]
+    )
+)
+async def bf1_log(
+        app: Ariadne, group: Group, sender: Member, source: Source,
+        bf_group_name: RegexResult, server_rank: RegexResult,
+        action: RegexResult, operator_qq: RegexResult,
+        pid: RegexResult, display_name: RegexResult, action_time: RegexResult
+):
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+    # 服务器序号检查
+    server_id_list = []
+    server_index_dict = {}
+    if server_rank.matched:
+        server_rank = server_rank.result.display
+        if not server_rank.isdigit():
+            return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+        server_rank = int(server_rank)
+        if server_rank < 1 or server_rank > 30:
+            return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+        server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+        if not server_info:
+            return await app.send_message(group, MessageChain(
+                f"群组[{bf_group_name}]未绑定服务器{server_rank}"
+            ), quote=source)
+        elif isinstance(server_info, str):
+            return await app.send_message(group, MessageChain(server_info), quote=source)
+        server_id_list = [server_info["serverId"]]
+        server_index_dict[server_info["serverId"]] = server_rank
+    else:
+        server_info = await BF1GROUP.get_info(bf_group_name)
+        if isinstance(server_info, str):
+            return await app.send_message(group, MessageChain(f"{server_info}"), quote=source)
+        # 同时遍历index 和 bind_ids
+        for i, item in enumerate(server_info["bind_ids"]):
+            if item:
+                server_id_list.append(item["serverId"])
+                server_index_dict[item["serverId"]] = i + 1
+    log_list = await BF1Log.get_log_by_server_id_list(server_id_list)
+    if not log_list:
+        return await app.send_message(
+            group,
+            MessageChain("没有查询到相关日志!"),
+            quote=source,
+        )
+
+    if action.matched:
+        action = action.result.display
+        action_dict = {
+            "踢出": "kick",
+            "封禁": "ban",
+            "解封": "unban",
+            "换图": "change_map",
+            "上v": "vip",
+            "下v": "unvip",
+        }
+        if action not in ["kick", "ban", "unban", "change_map", "vip", "unvip", "踢出", "封禁", "解封", "换图", "上v", "下v"]:
+            return await app.send_message(
+                group,
+                MessageChain("请输入正确的操作!"),
+                quote=source,
+            )
+        action = action_dict.get(action, action)
+        log_list = [i for i in log_list if i["action"] == action]
+    if operator_qq.matched:
+        operator_qq = operator_qq.result.display
+        if not operator_qq.isdigit():
+            return await app.send_message(
+                group,
+                MessageChain("请输入正确的QQ号!"),
+                quote=source,
+            )
+        operator_qq = int(operator_qq)
+        log_list = [i for i in log_list if i["operator_qq"] == operator_qq]
+    if pid.matched:
+        pid = pid.result.display
+        if not pid.isdigit():
+            return await app.send_message(
+                group,
+                MessageChain("请输入正确的PID!"),
+                quote=source,
+            )
+        pid = int(pid)
+        log_list = [i for i in log_list if i["pid"] == pid]
+    if display_name.matched:
+        log_list = [i for i in log_list if i["display_name"].upper() == display_name.result.display.upper()]
+    if not log_list:
+        return await app.send_message(
+            group,
+            MessageChain("没有查询到相关日志!"),
+            quote=source,
+        )
+    else:
+        # 只获取前200条
+        log_list = log_list[:200]
+
+    fwd_node_list = [ForwardNode(
+        target=sender,
+        time=datetime.now(),
+        message=MessageChain(
+            f"群组: {bf_group_name}\n"
+            f"查询到{len(log_list)}条日志"
+        ),
+    )]
+    log_member_dict = {
+
+    }
+    for log in log_list:
+        log_member = log_member_dict.get(log["operator_qq"])
+        if not log_member:
+            try:
+                log_member = await app.get_member(group, log["operator_qq"])
+                if log_member:
+                    log_member_dict[log["operator_qq"]] = log_member
+            except Exception:
+                log_member = None
+        fwd_node_list.append(ForwardNode(
+            target=sender if not log_member else log_member,
+            time=log['action_time'],
+            message=MessageChain(
+                f"服务器序号: {server_index_dict.get(log['serverId'], 'Error')}\n"
+                f"ServerId: {log['serverId']}\n"
+                f"GameId: {log['gameId']}\n"
+                f"操作: {log['action']}\n"
+                f"操作者: {log['operator_qq']}\n"
+                f"被操作者: {log['pid']}\n"
+                f"被操作者名字: {log['display_name']}\n"
+                f"信息: {log['info']}\n"
+                f"时间: {log['action_time']}\n"
+            ),
+        ))
+    message = MessageChain(Forward(nodeList=fwd_node_list))
+    await app.send_message(group, message)
+    return app.send_message(group, MessageChain([At(sender.id), "请点击转发消息查看!"]), quote=source)
+
+
+
 # 帮助
 @listen(GroupMessage)
 @decorate(

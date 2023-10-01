@@ -888,6 +888,30 @@ class BF1Log:
             info=info,
         )
 
+    # 将传入server_id_list、action(可选)、operator_qq(可选)、pid(可选)、display_name(可选)、action_time(可选)
+    @staticmethod
+    async def get_log_by_server_id_list(server_id_list: list = None) -> list:
+        """
+
+        :param server_id_list:
+        :return:
+        [
+            {
+                "operator_qq": item[0],
+                "serverId": item[1],
+                "persistedGameId": item[2],
+                "gameId": item[3],
+                "persona_id": item[4],
+                "display_name": item[5],
+                "action": item[6],
+                "info": item[7],
+                "time": item[8],
+            },
+            ...
+        ]
+        """
+        return await BF1DB.manager_log.get_log_by_server_id_list(server_id_list=server_id_list)
+
 
 class BF1ServerVipManager:
 

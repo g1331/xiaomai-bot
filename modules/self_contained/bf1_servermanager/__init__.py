@@ -5712,7 +5712,7 @@ async def bf1_log(
             quote=source,
         )
     else:
-        log_list = log_list[:150]
+        log_list = log_list[:100]
 
     fwd_node_list = [ForwardNode(
         target=sender,
@@ -5746,7 +5746,7 @@ async def bf1_log(
                 f"被操作者PID: {log['persona_id']}\n"
                 f"被操作者名字: {log['display_name']}\n"
                 f"信息: {log['info']}\n"
-                f"时间: {log['time']}\n"
+                f"时间: {log['time']}"
             ),
         ))
     message = MessageChain(Forward(nodeList=fwd_node_list))

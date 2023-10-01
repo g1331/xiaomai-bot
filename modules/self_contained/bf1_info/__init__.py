@@ -207,7 +207,7 @@ async def set_default_account(
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module, 5),
+    FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
 )

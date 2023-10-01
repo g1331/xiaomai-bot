@@ -1002,7 +1002,9 @@ class BF1BlazeManager:
             return None
 
     @staticmethod
-    async def get_player_list(game_ids: list[int]) -> Union[dict, None, str]:
+    async def get_player_list(
+            game_ids: list[int], origin: bool = False, platoon: bool = False
+    ) -> Union[dict, None, str]:
         """获取玩家列表"""
         # 检查game_ids类型
         if not isinstance(game_ids, list):
@@ -1020,33 +1022,37 @@ class BF1BlazeManager:
             }
         }
         response = await blaze_socket.send(packet)
+        if origin:
+            return response
         response = BlazeData.player_list_handle(response)
         if not isinstance(response, dict):
             return response
-        for game_id in game_ids:
-            if game_id in response:
-                pid_list = [player["pid"] for player in response[game_id]["players"]]
-                platoon_task = [
-                    (await BF1DA.get_api_instance()).getActivePlatoon(pid)
-                    for pid in pid_list
-                ]
-                try:
-                    platoon_list = await asyncio.gather(*platoon_task)
-                except Exception as e:
-                    logger.error(f"获取玩家战排信息失败: {e}")
-                    platoon_list = []
-                platoons = []
-                for i, platoon in enumerate(platoon_list):
-                    if isinstance(platoon, dict):
-                        platoon = platoon["result"]
-                        if not platoon:
-                            continue
-                        if platoon not in platoons:
-                            platoons.append(platoon)
-                        response[game_id]["players"][i]["platoon"] = platoon
-                    else:
-                        response[game_id]["players"][i]["platoon"] = {}
-                response[game_id]["platoons"] = platoons
+        if platoon:
+            bf1_account = await BF1DA.get_api_instance()
+            for game_id in game_ids:
+                if game_id in response:
+                    pid_list = [player["pid"] for player in response[game_id]["players"]]
+                    platoon_task = [
+                        bf1_account.getActivePlatoon(pid)
+                        for pid in pid_list
+                    ]
+                    try:
+                        platoon_list = await asyncio.gather(*platoon_task)
+                    except Exception as e:
+                        logger.error(f"获取玩家战排信息失败: {e}")
+                        platoon_list = []
+                    platoons = []
+                    for i, platoon in enumerate(platoon_list):
+                        if isinstance(platoon, dict):
+                            platoon = platoon["result"]
+                            if not platoon:
+                                continue
+                            if platoon not in platoons:
+                                platoons.append(platoon)
+                            response[game_id]["players"][i]["platoon"] = platoon
+                        else:
+                            response[game_id]["players"][i]["platoon"] = {}
+                    response[game_id]["platoons"] = platoons
         return response
 
 

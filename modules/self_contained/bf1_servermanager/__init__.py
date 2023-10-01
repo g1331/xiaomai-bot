@@ -1446,7 +1446,7 @@ async def get_server_playerList_pic(
     #     ), quote=source)
 
     # 本地blaze接口:
-    playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid)
+    playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid, platoon=True)
     if playerlist_data is None:
         return await app.send_message(group, MessageChain(
             "Blaze后端查询出错!"

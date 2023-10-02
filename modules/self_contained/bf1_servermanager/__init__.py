@@ -5,6 +5,7 @@ import os
 import random
 import time
 from datetime import timedelta
+from math import ceil
 from pathlib import Path
 from typing import Union
 
@@ -5520,6 +5521,8 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
             ArgumentMatch("-n", "-name", optional=True) @ "display_name",
             # 时间
             ArgumentMatch("-t", "-time", optional=True) @ "action_time",
+            # 页数
+            ArgumentMatch("-page", optional=True, type=int, default=1) @ "page",
         ]
     )
 )
@@ -5527,7 +5530,8 @@ async def bf1_log(
         app: Ariadne, group: Group, sender: Member, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult,
         action: RegexResult, operator_qq: RegexResult,
-        pid: RegexResult, display_name: RegexResult, action_time: RegexResult
+        pid: RegexResult, display_name: RegexResult,
+        action_time: RegexResult, page: RegexResult
 ):
     """
     前缀：-bflog/-服管日志
@@ -5539,6 +5543,7 @@ async def bf1_log(
     操作人qq：q/qq
     被操作人pid: p/pid
     名字：n/name
+    页数: page
 
     参数是由 减号'-' + 参数名(如你想查qq就是q/qq) + 可选等号(=) +参数(qq就是对应qq)
     所以假如你想查qq=123的操作日志，对应参数指令就是 -q=123
@@ -5600,6 +5605,8 @@ async def bf1_log(
             quote=source,
         )
 
+    # 过滤日志
+    log_list = sorted(log_list, key=lambda x: x["time"], reverse=True)
     if action.matched:
         action = action.result.display
         action_dict = {
@@ -5657,16 +5664,30 @@ async def bf1_log(
             MessageChain("没有查询到相关日志!"),
             quote=source,
         )
-    else:
-        # 倒序
-        log_list = sorted(log_list, key=lambda x: x["time"], reverse=True)
+
+    # 将log_list分为60个元素一组
+    total_pages = ceil(len(log_list) / 60)
+    log_list_temp = [log_list[i:i + 60] for i in range(0, len(log_list), 60)]
+
+    page: int = page.result
+    # 判断page是否在有效的index内
+    if page > total_pages or page < 1:
+        return await app.send_message(
+            group,
+            MessageChain(f"当前共{total_pages}页，输入 {page} 无效!"),
+            quote=source,
+        )
+
+    # 取出对应的list
+    log_list_send = log_list_temp[page - 1]
 
     fwd_node_list = [ForwardNode(
         target=sender,
         time=datetime.now(),
         message=MessageChain(
             f"群组: {bf_group_name}\n"
-            f"查询到{len(log_list[:60])}/{len(log_list)}条日志"
+            f"查询到{len(log_list)}条日志\n"
+            f"页面: {page}/{total_pages}"
         ),
     )]
     log_member_dict = {}
@@ -5678,7 +5699,8 @@ async def bf1_log(
         "vip": "上v",
         "unvip": "下v",
     }
-    for log in log_list[:60]:
+    app_member = await app.get_member(group, app.account)
+    for log in log_list_send:
         log_member = log_member_dict.get(log["operator_qq"])
         if not log_member:
             try:
@@ -5688,19 +5710,17 @@ async def bf1_log(
             except Exception:
                 log_member = None
         fwd_node_list.append(ForwardNode(
-            target=sender if not log_member else log_member,
+            target=app_member if not log_member else log_member,
             time=log['time'],
             message=MessageChain(
+                f"操作类型: {action_name_dict.get(log['action'], log['action'])}\n" +
+                f"操作信息: {log['info']}\n" +
+                f"操作者QQ: {log['operator_qq']}\n" +
+                (f"操作对象: {log['display_name']} ({log['persona_id']})\n" if log['persona_id'] else '') +
                 f"服务器序号: {server_index_dict.get(log['serverId'], 'Error')}\n" +
                 f"ServerId: {log['serverId']}\n" +
                 f"GameId: {log['gameId']}\n" +
-                f"操作: {action_name_dict.get(log['action'], log['action'])}\n" +
-                f"操作者QQ: {log['operator_qq']}\n" +
-                (f"被操作者PID: {log['persona_id']}\n" if log['persona_id'] else '') +
-                (f"被操作者名字: {log['display_name']}\n" if log['display_name'] else '') +
-                f"信息: {log['info']}\n" +
-                # 格式化输出时间
-                f"时间: {log['time'].strftime('%Y-%m-%d %H:%M:%S') }"
+                f"时间: {log['time'].strftime('%Y-%m-%d %H:%M:%S')}"
             ),
         ))
     message = MessageChain(Forward(nodeList=fwd_node_list))

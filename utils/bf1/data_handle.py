@@ -637,9 +637,9 @@ class BlazeData:
             # spectator = server_data["PCNT 40"][2]
             server_attribute = server_data["ATTR"]
             operation_info = {}
-            if server_attribute.get("operationstate"):
-                operation_info["operationindex"] = server_attribute["operationindex"]
+            if server_attribute.get("operationindex"):
                 operation_info["operationstate"] = server_attribute["operationstate"]
+                operation_info["operationindex"] = server_attribute["operationindex"]
                 operation_info["progress"] = server_attribute["progress"]
 
             max_player = server_data["CAP"][0]

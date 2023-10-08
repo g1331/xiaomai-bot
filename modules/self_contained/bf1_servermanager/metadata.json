@@ -22,7 +22,7 @@
     "全部解封：-unbanall/-uba+空格+玩家名+群组名，全部解封时不能加服务器序号只能(必须)写群组名","如：-uba sakula shlsan13, -ubasakula shlsan13",
     "检查是否封禁玩家：-checkban+可选群组名+玩家名,不能写服务器序号","如：-checkban sakula xiaoxiao",
     "清理BAN位：-清理ban位/-清ban+可选群组名+服务器序号+可选数量，当不指定数量时默认为200(全部清理)","如：-清理ban位 sakula1 100, -清ban1",
-    "换边：-move/-换边/-挪+可选群组名+服务器序号+空格+玩家名+队伍ID","如：-move sakula1 shlsan13 1, -move1 shlsan13 2",
+    "换边：-move/-换边/-挪+可选群组名+服务器序号+空格+玩家名+队伍ID/队伍名","如：-move sakula1 shlsan13 1, -move1 shlsan13 意呆利",
     "换图：-map/-换图/-切图+可选群组名+服务器序号+空格+地图名/地图序号","如：-map sakula1 要塞, -map1 重开",
     "图池换图：-图池/-maplist/-地图池+可选群组名+服务器序号","如：-图池 sakula1, -maplist1",
     "加VIP：-vip/-v/-加v/-上v+可选群组名+服务器序号+空格+玩家名+可选时间(单位：天，可为负数)","如：-vip sakula1 shlsan13 3, -vip1 shlsan13 -3",

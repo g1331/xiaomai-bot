@@ -9,7 +9,6 @@ from math import ceil
 from pathlib import Path
 from typing import Union
 
-import aiohttp
 import httpx
 import zhconv
 from creart import create
@@ -20,7 +19,7 @@ from graia.ariadne.message.element import Image as GraiaImage, At
 from graia.ariadne.message.element import Source, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import (
     Twilight, FullMatch, ParamMatch, RegexResult, SpacePolicy, MatchResult,
-    UnionMatch, WildcardMatch, RegexMatch, ArgumentMatch, ArgResult
+    UnionMatch, WildcardMatch, ArgumentMatch, ArgResult
 )
 from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
@@ -44,6 +43,7 @@ from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGam
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw import PlayerListPic
+from utils.bf1.map_team_info import MapData
 from utils.parse_messagechain import get_targets
 from utils.string import generate_random_str
 from utils.timeutils import DateTimeUtils
@@ -3779,13 +3779,6 @@ async def move_player(
         app: Ariadne, sender: Member, group: Group, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult, team_index: RegexResult
 ):
-    # 队伍序号检查 team_index只能为1/2
-    if not team_index.matched:
-        return await app.send_message(group, MessageChain("请输入队伍序号!(1/2)"), quote=source)
-    if team_index.result.display not in ["1", "2"]:
-        return await app.send_message(group, MessageChain("队伍序号只能为 1/2 !"), quote=source)
-    team_index = int(team_index.result.display)
-
     # 服务器序号检查
     server_rank = server_rank.result.display
     if not server_rank.isdigit():
@@ -3844,6 +3837,64 @@ async def move_player(
             f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
         ), quote=source)
     account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+    # 如果team_index == 3, 则获取玩家列表，判断玩家所在队伍，然后team_index为另外一个队伍
+    if not team_index.matched:
+        playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid, platoon=True)
+        if playerlist_data is None:
+            return await app.send_message(group, MessageChain(
+                "Blaze后端查询出错!请指定队伍名!"
+            ), quote=source)
+        elif isinstance(playerlist_data, str):
+            return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
+        playerlist_data: dict = playerlist_data[int(server_gameid)]
+        if not playerlist_data["players"]:
+            return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
+        for player in playerlist_data["players"]:
+            if player["pid"] == pid:
+                team_index = player["teamId"]  # 0 or 1
+                break
+        if team_index != 0 and team_index != 1:
+            return await app.send_message(group, MessageChain("未在服务器内找到该玩家!"), quote=source)
+        team_index = 2 - team_index
+    elif team_index.result.display not in ["1", "2"]:
+        team_index = team_index.result.display
+        team_name_dict = {
+            "奥匈帝国": ["奥", "奥匈", "奥匈帝国", "奥地利"],  # 现在的奥地利和匈牙利
+            "德意志帝国": ["德", "德意志", "德意志帝国", "德国"],
+            "奥斯曼帝国": ["奥", "奥斯曼", "奥斯曼帝国", "土耳其"],  # 现在的土耳其
+            "意大利王国": ["意", "意大利", "意大利王国", "意呆利"],
+            "大英帝国": ["英", "大英", "大英帝国", "英国", "英军"],
+            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军", "英"],
+            "美国": ["美", "美国", "美军", "美", "US", "USA"],
+            "法国": ["法", "法国", "法军", "法", "FR", "FRA"],
+            "俄罗斯帝国": ["俄", "俄罗斯", "俄罗斯帝国", "俄罗斯", "俄军", "白军", "白"],
+            "红军": ["红", "红军"],
+        }
+
+        # 获取服务器信息
+        result = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
+        if isinstance(result, str):
+            return await app.send_message(group, MessageChain(
+                f"获取服务器信息出错!{result}"
+            ), quote=source)
+        mapName = result["result"]["serverInfo"]["mapName"]
+        team1_name = MapData.MapTeamDict[mapName]["Team1"]
+        team2_name = MapData.MapTeamDict[mapName]["Team2"]
+        team1_name_list = team_name_dict.get(team1_name)
+        team2_name_list = team_name_dict.get(team2_name)
+        if team_index in team1_name_list:
+            team_index = 2
+        elif team_index in team2_name_list:
+            team_index = 1
+        else:
+            return await app.send_message(group, MessageChain(
+                f"未匹配的队伍名:{team_index}\n"
+                f"当前队伍1: {team1_name},支持匹配名: {','.join(team1_name_list)}\n"
+                f"当前队伍2: {team2_name},支持匹配名: {','.join(team2_name_list)}"
+            ), quote=source)
+    else:
+        team_index = int(team_index.result.display)
 
     # 移动玩家
     star_time = time.time()
@@ -5771,8 +5822,8 @@ async def bf1_help(app: Ariadne, group: Group, source: Source):
         "如：-checkban sakula xiaoxiao",
         "清理BAN位：-清理ban位/-清ban+可选群组名+服务器序号+可选数量，当不指定数量时默认为200(全部清理)",
         "如：-清理ban位 sakula1 100, -清ban1",
-        "换边：-move/-换边/-挪+可选群组名+服务器序号+空格+玩家名+队伍ID",
-        "如：-move sakula1 shlsan13 1, -move1 shlsan13 2",
+        "换边：-move/-换边/-挪+可选群组名+服务器序号+空格+玩家名+队伍ID/队伍名",
+        "如：-move sakula1 shlsan13 1, -move1 shlsan13 意呆利",
         "换图：-map/-换图/-切图+可选群组名+服务器序号+空格+地图名/地图序号",
         "如：-map sakula1 要塞, -map1 重开",
         "图池换图：-图池/-maplist/-地图池+可选群组名+服务器序号",

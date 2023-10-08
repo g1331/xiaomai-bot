@@ -369,7 +369,8 @@ class Blaze:
         for key, value in object_.items():
             tag = Blaze.encode_tag(key[:4])
             hex_str += f"{tag}0{key[5]}"
-            hex_str += Blaze.write_block(key[5], value, key)
+            value_str = Blaze.write_block(key[5], value, key)
+            hex_str += value_str
         if end:
             hex_str += "00"
         return hex_str

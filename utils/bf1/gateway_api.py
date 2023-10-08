@@ -2150,7 +2150,7 @@ class api_instance(
     # 存储所有实例的字典
     instances = {}
 
-    def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
+    def __init__(self, pid, remid: str = None, sid: str = None, session: str = None):
         # 如果实例已经存在，则抛出异常，否则创建一个新实例
         if pid in api_instance.instances:
             raise InstanceExistsError(f"api_instance already exists for pid: {pid}")
@@ -2163,7 +2163,6 @@ class api_instance(
     @staticmethod
     def get_api_instance(pid, remid=None, sid=None, session=None) -> "api_instance":
         # 如果实例已经存在，则返回它，否则创建一个新实例
-        pid = str(pid)
         if pid not in api_instance.instances:
             api_instance.instances[pid] = api_instance(pid, remid, sid, session)
         return api_instance.instances[pid]

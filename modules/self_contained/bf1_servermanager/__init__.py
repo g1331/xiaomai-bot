@@ -3852,7 +3852,7 @@ async def move_player(
             return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
         for player in playerlist_data["players"]:
             if player["pid"] == pid:
-                team_index = player["teamId"]  # 0 or 1
+                team_index = player["team"]  # 0 or 1
                 break
         if team_index != 0 and team_index != 1:
             return await app.send_message(group, MessageChain("未在服务器内找到该玩家!"), quote=source)

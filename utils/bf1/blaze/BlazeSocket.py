@@ -198,8 +198,9 @@ class BlazeSocket:
             await self.close()
         elif packet['type'] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
-        # elif packet['type'] == "Pong":
-        #     logger.debug("BlazeSocket working normally")
+        elif packet['type'] == "Pong":
+            # logger.debug("BlazeSocket working normally")
+            pass
         else:
             logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
         if self.callback:

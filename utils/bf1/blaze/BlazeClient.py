@@ -23,7 +23,7 @@ class BlazeClientManager:
     def __init__(self):
         self.clients_by_pid = {}
 
-    async def get_socket_for_pid(self, pid: str = None) -> Union[BlazeSocket, None]:
+    async def get_socket_for_pid(self, pid=None) -> Union[BlazeSocket, None]:
         if not pid:
             connected_clients = [client for client in self.clients_by_pid.values() if client.connect]
             try:

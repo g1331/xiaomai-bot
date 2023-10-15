@@ -170,7 +170,7 @@ class BlazeSocket:
                 self.finish = False
                 self.temp['data'][:len(buffer)] = buffer
             else:
-                self.response(Blaze(buffer).decode(BlazeSocket.readable))
+                await self.response(Blaze(buffer).decode(BlazeSocket.readable))
                 self.temp = {}
         elif self.temp['length'] >= self.temp['origin']:
             # 超长了
@@ -181,10 +181,10 @@ class BlazeSocket:
             self.temp['length'] += len(buffer)
             if self.temp['length'] >= self.temp['origin']:
                 self.finish = True
-                self.response(Blaze(self.temp['data']).decode(BlazeSocket.readable))
+                await self.response(Blaze(self.temp['data']).decode(BlazeSocket.readable))
                 self.temp = {}
 
-    def response(self, packet):
+    async def response(self, packet):
         # 处理接收到的数据包
         if packet['method'] == "KeepAlive":
             return
@@ -193,10 +193,13 @@ class BlazeSocket:
             future = self.map[packet['id']]
             future.set_result(packet)
             del self.map[packet['id']]
+        elif packet['method'] == 'UserSessions.getPermissions':
+            logger.error(f"用户登录信息已过期，请重新登录/连接！\n{packet}")
+            await self.close()
         elif packet['type'] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
-        elif packet['type'] == "Pong":
-            logger.debug("BlazeSocket working normally")
+        # elif packet['type'] == "Pong":
+        #     logger.debug("BlazeSocket working normally")
         else:
             logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
         if self.callback:

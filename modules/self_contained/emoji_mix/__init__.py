@@ -114,7 +114,7 @@ async def get_emoji_pair(app: Ariadne, event: GroupMessage, keyword: RegexResult
             ),
             quote=source
         )
-    return app.send_message(event.sender.group, MessageChain("没有可用的 Emoji 组合"), quote=source)
+    return app.send_message(event.sender.group, MessageChain("没有可用的 Emoji 组合"))
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunch]))

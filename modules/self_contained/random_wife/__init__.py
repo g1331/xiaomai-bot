@@ -155,7 +155,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             if saying == 'y':
                 return True
             else:
-                return False
+                return saying
 
     # 接收回复消息，如果为y则同意，如果不为y则以该消息拒绝
     try:
@@ -168,7 +168,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
             )
         )
 
-    if return_info:
+    if isinstance(return_info, bool):
         result = await add_wife(file_name, img_url)
         if result:
             await app.send_group_message(
@@ -196,10 +196,11 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
                 quote=source
             )
     else:
+        reason = return_info or "无"
         await app.send_group_message(
             group,
             MessageChain(
-                At(sender), f"您添加老婆【{wife_name.result.display}】的申请未通过!"
+                At(sender), f"您添加老婆【{wife_name.result.display}】的申请未通过!原因:{reason}"
             ),
             quote=source
         )

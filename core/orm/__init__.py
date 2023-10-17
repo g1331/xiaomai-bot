@@ -2,7 +2,7 @@ from asyncio import Lock
 
 from creart import create
 from loguru import logger
-from sqlalchemy import MetaData, inspect, delete, update, select, insert
+from sqlalchemy import MetaData, inspect, delete, update, select, insert, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -270,6 +270,29 @@ class AsyncORM:
         async with self.engine.connect() as conn:
             tables = await conn.run_sync(self.use_inspector)
         return table_name in tables
+
+    async def reset_version(self):
+        async with self.engine.connect() as conn:
+            _ = await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+
+    @staticmethod
+    def get_sync_db_link(db_link):
+        """将异步数据库链接转换为同步链接"""
+
+        # 异步驱动到同步驱动的映射
+        async_to_sync_drivers = {
+            "sqlite+aiosqlite": "sqlite",
+            "postgresql+asyncpg": "postgresql",
+            "mysql+aiomysql": "mysql",
+            "postgresql+pg8000": "postgresql+pg8000",
+            "mysql+pymysql": "mysql+pymysql"
+        }
+
+        for async_driver, sync_driver in async_to_sync_drivers.items():
+            if async_driver in db_link:
+                return db_link.replace(async_driver, sync_driver)
+
+        return db_link  # 如果不匹配任何异步驱动，返回原始链接
 
 
 # 初始化AsyncORM

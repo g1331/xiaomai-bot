@@ -6,6 +6,9 @@ import time
 from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Type
+
+from alembic.autogenerate import compare_metadata
+from alembic.runtime.migration import MigrationContext
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -40,11 +43,11 @@ from graiax.playwright import PlaywrightService
 from graiax.fastapi import FastAPIBehaviour, FastAPIService
 from loguru import logger
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, create_engine
 
 from core.config import GlobalConfig
 from core.models import response_model
-from core.orm import orm
+from core.orm import orm, Base
 from core.orm.tables import (
     GroupPerm,
     MemberPerm
@@ -470,42 +473,64 @@ class Umaru(object):
         return exceptions
 
     async def alembic(self):
-        if not (Path.cwd() / "alembic").exists():
+        alembic_path = Path.cwd() / "alembic"
+
+        # 检查是否存在alembic目录，如果不存在则初始化
+        if not alembic_path.exists():
             logger.info("未检测到alembic目录，进行初始化")
             os.system("alembic init alembic")
+
+            # 从statics目录复制alembic环境内容
             with open(Path.cwd() / "statics" / "alembic_env_py_content.txt", "r") as r:
                 alembic_env_py_content = r.read()
-            with open(Path.cwd() / "alembic" / "env.py", "w") as w:
+            with open(alembic_path / "env.py", "w") as w:
                 w.write(alembic_env_py_content)
+
+            # 在alembic.ini中更新数据库链接
             db_link = self.config.db_link
-            db_link = db_link.split(":")[0].split("+")[0] + ":" + ":".join(db_link.split(":")[1:])
-            logger.warning(f"尝试自动更改 sqlalchemy.url 为 {db_link}，若出现报错请自行修改")
+            formatted_db_link = db_link.split(":")[0].split("+")[0] + ":" + ":".join(db_link.split(":")[1:])
+            logger.warning(f"尝试自动更改 sqlalchemy.url 为 {formatted_db_link}，若出现报错请自行修改")
             alembic_ini_path = Path.cwd() / "alembic.ini"
             lines = alembic_ini_path.read_text(encoding="utf-8").split("\n")
             for i, line in enumerate(lines):
                 if line.startswith("sqlalchemy.url"):
-                    lines[i] = line.replace("driver://user:pass@localhost/dbname", db_link)
+                    lines[i] = line.replace("driver://user:pass@localhost/dbname", formatted_db_link)
                     break
             alembic_ini_path.write_text("\n".join(lines))
-        alembic_version_path = Path.cwd() / "alembic" / "versions"
+
+        alembic_version_path = alembic_path / "versions"
+
+        # 确保versions目录存在
         if not alembic_version_path.exists():
             alembic_version_path.mkdir()
-        cfg = Config(file_="alembic.ini", ini_section="alembic")
-        try:
-            logger.debug("尝试自动更新数据库")
-            revision(cfg, message="update", autogenerate=True)
-            upgrade(cfg, "head")
-            logger.success("数据库更新成功")
-        except (CommandError, ResolutionError):
-            logger.warning("数据库更新失败，正在重置数据库")
-            _ = await orm.reset_version()
-            shutil.rmtree(alembic_version_path)
-            alembic_version_path.mkdir()
-            revision(cfg, message="update", autogenerate=True)
-            upgrade(cfg, "head")
 
-        # os.system("alembic revision --autogenerate -m 'update'")
-        # os.system("alembic upgrade head")
+        # 检查当前模型与数据库之间是否存在差异
+        sync_db_link = orm.get_sync_db_link(self.config.db_link)  # 异步驱动映射为同步驱动,因为alembic不支持异步驱动
+        sync_engine = create_engine(sync_db_link)
+        conn = sync_engine.connect()
+        context = MigrationContext.configure(conn)
+        diff = compare_metadata(context, Base.metadata)
+
+        if diff:
+            logger.debug("检测到模型和数据库之间存在差异，正在尝试自动更新数据库")
+            cfg = Config(file_="alembic.ini", ini_section="alembic")
+            try:
+                revision(cfg, message="update", autogenerate=True)
+                upgrade(cfg, "head")
+                # os.system("alembic revision --autogenerate -m 'update'")
+                # os.system("alembic upgrade head")
+                logger.success("数据库更新成功")
+            except (CommandError, ResolutionError):
+                logger.warning("数据库更新失败，正在重置数据库")
+                _ = await orm.reset_version()
+                shutil.rmtree(alembic_version_path)
+                alembic_version_path.mkdir()
+                revision(cfg, message="update", autogenerate=True)
+                upgrade(cfg, "head")
+            finally:
+                conn.close()
+        else:
+            logger.debug("您的数据库定义没有差异，无需更新")
 
     @staticmethod
     def launch():

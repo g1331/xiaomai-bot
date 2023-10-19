@@ -2819,7 +2819,10 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.22.4", markers = "python_version < \"3.11\""}
+numpy = [
+    {version = ">=1.22.4", markers = "python_version < \"3.11\""},
+    {version = ">=1.23.2", markers = "python_version == \"3.11\""},
+]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
 tzdata = ">=2022.1"
@@ -4771,5 +4774,5 @@ reference = "tuna-tsinghua"
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.10,<3.11"
-content-hash = "d8d4ca667612c7d8a89c21dbdefd9b4a0f6c10588427e154096aa52bac1595d6"
+python-versions = ">=3.10,<=3.11"
+content-hash = "9764d5330ecacb20dbcf2681582bf4c0541eddccdb627dcee8dff563823be303"

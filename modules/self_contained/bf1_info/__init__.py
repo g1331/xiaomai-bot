@@ -2001,7 +2001,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
         "queues": official_server_queues,
         "spectators": official_server_spectators,
     }
-    img_bytes = await asyncio.to_thread(Bf1Status(private_server_data, official_server_data).generate_comparison_charts)
+    img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
     return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
 
 

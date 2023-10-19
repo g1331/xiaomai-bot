@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{include = "bot_xiaomai_open"}]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.10,<=3.11"
 httpx = "^0.23.1"
 creart = "^0.2.2"
 graia-ariadne = {extras = ["standard"], version = "^0.10.2"}

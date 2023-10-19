@@ -244,7 +244,8 @@ class bf1_api(object):
             # logger.warning(f"BF1账号{self.pid}未登录!请传入remid和sid使用login进行登录!")
             return str(self.session)
         if await self.check_session_expire():
-            return str(await self.login(self.remid, self.sid))
+            await self.login(self.remid, self.sid)
+            return str(self.session)
         else:
             return str(self.session)
 

@@ -533,7 +533,7 @@ class ServerData:
             QueueCurrent = server.get("slots").get("Queue").get("current")
             QueueMax = server.get("slots").get("Queue").get("max")
             SpectatorCurrent = server.get("slots").get("Spectator").get("current")
-            # SpectatorMax = server.get("slots").get("Spectator").get("max")
+            SpectatorMax = server.get("slots").get("Spectator").get("max")
             map_name = server.get("mapNamePretty")
             mode_name = server.get("mapModePretty")
             mapImageUrl = server.get("mapImageUrl").replace(
@@ -548,6 +548,7 @@ class ServerData:
                 "QueueCurrent": QueueCurrent,
                 "QueueMax": QueueMax,
                 "SpectatorCurrent": SpectatorCurrent,
+                "SpectatorMax": SpectatorMax,
                 "map_name": map_name,
                 "mode_name": mode_name,
                 "mapImageUrl": mapImageUrl,

@@ -14,6 +14,9 @@ import aiohttp
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
 from zhconv import zhconv
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from utils.bf1.bf_utils import download_skin, gt_get_player_id
 from utils.bf1.default_account import BF1DA
@@ -823,3 +826,97 @@ class PlayerListPic:
         img_bytes = io.BytesIO()
         IMG.save(img_bytes, format='PNG')
         return img_bytes.getvalue()
+
+
+class Bf1Status:
+
+    def __init__(self, private_server_data, official_server_data):
+        self.private_server_data = private_server_data
+        self.official_server_data = official_server_data
+
+    def generate_comparison_charts(self) -> bytes:
+        private_server_data = self.private_server_data
+        official_server_data = self.official_server_data
+        sns.set_style("whitegrid")
+        from pylab import mpl
+        mpl.rcParams["font.sans-serif"] = ["SimHei"]
+
+        def plot_comparison_bar_chart_sns(data, title, rotation=0):
+            official_color = "#9ebc62"
+            private_color = "#e68d63"
+            df = pd.DataFrame(data)
+            ax = df.plot(kind='bar', figsize=(12, 6), color=[official_color, private_color])
+            plt.title(title)
+            plt.ylabel('数量')
+            plt.xticks(rotation=rotation)
+            for p in ax.patches:
+                ax.annotate(str(int(p.get_height())), (p.get_x() + p.get_width() / 2., p.get_height()),
+                            ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+            plt.tight_layout()
+
+            buffer_temp = io.BytesIO()
+            plt.savefig(buffer_temp, format='png', bbox_inches='tight')
+            plt.close()
+
+            return Image.open(buffer_temp)
+
+        region_country_comparison_data = {
+            "官服": {
+                "服务器数量": len(official_server_data["regions"]),
+            },
+            "私服": {
+                "服务器数量": len(private_server_data["regions"]),
+            }
+        }
+
+        for region in set(
+                list(official_server_data["regions"].keys()) + list(private_server_data["regions"].keys())):
+            region_country_comparison_data["官服"][region] = official_server_data["regions"].get(region, 0)
+            region_country_comparison_data["私服"][region] = private_server_data["regions"].get(region, 0)
+
+        plot1 = plot_comparison_bar_chart_sns(
+            region_country_comparison_data,
+            f"开启服务器数：{sum(region_country_comparison_data['官服'].values()) + sum(region_country_comparison_data['私服'].values())}\n"
+            f"私服：{sum(region_country_comparison_data['私服'].values())} / 官服：{sum(region_country_comparison_data['官服'].values())}"
+        )
+
+        plot2 = plot_comparison_bar_chart_sns(
+            {"官服": official_server_data["countries"], "私服": private_server_data["countries"]}, "")
+
+        plot3 = plot_comparison_bar_chart_sns(
+            {"官服": official_server_data["maps"], "私服": private_server_data["maps"]},
+            "游玩地图", rotation=45)
+
+        plot4 = plot_comparison_bar_chart_sns(
+            {"官服": official_server_data["modes"], "私服": private_server_data["modes"]},
+            "游玩模式")
+
+        # Pie chart for total players comparison
+        total_players_data = {
+            '官服': official_server_data["players"],
+            '私服': private_server_data["players"]
+        }
+        plt.figure(figsize=(8, 8))
+        plt.pie(total_players_data.values(), labels=total_players_data.keys(), autopct='%1.0f%%', startangle=90,
+                colors=sns.color_palette("coolwarm"))
+        plt.title(
+            f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}")
+        plt.axis('equal')
+        buf_pie = io.BytesIO()
+        plt.savefig(buf_pie, format='png', bbox_inches='tight', transparent=True)
+        plt.close()
+        plot5 = Image.open(buf_pie)
+
+        # 合成为一张图片
+        merged_image = Image.new('RGB', (plot1.width, plot1.height * 4 + plot5.height), (255, 255, 255))
+        merged_image.paste(plot5, (int((plot1.width - plot5.width) / 2), 0), plot5)
+        merged_image.paste(plot1, (0, plot5.height))
+        merged_image.paste(plot2, (0, plot5.height + plot1.height))
+        merged_image.paste(plot3, (0, plot5.height + plot1.height * 2))
+        merged_image.paste(plot4, (0, plot5.height + plot1.height * 3))
+
+        buf = io.BytesIO()
+        merged_image.save(buf, format='PNG')
+        data_bytes = buf.getvalue()
+
+        return data_bytes

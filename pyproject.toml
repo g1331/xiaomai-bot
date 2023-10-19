@@ -8,7 +8,7 @@ readme = "README.md"
 packages = [{include = "bot_xiaomai_open"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
 httpx = "^0.23.1"
 creart = "^0.2.2"
 graia-ariadne = {extras = ["standard"], version = "^0.10.2"}
@@ -46,6 +46,9 @@ graiax-fastapi = "^0.2.1"
 uvicorn = "^0.21.1"
 pillow = "^9.5.0"
 slack-sdk = "3.21.3"
+matplotlib = "^3.8.0"
+pandas = "^2.1.1"
+seaborn = "^0.13.0"
 
 
 [tool.poetry.group.dev.dependencies]

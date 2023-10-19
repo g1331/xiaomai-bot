@@ -36,7 +36,7 @@ from core.control import (
 from core.models import saya_model
 from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
 from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange
+from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange, Bf1Status
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
@@ -1219,8 +1219,6 @@ async def detailed_server(
 @channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
 async def server_info_collect():
     time_start = time.time()
-    #   搜索获取私服game_id
-    tasks = []
     filter_dict = {
         "name": "",  # 服务器名
         "serverType": {  # 服务器类型
@@ -1231,14 +1229,13 @@ async def server_info_collect():
         }
     }
     game_id_list = []
-    for _ in range(50):
-        tasks.append((await BF1DA.get_api_instance()).searchServers("", filter_dict=filter_dict))
+    tasks = [(await BF1DA.get_api_instance()).searchServers("", filter_dict=filter_dict) for _ in range(50)]
     logger.debug("开始更新私服数据")
     results = await asyncio.gather(*tasks)
     for result in results:
         if isinstance(result, str):
             continue
-        result: list = result["result"]
+        result = result["result"]
         server_list = ServerData(result).sort()
         for server in server_list:
             if server["game_id"] not in game_id_list:
@@ -1286,6 +1283,10 @@ async def server_info_collect():
         playerMax = Info["slots"]["Soldier"]["max"]
         playerQueue = Info["slots"]["Queue"]["current"]
         playerSpectator = Info["slots"]["Spectator"]["current"]
+        mapName = Info["mapName"]
+        mapNamePretty = Info["mapNamePretty"]
+        mapMode = Info["mapMode"]
+        mapModePretty = Info["mapModePretty"]
 
         #   将其转换为datetime
         createdDate = rspInfo.get("server", {}).get("createdDate")
@@ -1325,6 +1326,9 @@ async def server_info_collect():
     await BF1DB.server.update_serverOwnerList(owner_dict)
     logger.debug(f"更新服务器所有者完成，耗时{round(time.time() - start_time, 2)}秒")
     logger.success(f"共更新{len(serverId_list)}个私服详细信息，耗时{round(time.time() - time_start, 2)}秒")
+
+
+# TODO 定时记录服务器人数曲线
 
 
 # 天眼查
@@ -1554,7 +1558,8 @@ async def tyc(
     bfban_data = tasks[2]
     if bfban_data.get("stat"):
         send.append("BFBAN信息:\n")
-        send.append(f'状态:{bfban_data["status"]}\n' + f"案件地址:{bfban_data['url']}\n" if bfban_data.get("url") else "")
+        send.append(
+            f'状态:{bfban_data["status"]}\n' + f"案件地址:{bfban_data['url']}\n" if bfban_data.get("url") else "")
         send.append("=" * 20 + '\n')
 
     # bfeac信息
@@ -1746,7 +1751,8 @@ async def BF1Rank(
                         item['serverName'].upper() in name.upper():
                     result.append(item)
             if not result:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该服务器的收藏信息!"), quote=source)
+                return await app.send_message(group, MessageChain(f"没有在数据库中找到该服务器的收藏信息!"),
+                                              quote=source)
             send = [f"搜索到{len(result)}个结果:" if len(result) <= 15 else f"搜索到超过15个结果,只显示前15个结果!"]
             result = result[:15]
             for data in result:
@@ -1832,10 +1838,171 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Permission.user_require(Permission.User),
 )
 async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
-    result = await gt_bf1_stat()
-    if not isinstance(result, str):
-        return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
-    return await app.send_message(group, MessageChain(f"{result}"), quote=source)
+    # 弃用的gt_bf1_stat
+    # result = await gt_bf1_stat()
+    # if not isinstance(result, str):
+    #     return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
+    # return await app.send_message(group, MessageChain(f"{result}"), quote=source)
+    bf1_account = await BF1DA.get_api_instance()
+    time_start = time.time()
+    #   搜索获取私服game_id
+    filter_dict = {
+        "name": "",  # 服务器名
+        "serverType": {  # 服务器类型
+            "OFFICIAL": "on",  # 官服
+            "RANKED": "on",  # 私服
+            "UNRANKED": "on",  # 私服(不计战绩)
+            "PRIVATE": "on"  # 密码服
+        },
+        "slots": {  # 空位
+            "oneToFive": "on",  # 1-5
+            "sixToTen": "on",  # 6-10
+            "none": "on",  # 无
+            "tenPlus": "on",  # 10+
+            "spectator": "on"  # 观战
+        },
+    }
+    guid_list = []
+    server_total_list = []
+    tasks = [bf1_account.searchServers("", filter_dict=filter_dict) for _ in range(50)]
+    logger.debug("开始获取私服数据")
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
+    results = await asyncio.gather(*tasks)
+    for result in results:
+        if isinstance(result, str):
+            continue
+        result: dict = result["result"]
+        for server in result.get("gameservers", []):
+            if server["guid"] not in guid_list:
+                guid_list.append(server["guid"])
+                server["mapModePretty"] = zhconv.convert(server["mapModePretty"], 'zh-hans')
+                server["mapNamePretty"] = zhconv.convert(server["mapNamePretty"], 'zh-hans')
+                server_total_list.append(server)
+    if not server_total_list:
+        logger.error("获取服务器列表失败!")
+        return await app.send_message(group, MessageChain(f"获取服务器信息失败!"), quote=source)
+    logger.success(f"共获取{len(server_total_list)}个服务器,耗时{round(time.time() - time_start, 2)}秒")
+    # 人数、排队数、观众、模式、地图、地区、国家
+    official_server_list = []
+    private_server_list = []
+    for server in server_total_list:
+        players = server["slots"]["Soldier"]["current"]
+        queues = server["slots"]["Queue"]["current"]
+        spectators = server["slots"]["Spectator"]["current"]
+        mapName = server["mapName"]
+        mapNamePretty = server["mapNamePretty"]
+        mapMode = server["mapMode"]
+        mapModePretty = server["mapModePretty"]
+        region = server["region"]
+        country = server["country"]
+        temp = {
+            "players": players,
+            "queues": queues,
+            "spectators": spectators,
+            "mapName": mapName,
+            "mapNamePretty": mapNamePretty,
+            "mapMode": mapMode,
+            "mapModePretty": mapModePretty,
+            "region": region,
+            "country": country,
+        }
+        if server["serverType"] != "OFFICIAL":
+            private_server_list.append(temp)
+        else:
+            official_server_list.append(temp)
+    region_dict = {
+        "OC": "大洋洲",
+        "Asia": "亚洲",
+        "EU": "欧洲",
+        "Afr": "非洲",
+        "AC": "南极洲",
+        "SAm": "南美洲",
+        "NAm": "北美洲"
+    }
+    country_dict = {
+        "JP": "日本",
+        "US": "美国",
+        "DE": "德国",
+        "AU": "澳大利亚",
+        "BR": "巴西",
+        "HK": "中国香港",
+        "AE": "阿联酋",
+        "ZA": "南非",
+    }
+    # 整理私服数据
+    private_server_players = 0
+    private_server_queues = 0
+    private_server_spectators = 0
+    private_server_modes = {}
+    private_server_maps = {}
+    private_server_regions = {}
+    private_server_countries = {}
+    for server in private_server_list:
+        private_server_players += server["players"]
+        private_server_queues += server["queues"]
+        private_server_spectators += server["spectators"]
+        if server["mapModePretty"] not in private_server_modes:
+            private_server_modes[server["mapModePretty"]] = 0
+        private_server_modes[server["mapModePretty"]] += 1
+        if server["mapNamePretty"] not in private_server_maps:
+            private_server_maps[server["mapNamePretty"]] = 0
+        private_server_maps[server["mapNamePretty"]] += 1
+        region_temp = region_dict.get(server["region"], server["region"])
+        if region_temp not in private_server_regions:
+            private_server_regions[region_temp] = 0
+        private_server_regions[region_temp] += 1
+        country_temp = country_dict.get(server["country"], server["country"])
+        if country_temp not in private_server_countries:
+            private_server_countries[country_temp] = 0
+        private_server_countries[country_temp] += 1
+    # 整理官服数据
+    official_server_players = 0
+    official_server_queues = 0
+    official_server_spectators = 0
+    official_server_modes = {}
+    official_server_maps = {}
+    official_server_regions = {}
+    official_server_countries = {}
+    for server in official_server_list:
+        official_server_players += server["players"]
+        official_server_queues += server["queues"]
+        official_server_spectators += server["spectators"]
+        if server["mapModePretty"] not in official_server_modes:
+            official_server_modes[server["mapModePretty"]] = 0
+        official_server_modes[server["mapModePretty"]] += 1
+        if server["mapNamePretty"] not in official_server_maps:
+            official_server_maps[server["mapNamePretty"]] = 0
+        official_server_maps[server["mapNamePretty"]] += 1
+        region_temp = region_dict.get(server["region"], server["region"])
+        if region_temp not in official_server_regions:
+            official_server_regions[region_temp] = 0
+        official_server_regions[region_temp] += 1
+        country_temp = country_dict.get(server["country"], server["country"])
+        if country_temp == " ":
+            country_temp = "未知"
+        if country_temp not in official_server_countries:
+            official_server_countries[country_temp] = 0
+        official_server_countries[country_temp] += 1
+    private_server_data = {
+        "regions": private_server_regions,
+        "countries": private_server_countries,
+        "modes": private_server_modes,
+        "maps": private_server_maps,
+        "players": private_server_players,
+        "queues": private_server_queues,
+        "spectators": private_server_spectators,
+    }
+    official_server_data = {
+        "regions": official_server_regions,
+        "countries": official_server_countries,
+        "modes": official_server_modes,
+        "maps": official_server_maps,
+        "players": official_server_players,
+        "queues": official_server_queues,
+        "spectators": official_server_spectators,
+    }
+    img_bytes = await asyncio.to_thread(Bf1Status(private_server_data, official_server_data).generate_comparison_charts)
+    return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
 
 
 # 交换

@@ -395,10 +395,13 @@ async def gt_checkVban(player_pid) -> int:
     head = {
         'accept': 'application/json',
     }
-    async with aiohttp.ClientSession(headers=head) as session:
-        async with session.get(url) as response:
-            response = await response.json()
-    return len(response["vban"])
+    try:
+        async with aiohttp.ClientSession(headers=head) as session:
+            async with session.get(url) as response:
+                response = await response.json()
+        return len(response["vban"])
+    except:
+        return 0
 
 
 async def gt_bf1_stat() -> str:

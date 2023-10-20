@@ -499,12 +499,18 @@ async def player_stat_pic(
     win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
     kpm = player_info.get('basicStats').get('kpm')
     spm = player_info.get('basicStats').get('spm')
-    # 用spm * 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级,然后用exp - 区间最小值 / 区间最大值 - 区间最小值 * 100 得出百分比算出小数等级四舍五入
-    exp = spm * time_seconds / 10
+    # 用spm / 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级
+    exp = spm * time_seconds / 60
     rank = 0
     for i in range(len(rank_list)):
+        if exp <= rank_list[1]:
+            rank = 0
+            break
+        if exp >= rank_list[-1]:
+            rank = 150
+            break
         if exp <= rank_list[i]:
-            rank = i
+            rank = i - 1
             break
     vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
     vehicle_kill = int(vehicle_kill)
@@ -524,7 +530,7 @@ async def player_stat_pic(
     )
     result = [
         f"玩家:{display_name}\n"
-        f"等级:{rank or 0}\n"
+        f"等级:{rank}\n"
         f"游玩时长:{time_played}\n"
         f"击杀:{kills}  死亡:{deaths}  KD:{kd}\n"
         f"胜局:{wins}  败局:{losses}  胜率:{win_rate}%\n"

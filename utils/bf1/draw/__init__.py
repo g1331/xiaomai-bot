@@ -13,10 +13,12 @@ from typing import Union
 import aiohttp
 from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
+from matplotlib.font_manager import FontProperties
 from zhconv import zhconv
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
 from utils.bf1.bf_utils import download_skin, gt_get_player_id
 from utils.bf1.default_account import BF1DA
@@ -838,17 +840,19 @@ class Bf1Status:
         private_server_data = self.private_server_data
         official_server_data = self.official_server_data
         sns.set_style("whitegrid")
-        from pylab import mpl
-        mpl.rcParams["font.sans-serif"] = ["SimHei"]
 
         def plot_comparison_bar_chart_sns(data, title, rotation=0):
             official_color = "#9ebc62"
             private_color = "#e68d63"
+            font_path = './statics/fonts/simhei.ttf'
+            font_prop = fm.FontProperties(fname=font_path)
+            plt.rcParams['font.family'] = font_prop.get_name()
             df = pd.DataFrame(data)
             ax = df.plot(kind='bar', figsize=(12, 6), color=[official_color, private_color])
             plt.title(title)
             plt.ylabel('数量')
             plt.xticks(rotation=rotation)
+            plt.setp(ax.get_xticklabels(), fontproperties=font_prop)
             for p in ax.patches:
                 ax.annotate(str(int(p.get_height())), (p.get_x() + p.get_width() / 2., p.get_height()),
                             ha='center', va='center', xytext=(0, 10), textcoords='offset points')
@@ -861,12 +865,8 @@ class Bf1Status:
             return Image.open(buffer_temp)
 
         region_country_comparison_data = {
-            "官服": {
-                "服务器数量": len(official_server_data["regions"]),
-            },
-            "私服": {
-                "服务器数量": len(private_server_data["regions"]),
-            }
+            "官服": {},
+            "私服": {}
         }
 
         for region in set(
@@ -909,11 +909,11 @@ class Bf1Status:
 
         # 合成为一张图片
         merged_image = Image.new('RGB', (plot1.width, plot1.height * 4 + plot5.height), (255, 255, 255))
-        merged_image.paste(plot5, (int((plot1.width - plot5.width) / 2), 0), plot5)
-        merged_image.paste(plot1, (0, plot5.height))
-        merged_image.paste(plot2, (0, plot5.height + plot1.height))
-        merged_image.paste(plot3, (0, plot5.height + plot1.height * 2))
-        merged_image.paste(plot4, (0, plot5.height + plot1.height * 3))
+        merged_image.paste(plot1, (0, 0))
+        merged_image.paste(plot2, (0, plot1.height))
+        merged_image.paste(plot5, (int((plot1.width - plot5.width) / 2), plot1.height * 2))
+        merged_image.paste(plot3, (0, plot1.height * 2 + plot5.height))
+        merged_image.paste(plot4, (0, plot1.height * 3 + plot5.height))
 
         buf = io.BytesIO()
         merged_image.save(buf, format='PNG')

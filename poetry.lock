@@ -776,7 +776,10 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.16,<2.0", markers = "python_version <= \"3.11\""}
+numpy = [
+    {version = ">=1.16,<2.0", markers = "python_version <= \"3.11\""},
+    {version = ">=1.26.0rc1,<2.0", markers = "python_version >= \"3.12\""},
+]
 
 [package.extras]
 bokeh = ["bokeh", "selenium"]
@@ -2822,6 +2825,7 @@ files = [
 numpy = [
     {version = ">=1.22.4", markers = "python_version < \"3.11\""},
     {version = ">=1.23.2", markers = "python_version == \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
 ]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
@@ -4774,5 +4778,5 @@ reference = "tuna-tsinghua"
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.10,<=3.11"
-content-hash = "9764d5330ecacb20dbcf2681582bf4c0541eddccdb627dcee8dff563823be303"
+python-versions = ">=3.10,<3.13"
+content-hash = "151f420db78fce3e63abc41fcb88c6f00e1045e32a75442410f264d84ee04d5e"

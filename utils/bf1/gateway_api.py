@@ -75,6 +75,7 @@ class bf1_api(object):
             "ServerNotRestartableException": "服务器未开启",
             "InvalidLevelIndexException": "地图编号无效",
             "RspErrUserIsAlreadyVip()": "玩家已经是VIP了",
+            "RspErrServerBanMax()": "服务器BAN位已满"
         }
         self.filter_dict = {
             # 所有值都是可选的, 要什么写什么就行, 在getGameData有详细的

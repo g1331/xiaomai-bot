@@ -840,22 +840,25 @@ class Bf1Status:
         private_server_data = self.private_server_data
         official_server_data = self.official_server_data
         sns.set_style("whitegrid")
+        font_path = './statics/fonts/simhei.ttf'
+        font_prop = fm.FontProperties(fname=font_path)
 
         def plot_comparison_bar_chart_sns(data, title, rotation=0):
             official_color = "#9ebc62"
             private_color = "#e68d63"
-            font_path = './statics/fonts/simhei.ttf'
-            font_prop = fm.FontProperties(fname=font_path)
-            plt.rcParams['font.family'] = font_prop.get_name()
             df = pd.DataFrame(data)
             ax = df.plot(kind='bar', figsize=(12, 6), color=[official_color, private_color])
-            plt.title(title)
-            plt.ylabel('数量')
-            plt.xticks(rotation=rotation)
-            plt.setp(ax.get_xticklabels(), fontproperties=font_prop)
+            plt.title(title, fontproperties=font_prop)
+            plt.ylabel('数量', fontproperties=font_prop)
+            plt.xticks(rotation=rotation, fontproperties=font_prop)
+            legend = ax.legend(prop=font_prop)
+            plt.setp(legend.get_texts(), fontproperties=font_prop)
+            plt.setp(legend.get_title(), fontproperties=font_prop)
             for p in ax.patches:
-                ax.annotate(str(int(p.get_height())), (p.get_x() + p.get_width() / 2., p.get_height()),
-                            ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+                ax.annotate(
+                    str(int(p.get_height())), (p.get_x() + p.get_width() / 2., p.get_height()),
+                    ha='center', va='center', xytext=(0, 10), textcoords='offset points', fontproperties=font_prop
+                )
             plt.tight_layout()
 
             buffer_temp = io.BytesIO()
@@ -897,10 +900,14 @@ class Bf1Status:
             '私服': private_server_data["players"]
         }
         plt.figure(figsize=(8, 8))
-        plt.pie(total_players_data.values(), labels=total_players_data.keys(), autopct='%1.0f%%', startangle=90,
-                colors=sns.color_palette("coolwarm"))
+        plt.pie(
+            total_players_data.values(), labels=total_players_data.keys(), autopct='%1.0f%%', startangle=90,
+            colors=sns.color_palette("coolwarm"), textprops={'fontproperties': font_prop}
+        )
         plt.title(
-            f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}")
+            f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}",
+            fontproperties=font_prop
+        )
         plt.axis('equal')
         buf_pie = io.BytesIO()
         plt.savefig(buf_pie, format='png', bbox_inches='tight', transparent=True)

@@ -52,7 +52,7 @@ async def add_wife(file_name: str, img_url: str) -> bool:
         with open(file_name, 'rb'):
             return True
     except FileNotFoundError:
-        for i in range(3):
+        for _ in range(3):
             async with aiohttp.ClientSession() as session:
                 try:
                     async with session.get(img_url, timeout=5, verify_ssl=False) as resp:
@@ -92,11 +92,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
     img_name = wife_name.result.display.replace("\n", '')
     img_type = img.dict()['imageId'][img.dict()['imageId'].rfind(".") + 1:]
     if img_name in ["\n", '']:
-        return await app.send_message(
-            group,
-            MessageChain(f"请输入名字!"),
-            quote=source
-        )
+        return await app.send_message(group, MessageChain("请输入名字!"), quote=source)
     path = Path(__file__).parent / "wife"
     file_name = str(path / f"{img_name}.{img_type}")
     wife_list = os.listdir(path)
@@ -111,28 +107,16 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
     if await Permission.require_user_perm(group.id, sender.id, Permission.BotAdmin):
         result = await add_wife(file_name, img_url)
         if result:
-            return await app.send_message(
-                group,
-                MessageChain(f"添加成功!"),
-                quote=source
-            )
+            return await app.send_message(group, MessageChain("添加成功!"), quote=source)
         else:
-            return await app.send_message(
-                group,
-                MessageChain(f"添加失败!"),
-                quote=source
-            )
+            return await app.send_message(group, MessageChain("添加失败!"), quote=source)
 
     target_app, target_group = await account_controller.get_app_from_total_groups(group_id=global_config.test_group)
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"发送添加请求失败!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("发送添加请求失败!"), quote=source)
     else:
         await app.send_group_message(
-            group,
-            MessageChain(f"您的添加申请已经提交给管理员,审核通过后将会增加到老婆库中!"),
-            quote=source
+            group, MessageChain("您的添加申请已经提交给管理员,审核通过后将会增加到老婆库中!"), quote=source
         )
 
     bot_msg = await app.send_group_message(
@@ -140,22 +124,19 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
         MessageChain(
             f"收到来自群{group.name}({group.id})成员{sender.name}({sender.id})添加老婆【{wife_name.result.display}】的申请",
             Image(url=img_url),
-            f"请在1小时内回复 y 可同意该请求,回复其他消息可拒绝"
-        )
+            "请在1小时内回复 y 可同意该请求,回复其他消息可拒绝",
+        ),
     )
 
     async def waiter(
-            waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
-            event_waiter: GroupMessage
-    ):
+                waiter_member: Member, waiter_message: MessageChain, waiter_group: Group,
+                event_waiter: GroupMessage
+        ):
         if waiter_group.id == global_config.test_group and event_waiter.quote and event_waiter.quote.id == bot_msg.id \
                 and await Permission.require_user_perm(waiter_group.id, waiter_member.id,
                                                        Permission.GroupAdmin):
             saying = waiter_message.replace(At(app.account), "").display.strip()
-            if saying == 'y':
-                return True
-            else:
-                return saying
+            return True if saying == 'y' else saying
 
     # 接收回复消息，如果为y则同意，如果不为y则以该消息拒绝
     try:
@@ -191,9 +172,7 @@ async def add_wife_handle(app: Ariadne, group: Group, source: Source, sender: Me
                 quote=source
             )
             return await target_app.send_message(
-                target_group,
-                MessageChain(f"添加失败!"),
-                quote=source
+                target_group, MessageChain("添加失败!"), quote=source
             )
     else:
         reason = return_info or "无"
@@ -235,11 +214,7 @@ async def del_wife(app: Ariadne, group: Group, source: Source,
         if img_name in item:
             try:
                 os.remove(f"{path}/{item}")
-                await app.send_message(
-                    group,
-                    MessageChain(f"删除成功!"),
-                    quote=source
-                )
+                await app.send_message(group, MessageChain("删除成功!"), quote=source)
                 return
             except Exception as e:
                 await app.send_message(
@@ -303,9 +278,8 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
                     f"你的老婆是{wife_dict[key]['wife_name']}哦~可发送‘-离婚’来取消",
                     Image(path=key)
                 )
-            else:
-                del_wife_item = key
-                break
+            del_wife_item = key
+            break
     if del_wife_item:
         wife_dict.pop(del_wife_item)
     # 如果没有老婆(先看wife是否有owner,如果没有则返回wife,有则判断counter(如果counter内没有这个wife则返回你抽到别人的老婆并计数，如果counter内有这个老婆则抢走别人的老婆))
@@ -347,7 +321,7 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
                 f"你抽到了{wife_name},是【{wife_dict[wife]['owner']['name']}】的老婆哦~",
                 Image(path=wife)
             )
-    return MessageChain(f"没有抽到老婆哦~")
+    return MessageChain("没有抽到老婆哦~")
 
 
 @listen(GroupMessage)
@@ -375,29 +349,24 @@ async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Sourc
             wife = item
     if not wife_name:
         await app.send_message(
-            group,
-            MessageChain(
-                f"你还没有抽到老婆,请先使用'抽老婆'抽一个哦~"
-            ),
-            quote=source
+            group, MessageChain("你还没有抽到老婆,请先使用'抽老婆'抽一个哦~"), quote=source
         )
         return
-    if wife_name:
-        wife_dict[wife] = {
-            "owner": {
-                "qq": None,
-                "name": None
-            },
-            "wife_name": wife[wife.rfind('/') + 1:wife.rfind('.')]
-        }
-        await app.send_message(
-            group,
-            MessageChain(
-                f"你已和{wife_name}离婚了哦~"
-            ),
-            quote=source
-        )
-        return
+    wife_dict[wife] = {
+        "owner": {
+            "qq": None,
+            "name": None
+        },
+        "wife_name": wife[wife.rfind('/') + 1:wife.rfind('.')]
+    }
+    await app.send_message(
+        group,
+        MessageChain(
+            f"你已和{wife_name}离婚了哦~"
+        ),
+        quote=source
+    )
+    return
 
 
 @listen(GroupMessage)

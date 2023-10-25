@@ -137,9 +137,7 @@ async def add_keyword(
     )
     if len(response.result.display.encode("utf-8")) > 300:
         return await app.send_group_message(
-            group,
-            MessageChain(f"响应内容不能超过100字!"),
-            quote=source
+            group, MessageChain("响应内容不能超过100字!"), quote=source
         )
     response = await message_chain_to_json(response.result)
     keyword: MessageChain = keyword.result.copy()
@@ -215,11 +213,6 @@ async def delete_keyword(
             f"删除全局关键词需要权限:{Permission.BotAdmin}/你的权限:{await Permission.get_user_perm_byID(group.id, sender.id)}\n"
             f"删除群关键词请用:删除群回复关键词#关键词"
         ), quote=source)
-    op_type = (
-        ("regex" if op_type.result.display == "正则" else "fuzzy")
-        if op_type.matched
-        else "fullmatch"
-    )
     keyword: MessageChain = keyword.result.copy()
     for i in keyword.content:
         if isinstance(i, MultimediaElement):
@@ -231,7 +224,7 @@ async def delete_keyword(
             ).where(KeywordReply.keyword == keyword,
                     KeywordReply.group.in_([group.id if group_only.matched else -1]))
     ):
-        replies = list()
+        replies = []
         for result in results:
             content_type = result[0]
             content = result[1]
@@ -240,13 +233,15 @@ async def delete_keyword(
 
         msg = [Plain(text=f"关键词{keyword}目前有以下数据：\n")]
         for i in range(len(replies)):
-            msg.append(Plain(f"{i + 1}. "))
-            msg.append(
-                ("正则" if replies[i][0] == "regex" else "模糊")
-                if replies[i][0] != "fullmatch"
-                else "全匹配"
+            msg.extend(
+                (
+                    Plain(f"{i + 1}. "),
+                    ("正则" if replies[i][0] == "regex" else "模糊")
+                    if replies[i][0] != "fullmatch"
+                    else "全匹配",
+                    "匹配\n",
+                )
             )
-            msg.append("匹配\n")
             msg.extend(json_to_message_chain(replies[i][1]).__root__)
             msg.append(Plain("\n"))
         msg.append(Plain(text="请发送你要删除的回复编号"))
@@ -273,6 +268,11 @@ async def delete_keyword(
                 ]
             ).extend(json_to_message_chain(replies[number - 1][1])),
         )
+        op_type = (
+            ("regex" if op_type.result.display == "正则" else "fuzzy")
+            if op_type.matched
+            else "fullmatch"
+        )
         try:
             if await inc.wait(ConfirmWaiter(group, member), timeout=30):
                 await orm.delete(
@@ -286,16 +286,19 @@ async def delete_keyword(
                 )
                 temp_list = []
                 global regex_list
-                for i in regex_list:
-                    if all([
-                        i[0] == keyword
-                        if op_type == "regex"
-                        else f"(.*){keyword.replace('[', parse_mid_bracket).replace('{', parse_big_bracket).replace('(', parse_bracket)}(.*)",
-                        i[1] == replies[number - 1][2],
-                        i[2] == (-1 if group_only.matched else group.id),
-                    ]):
-                        continue
-                    temp_list.append(i)
+                temp_list.extend(
+                    i
+                    for i in regex_list
+                    if not all(
+                        [
+                            i[0] == keyword
+                            if op_type == "regex"
+                            else f"(.*){keyword.replace('[', parse_mid_bracket).replace('{', parse_big_bracket).replace('(', parse_bracket)}(.*)",
+                            i[1] == replies[number - 1][2],
+                            i[2] == (-1 if group_only.matched else group.id),
+                        ]
+                    )
+                )
                 regex_list = temp_list
                 await app.send_group_message(group,
                                              MessageChain(f"删除{'群关键词回复' if group_only.matched else '全局关键词回复'}成功"),
@@ -346,37 +349,36 @@ async def generate_reply(app: Ariadne, message: MessageChain, group: Group, send
             )
     ):
         reply = random.choice(result)
-        if not FrequencyJudge(sender.id).judge(sender.id):
-            return
-        await app.send_group_message(
-            group, json_to_message_chain(str(reply[0]))
-        )
-    else:
-        response_md5 = [
-            i[1]
-            for i in regex_list
-            if (
-                    re.match(i[0], copied_msg.as_persistent_string())
-                    and i[2] in (-1, group.id)
+        if FrequencyJudge(sender.id).judge(sender.id):
+            await app.send_group_message(
+                group, json_to_message_chain(str(reply[0]))
             )
-        ]
-        if response_md5:
-            if reply := (
-                    await orm.fetch_one(
-                        select(KeywordReply.reply).where(
-                            KeywordReply.reply_md5
-                            == random.choice(response_md5)
-                        )
+        else:
+            return
+    elif response_md5 := [
+        i[1]
+        for i in regex_list
+        if (
+            re.match(i[0], copied_msg.as_persistent_string())
+            and i[2] in (-1, group.id)
+        )
+    ]:
+        if reply := (
+                await orm.fetch_one(
+                    select(KeywordReply.reply).where(
+                        KeywordReply.reply_md5
+                        == random.choice(response_md5)
                     )
-            ):
-                if not FrequencyJudge(sender.id).judge(sender.id):
-                    return
-                await app.send_group_message(
-                    group,
-                    json_to_message_chain(
-                        reply[0]
-                    ),
                 )
+        ):
+            if not FrequencyJudge(sender.id).judge(sender.id):
+                return
+            await app.send_group_message(
+                group,
+                json_to_message_chain(
+                    reply[0]
+                ),
+            )
 
 
 @channel.use(
@@ -433,27 +435,33 @@ async def show_keywords(app: Ariadne, group: Group, sender: Member, group_only: 
     if group_only.matched:
         message = ["本群启用："]
         for reply_type in reply_type_set:
-            t = set()
-            for keyword in filter(lambda x: x[1] == reply_type, filter(lambda x: x[2] == group.id, keywords)):
-                t.add(f"    {keyword[0]}")
-            if t:
+            if t := {
+                f"    {keyword[0]}"
+                for keyword in filter(
+                    lambda x: x[1] == reply_type,
+                    filter(lambda x: x[2] == group.id, keywords),
+                )
+            }:
                 message.append(f"  {reply_type}:")
                 message.extend(t)
         if message == ["本群启用："]:
             return await app.send_group_message(group, "群回复关键词为空!", quote=source)
-        return await app.send_group_message(group, "\n".join(message), quote=source)
     else:
         message = ["全局启用："]
         for reply_type in reply_type_set:
-            t = set()
-            for keyword in filter(lambda x: x[1] == reply_type, filter(lambda x: x[2] == -1, keywords)):
-                t.add(f"    {keyword[0]}")
-            if t:
+            if t := {
+                f"    {keyword[0]}"
+                for keyword in filter(
+                    lambda x: x[1] == reply_type,
+                    filter(lambda x: x[2] == -1, keywords),
+                )
+            }:
                 message.append(f"  {reply_type}:")
                 message.extend(t)
         if message == ["全局启用："]:
             return await app.send_group_message(group, "全局回复关键词为空!", quote=source)
-        return await app.send_group_message(group, "\n".join(message), quote=source)
+
+    return await app.send_group_message(group, "\n".join(message), quote=source)
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))

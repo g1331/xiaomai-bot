@@ -1396,9 +1396,7 @@ async def get_server_playerList_pic(
     server_gameid = server_info_temp["gameId"]
     server_guid = server_info_temp["guid"]
 
-    await app.send_message(group, MessageChain(
-        f"查询ing"
-    ), quote=source)
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
     time_start = time.time()
     try:
         server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
@@ -1499,9 +1497,7 @@ async def get_server_playerList_pic(
     for i, item in enumerate(kick_action):
         if i == 0:
             continue
-        if item.isnumeric():
-            pass
-        else:
+        if not item.isnumeric():
             ending = i
     if ending is not None:
         index_list = kick_action[1:ending]
@@ -1525,7 +1521,7 @@ async def get_server_playerList_pic(
         index = int(index)
         try:
             if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
-                index = index - 1
+                index -= 1
                 scrape_index_tasks.append(asyncio.ensure_future(
                     account_instance.kickPlayer(gameId=server_gameid,
                                                 personaId=playerlist_data["teams"][0][index]["pid"], reason=reason)
@@ -1634,10 +1630,10 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(
             "查询数据库信息时出错!"
         ), quote=source)
-    result = []
-    for i, manager_account in enumerate(manager_account_list):
-        result.append(
-            f"⚪{manager_account.get('display_name')} ({len(tasks[i].result())})\n  {manager_account.get('pid')}")
+    result = [
+        f"⚪{manager_account.get('display_name')} ({len(tasks[i].result())})\n  {manager_account.get('pid')}"
+        for i, manager_account in enumerate(manager_account_list)
+    ]
     send = "\n".join(result)
     return await app.send_message(group, MessageChain(
         f"当前共有{len(manager_account_list)}个服管账号:\n{send}"

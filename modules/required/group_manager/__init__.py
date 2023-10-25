@@ -119,9 +119,9 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
 async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: Source):
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!/获取群权限信息失败!"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("bot权限不足!/获取群权限信息失败!"), quote=source
+        )
     app = target_app
     group = target_group
     quote_id = event.quote.id
@@ -129,13 +129,9 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
         await app.set_essence(quote_id)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"出错力!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("出错力!"), quote=source)
 
-    return await app.send_message(group, MessageChain(
-        f"加精成功"
-    ), quote=source)
+    return await app.send_message(group, MessageChain("加精成功"), quote=source)
 
 
 # TODO 撤回 quote.id   recall
@@ -157,22 +153,18 @@ async def set_essence(app: Ariadne, group: Group, event: MessageEvent, source: S
 async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source):
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("bot权限不足!"), quote=source)
     quote_id = event.quote.id
     app = target_app
     group = target_group
     try:
         await app.recall_message(quote_id)
-        return await app.send_message(group, MessageChain(
-            f"撤回成功"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("撤回成功"), quote=source)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"撤回出错啦,找管理员看看吧~"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("撤回出错啦,找管理员看看吧~"), quote=source
+        )
 
 
 # TODO 禁言 @qq 禁言
@@ -195,27 +187,27 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
                expire_time: MatchResult):
     expire_time = expire_time.result * 60
     if expire_time > 30 * 24 * 60 * 60 or expire_time <= 0:
-        return await app.send_message(group, MessageChain(
-            f"时间非法!范围(分钟): `0 < time <= 43200`"
-        ), quote=source)
+        return await app.send_message(
+            group,
+            MessageChain("时间非法!范围(分钟): `0 < time <= 43200`"),
+            quote=source,
+        )
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("bot权限不足!"), quote=source)
     app: Ariadne = target_app
     group: Group = target_group
     if at.matched:
         _target: At = at.result
         _target = _target.target
         if await Permission.require_user_perm(group.id, _target, 32):
-            return await app.send_message(group, MessageChain(
-                f"bot权限不足!(目标权限>=32)"
-            ), quote=source)
+            return await app.send_message(
+                group, MessageChain("bot权限不足!(目标权限>=32)"), quote=source
+            )
         if _target == app.account:
-            return await app.send_message(group, MessageChain(
-                f"禁言bot?给你一棒槌!"
-            ), quote=source)
+            return await app.send_message(
+                group, MessageChain("禁言bot?给你一棒槌!"), quote=source
+            )
         try:
             await app.mute_member(group, _target, expire_time)
             return await app.send_message(group, MessageChain(
@@ -224,19 +216,17 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
             ))
         except Exception as e:
             logger.error(e)
-            return await app.send_message(group, MessageChain(
-                f"设置禁言出错啦!"
-            ), quote=source)
+            return await app.send_message(group, MessageChain("设置禁言出错啦!"), quote=source)
     if event.quote:
         target_id = event.quote.sender_id
         if target_id == app.account:
-            return await app.send_message(group, MessageChain(
-                f"禁言bot?给你一棒槌!"
-            ), quote=source)
+            return await app.send_message(
+                group, MessageChain("禁言bot?给你一棒槌!"), quote=source
+            )
         if await Permission.require_user_perm(group.id, target_id, 32):
-            return await app.send_message(group, MessageChain(
-                f"bot权限不足!(目标权限>=32)"
-            ), quote=source)
+            return await app.send_message(
+                group, MessageChain("bot权限不足!(目标权限>=32)"), quote=source
+            )
         try:
             await app.mute_member(group, event.quote.sender_id, expire_time)
             return await app.send_message(group, MessageChain(
@@ -245,9 +235,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
             ), quote=source)
         except Exception as e:
             logger.error(e)
-            return await app.send_message(group, MessageChain(
-                f"设置禁言出错啦!"
-            ), quote=source)
+            return await app.send_message(group, MessageChain("设置禁言出错啦!"), quote=source)
     return
 
 
@@ -268,9 +256,7 @@ async def mute(app: Ariadne, group: Group, event: GroupMessage, source: Source, 
 async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source, at: ElementResult):
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("bot权限不足!"), quote=source)
     app: Ariadne = target_app
     group: Group = target_group
     if at.matched:
@@ -281,9 +267,7 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
             return await app.send_message(group, MessageChain(f"已解禁{_target}!"), quote=source)
         except Exception as e:
             logger.error(e)
-            return await app.send_message(group, MessageChain(
-                f"设置禁言出错啦!"
-            ), quote=source)
+            return await app.send_message(group, MessageChain("设置禁言出错啦!"), quote=source)
     if event.quote:
         target_id = event.quote.sender_id
         try:
@@ -291,9 +275,7 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
             return await app.send_message(group, MessageChain(f"已解禁{target_id}!"), quote=source)
         except Exception as e:
             logger.error(e)
-            return await app.send_message(group, MessageChain(
-                f"处理禁言出错啦!"
-            ), quote=source)
+            return await app.send_message(group, MessageChain("处理禁言出错啦!"), quote=source)
     return
 
 
@@ -312,14 +294,12 @@ async def unmute(app: Ariadne, group: Group, event: GroupMessage, source: Source
 )
 async def mute_all(app: Ariadne, group: Group, sender: Member, source: Source):
     if sender.permission.name == "Member":
-        return await app.send_message(group, MessageChain(
-            f"只有群管理员/群主才能操作哦~"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("只有群管理员/群主才能操作哦~"), quote=source
+        )
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("bot权限不足!"), quote=source)
     app: Ariadne = target_app
     group: Group = target_group
     try:
@@ -329,9 +309,7 @@ async def mute_all(app: Ariadne, group: Group, sender: Member, source: Source):
         ), quote=source)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"设置禁言出错啦!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("设置禁言出错啦!"), quote=source)
 
 
 @listen(GroupMessage)
@@ -349,14 +327,12 @@ async def mute_all(app: Ariadne, group: Group, sender: Member, source: Source):
 )
 async def unmute_all(app: Ariadne, group: Group, sender: Member, source: Source):
     if sender.permission.name == "Member":
-        return await app.send_message(group, MessageChain(
-            f"只有群管理员/群主才能操作哦~"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("只有群管理员/群主才能操作哦~"), quote=source
+        )
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("bot权限不足!"), quote=source)
     app: Ariadne = target_app
     group: Group = target_group
     try:
@@ -366,6 +342,4 @@ async def unmute_all(app: Ariadne, group: Group, sender: Member, source: Source)
         ), quote=source)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"处理出错啦!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("处理出错啦!"), quote=source)

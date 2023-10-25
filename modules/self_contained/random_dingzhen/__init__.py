@@ -52,7 +52,7 @@ async def main(app: Ariadne, group: Group, source: Source):
             background = Image.new("RGB", im.size, (255, 255, 255))
             background.paste(im, mask=im.split()[3])
         save_name = pic_path.replace('webp', 'jpg')
-        im.save('{}'.format(save_name), 'JPEG')
+        im.save(f'{save_name}', 'JPEG')
         await app.send_message(group, MessageChain(
             Graia_Image(path=save_name)
         ), quote=source)

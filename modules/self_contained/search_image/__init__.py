@@ -106,23 +106,19 @@ async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, 
     )
 )
 async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Source):
-    await app.send_message(group, MessageChain(
-        f'请在30秒内发送要搜索的图片!'
-    ), quote=source)
+    await app.send_message(group, MessageChain('请在30秒内发送要搜索的图片!'), quote=source)
 
     try:
         result: Image = await asyncio.wait_for(InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30)
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(group, MessageChain(
-            f'操作超时,已自动退出!'), quote=source)
+        return await app.send_message(group, MessageChain('操作超时,已自动退出!'), quote=source)
 
     if result:
-        await app.send_message(group, MessageChain(
-            f'搜索ing'), quote=source)
+        await app.send_message(group, MessageChain('搜索ing'), quote=source)
     else:
-        return await app.send_message(group, MessageChain(
-            f'未识别到图片,已自动退出!'
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain('未识别到图片,已自动退出!'), quote=source
+        )
     # 获取搜索的图片地址
     img_url = result.url
     # 使用方法搜索
@@ -207,23 +203,19 @@ async def souFan(app: Ariadne, group: Group, sender: Member, img: ElementResult,
     )
 )
 async def souFan_waiter(app: Ariadne, group: Group, sender: Member, source: Source):
-    await app.send_message(group, MessageChain(
-        f'请在30秒内发送要搜索的图片!'
-    ), quote=source)
+    await app.send_message(group, MessageChain('请在30秒内发送要搜索的图片!'), quote=source)
 
     try:
         result: Image = await asyncio.wait_for(InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30)
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(group, MessageChain(
-            f'操作超时,已自动退出!'), quote=source)
+        return await app.send_message(group, MessageChain('操作超时,已自动退出!'), quote=source)
 
     if result:
-        await app.send_message(group, MessageChain(
-            f'搜索ing'), quote=source)
+        await app.send_message(group, MessageChain('搜索ing'), quote=source)
     else:
-        return await app.send_message(group, MessageChain(
-            f'未识别到图片,已自动退出!'
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain('未识别到图片,已自动退出!'), quote=source
+        )
     # 获取搜索的图片地址
     img_url = result.url
     # 使用方法搜索
@@ -281,7 +273,7 @@ async def fun_tracemoe(file_url: str) -> MessageChain:
         if len(resp.raw) == 0:
             return None
         else:
-            message = MessageChain(
+            return MessageChain(
                 f"tracemoe结果:\n"
                 f"搜索的帧总数: {resp.frameCount}\n"
                 f"匹配的anilistID: {resp.raw[0].anilist}\n"
@@ -298,9 +290,9 @@ async def fun_tracemoe(file_url: str) -> MessageChain:
                 f"匹配场景的结束时间: {resp.raw[0].To}\n"
                 f"相似度: {resp.raw[0].similarity}\n"
                 f"预览视频地址: {resp.raw[0].video}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].image)
+                f"缩略图:\n",
+                Image(url=resp.raw[0].image),
             )
-            return message
 
 
 async def fun_ascii2d(file_url: str) -> MessageChain:
@@ -336,25 +328,24 @@ async def fun_iqdb(file_url: str) -> MessageChain:
             return None
         if len(resp.raw) == 0:
             return None
-        else:
-            try:
-                return MessageChain(
-                    f"iqdb结果:\n"
-                    f"说明: {resp.raw[0].content}\n"
-                    f"来源地址: {resp.raw[0].url}\n"
-                    f"相似度: {resp.raw[0].similarity}\n"
-                    f"图片大小: {resp.raw[0].size}\n"
-                    f"图片来源: {resp.raw[0].source}\n"
-                    f"其他图片来源: {resp.raw[0].other_source}\n"
-                    f"SauceNAO搜图链接: {resp.saucenao_url}\n"
-                    f"Ascii2d搜图链接: {resp.ascii2d_url}\n"
-                    f"TinEye搜图链接: {resp.tineye_url}\n"
-                    f"Google搜图链接: {resp.google_url}\n"
-                    f"相似度低的结果个数: {len(resp.more)}\n"
-                    f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
-                )
-            except:
-                return None
+        try:
+            return MessageChain(
+                f"iqdb结果:\n"
+                f"说明: {resp.raw[0].content}\n"
+                f"来源地址: {resp.raw[0].url}\n"
+                f"相似度: {resp.raw[0].similarity}\n"
+                f"图片大小: {resp.raw[0].size}\n"
+                f"图片来源: {resp.raw[0].source}\n"
+                f"其他图片来源: {resp.raw[0].other_source}\n"
+                f"SauceNAO搜图链接: {resp.saucenao_url}\n"
+                f"Ascii2d搜图链接: {resp.ascii2d_url}\n"
+                f"TinEye搜图链接: {resp.tineye_url}\n"
+                f"Google搜图链接: {resp.google_url}\n"
+                f"相似度低的结果个数: {len(resp.more)}\n"
+                f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
+            )
+        except:
+            return None
 
 
 async def fun_google(file_url: str) -> MessageChain:
@@ -367,29 +358,28 @@ async def fun_google(file_url: str) -> MessageChain:
             return None
         if len(resp.raw) == 0:
             return None
-        else:
+        try:
+            message = MessageChain(
+                f"google结果:\n"
+                f"当前页: {resp.index}\n"
+                f"标题: {resp.raw[2].title}\n"
+                f"地址: {resp.raw[2].url}\n"
+                f"总页数: {resp.page}\n"
+                f"缩略图:{resp.raw[1].thumbnail}",
+            )
+        except:
             try:
                 message = MessageChain(
                     f"google结果:\n"
                     f"当前页: {resp.index}\n"
-                    f"标题: {resp.raw[2].title}\n"
-                    f"地址: {resp.raw[2].url}\n"
+                    f"标题: {resp.raw[1].title}\n"
+                    f"地址: {resp.raw[1].url}\n"
                     f"总页数: {resp.page}\n"
-                    f"缩略图:{resp.raw[1].thumbnail}",
+                    f"缩略图:{resp.raw[1].thumbnail}"
                 )
             except:
-                try:
-                    message = MessageChain(
-                        f"google结果:\n"
-                        f"当前页: {resp.index}\n"
-                        f"标题: {resp.raw[1].title}\n"
-                        f"地址: {resp.raw[1].url}\n"
-                        f"总页数: {resp.page}\n"
-                        f"缩略图:{resp.raw[1].thumbnail}"
-                    )
-                except:
-                    return None
-            return message
+                return None
+        return message
 
 
 async def fun_ehentai(file_url: str) -> MessageChain:
@@ -407,24 +397,23 @@ async def fun_ehentai(file_url: str) -> MessageChain:
                 f"ehentai结果:\n"
                 f"未搜索到!"
             )
-        else:
-            try:
-                message = MessageChain(
-                    f"ehentai结果:\n"
-                    f"搜索结果链接: {resp.url}\n"
-                    f"标题: {resp.raw[0].title}\n"
-                    f"地址: {resp.raw[2].url}\n"
-                    f"分类: {resp.raw[0].type}\n"
-                    f"日期: {resp.raw[0].date}\n"
-                    f"标签: {resp.raw[0].tags}\n"
-                    f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
-                )
-            except:
-                message = MessageChain(
-                    f"ehentai结果:\n"
-                    f"未搜索到!"
-                )
-            return message
+        try:
+            message = MessageChain(
+                f"ehentai结果:\n"
+                f"搜索结果链接: {resp.url}\n"
+                f"标题: {resp.raw[0].title}\n"
+                f"地址: {resp.raw[2].url}\n"
+                f"分类: {resp.raw[0].type}\n"
+                f"日期: {resp.raw[0].date}\n"
+                f"标签: {resp.raw[0].tags}\n"
+                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+            )
+        except:
+            message = MessageChain(
+                f"ehentai结果:\n"
+                f"未搜索到!"
+            )
+        return message
 
 
 async def fun_baidu(file_url: str) -> MessageChain:
@@ -440,17 +429,16 @@ async def fun_baidu(file_url: str) -> MessageChain:
                 f"baidu结果:\n"
                 f"未搜索到!"
             )
+        if resp:
+            message = MessageChain(
+                f"baidu结果:\n"
+                f"标题: {resp.raw[0].title}\n"
+                f"图片所在网页地址: {resp.raw[0].url}\n"
+                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+            )
         else:
-            if resp:
-                message = MessageChain(
-                    f"baidu结果:\n"
-                    f"标题: {resp.raw[0].title}\n"
-                    f"图片所在网页地址: {resp.raw[0].url}\n"
-                    f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
-                )
-            else:
-                return MessageChain(
-                    f"baidu结果:\n"
-                    f"未搜索到!"
-                )
-            return message
+            return MessageChain(
+                f"baidu结果:\n"
+                f"未搜索到!"
+            )
+        return message

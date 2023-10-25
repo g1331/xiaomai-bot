@@ -82,30 +82,43 @@ async def get_modules_list(app: Ariadne, ori_place: Union[Group, Friend], src: S
     module_list = module_controller.get_all_modules()
     # 已加载插件
     loaded_columns = [ColumnTitle(title="已加载插件")]
-    for i, channel_temp in enumerate(module_list):
-        loaded_columns.append(ColumnList(rows=[
-            ColumnListItem(
-                # 副标题
-                subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-                # 内容
-                content=channel_temp,
-                # 开关指示
-                right_element=ColumnListItemSwitch(
-                    switch=module_controller.if_module_available(channel_temp))
-            )
-        ]))
+    loaded_columns.extend(
+        ColumnList(
+            rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                    # 内容
+                    content=channel_temp,
+                    # 开关指示
+                    right_element=ColumnListItemSwitch(
+                        switch=module_controller.if_module_available(
+                            channel_temp
+                        )
+                    ),
+                )
+            ]
+        )
+        for i, channel_temp in enumerate(module_list)
+    )
     loaded_columns = [Column(elements=loaded_columns[i: i + 20]) for i in range(0, len(loaded_columns), 20)]
     # 未加载插件
     unloaded_columns = [ColumnTitle(title="未加载插件")]
-    for i, channel_temp in enumerate(module_controller.get_not_installed_channels()):
-        unloaded_columns.append(ColumnList(rows=[
-            ColumnListItem(
-                # 副标题
-                subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
-                # 内容
-                content=channel_temp,
-            )
-        ]))
+    unloaded_columns.extend(
+        ColumnList(
+            rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + 1 + len(saya.channels.keys())}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                    # 内容
+                    content=channel_temp,
+                )
+            ]
+        )
+        for i, channel_temp in enumerate(
+            module_controller.get_not_installed_channels()
+        )
+    )
     unloaded_columns = [Column(elements=unloaded_columns[i: i + 20]) for i in range(0, len(unloaded_columns), 20)]
     return await app.send_message(ori_place, MessageChain(
         Image(data_bytes=await OneMockUI.gen(
@@ -143,7 +156,7 @@ async def change_module_status(
     operation = operation.result.display
     index = int(index.result.display) if index.result.display.isdigit() else None
     if not index:
-        return await app.send_message(group, MessageChain(f"请检查输入的编号!"), quote=source)
+        return await app.send_message(group, MessageChain("请检查输入的编号!"), quote=source)
     if operation == "加载":
         operation_type = saya_model.ModuleOperationType.INSTALL
     else:
@@ -154,19 +167,21 @@ async def change_module_status(
     module = modules[index - 1]
     try:
         await app.send_message(group, MessageChain(f"你确定要{operation}插件`{module}`吗?(是/否)"), quote=source)
-        if await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
-            if operation == "加载":
-                module_controller.add_module(module)
-            exceptions = module_controller.module_operation(module, operation_type)
-            if exceptions:
-                return await app.send_group_message(
-                    group,
-                    MessageChain("\n".join(f"模块<{m}>{operation}发生错误:{e}" for m, e in exceptions.items())),
-                    quote=source
-                )
-            return await app.send_group_message(group, MessageChain(f"模块:{module}{operation}完成"), quote=source)
-        else:
-            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+        if not await asyncio.wait_for(
+            inc.wait(ConfirmWaiter(group, member)), 30
+        ):
+            return await app.send_message(group, MessageChain("未预期回复,操作退出"), quote=source)
+        if operation == "加载":
+            module_controller.add_module(module)
+        if exceptions := module_controller.module_operation(
+            module, operation_type
+        ):
+            return await app.send_group_message(
+                group,
+                MessageChain("\n".join(f"模块<{m}>{operation}发生错误:{e}" for m, e in exceptions.items())),
+                quote=source
+            )
+        return await app.send_group_message(group, MessageChain(f"模块:{module}{operation}完成"), quote=source)
     except asyncio.TimeoutError:
         return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
@@ -205,7 +220,7 @@ async def switch_module(
         return await app.send_message(group, MessageChain(f"插件{module}已处于开启状态!"), quote=source)
     elif operation == "关闭" and (not module_controller.if_module_available(module)):
         if module in module_controller.get_required_modules():
-            return await app.send_message(group, MessageChain(f"无法关闭必须插件!"), quote=source)
+            return await app.send_message(group, MessageChain("无法关闭必须插件!"), quote=source)
         return await app.send_message(group, MessageChain(f"插件{module}已处于关闭状态!"), quote=source)
     try:
         exceptions = module_controller.enable_module(

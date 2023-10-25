@@ -96,30 +96,29 @@ async def push_handle(
         if target_app and target_group and module_controller.if_module_switch_on(module_name, target_group):
             push_list.append([target_app, target_group])
     if not push_list:
-        return await app.send_message(group, MessageChain(f"没有满足条件的群哦~"), quote=source)
-    else:
-        try:
-            await app.send_message(
-                group,
-                MessageChain(
-                    f"推送示例:\n“{content}\n    ({generate_random_str(20)})”\n预计在{len(push_list) * time_interval}分钟内推送到{len(push_list)}个群(间隔:{time_interval})确定要推送吗?(是/否)"),
-                quote=source
-            )
-            if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
-                return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
-        except asyncio.TimeoutError:
-            return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
+        return await app.send_message(group, MessageChain("没有满足条件的群哦~"), quote=source)
+    try:
         await app.send_message(
             group,
-            MessageChain(f"开始推送!\n预计在{len(push_list)}分钟内推送到{len(push_list)}个群~"),
+            MessageChain(
+                f"推送示例:\n“{content}\n    ({generate_random_str(20)})”\n预计在{len(push_list) * time_interval}分钟内推送到{len(push_list)}个群(间隔:{time_interval})确定要推送吗?(是/否)"),
             quote=source
         )
-        await pusher(push_list, content, time_interval)
-        return await app.send_message(
-            group,
-            MessageChain([At(member), f"您的公告\n“{content}”\n已推送完毕!"]),
-            quote=source
-        )
+        if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
+            return await app.send_message(group, MessageChain("未预期回复,操作退出"), quote=source)
+    except asyncio.TimeoutError:
+        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
+    await app.send_message(
+        group,
+        MessageChain(f"开始推送!\n预计在{len(push_list)}分钟内推送到{len(push_list)}个群~"),
+        quote=source
+    )
+    await pusher(push_list, content, time_interval)
+    return await app.send_message(
+        group,
+        MessageChain([At(member), f"您的公告\n“{content}”\n已推送完毕!"]),
+        quote=source
+    )
 
 
 async def pusher(push_list, content, time):
@@ -129,7 +128,7 @@ async def pusher(push_list, content, time):
         try:
             await target_app.send_message(
                 target_group,
-                MessageChain(content + f"\n    ({generate_random_str(20)})")
+                MessageChain(f"{content}\n    ({generate_random_str(20)})"),
             )
         except Exception as e:
             logger.error(

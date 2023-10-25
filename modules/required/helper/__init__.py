@@ -75,55 +75,66 @@ async def helper(app: Ariadne, group: Group, source: Source):
     example = [ColumnListItem(
         content=example_item,
     ) for example_item in channel.metadata.example]
-    dirs = [e for e in (Path("statics") / "Emoticons").iterdir()]
+    dirs = list((Path("statics") / "Emoticons").iterdir())
 
     # 必须插件
     required_columns = [
         ColumnTitle(title="小埋BOT帮助菜单"),
         ColumnUserInfo(
-            name=f"どま うまる",
+            name="どま うまる",
             avatar=get_img_base64_str(Path.read_bytes(random.choice(dirs))),
-            description="如有疑问可加群749094683咨询"
+            description="如有疑问可加群749094683咨询",
         ),
         ColumnTitle(title="用法"),
-        ColumnList(
-            rows=usage
-        ),
+        ColumnList(rows=usage),
         ColumnTitle(title="示例"),
-        ColumnList(
-            rows=example
-        ),
-        ColumnTitle(title="内置插件")
+        ColumnList(rows=example),
+        ColumnTitle(title="内置插件"),
     ]
-    for i, channel_temp in enumerate(required_module_list):
-        required_columns.append(ColumnList(rows=[
-            ColumnListItem(
-                # 副标题
-                subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-            )
-        ]))
+    required_columns.extend(
+        ColumnList(
+            rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + 1}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                )
+            ]
+        )
+        for i, channel_temp in enumerate(required_module_list)
+    )
     required_columns = [Column(elements=required_columns[i: i + 20]) for i in range(0, len(required_columns), 20)]
     # 正常插件
     module_columns = [ColumnTitle(title="运行插件")]
-    for i, channel_temp in enumerate(normal_module_list):
-        module_columns.append(ColumnList(rows=[
-            ColumnListItem(
-                # 副标题
-                subtitle=f"{i + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
-                # 开关指示
-                right_element=ColumnListItemSwitch(switch=module_controller.if_module_switch_on(channel_temp, group.id))
-            )
-        ]))
+    module_columns.extend(
+        ColumnList(
+            rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta['name'] or channel_temp.split('.')[-1]}",
+                    # 开关指示
+                    right_element=ColumnListItemSwitch(
+                        switch=module_controller.if_module_switch_on(
+                            channel_temp, group.id
+                        )
+                    ),
+                )
+            ]
+        )
+        for i, channel_temp in enumerate(normal_module_list)
+    )
     # 维护插件
     module_columns.append(ColumnTitle(title="维护插件"))
-    for i, channel_temp in enumerate(unavailable_module_list):
-        module_columns.append(ColumnList(rows=[
-            ColumnListItem(
-                # 副标题
-                subtitle=f"{i + len(normal_module_list) + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
-
-            )
-        ]))
+    module_columns.extend(
+        ColumnList(
+            rows=[
+                ColumnListItem(
+                    # 副标题
+                    subtitle=f"{i + len(normal_module_list) + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or channel_temp.split('.')[-1]}",
+                )
+            ]
+        )
+        for i, channel_temp in enumerate(unavailable_module_list)
+    )
     module_columns = [Column(elements=module_columns[i: i + 20]) for i in range(0, len(module_columns), 20)]
     return await app.send_message(group, MessageChain(
         Image(data_bytes=await OneMockUI.gen(

@@ -88,7 +88,11 @@ async def av_bt(app: Ariadne, group: Group, has_img: ArgResult, keyword: RegexRe
             if not has_img.matched:
                 await page.evaluate("var a = document.getElementsByClassName('panel')[1].getElementsByTagName('img');while(a.length > 0){a[0].remove()}")
             else:
-                await app.send_message(group, MessageChain(f"注意!该消息内容可能包含NSFW信息,是否继续查看?(y/n)"), quote=source)
+                await app.send_message(
+                    group,
+                    MessageChain("注意!该消息内容可能包含NSFW信息,是否继续查看?(y/n)"),
+                    quote=source,
+                )
                 try:
                     if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
                         return await app.send_group_message(group, MessageChain("取消查看成功~"), quote=source)

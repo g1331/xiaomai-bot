@@ -30,9 +30,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 
 channel = Channel.current()
-channel.name("GenshinCharaCard")
-channel.author("SAGIRI-kawaii")
-channel.description("一个原神角色卡查询插件，在群中发送 `/原神角色卡 UID 角色名` 即可")
+#channel.name("GenshinCharaCard")
+#channel.author("SAGIRI-kawaii")
+#channel.description("一个原神角色卡查询插件，在群中发送 `/原神角色卡 UID 角色名` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 characters = {}

@@ -33,9 +33,9 @@ module_controller = saya_model.get_module_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("SayaManager")
-channel.description("负责插件管理(必须插件)")
-channel.author("13")
+#channel.name("SayaManager")
+#channel.description("负责插件管理(必须插件)")
+#channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(saya.broadcast)

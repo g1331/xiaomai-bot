@@ -38,9 +38,9 @@ account_controller = response_model.get_acc_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("ResponseManager")
-channel.description("负责响应管理(必须插件)")
-channel.author("13")
+#channel.name("ResponseManager")
+#channel.description("负责响应管理(必须插件)")
+#channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

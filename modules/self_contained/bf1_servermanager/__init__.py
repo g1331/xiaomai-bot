@@ -2056,17 +2056,18 @@ async def bfgroup_refresh(
         ), quote=source)
     elif isinstance(server_info, str):
         return await app.send_message(group, MessageChain(server_info), quote=source)
-    if not server_info["account"]:
-        return await app.send_message(group, MessageChain(
-            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号！"
-        ), quote=source)
-    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
-    no_valid = await account_instance.check_session_expire()
-    if no_valid:
-        await account_instance.login(account_instance.remid, account_instance.sid)
-    return await app.send_message(group, MessageChain(
-        f"群组{bf_group_name}服务器{server_rank}服管号登录成功" if account_instance.check_login else f"群组{bf_group_name}服务器{server_rank}服管号登录失败"
-    ), quote=source)
+    if server_info["account"]:
+        account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+        no_valid = await account_instance.check_session_expire()
+        if no_valid:
+            no_valid = await account_instance.login(account_instance.remid, account_instance.sid)
+        if no_valid:
+            msg = f"群组{bf_group_name}服务器{server_rank}服管号登录失败"
+        else:
+            msg = f"群组{bf_group_name}服务器{server_rank}服管号登录成功"
+    else:
+        msg = f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号！"
+    return await app.send_message(group, MessageChain(msg), quote=source)
 
 
 # 服管功能:  指定服务器序号版 1.踢人 2.封禁/解封 3.换边 4.换图 5.vip
@@ -3865,7 +3866,8 @@ async def move_player(
             "奥斯曼帝国": ["奥", "奥斯曼", "奥斯曼帝国", "土耳其"],  # 现在的土耳其
             "意大利王国": ["意", "意大利", "意大利王国", "意呆利"],
             "大英帝国": ["英", "大英", "大英帝国", "英国", "英军"],
-            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军", "英"],
+            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军",
+                               "英"],
             "美国": ["美", "美国", "美军", "美", "US", "USA"],
             "法国": ["法", "法国", "法军", "法", "FR", "FRA"],
             "俄罗斯帝国": ["俄", "俄罗斯", "俄罗斯帝国", "俄罗斯", "俄军", "白军", "白"],

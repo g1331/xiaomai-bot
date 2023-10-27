@@ -420,6 +420,7 @@ async def player_stat_pic(
 
     # 并发获取生涯、武器、载具信息
     tasks = [
+        (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid),
@@ -428,7 +429,17 @@ async def player_stat_pic(
     tasks = await asyncio.gather(*tasks)
 
     # 检查返回结果
-    player_stat, player_weapon, player_vehicle, eac_info = tasks[0], tasks[1], tasks[2], tasks[3]
+    player_persona, player_stat, player_weapon, player_vehicle, eac_info = tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]
+    if isinstance(player_persona, str):
+        logger.error(player_persona)
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{player_persona}"),
+            quote=source
+        )
+    else:
+        player_persona: dict
+        player_avatar_url = player_persona["result"][str(player_pid)]["avatar"]
     if isinstance(player_stat, str):
         logger.error(player_stat)
         return await app.send_message(

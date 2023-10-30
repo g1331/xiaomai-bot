@@ -1,0 +1,12 @@
+[project]
+name = "XiaoMaiBot-v4"
+version = "0.4.0"
+description = "Avilla-based version"
+authors = [
+    {name = "13",email = "1257661006@qq.com"},
+]
+dependencies = []
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "GNU"}
+

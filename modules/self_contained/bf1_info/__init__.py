@@ -199,7 +199,7 @@ async def set_default_account(
 @dispatch(
     Twilight(
         [
-            FullMatch("-绑定"),
+            FullMatch("-bind", "-绑定"),
             ParamMatch() @ "player_name",
         ]
     )
@@ -285,7 +285,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
 @dispatch(
     Twilight(
         [
-            FullMatch("-信息"),
+            FullMatch("-info", "-信息"),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -366,7 +366,7 @@ async def info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
+            UnionMatch("-s", "-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -889,7 +889,7 @@ async def player_vehicle_pic(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-最近").space(SpacePolicy.PRESERVE),
+            UnionMatch("-r", "-recent", "-最近").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -977,7 +977,7 @@ async def player_recent_info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-对局").space(SpacePolicy.PRESERVE),
+            UnionMatch("-match", "-对局").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -2039,7 +2039,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-交换").space(SpacePolicy.PRESERVE),
+            UnionMatch("-ex", "-exchange", "-交换").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
         ]
     )

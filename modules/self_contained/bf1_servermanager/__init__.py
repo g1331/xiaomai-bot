@@ -814,7 +814,7 @@ async def bfgroup_perm_list(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f", "-狐务器", "-负无穷")
+            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f")
             # 示例: -服务器
         ]
     )
@@ -951,7 +951,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f", "-狐务器", "-负无穷").space(SpacePolicy.PRESERVE),
+            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             ParamMatch(optional=False) @ "server_index",
             # 示例: -服务器#1
@@ -2080,7 +2080,7 @@ async def bfgroup_refresh(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-kick", "-踢", "-k", "-滚出").space(SpacePolicy.PRESERVE),
+            UnionMatch("-kick", "-踢", "-k", "-踢出").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -2484,7 +2484,7 @@ async def kick_by_searched(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-ban", "-封禁").space(SpacePolicy.PRESERVE),
+            UnionMatch("-b", "-ban", "-封禁").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -2637,7 +2637,7 @@ async def add_ban(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-unban", "-uban", "-解封").space(SpacePolicy.PRESERVE),
+            UnionMatch("-ub", "-unban", "-uban", "-解封").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -3075,7 +3075,7 @@ async def del_banall(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-checkban").space(SpacePolicy.PRESERVE),
+            UnionMatch("-cb", "-checkban").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.FORCE) @ "bf_group_name",
             ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "player_name"
             # 示例: -checkban sakula xiaoxiao
@@ -3931,7 +3931,7 @@ async def move_player(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-换图", "-map", "-切图").space(SpacePolicy.PRESERVE),
+            UnionMatch("-m", "-换图", "-map", "-切图").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -4168,7 +4168,7 @@ async def change_map(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-图池", "-maplist", "-地图池").space(SpacePolicy.PRESERVE),
+            UnionMatch("-ml", "-图池", "-maplist", "-地图池").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",
@@ -4584,7 +4584,7 @@ async def add_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-unvip", "-uvip", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
+            UnionMatch("-uv", "-unvip", "-uvip", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -4736,7 +4736,7 @@ async def del_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-checkvip").space(SpacePolicy.PRESERVE),
+            UnionMatch("-cv", "-checkvip").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",

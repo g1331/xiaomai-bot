@@ -199,7 +199,7 @@ async def set_default_account(
 @dispatch(
     Twilight(
         [
-            FullMatch("-bind", "-绑定"),
+            UnionMatch("-bind", "-绑定"),
             ParamMatch() @ "player_name",
         ]
     )
@@ -285,7 +285,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
 @dispatch(
     Twilight(
         [
-            FullMatch("-info", "-信息"),
+            UnionMatch("-info", "-信息"),
             ParamMatch(optional=True) @ "player_name",
         ]
     )

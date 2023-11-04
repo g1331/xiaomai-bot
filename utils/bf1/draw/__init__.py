@@ -32,6 +32,7 @@ StatImageWidth = 2000
 StatImageHeight = 1550
 # 背景图片根目录
 BackgroundPathRoot = Path("./data/battlefield/pic/background/")
+DefaultBackgroundPath = Path(__file__).parent / "template" / "background"
 # 头像根目录
 AvatarPathRoot = Path("./data/battlefield/pic/avatar/")
 # 默认头像
@@ -366,8 +367,7 @@ class PlayerStatPic:
         if background_path.exists():
             background = random.choice(list(background_path.iterdir())).open("rb").read()
         else:
-            background_path = BackgroundPathRoot / "default"
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
         return background_img

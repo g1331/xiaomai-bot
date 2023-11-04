@@ -289,9 +289,9 @@ class PlayerStatPic:
         # 转换成xx小时xx分钟
         time_seconds = player_info.get('basicStats').get('timePlayed')
         if time_seconds < 3600:
-            self.time_played = f"{time_seconds // 60}分钟"
+            self.time_played = f"{round(time_seconds // 60)}分钟"
         else:
-            self.time_played = f"{time_seconds // 3600}小时{time_seconds % 3600 // 60}分钟"
+            self.time_played = f"{round(time_seconds // 3600)}小时{round(time_seconds % 3600 // 60)}分钟"
         kills = player_info.get('basicStats').get('kills')
         self.kills = kills
         deaths = player_info.get('basicStats').get('deaths')
@@ -705,9 +705,9 @@ class PlayerStatPic:
         eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
             if weapon["stats"]["values"]["kills"] != 0 else 0
         if seconds < 3600:
-            time_played = f"{seconds // 60}分钟"
+            time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{seconds // 3600}小时{seconds % 3600 // 60}分钟"
+            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
 
         if kills >= 10000:
             weapon_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
@@ -821,9 +821,9 @@ class PlayerStatPic:
         kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
         destroyed = int(vehicle["stats"]["values"]["destroyed"])
         if seconds < 3600:
-            time_played = f"{seconds // 60}分钟"
+            time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{seconds // 3600}小时{seconds % 3600 // 60}分钟"
+            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
         if kills >= 10000:
             vehicle_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
         elif kills >= 6000:

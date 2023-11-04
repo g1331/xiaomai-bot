@@ -1,5 +1,5 @@
 [tool.poetry]
-name = ""
+name = "bot-xiaomai-open"
 version = "0.3.0"
 description = "基于Graia-Ariadne开的qqbot-小埋，v3重构版本"
 authors = ["13"]

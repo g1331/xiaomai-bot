@@ -2157,7 +2157,8 @@ class InstanceExistsError(Exception):
 
 class api_instance(
     Game, Progression, Stats, ServerHistory, Gamedata,
-    GameServer, RSP, Platoons, ScrapExchange, CampaignOperations
+    GameServer, RSP, Platoons, ScrapExchange, CampaignOperations,
+    Emblems, Loadout
 ):
     # 存储所有实例的字典
     instances = {}

@@ -418,59 +418,47 @@ async def player_stat_pic(
         )
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
-    # 并发获取生涯、武器、载具信息
+    # 并发获取生涯、武器、载具、正在游玩
     tasks = [
         (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid),
-        bfeac_checkBan(display_name)
+        bfeac_checkBan(display_name),
+        bfban_checkBan(player_pid),
+        (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
+        (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
+        (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
     ]
     tasks = await asyncio.gather(*tasks)
+    for task in tasks:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
 
     # 检查返回结果
-    player_persona, player_stat, player_weapon, player_vehicle, eac_info = tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]
-    if isinstance(player_persona, str):
-        logger.error(player_persona)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_persona}"),
-            quote=source
-        )
-    else:
-        player_persona: dict
-        player_avatar_url = player_persona["result"][str(player_pid)]["avatar"]
-    if isinstance(player_stat, str):
-        logger.error(player_stat)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_stat}"),
-            quote=source
-        )
-    else:
-        player_stat: dict
-        player_stat["result"]["displayName"] = display_name
-    if isinstance(player_weapon, str):
-        logger.error(player_weapon)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_weapon}"),
-            quote=source
-        )
-    else:
-        player_weapon: list = WeaponData(player_weapon).filter()
-    if isinstance(player_vehicle, str):
-        logger.error(player_vehicle)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_vehicle}"),
-            quote=source
-        )
-    else:
-        player_vehicle: list = VehicleData(player_vehicle).filter()
+    player_persona, player_stat, player_weapon, player_vehicle, bfeac_info, bfban_info, server_playing_info, platoon_info, skin_info = tasks[0], tasks[1], \
+        tasks[2], tasks[3], tasks[4], tasks[5], tasks[6], tasks[7], tasks[8]
+    player_stat["result"]["displayName"] = display_name
 
     # 生成图片
-    player_stat_img = await PlayerStatPic(player_stat, player_weapon, player_vehicle).draw()
+    player_stat_img = await PlayerStatPic(
+        player_name=display_name,
+        player_pid=player_pid,
+        personas=player_persona,
+        stat=player_stat,
+        weapons=player_weapon,
+        vehicles=player_vehicle,
+        bfeac_info=bfeac_info,
+        bfban_info=bfban_info,
+        server_playing_info=server_playing_info,
+        platoon_info=platoon_info,
+        skin_info=skin_info
+    ).draw()
     if player_stat_img:
         return await app.send_message(
             group,
@@ -480,6 +468,8 @@ async def player_stat_pic(
     # 发送文字
     # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
     # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
+    player_weapon: list = WeaponData(player_weapon).filter()
+    player_vehicle: list = VehicleData(player_vehicle).filter()
     player_info = player_stat["result"]
     rank = player_info.get('basicStats').get('rank')
     rank_list = [
@@ -534,9 +524,9 @@ async def player_stat_pic(
     heals = int(player_info.get('heals'))
     repairs = int(player_info.get('repairs'))
     dogtagsTaken = int(player_info.get('dogtagsTaken'))
-    eac_info = (
-        f'{eac_info.get("stat")}\n案件地址:{eac_info.get("url")}\n'
-        if eac_info.get("stat")
+    bfeac_info = (
+        f'{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}\n'
+        if bfeac_info.get("stat")
         else "未查询到EAC信息\n"
     )
     result = [
@@ -552,7 +542,7 @@ async def player_stat_pic(
         f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
         f"复活数:{revives}   治疗数:{heals}\n"
         f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
-        f"EAC状态:{eac_info}" + "=" * 18
+        f"EAC状态:{bfeac_info}" + "=" * 18
     ]
     weapon = player_weapon[0]
     name = zhconv.convert(weapon.get('name'), 'zh-hans')

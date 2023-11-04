@@ -379,7 +379,7 @@ async def bfban_checkBan(player_pid: str) -> dict:
             "3": "认为没开",
             "4": "未处理",
             "5": "回复讨论中",
-            "6": "等待管理确认",
+            "6": "待管理确认",
             "8": "刷枪"
         }
         bfban_status = bfban_stat_dict[data["status"]]

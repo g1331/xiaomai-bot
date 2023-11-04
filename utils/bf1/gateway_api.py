@@ -2139,6 +2139,16 @@ class Loadout(bf1_api):
             }
         )
 
+    async def getPresetsByPersonaId(self, personaId: Union[int, str]) -> dict:
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Loadout.getPresetsByPersonaId",
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid()
+            }
+        )
+
 
 class InstanceExistsError(Exception):
     """Raised when an instance already exists for the given pid."""

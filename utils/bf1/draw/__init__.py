@@ -383,7 +383,6 @@ class PlayerStatPic:
         avatar_img = ImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
         if not self.server_playing_info["result"][self.player_pid]:
-            logger.info(f"{self.player_name}不在线")
             avatar_template = Image.open(BytesIO(AvatarOfflineImg)).convert("RGBA")
         else:
             avatar_template = Image.open(BytesIO(AvatarOnlineImg)).convert("RGBA")
@@ -676,7 +675,7 @@ class PlayerStatPic:
                 (col1_x, start_row + row_diff_distance * 0),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 50
+                StatFontSize * 15
             )
         return platoon_template
 

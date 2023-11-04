@@ -54,6 +54,7 @@ AvatarOfflineImg = Path("./data/battlefield/pic/src/template/avatar1.png").open(
 BanImg = Path("./data/battlefield/pic/src/template/ban.png").open("rb").read()
 # 战队框模板
 PlatoonImg = Path("./data/battlefield/pic/src/template/platoon.png").open("rb").read()
+PlatoonImgNone = Path("./data/battlefield/pic/src/template/platoon_none.png").open("rb").read()
 # 战绩信息框模板
 StatImg = Path("./data/battlefield/pic/src/template/stat.png").open("rb").read()
 # 武器/载具框模板
@@ -626,21 +627,22 @@ class PlayerStatPic:
         return soldier_img
 
     async def platoon_template_handle(self) -> Image:
-        platoon_template = Image.open(BytesIO(PlatoonImg)).convert("RGBA")
-        platoon_template_draw = ImageDraw.Draw(platoon_template)
         row_diff_distance = 30
         start_row = 35
         col1_x = 35
         if self.platoon_info["result"]:
-            emblem = self.platoon_info["result"]["emblem"].replace("[SIZE]", "256").replace("[FORMAT]", "png")
-            emblem_img = await ImageUtils.read_img_by_url(emblem)
-            if emblem_img:
-                emblem_img = Image.open(BytesIO(emblem_img)).convert("RGBA")
-                # 重置为140*140
-                emblem_img = emblem_img.resize((170, 170), Image.LANCZOS)
-                platoon_template.paste(emblem_img, (422, 22), emblem_img)
-            else:
-                logger.warning(f"下载战队徽章失败，url: {emblem}")
+            platoon_template = Image.open(BytesIO(PlatoonImg)).convert("RGBA")
+            platoon_template_draw = ImageDraw.Draw(platoon_template)
+            if self.platoon_info["result"]["emblem"]:
+                emblem = self.platoon_info["result"]["emblem"].replace("[SIZE]", "256").replace("[FORMAT]", "png")
+                emblem_img = await ImageUtils.read_img_by_url(emblem)
+                if emblem_img:
+                    emblem_img = Image.open(BytesIO(emblem_img)).convert("RGBA")
+                    # 重置为140*140
+                    emblem_img = emblem_img.resize((170, 170), Image.LANCZOS)
+                    platoon_template.paste(emblem_img, (422, 22), emblem_img)
+                else:
+                    logger.warning(f"下载战队徽章失败，url: {emblem}")
             # 战队名字、人数、描述
             platoon_template_draw.text(
                 (col1_x, start_row + row_diff_distance * 0),
@@ -663,6 +665,8 @@ class PlayerStatPic:
                 StatFontSize * 15
             )
         else:
+            platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
+            platoon_template_draw = ImageDraw.Draw(platoon_template)
             file_path = f"./data/battlefield/小标语/data.json"
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
@@ -675,7 +679,7 @@ class PlayerStatPic:
                 (col1_x, start_row + row_diff_distance * 0),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 15
+                StatFontSize * 22
             )
         return platoon_template
 

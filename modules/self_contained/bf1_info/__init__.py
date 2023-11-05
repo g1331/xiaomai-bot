@@ -368,6 +368,7 @@ async def info(
         [
             UnionMatch("-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
+            ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
     )
 )
@@ -383,7 +384,8 @@ async def player_stat_pic(
         sender: Member,
         group: Group,
         source: Source,
-        player_name: RegexResult
+        player_name: RegexResult,
+        text: ArgResult,
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
@@ -419,6 +421,7 @@ async def player_stat_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 并发获取生涯、武器、载具、正在游玩
+    start_time = time.time()
     tasks = [
         (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
@@ -431,6 +434,7 @@ async def player_stat_pic(
         (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
     ]
     tasks = await asyncio.gather(*tasks)
+    logger.debug(f"查询玩家战绩耗时: {round(time.time() - start_time)}秒")
     for task in tasks:
         if isinstance(task, str):
             logger.error(task)
@@ -445,26 +449,43 @@ async def player_stat_pic(
         tasks[2], tasks[3], tasks[4], tasks[5], tasks[6], tasks[7], tasks[8]
     player_stat["result"]["displayName"] = display_name
 
-    # 生成图片
-    player_stat_img = await PlayerStatPic(
-        player_name=display_name,
-        player_pid=player_pid,
-        personas=player_persona,
-        stat=player_stat,
-        weapons=player_weapon,
-        vehicles=player_vehicle,
-        bfeac_info=bfeac_info,
-        bfban_info=bfban_info,
-        server_playing_info=server_playing_info,
-        platoon_info=platoon_info,
-        skin_info=skin_info
-    ).draw()
-    if player_stat_img:
-        return await app.send_message(
-            group,
-            MessageChain(Image(data_bytes=player_stat_img)),
-            quote=source
+    if not text.matched:
+        # 生成图片
+        player_stat_img = await PlayerStatPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            vehicles=player_vehicle,
+            bfeac_info=bfeac_info,
+            bfban_info=bfban_info,
+            server_playing_info=server_playing_info,
+            platoon_info=platoon_info,
+            skin_info=skin_info
+        ).draw()
+        logger.debug(f"生成玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+        msg_chain = [Image(path=player_stat_img)]
+        bfeac_info = (
+            f'\nBFEAC状态:{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}'
+            if bfeac_info.get("stat")
+            else None
         )
+        if bfeac_info:
+            msg_chain.append(bfeac_info)
+        bfban_info = (
+            f'\nBFBAN状态:{bfban_info.get("stat")}\n案件地址:{bfban_info.get("url")}'
+            if bfban_info.get("stat")
+            else None
+        )
+        if bfban_info:
+            msg_chain.append(bfban_info)
+        if player_stat_img:
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_stat_img).unlink()
+            logger.debug(f"发送玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+            return
     # 发送文字
     # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
     # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
@@ -525,9 +546,14 @@ async def player_stat_pic(
     repairs = int(player_info.get('repairs'))
     dogtagsTaken = int(player_info.get('dogtagsTaken'))
     bfeac_info = (
-        f'{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}\n'
+        f'{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}'
         if bfeac_info.get("stat")
-        else "未查询到EAC信息\n"
+        else "未查询到BFEAC信息"
+    )
+    bfban_info = (
+        f'{bfban_info.get("stat")}\n案件地址:{bfban_info.get("url")}'
+        if bfban_info.get("stat")
+        else "未查询到BFBAN信息"
     )
     result = [
         f"玩家:{display_name}\n"
@@ -542,7 +568,8 @@ async def player_stat_pic(
         f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
         f"复活数:{revives}   治疗数:{heals}\n"
         f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
-        f"EAC状态:{bfeac_info}" + "=" * 18
+        f"BFEAC状态:{bfeac_info}\n"
+        f"BFBAN状态:{bfban_info}\n" + "=" * 18
     ]
     weapon = player_weapon[0]
     name = zhconv.convert(weapon.get('name'), 'zh-hans')
@@ -587,13 +614,7 @@ async def player_stat_pic(
     )
     result = "\n".join(result)
 
-    return await app.send_message(
-        group,
-        MessageChain(
-            result
-        ),
-        quote=source
-    )
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
 # 查询武器信息

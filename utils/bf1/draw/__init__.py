@@ -30,6 +30,8 @@ BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
 # 整图大小
 StatImageWidth = 2000
 StatImageHeight = 1550
+# 图片临时存放根目录
+FileTempSaveRoot = Path("./data/battlefield/Temp/")
 # 背景图片根目录
 BackgroundPathRoot = Path("./data/battlefield/pic/background/")
 DefaultBackgroundPath = Path(__file__).parent / "template" / "background"
@@ -646,23 +648,23 @@ class PlayerStatPic:
             # 战队名字、人数、描述
             platoon_template_draw.text(
                 (col1_x, start_row + row_diff_distance * 0),
-                f"战队名字: [{self.platoon_info['result']['tag']}]{self.platoon_info['result']['name']}",
+                f"[{self.platoon_info['result']['tag']}]{self.platoon_info['result']['name']}",
                 fill=ColorWhite,
                 font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
             )
             platoon_template_draw.text(
                 (col1_x, start_row + row_diff_distance * 1),
-                f"战队人数: {self.platoon_info['result']['size']}",
+                f"人数: {self.platoon_info['result']['size']}",
                 fill=ColorWhite,
                 font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
             )
             ImageUtils.draw_multiline_text(
                 platoon_template_draw,
-                f"战队描述: {self.platoon_info['result']['description']}",
+                f"描述: {self.platoon_info['result']['description']}",
                 (col1_x, start_row + row_diff_distance * 2),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 15
+                StatFontSize * 16
             )
         else:
             platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
@@ -917,13 +919,15 @@ class PlayerStatPic:
         )
         return vehicle_template
 
-    async def draw(self) -> bytes:
+    async def draw(self) -> Union[bytes, Path]:
         # 图的大小: 2000*1550
         # 画布
         output_img = Image.new("RGB", (StatImageWidth, StatImageHeight), ColorWhite)
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid)
+        # 加一点高斯模糊
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
         output_img.paste(background_img, (0, 0), background_img)
 
         # 粘贴头像框
@@ -1000,9 +1004,14 @@ class PlayerStatPic:
         output_img.paste(ban_template, (91, 440), ban_template)
 
         # 存为bytes
-        img_bytes = BytesIO()
-        output_img.save(img_bytes, format="PNG")
-        return img_bytes.getvalue()
+        # img_bytes = BytesIO()
+        # output_img.save(img_bytes, format="PNG")
+        # return img_bytes.getvalue()
+
+        # 存为 FileTempSaveRoot / 时间戳.png
+        file_path = FileTempSaveRoot / f"{round(time.time() * 1000)}.png"
+        output_img.save(file_path, format="PNG")
+        return file_path
 
 
 class PlayerWeaponPic:

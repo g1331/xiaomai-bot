@@ -342,6 +342,7 @@ class PlayerStatPic:
         self.platoon_info = platoon_info
         self.skin_info = skin_info
         self.gt_id_info = gt_id_info
+        self.player_background_path = bg_pic.choose_bg(self.player_pid)
 
         # 玩家数据
         player_info = self.stat["result"]
@@ -442,7 +443,7 @@ class PlayerStatPic:
     async def get_background(self, pid: Union[str, int]) -> Image:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
-        player_background_path = bg_pic.choose_bg(self.player_pid)
+        player_background_path = self.player_background_path
         if not player_background_path:
             if background_path.exists():
                 background = random.choice(list(background_path.iterdir())).open("rb").read()
@@ -450,13 +451,14 @@ class PlayerStatPic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
-        # background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
-        # 保留原图全部内容
-        background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
-        if not player_background_path:
+        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+            # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
+            background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
             # 加一点高斯模糊
             background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        else:  # 如果有背景图，就用原图，且不放大
+            # 保留原图全部内容
+            background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
         return background_img
 
     async def avatar_template_handle(self) -> Image:

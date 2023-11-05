@@ -228,6 +228,75 @@ class ImageUtils:
 
         return cropped_image
 
+    # 适应最长边
+    @staticmethod
+    def scale_image_to_dimension(
+            image_input: Union[Image.Image, bytes],
+            target_width: int,
+            target_height: int
+    ) -> Image:
+        """
+        根据提供的目标尺寸缩放图像。如果原图的宽度或高度比例大于目标尺寸，按较小的比例缩放图像。
+
+        :param image_input: PIL.Image.Image 对象或图片的二进制数据。
+        :param target_width: 目标宽度。
+        :param target_height: 目标高度。
+        :return: 调整后的图片对象。
+        """
+
+        # 检查输入类型并加载图片
+        if isinstance(image_input, bytes):
+            image = Image.open(BytesIO(image_input))
+        elif isinstance(image_input, Image.Image):
+            image = image_input
+        else:
+            raise TypeError("image_input must be a PIL.Image.Image object or bytes")
+
+        original_width, original_height = image.size
+
+        # 宽度和高度的缩放比例
+        width_ratio = target_width / original_width
+        height_ratio = target_height / original_height
+
+        # 选择较小的缩放比例以保持图像全部内容
+        scale_ratio = min(width_ratio, height_ratio)
+
+        # 计算新尺寸
+        new_width = int(original_width * scale_ratio)
+        new_height = int(original_height * scale_ratio)
+
+        # 缩放图像
+        scaled_image = image.resize((new_width, new_height), Image.LANCZOS)
+
+        return scaled_image
+
+    @staticmethod
+    def paste_center(background_img: Image.Image, overlay_img: Image.Image) -> Image.Image:
+        """
+        将一个图像居中粘贴到另一个图像上。
+
+        :param background_img: 背景图像，将作为基底。
+        :param overlay_img: 覆盖图像，将被居中粘贴到背景上。
+        :return: 合成后的图像。
+        """
+        # 背景图像的尺寸
+        bg_width, bg_height = background_img.size
+
+        # 覆盖图像的尺寸
+        overlay_width, overlay_height = overlay_img.size
+
+        # 计算粘贴的起始位置
+        x = (bg_width - overlay_width) // 2
+        y = (bg_height - overlay_height) // 2
+
+        # 创建一个复制的背景图像以避免修改原图
+        new_img = background_img.copy()
+
+        # 将覆盖图像居中粘贴到背景图像上
+        new_img.paste(overlay_img, (x, y), overlay_img)
+
+        return new_img
+
     @staticmethod
     async def read_img_by_url(url: str) -> Union[bytes, None]:
         try:
@@ -381,7 +450,9 @@ class PlayerStatPic:
         else:
             background = player_background_path.open("rb").read()
         # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
-        background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        # background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        # 保留原图全部内容
+        background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
         if not player_background_path:
             # 加一点高斯模糊
             background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
@@ -646,7 +717,7 @@ class PlayerStatPic:
 
     async def platoon_template_handle(self) -> Image:
         row_diff_distance = 30
-        start_row = 35
+        start_row = 20
         col1_x = 35
         if self.platoon_info["result"]:
             platoon_template = Image.open(BytesIO(PlatoonImg)).convert("RGBA")
@@ -941,7 +1012,7 @@ class PlayerStatPic:
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid)
-        output_img.paste(background_img, (0, 0), background_img)
+        output_img = ImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
         avatar_template = await self.avatar_template_handle()

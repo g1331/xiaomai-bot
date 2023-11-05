@@ -760,6 +760,7 @@ async def player_weapon_pic(
             await app.send_message(group, MessageChain(msg_chain), quote=source)
             # 移除图片临时文件
             Path(player_weapon_img).unlink()
+            return
 
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]

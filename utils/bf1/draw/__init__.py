@@ -19,7 +19,7 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
 from zhconv import zhconv
 
-from utils.bf1.bf_utils import download_skin, gt_get_player_id
+from utils.bf1.bf_utils import download_skin, gt_get_player_id_by_name
 from utils.bf1.data_handle import VehicleData, WeaponData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw.choose_bg_pic import bg_pic
@@ -354,18 +354,20 @@ class PlayerStatPic:
     # 根据传入的url下载头像，并打开返回img，如果下载失败则返回default_bot_avatar.jpg
     @staticmethod
     async def get_avatar(url: str, pid: Union[str, int]) -> bytes:
-        avatar = DefaultAvatarImg
-        # 先检查路径下有无该玩家的头像文件，如果有且修改时间小于一天则直接读取，否则下载
+        # 如果 URL 为空，直接返回默认头像
+        if not url:
+            return DefaultAvatarImg
         avatar_path = AvatarPathRoot / f"{pid}.jpg"
-        if avatar_path.exists() and (avatar_path.stat().st_mtime + 86400) > time.time():
-            avatar = avatar_path.open("rb").read()
-        elif not url:
-            avatar = await ImageUtils.read_img_by_url(url)
-            if avatar:
-                avatar_path.write_bytes(avatar)
-            else:
-                avatar = DefaultAvatarImg
-        return avatar
+        # 如果头像文件存在且最后修改时间距现在不足一天，则直接读取
+        if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
+            return avatar_path.read_bytes()
+        # 尝试下载头像
+        avatar = await ImageUtils.read_img_by_url(url)
+        if avatar:
+            avatar_path.write_bytes(avatar)
+            return avatar
+        # 如果下载失败，返回默认头像
+        return DefaultAvatarImg
 
     @staticmethod
     async def get_background(pid: Union[str, int]) -> Image:
@@ -1084,7 +1086,7 @@ class PlayerWeaponPic:
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "weapon_template.html"
         weapon_data = [self.weapon_data[i * col:(i + 1) * col] for i in range(row)]
-        gt_id = await gt_get_player_id(player_name)
+        gt_id = await gt_get_player_id_by_name(player_name)
         avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
         pid = gt_id.get("id") if isinstance(gt_id, dict) else None
         return await template2img(
@@ -1147,7 +1149,7 @@ class PlayerVehiclePic:
         background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
         TEMPLATE_PATH = Path(__file__).parent / "template" / "vehicle_template.html"
         vehicle_data = [self.vehicle_data[i * col:(i + 1) * col] for i in range(row)]
-        gt_id = await gt_get_player_id(player_name)
+        gt_id = await gt_get_player_id_by_name(player_name)
         avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
         pid = gt_id.get("id") if isinstance(gt_id, dict) else None
         return await template2img(

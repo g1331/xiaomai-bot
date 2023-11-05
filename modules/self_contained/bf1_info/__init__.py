@@ -43,7 +43,7 @@ from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
     BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
-    gt_get_player_id
+    gt_get_player_id_by_pid
 )
 
 config = create(GlobalConfig)
@@ -433,7 +433,7 @@ async def player_stat_pic(
         (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
         (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
         (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
-        gt_get_player_id(player_name)
+        gt_get_player_id_by_pid(player_pid)
     ]
     tasks = await asyncio.gather(*tasks)
     logger.debug(f"查询玩家战绩耗时: {round(time.time() - start_time)}秒")

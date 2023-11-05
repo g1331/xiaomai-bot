@@ -445,7 +445,7 @@ class PlayerStatPic:
         avatar_template_draw.text(
             (rank_position_x, text_position[1]),
             f"{self.rank}",
-            fill=ColorGold if self.rank == 150 else ColorBlue if self.rank >= 100 else ColorWhite,
+            fill=ColorGoldAndGray if self.rank == 150 else ColorBlueAndGray if self.rank >= 100 else ColorWhiteAndGray,
             font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
         )
         return avatar_template
@@ -674,7 +674,7 @@ class PlayerStatPic:
                 (col1_x, start_row + row_diff_distance * 2),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 16
+                StatFontSize * 15
             )
         else:
             platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
@@ -1019,7 +1019,9 @@ class PlayerStatPic:
 
         # 存为 FileTempSaveRoot / 时间戳.png
         file_path = FileTempSaveRoot / f"{round(time.time() * 1000)}.png"
-        output_img.save(file_path, format="PNG")
+        # output_img.save(file_path, format="PNG")
+        # 存为jpeg
+        output_img.save(file_path, format="JPEG", quality=95)
         return file_path
 
 

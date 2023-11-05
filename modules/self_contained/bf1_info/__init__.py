@@ -422,7 +422,7 @@ async def player_stat_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 并发获取生涯、武器、载具、正在游玩
-    start_time = time.time()
+    origin_start_time = start_time = time.time()
     tasks = [
         (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
@@ -455,6 +455,7 @@ async def player_stat_pic(
 
     if not text.matched:
         # 生成图片
+        start_time = time.time()
         player_stat_img = await PlayerStatPic(
             player_name=display_name,
             player_pid=player_pid,
@@ -486,10 +487,12 @@ async def player_stat_pic(
         if bfban_info:
             msg_chain.append(bfban_info)
         if player_stat_img:
+            start_time = time.time()
             await app.send_message(group, MessageChain(msg_chain), quote=source)
             # 移除图片临时文件
             Path(player_stat_img).unlink()
             logger.debug(f"发送玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+            logger.debug(f"查询玩家战绩总耗时: {round(time.time() - origin_start_time)}秒")
             return
     # 发送文字
     # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离

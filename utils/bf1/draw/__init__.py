@@ -295,11 +295,11 @@ class Exchange:
                         # 打开特效图像
                         tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
                     # 特效图片拉伸
-                    tx_png = tx_png.resize((100, 153), Image.ANTIALIAS)
+                    tx_png = tx_png.resize((100, 153), Image.BILINEAR)
                     # 特效图片拼接
                     bg_img.paste(tx_png, (x + 36, y - 105), tx_png)
                     # 武器图片拉伸
-                    SE_png = SE_png.resize((180, 45), Image.ANTIALIAS)
+                    SE_png = SE_png.resize((180, 45), Image.BILINEAR)
                     # 武器图片拼接
                     bg_img.paste(SE_png, (x, y - 45), SE_png)
                     # 价格
@@ -434,11 +434,11 @@ class PlayerListPic:
         team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
         team1_pic = PlayerListPic.get_team_pic(team1_name)
         team1_pic = Image.open(team1_pic).convert('RGBA')
-        team1_pic = team1_pic.resize((40, 40), Image.ANTIALIAS)
+        team1_pic = team1_pic.resize((40, 40), Image.BILINEAR)
         team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
         team2_pic = PlayerListPic.get_team_pic(team2_name)
         team2_pic = Image.open(team2_pic).convert('RGBA')
-        team2_pic = team2_pic.resize((40, 40), Image.ANTIALIAS)
+        team2_pic = team2_pic.resize((40, 40), Image.BILINEAR)
 
         # 地图路径
         server_map_pic = await PlayerListPic.get_server_map_pic(server_mapName)
@@ -457,15 +457,15 @@ class PlayerListPic:
 
         # 延迟 5:小于50 4:50< <100 3: 150< < 100 2: 150<  <200 1: 250< <300 0:300+
         Ping1 = Image.open(f"./data/battlefield/pic/ping/4.png").convert('RGBA')
-        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.ANTIALIAS)
+        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.BILINEAR)
         Ping2 = Image.open(f"./data/battlefield/pic/ping/3.png").convert('RGBA')
-        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.ANTIALIAS)
+        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.BILINEAR)
         Ping3 = Image.open(f"./data/battlefield/pic/ping/2.png").convert('RGBA')
-        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.ANTIALIAS)
+        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.BILINEAR)
         Ping4 = Image.open(f"./data/battlefield/pic/ping/1.png").convert('RGBA')
-        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.ANTIALIAS)
+        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.BILINEAR)
         Ping5 = Image.open(f"./data/battlefield/pic/ping/0.png").convert('RGBA')
-        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.ANTIALIAS)
+        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.BILINEAR)
 
         draw = ImageDraw.Draw(IMG)
         # 字体路径
@@ -514,7 +514,7 @@ class PlayerListPic:
             if player_item['rank'] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
             leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
             draw.text(leve_position_1, f"{player_item['rank']}",
                       fill="white",
@@ -618,7 +618,7 @@ class PlayerListPic:
             if player_item['rank'] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
             leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
             draw.text(
                 leve_position_2, f"{player_item['rank']}",
@@ -716,7 +716,7 @@ class PlayerListPic:
 
         if leve_position_1:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
             leve_position_1 = 168 - ascent / 2, 156 + i_temp * 23
             draw.text((115, 156 + i_temp * 23), f"平均:",
                       fill="white",
@@ -751,7 +751,7 @@ class PlayerListPic:
 
         if leve_position_2:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
             leve_position_2 = 1028 - ascent / 2, 156 + i_temp * 23
             draw.text((975, 156 + i_temp * 23), f"平均:",
                       fill="white",

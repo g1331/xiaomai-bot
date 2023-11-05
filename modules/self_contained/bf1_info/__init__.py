@@ -876,43 +876,68 @@ async def player_vehicle_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取载具信息
-    player_vehicle = await (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid)
-    if isinstance(player_vehicle, str):
-        logger.error(player_vehicle)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_vehicle}"),
-            quote=source
+    api_instance_temp = await BF1DA.get_api_instance()
+    player_vehicle_task = api_instance_temp.getVehiclesByPersonaId(player_pid)
+    player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+    player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+    skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+    playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+    gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+    player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+        player_stat_task,
+        player_vehicle_task,
+        player_persona_task,
+        skin_info_task,
+        playing_info_task,
+        gt_id_info_task
+    )
+    # 检查返回结果
+    for task in [player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info_task]:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
+
+    # 载具排序
+    if not vehicle_name.matched:
+        player_vehicle: list = VehicleData(player_vehicle).filter(
+            rule=vehicle_type.result.display if vehicle_type.matched else "",
+            sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
-        if not vehicle_name.matched:
-            player_vehicle: list = VehicleData(player_vehicle).filter(
-                rule=vehicle_type.result.display if vehicle_type.matched else "",
-                sort_type=sort_type.result.display if sort_type.matched else "",
+        player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
+            target_vehicle_name=vehicle_name.result.display,
+            sort_type=sort_type.result.display if sort_type.matched else "",
+        )
+        if not player_vehicle:
+            return await app.send_message(
+                group,
+                MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
+                quote=source
             )
-        else:
-            player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
-                target_vehicle_name=vehicle_name.result.display,
-                sort_type=sort_type.result.display if sort_type.matched else "",
-            )
-            if not player_vehicle:
-                return await app.send_message(
-                    group,
-                    MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
-                    quote=source
-                )
 
     # 生成图片
     if not text.matched:
-        player_vehicle_img = (await PlayerVehiclePic(
-            vehicle_data=player_vehicle
-        ).draw(display_name, player_pid, row.result, col.result))
+        player_vehicle_img = await PlayerVehiclePic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            vehicles=player_vehicle,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw(row.result, col.result)
         if player_vehicle_img:
-            return await app.send_message(
-                group,
-                MessageChain(Image(data_bytes=player_vehicle_img)),
-                quote=source
-            )
+            msg_chain = [Image(path=player_vehicle_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_vehicle_img).unlink()
+            return
+
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for vehicle in player_vehicle:

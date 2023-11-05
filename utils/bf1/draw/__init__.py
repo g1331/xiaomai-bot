@@ -463,8 +463,11 @@ class PlayerStatPic:
 
     async def avatar_template_handle(self) -> Image:
         # 头像图片
-        if self.player_pid not in self.personas["result"]:
+        if (self.player_pid not in self.personas["result"]) and not self.gt_id_info:
             avatar = DefaultAvatarImg
+        elif self.player_pid in self.personas["result"]:
+            avatar_url = self.personas["result"][self.player_pid]["avatar"]
+            avatar = await self.get_avatar(avatar_url, self.player_pid)
         else:
             avatar_url = self.gt_id_info.get("avatar") if isinstance(self.gt_id_info, dict) else None
             if avatar_url:
@@ -762,7 +765,7 @@ class PlayerStatPic:
             file_path = f"./data/battlefield/小标语/data.json"
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
-                data.append({'name': "你知道吗,小埋最初的灵感来自于胡桃-by水神"})
+                data.append({'name': "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
                 data.append({'name': "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~"})
                 tip = zhconv.convert(random.choice(data)['name'], 'zh-cn')
             ImageUtils.draw_multiline_text(
@@ -820,7 +823,7 @@ class PlayerStatPic:
                 skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
                 if skin_all_info.get(skin_guid):
                     skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = skin_all_info[skin_guid]["name"]
+                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
                     skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]  # Superior/Enhanced/Standard
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
@@ -936,7 +939,7 @@ class PlayerStatPic:
                 skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
                 if skin_all_info.get(skin_guid):
                     skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = skin_all_info[skin_guid]["name"]
+                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
                     skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
@@ -1106,83 +1109,431 @@ class PlayerStatPic:
 class PlayerWeaponPic:
     weapon_data: list
 
-    def __init__(self, weapon_data: list = None):
-        """初始化处理数据,使用模板html转图片
-        :param weapon_data: 武器数据
-        """
-        data = []
-        for weapon in weapon_data:
-            if not weapon.get("stats").get('values'):
-                continue
-            name = zhconv.convert(weapon.get('name'), 'zh-hans')
-            kills = int(weapon["stats"]["values"]["kills"])
-            seconds = weapon["stats"]["values"]["seconds"]
-            kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
-            acc = (
-                round(
-                    weapon["stats"]["values"]["hits"]
-                    / weapon["stats"]["values"]["shots"]
-                    * 100,
-                    2,
-                )
-                if weapon["stats"]["values"]["shots"] != 0
-                else 0
-            )
-            hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
-                if weapon["stats"]["values"]["kills"] != 0 else 0
-            eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
-                if weapon["stats"]["values"]["kills"] != 0 else 0
-            time_played = "{:.1f}H".format(seconds / 3600)
-            item = {
-                "name": name,
-                "kills": kills,
-                "kpm": kpm,
-                "acc": acc,
-                "hs": hs,
-                "eff": eff,
-                "time_played": time_played,
-                "url": weapon["imageUrl"].replace("[BB_PREFIX]",
-                                                  "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
-            }
-            data.append(item)
-        self.weapon_data: list = data
-
-    async def draw(self, player_name: str, player_pid: str, row: int = 4, col: int = 2) -> Union[bytes, None]:
-        """绘制武器数据图片
+    def __init__(
+            self,
+            player_name: str,
+            player_pid: Union[str, int],
+            personas: dict,
+            stat: dict,
+            weapons: list[dict],
+            server_playing_info: dict,
+            skin_info: dict,
+            gt_id_info: Union[dict, None]
+    ):
+        """初始化处理数据,使用PIL绘制图片
+        :param player_name: 玩家名字
         :param player_pid: 玩家pid
-        :param player_name: 玩家名
-        :param row: 行数
-        :param col: 列数
+        :param personas: 玩家信息
+        :param stat: 玩家战绩
+        :param weapons: 玩家武器数据
+        :param server_playing_info: 玩家服务器信息
+        :param skin_info: 玩家皮肤信息
+        :param gt_id_info: gt玩家信息
         """
-        if not self.weapon_data:
-            return None
-        # 从bg_path文件夹内中随机选择一张图片
-        bg_path: Path
-        bg_path = bg_pic.choose_bg(player_pid)
-        if not bg_path:
-            bg_path = Path(__file__).parent / "template" / "background"
-            bg_list = [x for x in bg_path.iterdir() if x.is_file()]
-            bg_path = random.choice(bg_list)
-        background = f"data:image/png;base64,{base64.b64encode(bg_path.read_bytes()).decode()}"
-        TEMPLATE_PATH = Path(__file__).parent / "template" / "weapon_template.html"
-        weapon_data = [self.weapon_data[i * col:(i + 1) * col] for i in range(row)]
-        gt_id = await gt_get_player_id_by_name(player_name)
-        avatar = gt_id.get("avatar") if isinstance(gt_id, dict) else None
-        pid = gt_id.get("id") if isinstance(gt_id, dict) else None
-        return await template2img(
-            TEMPLATE_PATH.read_text(encoding="utf-8"),
-            {
-                "background": background,
-                "weapons": weapon_data,
-                "player_name": player_name,
-                "pid": pid,
-                "avatar": avatar,
-                "update_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            page_option={
-                "device_scale_factor": 2,
-            }
+        self.player_name: str = player_name
+        self.player_pid: Union[str, int] = player_pid
+        self.personas: dict = personas
+        self.stat: dict = stat
+        self.weapons: list[dict] = weapons
+        self.server_playing_info: dict = server_playing_info
+        self.skin_info: dict = skin_info
+        self.gt_id_info: Union[dict, None] = gt_id_info
+
+        self.player_background_path = bg_pic.choose_bg(self.player_pid)
+
+        # 玩家数据
+        player_info = self.stat["result"]
+        rank = player_info.get('basicStats').get('rank')
+        rank_list = [
+            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
+            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
+            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
+            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
+            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
+            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
+            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
+            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
+            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
+            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
+            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
+            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
+            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
+            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+        ]
+        # 转换成xx小时xx分钟
+        time_seconds = player_info.get('basicStats').get('timePlayed')
+        if time_seconds < 3600:
+            self.time_played = f"{round(time_seconds // 60)}分钟"
+        else:
+            self.time_played = f"{round(time_seconds // 3600)}小时{round(time_seconds % 3600 // 60)}分钟"
+        kills = player_info.get('basicStats').get('kills')
+        self.kills = kills
+        deaths = player_info.get('basicStats').get('deaths')
+        self.deaths = deaths
+        kd = round(kills / deaths, 2) if deaths else kills
+        self.kd = kd
+        wins = player_info.get('basicStats').get('wins')
+        self.wins = wins
+        losses = player_info.get('basicStats').get('losses')
+        self.losses = losses
+        # 百分制
+        win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
+        self.win_rate = win_rate
+        kpm = player_info.get('basicStats').get('kpm')
+        self.kpm = kpm
+        spm = player_info.get('basicStats').get('spm')
+        self.spm = spm
+        # 用spm / 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级
+        exp = spm * time_seconds / 60
+        rank = 0
+        for i in range(len(rank_list)):
+            if exp <= rank_list[1]:
+                rank = 0
+                break
+            if exp >= rank_list[-1]:
+                rank = 150
+                break
+            if exp <= rank_list[i]:
+                rank = i - 1
+                break
+        self.rank = rank
+        vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
+        vehicle_kill = int(vehicle_kill)
+        self.vehicle_kill = vehicle_kill
+        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
+        self.infantry_kill = infantry_kill
+        skill = player_info.get('basicStats').get('skill')
+        self.skill = skill
+        longest_headshot = player_info.get('longestHeadShot')
+        self.longest_headshot = longest_headshot
+        killAssists = int(player_info.get('killAssists'))
+        self.killAssists = killAssists
+        highestKillStreak = int(player_info.get('highestKillStreak'))
+        self.highestKillStreak = highestKillStreak
+        revives = int(player_info.get('revives'))
+        self.revives = revives
+        heals = int(player_info.get('heals'))
+        self.heals = heals
+        repairs = int(player_info.get('repairs'))
+        self.repairs = repairs
+        dogtagsTaken = int(player_info.get('dogtagsTaken'))
+        self.dogtagsTaken = dogtagsTaken
+
+    @staticmethod
+    async def get_avatar(url: str, pid: Union[str, int]) -> bytes:
+        # 如果 URL 为空，直接返回默认头像
+        if not url:
+            return DefaultAvatarImg
+        avatar_path = AvatarPathRoot / f"{pid}.jpg"
+        # 如果头像文件存在且最后修改时间距现在不足一天，则直接读取
+        if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
+            return avatar_path.read_bytes()
+        # 尝试下载头像
+        avatar = await ImageUtils.read_img_by_url(url)
+        if avatar:
+            avatar_path.write_bytes(avatar)
+            return avatar
+        # 如果下载失败，返回默认头像
+        return DefaultAvatarImg
+
+    async def avatar_template_handle(self) -> Image:
+        # 头像图片
+        if (self.player_pid not in self.personas["result"]) and not self.gt_id_info:
+            avatar = DefaultAvatarImg
+        elif self.player_pid in self.personas["result"]:
+            avatar_url = self.personas["result"][self.player_pid]["avatar"]
+            avatar = await self.get_avatar(avatar_url, self.player_pid)
+        else:
+            avatar_url = self.gt_id_info.get("avatar") if isinstance(self.gt_id_info, dict) else None
+            if avatar_url:
+                avatar = await self.get_avatar(avatar_url, self.player_pid)
+            else:
+                avatar = await self.get_avatar(self.personas["result"][self.player_pid]["avatar"], self.player_pid)
+        avatar_img = Image.open(BytesIO(avatar))
+        # 裁剪为圆形
+        avatar_img = ImageUtils.crop_circle(avatar_img, 79)
+        # 根据是否在线选择头像框
+        if not self.server_playing_info["result"][self.player_pid]:
+            avatar_template = Image.open(BytesIO(AvatarOfflineImg)).convert("RGBA")
+        else:
+            avatar_template = Image.open(BytesIO(AvatarOnlineImg)).convert("RGBA")
+        # 将头像放入头像框,在320,90的位置
+        avatar_template.paste(avatar_img, (420, 117), avatar_img)
+        # 粘贴名字、PID、时长、等级
+        avatar_template_draw = ImageDraw.Draw(avatar_template)
+        # 名字
+        avatar_template_draw.text(
+            (80, 110),
+            f"名字: {self.player_name}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
         )
+        # PID
+        avatar_template_draw.text(
+            (80, 160),
+            f"PID : {self.player_pid}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        # 时长
+        avatar_template_draw.text(
+            (80, 210),
+            f"时长: {self.time_played}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        # 等级
+        text_position = (80, 260)
+        # 获取"等级: "文本的边界框
+        text_bbox = avatar_template_draw.textbbox(
+            text_position,
+            "等级: ",
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        # text_bbox是一个四元组(left, top, right, bottom)，我们可以通过right - left来获取文本的宽度
+        text_width = text_bbox[2] - text_bbox[0]
+        # 计算数字部分的位置，这里我们仅需要水平位置
+        rank_position_x = text_position[0] + text_width
+        avatar_template_draw.text(
+            text_position,
+            "等级: ",
+            fill=ColorWhite,  # 假设等级之前的文字是白色
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        avatar_template_draw.text(
+            (rank_position_x, text_position[1]),
+            f"{self.rank}",
+            fill=ColorGoldAndGray if self.rank == 150 else ColorBlueAndGray if self.rank >= 100 else ColorWhiteAndGray,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        return avatar_template
+
+    async def get_background(self, pid: Union[str, int]) -> Image:
+        """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
+        background_path = BackgroundPathRoot / f"{pid}"
+        player_background_path = self.player_background_path
+        if not player_background_path:
+            if background_path.exists():
+                background = random.choice(list(background_path.iterdir())).open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+        else:
+            background = player_background_path.open("rb").read()
+        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+            # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
+            background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+            # 加一点高斯模糊
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        else:  # 如果有背景图，就用原图，且不放大
+            # 保留原图全部内容
+            background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+        return background_img
+
+    async def weapon_template_handle(self, weapon: dict) -> Image:
+        weapon_name = zhconv.convert(weapon.get('name'), 'zh-hans')
+        kills = int(weapon["stats"]["values"]["kills"])
+        # 星数是kills/100向下取整
+        stars = kills // 100
+        seconds = weapon["stats"]["values"]["seconds"]
+        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        acc = (
+            round(
+                weapon["stats"]["values"]["hits"]
+                / weapon["stats"]["values"]["shots"]
+                * 100,
+                2,
+            )
+            if weapon["stats"]["values"]["shots"] != 0
+            else 0
+        )
+        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
+            if weapon["stats"]["values"]["kills"] != 0 else 0
+        if seconds < 3600:
+            time_played = f"{round(seconds // 60)}分钟"
+        else:
+            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+
+        if kills >= 10000:
+            weapon_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
+        elif kills >= 6000:
+            weapon_template = Image.open(BytesIO(WeaponBlueImg)).convert("RGBA")
+        else:
+            weapon_template = Image.open(BytesIO(WeaponWhiteImg)).convert("RGBA")
+        weapon_template_draw = ImageDraw.Draw(weapon_template)
+        # 粘贴武器图片/皮肤图片
+        weapon_guid = weapon["guid"]
+        skin_guids = self.skin_info["result"]["weapons"].get(weapon_guid)
+        weapon_img = None
+        skin_level = skin_name = None
+        # 下载/获取对应武器的皮肤图片
+        if skin_guids:
+            for k in skin_guids.keys():
+                skin_guid = skin_guids[k]
+                skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
+                if skin_all_info.get(skin_guid):
+                    skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
+                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
+                    skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]  # Superior/Enhanced/Standard
+                    skin_file_name = skin_url.split("/")[-1]
+                    skin_file_path = SkinRootPath / skin_file_name
+                    if skin_file_path.exists():
+                        weapon_img = Image.open(skin_file_path).convert("RGBA")
+                    else:
+                        weapon_img = await ImageUtils.read_img_by_url(skin_url)
+                        if weapon_img:
+                            weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
+                            weapon_img.save(skin_file_path)
+                        else:
+                            logger.warning(f"下载武器皮肤失败，url: {skin_url}")
+        if not weapon_img:
+            pic_url = weapon["imageUrl"].replace("[BB_PREFIX]", BB_PREFIX)
+            weapon_img = await ImageUtils.read_img_by_url(pic_url)
+            weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
+        # 武器的长宽比1024/256 = 4,等比缩放为384*96
+        weapon_img = weapon_img.resize((384, 96), Image.LANCZOS)
+        # 粘贴到144,20
+        weapon_template.paste(weapon_img, (144, 20), weapon_img)
+        # 武器星星数
+        weapon_template_draw.text(
+            (54, 97),
+            f"{stars}",
+            fill=ColorGold if stars >= 100 else ColorBlue if stars >= 60 else ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+        )
+        # 武器名字 55 160  列1:击杀、命中率、效率 列2:爆头率、kpm、时长
+        start_row = 150
+        row_diff_distance = 40
+        col1_x = 55
+        col2_x = 55 + 220
+        weapon_template_draw.text(
+            (col1_x, start_row + row_diff_distance * 0),
+            f"{weapon_name}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        if skin_name:
+            weapon_template_draw.text(
+                (20, 65),
+                f"{skin_name}",
+                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
+            )
+        weapon_template_draw.text(
+            (col1_x, start_row + row_diff_distance * 1),
+            f"击杀: {kills}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        weapon_template_draw.text(
+            (col1_x, start_row + row_diff_distance * 2),
+            f"命中率: {acc}%",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        weapon_template_draw.text(
+            (col1_x, start_row + row_diff_distance * 3),
+            f"效率: {eff}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        weapon_template_draw.text(
+            (col2_x, start_row + row_diff_distance * 1),
+            f"KPM: {kpm}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        weapon_template_draw.text(
+            (col2_x, start_row + row_diff_distance * 2),
+            f"爆头率: {hs}%",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        weapon_template_draw.text(
+            (col2_x, start_row + row_diff_distance * 3),
+            f"时长: {time_played}",
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+        return weapon_template
+
+    async def draw(
+            self,
+            col: int = 2,
+            row: int = 4,
+    ) -> Union[bytes, Path, None]:
+        """绘制武器数据图片
+        与生涯不同，武器只绘制头像框+武器数据，默认为两列四行
+        这里是动态计算,每个武器框距离左边边界间距:58,列间距:43,行间距:25,右边边界间距:58，
+        获取weapons的长度，图片一行最多允许8列，每8个武器换一行，行数最多为10行，所以最多80个武器，
+        图片总宽度为58 + 武器框宽度 * 列数 + 列间距 * (列数 - 1) + 58
+        图片总高度为60 + 头像框高度 + 武器框高度 * 行数 + 行间距 * (行数 - 1) + 60
+        武器框: 570x320
+        头像框: 631x349
+        """
+        weapons = self.weapons
+        if not weapons:
+            return None
+        # 整理成col列row行的列表
+        weapon_data = [weapons[i * col:(i + 1) * col] for i in range(row)]
+        col_origin = col
+        row_origin = row
+        col = len(weapon_data[0])
+        row = len(weapon_data)
+
+        # 图片大小
+        image_width = 58 + 570 * col + 43 * (col - 1) + 58
+        image_height = 60 + 349 + 320 * row + 25 * (row - 1) + 60
+        # 画布
+        output_img = Image.new("RGB", (image_width, image_height), ColorWhite)
+
+        # 粘贴背景
+        background_img = await self.get_background(self.player_pid)
+        output_img = ImageUtils.paste_center(output_img, background_img)
+
+        # 粘贴头像框
+        avatar_template = await self.avatar_template_handle()
+        output_img.paste(avatar_template, (58, 60), avatar_template)
+
+        # 粘贴武器信息
+        weapon_templates = []
+        for weapon in weapon_data:
+            for item in weapon:
+                weapon_template = await self.weapon_template_handle(item)
+                weapon_templates.append(weapon_template)
+        # 整理成col_origin列row_origin行的列表
+        weapon_templates = [weapon_templates[i * col_origin:(i + 1) * col_origin] for i in range(row_origin)]
+        # 粘贴武器信息
+        row_diff_distance = 345
+        start_row = 60 + 349 + 25
+        col_diff_distance = 70
+        start_col = 58
+        for row_index, weapon_template_row in enumerate(weapon_templates):
+            for col_index, weapon_template in enumerate(weapon_template_row):
+                output_img.paste(
+                    weapon_template,
+                    (start_col + col_diff_distance * col_index, start_row + row_diff_distance * row_index),
+                    weapon_template
+                )
+
+        # 水印和时间
+        output_img_draw = ImageDraw.Draw(output_img)
+        # 居中
+        ImageUtils.draw_centered_text(
+            output_img_draw,
+            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            (image_width // 2, image_height - 30),
+            fill=(253, 245, 242),
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+
+        # 存为 FileTempSaveRoot / 时间戳.png
+        file_path = FileTempSaveRoot / f"{round(time.time() * 1000)}.png"
+        # output_img.save(file_path, format="PNG")
+        # 存为jpeg
+        output_img.save(file_path, format="JPEG", quality=95)
+        return file_path
 
 
 class PlayerVehiclePic:

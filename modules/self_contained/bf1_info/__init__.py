@@ -700,43 +700,67 @@ async def player_weapon_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取武器信息
-    player_weapon = await (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid)
-    if isinstance(player_weapon, str):
-        logger.error(player_weapon)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_weapon}"),
-            quote=source
+    api_instance_temp = await BF1DA.get_api_instance()
+    player_weapon_task = api_instance_temp.getWeaponsByPersonaId(player_pid)
+    player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+    player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+    skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+    playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+    gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+    player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+        player_stat_task,
+        player_weapon_task,
+        player_persona_task,
+        skin_info_task,
+        playing_info_task,
+        gt_id_info_task
+    )
+    # 检查返回结果
+    for task in [player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info_task]:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
+
+    # 武器排序
+    if not weapon_name.matched:
+        player_weapon: list = WeaponData(player_weapon).filter(
+            rule=weapon_type.result.display if weapon_type.matched else "",
+            sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
-        if not weapon_name.matched:
-            player_weapon: list = WeaponData(player_weapon).filter(
-                rule=weapon_type.result.display if weapon_type.matched else "",
-                sort_type=sort_type.result.display if sort_type.matched else "",
+        player_weapon: list = WeaponData(player_weapon).search_weapon(
+            weapon_name.result.display,
+            sort_type=sort_type.result.display if sort_type.matched else "",
+        )
+        if not player_weapon:
+            return await app.send_message(
+                group,
+                MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
+                quote=source
             )
-        else:
-            player_weapon: list = WeaponData(player_weapon).search_weapon(
-                weapon_name.result.display,
-                sort_type=sort_type.result.display if sort_type.matched else "",
-            )
-            if not player_weapon:
-                return await app.send_message(
-                    group,
-                    MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
-                    quote=source
-                )
 
     # 生成图片
     if not text.matched:
-        player_weapon_img = (await PlayerWeaponPic(
-            weapon_data=player_weapon
-        ).draw(display_name, player_pid, row.result, col.result))
+        player_weapon_img = await PlayerWeaponPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw(col.result, row.result)
         if player_weapon_img:
-            return await app.send_message(
-                group,
-                MessageChain(Image(data_bytes=player_weapon_img)),
-                quote=source
-            )
+            msg_chain = [Image(path=player_weapon_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_weapon_img).unlink()
+
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for weapon in player_weapon:
@@ -1873,7 +1897,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
                 send = zhconv.convert(a, 'zh-cn')
         else:
             bf_dic = [
-                "你知道吗,小埋最初的灵感来自于胡桃-by水神",
+                "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神",
                 f"当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)

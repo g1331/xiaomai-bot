@@ -369,14 +369,17 @@ class PlayerStatPic:
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
-    @staticmethod
-    async def get_background(pid: Union[str, int]) -> Image:
+    async def get_background(self, pid: Union[str, int]) -> Image:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
-        if background_path.exists():
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        player_background_path = bg_pic.choose_bg(self.player_pid)
+        if not player_background_path:
+            if background_path.exists():
+                background = random.choice(list(background_path.iterdir())).open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            background = player_background_path.open("rb").read()
         # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
         return background_img
@@ -554,7 +557,7 @@ class PlayerStatPic:
         )
         stat_template_draw.text(
             (col1_x, start_row + row_diff_distance * 4),
-            f"最远爆头距离: {self.longest_headshot}",
+            f"最远爆头距离: {self.longest_headshot}米",
             fill=ColorWhite,
             font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
         )

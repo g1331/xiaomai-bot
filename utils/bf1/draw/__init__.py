@@ -1485,6 +1485,8 @@ class PlayerWeaponPic:
         # 图片大小
         image_width = 58 + 570 * col + 43 * (col - 1) + 58
         image_height = 60 + 349 + 320 * row + 25 * (row - 1) + 60
+        weapon_template_width = 570  # 每个武器模板的宽度为570像素
+        weapon_template_height = 320  # 每个武器模板的高度为320像素
         # 画布
         output_img = Image.new("RGB", (image_width, image_height), ColorWhite)
 
@@ -1505,15 +1507,19 @@ class PlayerWeaponPic:
         # 整理成col_origin列row_origin行的列表
         weapon_templates = [weapon_templates[i * col_origin:(i + 1) * col_origin] for i in range(row_origin)]
         # 粘贴武器信息
-        row_diff_distance = 345
-        start_row = 60 + 349 + 25
-        col_diff_distance = 70
-        start_col = 58
+        row_diff_distance = weapon_template_height + 25  # 行与行之间的距离
+        start_row = 60 + 349 + 25  # 首行起始位置
+        col_diff_distance = weapon_template_width + 43  # 列与列之间的距离
+        start_col = 58  # 首列起始位置
+
         for row_index, weapon_template_row in enumerate(weapon_templates):
             for col_index, weapon_template in enumerate(weapon_template_row):
+                # 计算每个武器模板的粘贴位置
+                paste_x = start_col + col_diff_distance * col_index
+                paste_y = start_row + row_diff_distance * row_index
                 output_img.paste(
                     weapon_template,
-                    (start_col + col_diff_distance * col_index, start_row + row_diff_distance * row_index),
+                    (paste_x, paste_y),
                     weapon_template
                 )
 

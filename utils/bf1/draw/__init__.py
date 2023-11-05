@@ -1021,7 +1021,8 @@ class PlayerStatPic:
         )
         return vehicle_template
 
-    async def best_text_trapezoid(self, text) -> Image:
+    @staticmethod
+    async def best_text_trapezoid(text) -> Image:
         # 打开BlackTrapezoidImg图片 228*44 ，并将其转换为RGBA模式，写入text
         best_text_trapezoid = Image.open(BytesIO(BlackTrapezoidImg)).convert("RGBA")
         best_text_trapezoid_draw = ImageDraw.Draw(best_text_trapezoid)
@@ -1078,9 +1079,9 @@ class PlayerStatPic:
                 (weapon_col, weapon_start_row + weapon_row_diff_distance * i),
                 weapon_template
             )
-        # 粘贴最佳武器信息 781, 88
+        # 粘贴最佳武器信息 761, 88
         best_weapon_template = await self.best_text_trapezoid("最佳武器")
-        output_img.paste(best_weapon_template, (781, 88), best_weapon_template)
+        output_img.paste(best_weapon_template, (761, 88), best_weapon_template)
 
         # 粘贴载具信息
         player_vehicle: list = VehicleData(self.vehicles).filter()

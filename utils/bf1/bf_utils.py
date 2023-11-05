@@ -379,7 +379,7 @@ async def bfban_checkBan(player_pid: str) -> dict:
             "3": "认为没开",
             "4": "未处理",
             "5": "回复讨论中",
-            "6": "等待管理确认",
+            "6": "待管理确认",
             "8": "刷枪"
         }
         bfban_status = bfban_stat_dict[data["status"]]
@@ -444,14 +444,36 @@ async def gt_bf1_stat() -> str:
     return "获取数据失败"
 
 
-async def gt_get_player_id(player_name: str) -> Union[dict, None]:
+async def gt_get_player_id_by_name(player_name: str) -> Union[dict, None]:
     url = f"https://api.gametools.network/bf1/player/?name={player_name}&platform=pc&skip_battlelog=false"
+    headers = {
+        'accept': 'application/json'
+    }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
+            async with session.get(url, headers=headers) as response:
                 response = await response.json()
         if response.get("errors"):
+            logger.error(f"{player_name}|gt_get_player_id: {response['errors']}")
             return None
+    except Exception as e:
+        logger.error(f"gt_get_player_id: {e}")
+        return None
+    return response
+
+
+async def gt_get_player_id_by_pid(player_pid: str) -> Union[dict, None]:
+    url = f"https://api.gametools.network/bf1/player/?playerid={player_pid}&platform=pc&skip_battlelog=false"
+    headers = {
+        'accept': 'application/json'
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                response = await response.json()
+            if response.get("errors"):
+                logger.error(f"{player_pid}|gt_get_player_id: {response['errors']}")
+                return None
     except Exception as e:
         logger.error(f"gt_get_player_id: {e}")
         return None

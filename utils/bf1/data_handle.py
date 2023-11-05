@@ -27,6 +27,7 @@ class WeaponData:
             for weapon in category["weapons"]:
                 if weapon.get("category") == "制式步槍":
                     weapon["category"] = "步槍"
+                weapon["categoryId"] = category["categoryId"]
                 self.weapon_item_list.append(weapon)
 
     # 按照规则来排序
@@ -222,6 +223,48 @@ class VehicleData:
         for category in self.vehicle_data:
             for vehicle in category["vehicles"]:
                 vehicle["category"] = category["name"]
+                vehicle["sortOrder"] = category["sortOrder"]
+                if vehicle["sortOrder"] == 8:
+                    # 攻擊坦克
+                    vehicle["sortOrder"] = "20"
+                elif vehicle["sortOrder"] == 7:
+                    # 火砲裝甲車
+                    vehicle["sortOrder"] = "15"
+                elif vehicle["sortOrder"] == 5:
+                    # 重型坦克
+                    vehicle["sortOrder"] = "17"
+                elif vehicle["sortOrder"] == 4:
+                    # 巡航坦克
+                    vehicle["sortOrder"] = "12"
+                elif vehicle["sortOrder"] == 6:
+                    # 輕型坦克
+                    vehicle["sortOrder"] = "14"
+                elif vehicle["sortOrder"] == 9:
+                    # 突擊裝甲車
+                    vehicle["sortOrder"] = "22"
+                # elif vehicle["sortOrder"] == 0:
+                #     # 攻擊機
+                #     vehicle["sortOrder"] = "0"
+                elif vehicle["sortOrder"] == 1:
+                    # 轟炸機
+                    vehicle["sortOrder"] = "16"
+                elif vehicle["sortOrder"] == 2:
+                    # 重型轰炸机
+                    vehicle["sortOrder"] = "21"
+                elif vehicle["sortOrder"] == 3:
+                    # 戰鬥機
+                    vehicle["sortOrder"] = "14"
+                elif vehicle["name"] == "飛船":
+                    # 飛船
+                    vehicle["sortOrder"] = "24"
+                elif vehicle["sortOrder"] == 13:
+                    # 船隻
+                    vehicle["sortOrder"] = ""
+                elif vehicle["name"] == "驅逐艦":
+                    # 驅逐艦
+                    vehicle["sortOrder"] = "23"
+                else:
+                    vehicle["sortOrder"] = ""
                 self.vehicle_item_list.append(vehicle)
 
     # 排序

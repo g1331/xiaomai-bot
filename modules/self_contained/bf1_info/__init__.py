@@ -42,7 +42,8 @@ from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
-    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api
+    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
+    gt_get_player_id_by_pid
 )
 
 config = create(GlobalConfig)
@@ -368,6 +369,7 @@ async def info(
         [
             UnionMatch("-s", "-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
+            ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
     )
 )
@@ -383,7 +385,8 @@ async def player_stat_pic(
         sender: Member,
         group: Group,
         source: Source,
-        player_name: RegexResult
+        player_name: RegexResult,
+        text: ArgResult,
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
@@ -418,68 +421,84 @@ async def player_stat_pic(
         )
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
-    # 并发获取生涯、武器、载具信息
+    # 并发获取生涯、武器、载具、正在游玩
+    origin_start_time = start_time = time.time()
     tasks = [
         (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
         (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid),
         (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid),
-        bfeac_checkBan(display_name)
+        bfeac_checkBan(display_name),
+        bfban_checkBan(player_pid),
+        (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
+        (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
+        (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
+        gt_get_player_id_by_pid(player_pid)
     ]
     tasks = await asyncio.gather(*tasks)
+    logger.debug(f"查询玩家战绩耗时: {round(time.time() - start_time)}秒")
+    for task in tasks:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
 
     # 检查返回结果
-    player_persona, player_stat, player_weapon, player_vehicle, eac_info = tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]
-    if isinstance(player_persona, str):
-        logger.error(player_persona)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_persona}"),
-            quote=source
-        )
-    else:
-        player_persona: dict
-        player_avatar_url = player_persona["result"][str(player_pid)]["avatar"]
-    if isinstance(player_stat, str):
-        logger.error(player_stat)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_stat}"),
-            quote=source
-        )
-    else:
-        player_stat: dict
-        player_stat["result"]["displayName"] = display_name
-    if isinstance(player_weapon, str):
-        logger.error(player_weapon)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_weapon}"),
-            quote=source
-        )
-    else:
-        player_weapon: list = WeaponData(player_weapon).filter()
-    if isinstance(player_vehicle, str):
-        logger.error(player_vehicle)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_vehicle}"),
-            quote=source
-        )
-    else:
-        player_vehicle: list = VehicleData(player_vehicle).filter()
+    (
+        player_persona, player_stat, player_weapon, player_vehicle, bfeac_info, bfban_info,
+        server_playing_info, platoon_info, skin_info, gt_id_info
+    ) = tasks
+    player_stat["result"]["displayName"] = display_name
 
-    # 生成图片
-    player_stat_img = await PlayerStatPic(player_stat, player_weapon, player_vehicle).draw()
-    if player_stat_img:
-        return await app.send_message(
-            group,
-            MessageChain(Image(data_bytes=player_stat_img)),
-            quote=source
+    if not text.matched:
+        # 生成图片
+        start_time = time.time()
+        player_stat_img = await PlayerStatPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            vehicles=player_vehicle,
+            bfeac_info=bfeac_info,
+            bfban_info=bfban_info,
+            server_playing_info=server_playing_info,
+            platoon_info=platoon_info,
+            skin_info=skin_info,
+            gt_id_info=gt_id_info
+        ).draw()
+        logger.debug(f"生成玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+        msg_chain = [Image(path=player_stat_img)]
+        bfeac_info = (
+            f'\nBFEAC状态:{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}'
+            if bfeac_info.get("stat")
+            else None
         )
+        if bfeac_info:
+            msg_chain.append(bfeac_info)
+        bfban_info = (
+            f'\nBFBAN状态:{bfban_info.get("stat")}\n案件地址:{bfban_info.get("url")}'
+            if bfban_info.get("stat")
+            else None
+        )
+        if bfban_info:
+            msg_chain.append(bfban_info)
+        if player_stat_img:
+            start_time = time.time()
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_stat_img).unlink()
+            logger.debug(f"发送玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+            logger.debug(f"查询玩家战绩总耗时: {round(time.time() - origin_start_time)}秒")
+            return
     # 发送文字
     # 包含等级、游玩时长、击杀、死亡、KD、胜局、败局、胜率、KPM、SPM、步战击杀、载具击杀、技巧值、最远爆头距离
     # 协助击杀、最高连杀、复活数、治疗数、修理数、狗牌数
+    player_weapon: list = WeaponData(player_weapon).filter()
+    player_vehicle: list = VehicleData(player_vehicle).filter()
     player_info = player_stat["result"]
     rank = player_info.get('basicStats').get('rank')
     rank_list = [
@@ -534,10 +553,15 @@ async def player_stat_pic(
     heals = int(player_info.get('heals'))
     repairs = int(player_info.get('repairs'))
     dogtagsTaken = int(player_info.get('dogtagsTaken'))
-    eac_info = (
-        f'{eac_info.get("stat")}\n案件地址:{eac_info.get("url")}\n'
-        if eac_info.get("stat")
-        else "未查询到EAC信息\n"
+    bfeac_info = (
+        f'{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}'
+        if bfeac_info.get("stat")
+        else "未查询到BFEAC信息"
+    )
+    bfban_info = (
+        f'{bfban_info.get("stat")}\n案件地址:{bfban_info.get("url")}'
+        if bfban_info.get("stat")
+        else "未查询到BFBAN信息"
     )
     result = [
         f"玩家:{display_name}\n"
@@ -552,7 +576,8 @@ async def player_stat_pic(
         f"协助击杀:{killAssists}  最高连杀:{highestKillStreak}\n"
         f"复活数:{revives}   治疗数:{heals}\n"
         f"修理数:{repairs}   狗牌数:{dogtagsTaken}\n"
-        f"EAC状态:{eac_info}" + "=" * 18
+        f"BFEAC状态:{bfeac_info}\n"
+        f"BFBAN状态:{bfban_info}\n" + "=" * 18
     ]
     weapon = player_weapon[0]
     name = zhconv.convert(weapon.get('name'), 'zh-hans')
@@ -597,13 +622,7 @@ async def player_stat_pic(
     )
     result = "\n".join(result)
 
-    return await app.send_message(
-        group,
-        MessageChain(
-            result
-        ),
-        quote=source
-    )
+    return await app.send_message(group, MessageChain(result), quote=source)
 
 
 # 查询武器信息
@@ -619,8 +638,8 @@ async def player_stat_pic(
                 "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", optional=True, type=int, default=4) @ "row",
-            ArgumentMatch("-c", "-col", optional=True, type=int, default=2) @ "col",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
@@ -681,43 +700,68 @@ async def player_weapon_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取武器信息
-    player_weapon = await (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid)
-    if isinstance(player_weapon, str):
-        logger.error(player_weapon)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_weapon}"),
-            quote=source
+    api_instance_temp = await BF1DA.get_api_instance()
+    player_weapon_task = api_instance_temp.getWeaponsByPersonaId(player_pid)
+    player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+    player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+    skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+    playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+    gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+    player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+        player_stat_task,
+        player_weapon_task,
+        player_persona_task,
+        skin_info_task,
+        playing_info_task,
+        gt_id_info_task
+    )
+    # 检查返回结果
+    for task in [player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info_task]:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
+
+    # 武器排序
+    if not weapon_name.matched:
+        player_weapon: list = WeaponData(player_weapon).filter(
+            rule=weapon_type.result.display if weapon_type.matched else "",
+            sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
-        if not weapon_name.matched:
-            player_weapon: list = WeaponData(player_weapon).filter(
-                rule=weapon_type.result.display if weapon_type.matched else "",
-                sort_type=sort_type.result.display if sort_type.matched else "",
+        player_weapon: list = WeaponData(player_weapon).search_weapon(
+            weapon_name.result.display,
+            sort_type=sort_type.result.display if sort_type.matched else "",
+        )
+        if not player_weapon:
+            return await app.send_message(
+                group,
+                MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
+                quote=source
             )
-        else:
-            player_weapon: list = WeaponData(player_weapon).search_weapon(
-                weapon_name.result.display,
-                sort_type=sort_type.result.display if sort_type.matched else "",
-            )
-            if not player_weapon:
-                return await app.send_message(
-                    group,
-                    MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
-                    quote=source
-                )
 
     # 生成图片
     if not text.matched:
-        player_weapon_img = (await PlayerWeaponPic(
-            weapon_data=player_weapon
-        ).draw(display_name, player_pid, row.result, col.result))
+        player_weapon_img = await PlayerWeaponPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw(col.result, row.result)
         if player_weapon_img:
-            return await app.send_message(
-                group,
-                MessageChain(Image(data_bytes=player_weapon_img)),
-                quote=source
-            )
+            msg_chain = [Image(path=player_weapon_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_weapon_img).unlink()
+            return
+
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for weapon in player_weapon:
@@ -770,8 +814,8 @@ async def player_weapon_pic(
                 "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点", "巨兽", "机械巨兽"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", optional=True, default=4) @ "row",
-            ArgumentMatch("-c", "-col", optional=True, default=2) @ "col",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
@@ -832,43 +876,68 @@ async def player_vehicle_pic(
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 获取载具信息
-    player_vehicle = await (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid)
-    if isinstance(player_vehicle, str):
-        logger.error(player_vehicle)
-        return await app.send_message(
-            group,
-            MessageChain(f"查询出错!{player_vehicle}"),
-            quote=source
+    api_instance_temp = await BF1DA.get_api_instance()
+    player_vehicle_task = api_instance_temp.getVehiclesByPersonaId(player_pid)
+    player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+    player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+    skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+    playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+    gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+    player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+        player_stat_task,
+        player_vehicle_task,
+        player_persona_task,
+        skin_info_task,
+        playing_info_task,
+        gt_id_info_task
+    )
+    # 检查返回结果
+    for task in [player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info_task]:
+        if isinstance(task, str):
+            logger.error(task)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{task}"),
+                quote=source
+            )
+
+    # 载具排序
+    if not vehicle_name.matched:
+        player_vehicle: list = VehicleData(player_vehicle).filter(
+            rule=vehicle_type.result.display if vehicle_type.matched else "",
+            sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
-        if not vehicle_name.matched:
-            player_vehicle: list = VehicleData(player_vehicle).filter(
-                rule=vehicle_type.result.display if vehicle_type.matched else "",
-                sort_type=sort_type.result.display if sort_type.matched else "",
+        player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
+            target_vehicle_name=vehicle_name.result.display,
+            sort_type=sort_type.result.display if sort_type.matched else "",
+        )
+        if not player_vehicle:
+            return await app.send_message(
+                group,
+                MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
+                quote=source
             )
-        else:
-            player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
-                target_vehicle_name=vehicle_name.result.display,
-                sort_type=sort_type.result.display if sort_type.matched else "",
-            )
-            if not player_vehicle:
-                return await app.send_message(
-                    group,
-                    MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
-                    quote=source
-                )
 
     # 生成图片
     if not text.matched:
-        player_vehicle_img = (await PlayerVehiclePic(
-            vehicle_data=player_vehicle
-        ).draw(display_name, player_pid, row.result, col.result))
+        player_vehicle_img = await PlayerVehiclePic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            vehicles=player_vehicle,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw(col.result, row.result)
         if player_vehicle_img:
-            return await app.send_message(
-                group,
-                MessageChain(Image(data_bytes=player_vehicle_img)),
-                quote=source
-            )
+            msg_chain = [Image(path=player_vehicle_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_vehicle_img).unlink()
+            return
+
     # 发送文字数据
     result = [f"玩家: {display_name}\n" + "=" * 18]
     for vehicle in player_vehicle:
@@ -1854,8 +1923,8 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
                 send = zhconv.convert(a, 'zh-cn')
         else:
             bf_dic = [
-                "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-                f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+                "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神",
+                f"当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)
         return await app.send_group_message(event.group_id, MessageChain(At(event.supplicant), '\n', send))

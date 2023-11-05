@@ -638,8 +638,8 @@ async def player_stat_pic(
                 "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", "-行", optional=True, default=4) @ "row",
-            ArgumentMatch("-c", "-col", "-列", optional=True, default=2) @ "col",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
@@ -814,8 +814,8 @@ async def player_weapon_pic(
                 "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点", "巨兽", "机械巨兽"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", "-行", optional=True, default=4) @ "row",
-            ArgumentMatch("-c", "-col", "-列", optional=True, default=2) @ "col",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
@@ -930,7 +930,7 @@ async def player_vehicle_pic(
             skin_info=skin_info,
             server_playing_info=playing_info,
             gt_id_info=gt_id_info
-        ).draw(row.result, col.result)
+        ).draw(col.result, row.result)
         if player_vehicle_img:
             msg_chain = [Image(path=player_vehicle_img)]
             await app.send_message(group, MessageChain(msg_chain), quote=source)

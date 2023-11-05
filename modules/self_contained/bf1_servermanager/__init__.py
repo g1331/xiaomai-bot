@@ -2081,7 +2081,7 @@ async def bfgroup_refresh(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-kick", "-踢", "-k", "-踢出").space(SpacePolicy.PRESERVE),
+            UnionMatch("-kick", "-踢出", "-踢", "-k").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -2485,7 +2485,7 @@ async def kick_by_searched(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-b", "-ban", "-封禁").space(SpacePolicy.PRESERVE),
+            UnionMatch("-ban", "-b", "-封禁").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -3933,7 +3933,7 @@ async def move_player(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-m", "-换图", "-map", "-切图").space(SpacePolicy.PRESERVE),
+            UnionMatch("-换图", "-map", "-切图", "-m").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -4170,7 +4170,7 @@ async def change_map(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-ml", "-图池", "-maplist", "-地图池").space(SpacePolicy.PRESERVE),
+            UnionMatch("-图池", "-maplist", "-地图池", "-ml").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",
@@ -4586,7 +4586,7 @@ async def add_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-uv", "-unvip", "-uvip", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
+            UnionMatch("-unvip", "-uvip", "-uv", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -4738,7 +4738,7 @@ async def del_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-cv", "-checkvip").space(SpacePolicy.PRESERVE),
+            UnionMatch("-checkvip", "-cv").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",

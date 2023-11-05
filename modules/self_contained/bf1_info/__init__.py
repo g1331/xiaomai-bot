@@ -2050,7 +2050,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-ex", "-exchange", "-交换").space(SpacePolicy.PRESERVE),
+            UnionMatch("-exchange", "-ex", "-交换").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
         ]
     )
@@ -2164,7 +2164,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
 @dispatch(
     Twilight(
         [
-            UnionMatch("-战役", "-行动").space(SpacePolicy.PRESERVE),
+            UnionMatch("-战役", "-行动", "-op").space(SpacePolicy.PRESERVE),
         ]
     )
 )

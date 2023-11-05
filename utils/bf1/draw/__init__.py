@@ -1472,10 +1472,19 @@ class PlayerWeaponPic:
         武器框: 570x320
         头像框: 631x349
         """
-        weapons = self.weapons
-        if not weapons:
+        weapons = []
+        if not self.weapons:
             return None
+        else:
+            for weapon in self.weapons:
+                if not weapon.get("stats").get('values'):
+                    continue
+                weapons.append(weapon)
         # 整理成col列row行的列表
+        if col > 8:
+            col = 8
+        if row > 10:
+            row = 10
         weapon_data = [weapons[i * col:(i + 1) * col] for i in range(row)]
         col_origin = col
         row_origin = row

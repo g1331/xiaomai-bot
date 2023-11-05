@@ -76,7 +76,9 @@ ColorGold = (202, 132, 58)
 ColorBlue = (66, 125, 150)
 ColorWhite = (255, 255, 255)
 ColorRed = (255, 0, 0)
-ColorGrayMore = (191, 207, 222)
+ColorGoldAndGray = (236, 217, 150)
+ColorBlueAndGray = (191, 207, 222)
+ColorWhiteAndGray = (255, 255, 255, 150)
 
 
 class ImageUtils:
@@ -255,7 +257,8 @@ class PlayerStatPic:
             bfban_info: dict,
             server_playing_info: dict,
             platoon_info: dict,
-            skin_info: dict
+            skin_info: dict,
+            gt_id_info: Union[dict, None]
     ):
         self.player_name = player_name
         self.player_pid = str(player_pid)
@@ -268,6 +271,7 @@ class PlayerStatPic:
         self.server_playing_info = server_playing_info
         self.platoon_info = platoon_info
         self.skin_info = skin_info
+        self.gt_id_info = gt_id_info
 
         # 玩家数据
         player_info = self.stat["result"]
@@ -355,7 +359,7 @@ class PlayerStatPic:
         avatar_path = AvatarPathRoot / f"{pid}.jpg"
         if avatar_path.exists() and (avatar_path.stat().st_mtime + 86400) > time.time():
             avatar = avatar_path.open("rb").read()
-        elif url != "":
+        elif not url:
             avatar = await ImageUtils.read_img_by_url(url)
             if avatar:
                 avatar_path.write_bytes(avatar)
@@ -380,7 +384,11 @@ class PlayerStatPic:
         if self.player_pid not in self.personas["result"]:
             avatar = DefaultAvatarImg
         else:
-            avatar = await self.get_avatar(self.personas["result"][self.player_pid]["avatar"], self.player_pid)
+            avatar_url = self.gt_id_info.get("avatar") if isinstance(self.gt_id_info, dict) else None
+            if avatar_url:
+                avatar = await self.get_avatar(avatar_url, self.player_pid)
+            else:
+                avatar = await self.get_avatar(self.personas["result"][self.player_pid]["avatar"], self.player_pid)
         avatar_img = Image.open(BytesIO(avatar))
         # 裁剪为圆形
         avatar_img = ImageUtils.crop_circle(avatar_img, 79)
@@ -673,7 +681,7 @@ class PlayerStatPic:
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
                 data.append({'name': "你知道吗,小埋最初的灵感来自于胡桃-by水神"})
-                data.append({'name': "当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~"})
+                data.append({'name': "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~"})
                 tip = zhconv.convert(random.choice(data)['name'], 'zh-cn')
             ImageUtils.draw_multiline_text(
                 platoon_template_draw,
@@ -773,8 +781,7 @@ class PlayerStatPic:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                # fill=ColorGold if skin_level == "Superior" else ColorBlue if skin_level == "Enhanced" else ColorWhite,
-                fill=ColorGrayMore,
+                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         weapon_template_draw.text(
@@ -890,7 +897,7 @@ class PlayerStatPic:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGrayMore,
+                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         vehicle_template_draw.text(

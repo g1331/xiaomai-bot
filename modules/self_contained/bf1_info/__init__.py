@@ -42,7 +42,8 @@ from utils.bf1.map_team_info import MapData
 from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
-    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api
+    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
+    gt_get_player_id
 )
 
 config = create(GlobalConfig)
@@ -432,6 +433,7 @@ async def player_stat_pic(
         (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
         (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
         (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
+        gt_get_player_id(player_name)
     ]
     tasks = await asyncio.gather(*tasks)
     logger.debug(f"查询玩家战绩耗时: {round(time.time() - start_time)}秒")
@@ -445,8 +447,10 @@ async def player_stat_pic(
             )
 
     # 检查返回结果
-    player_persona, player_stat, player_weapon, player_vehicle, bfeac_info, bfban_info, server_playing_info, platoon_info, skin_info = tasks[0], tasks[1], \
-        tasks[2], tasks[3], tasks[4], tasks[5], tasks[6], tasks[7], tasks[8]
+    (
+        player_persona, player_stat, player_weapon, player_vehicle, bfeac_info, bfban_info,
+        server_playing_info, platoon_info, skin_info, gt_id_info
+    ) = tasks
     player_stat["result"]["displayName"] = display_name
 
     if not text.matched:
@@ -462,7 +466,8 @@ async def player_stat_pic(
             bfban_info=bfban_info,
             server_playing_info=server_playing_info,
             platoon_info=platoon_info,
-            skin_info=skin_info
+            skin_info=skin_info,
+            gt_id_info=gt_id_info
         ).draw()
         logger.debug(f"生成玩家战绩图片耗时: {round(time.time() - start_time)}秒")
         msg_chain = [Image(path=player_stat_img)]
@@ -1866,7 +1871,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
         else:
             bf_dic = [
                 "你知道吗,小埋最初的灵感来自于胡桃-by水神",
-                f"当武器击杀达到40⭐图片会发出白光,60⭐时为紫光,当达到100⭐之后会发出耀眼的金光~",
+                f"当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)
         return await app.send_group_message(event.group_id, MessageChain(At(event.supplicant), '\n', send))

@@ -451,6 +451,7 @@ async def gt_get_player_id(player_name: str) -> Union[dict, None]:
             async with session.get(url) as response:
                 response = await response.json()
         if response.get("errors"):
+            logger.error(f"gt_get_player_id: {response['errors']}")
             return None
     except Exception as e:
         logger.error(f"gt_get_player_id: {e}")

@@ -463,19 +463,28 @@ class PlayerStatPic:
         return background_img
 
     async def avatar_template_handle(self) -> Image:
-        # 头像图片
-        if (self.player_pid not in self.personas["result"]) and not self.gt_id_info:
-            avatar = DefaultAvatarImg
-        elif self.player_pid in self.personas["result"]:
-            avatar_url = self.personas["result"][self.player_pid]["avatar"]
-            avatar = await self.get_avatar(avatar_url, self.player_pid)
+        avatar_img_data = None
+        local_avatar_path = AvatarPathRoot / f"{self.player_pid}.jpg"
+
+        # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
+        if local_avatar_path.is_file() and \
+                (datetime.datetime.now() - datetime.datetime.fromtimestamp(
+                    local_avatar_path.stat().st_mtime)) < datetime.timedelta(days=1):
+            avatar_img_data = local_avatar_path.read_bytes()
         else:
-            avatar_url = self.gt_id_info.get("avatar") if isinstance(self.gt_id_info, dict) else None
+            # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
+            avatar_url = None
+            if self.player_pid in self.personas["result"]:
+                avatar_url = self.personas["result"][self.player_pid].get("avatar")
+            elif isinstance(self.gt_id_info, dict):
+                avatar_url = self.gt_id_info.get("avatar")
+
             if avatar_url:
-                avatar = await self.get_avatar(avatar_url, self.player_pid)
+                avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
             else:
-                avatar = await self.get_avatar(self.personas["result"][self.player_pid]["avatar"], self.player_pid)
-        avatar_img = Image.open(BytesIO(avatar))
+                # 链接也获取失败，使用默认头像
+                avatar_img_data = DefaultAvatarImg
+        avatar_img = Image.open(BytesIO(avatar_img_data))
         # 裁剪为圆形
         avatar_img = ImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
@@ -1238,19 +1247,28 @@ class PlayerWeaponPic:
         return DefaultAvatarImg
 
     async def avatar_template_handle(self) -> Image:
-        # 头像图片
-        if (self.player_pid not in self.personas["result"]) and not self.gt_id_info:
-            avatar = DefaultAvatarImg
-        elif self.player_pid in self.personas["result"]:
-            avatar_url = self.personas["result"][self.player_pid]["avatar"]
-            avatar = await self.get_avatar(avatar_url, self.player_pid)
+        avatar_img_data = None
+        local_avatar_path = AvatarPathRoot / f"{self.player_pid}.jpg"
+
+        # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
+        if local_avatar_path.is_file() and \
+                (datetime.datetime.now() - datetime.datetime.fromtimestamp(
+                    local_avatar_path.stat().st_mtime)) < datetime.timedelta(days=1):
+            avatar_img_data = local_avatar_path.read_bytes()
         else:
-            avatar_url = self.gt_id_info.get("avatar") if isinstance(self.gt_id_info, dict) else None
+            # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
+            avatar_url = None
+            if self.player_pid in self.personas["result"]:
+                avatar_url = self.personas["result"][self.player_pid].get("avatar")
+            elif isinstance(self.gt_id_info, dict):
+                avatar_url = self.gt_id_info.get("avatar")
+
             if avatar_url:
-                avatar = await self.get_avatar(avatar_url, self.player_pid)
+                avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
             else:
-                avatar = await self.get_avatar(self.personas["result"][self.player_pid]["avatar"], self.player_pid)
-        avatar_img = Image.open(BytesIO(avatar))
+                # 链接也获取失败，使用默认头像
+                avatar_img_data = DefaultAvatarImg
+        avatar_img = Image.open(BytesIO(avatar_img_data))
         # 裁剪为圆形
         avatar_img = ImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
@@ -1538,7 +1556,7 @@ class PlayerWeaponPic:
         ImageUtils.draw_centered_text(
             output_img_draw,
             "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            (image_width // 2, image_height - 30),
+            (image_width // 2, image_height - 20),
             fill=(253, 245, 242),
             font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
         )

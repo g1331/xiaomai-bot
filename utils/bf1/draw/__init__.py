@@ -1131,7 +1131,7 @@ class PlayerWeaponPic:
         :param gt_id_info: gt玩家信息
         """
         self.player_name: str = player_name
-        self.player_pid: Union[str, int] = player_pid
+        self.player_pid: Union[str, int] = str(player_pid)
         self.personas: dict = personas
         self.stat: dict = stat
         self.weapons: list[dict] = weapons

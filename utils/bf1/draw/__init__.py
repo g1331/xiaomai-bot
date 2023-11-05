@@ -382,6 +382,9 @@ class PlayerStatPic:
             background = player_background_path.open("rb").read()
         # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        if not player_background_path:
+            # 加一点高斯模糊
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
         return background_img
 
     async def avatar_template_handle(self) -> Image:
@@ -938,8 +941,6 @@ class PlayerStatPic:
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid)
-        # 加一点高斯模糊
-        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
         output_img.paste(background_img, (0, 0), background_img)
 
         # 粘贴头像框

@@ -1510,7 +1510,7 @@ class PlayerWeaponPic:
         row_diff_distance = weapon_template_height + 25  # 行与行之间的距离
         start_row = 60 + 349 + 25  # 首行起始位置
         col_diff_distance = weapon_template_width + 43  # 列与列之间的距离
-        start_col = 58  # 首列起始位置
+        start_col = 90  # 首列起始位置
 
         for row_index, weapon_template_row in enumerate(weapon_templates):
             for col_index, weapon_template in enumerate(weapon_template_row):

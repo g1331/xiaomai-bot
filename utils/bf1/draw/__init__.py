@@ -291,6 +291,7 @@ class ImageUtils:
 
         # 创建一个复制的背景图像以避免修改原图
         new_img = background_img.copy()
+        overlay_img = overlay_img.convert("RGBA")
 
         # 将覆盖图像居中粘贴到背景图像上
         new_img.paste(overlay_img, (x, y), overlay_img)

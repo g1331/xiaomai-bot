@@ -1030,7 +1030,7 @@ class PlayerStatPic:
         ImageUtils.draw_centered_text(
             best_text_trapezoid_draw,
             text,
-            (114, 22),
+            (72, 22),
             fill=ColorWhite,
             font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
         )

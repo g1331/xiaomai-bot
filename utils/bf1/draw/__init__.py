@@ -224,10 +224,7 @@ class ImageUtils:
         crop_right = (resized_image.width + target_width) / 2
         crop_bottom = (resized_image.height + target_height) / 2
 
-        # 裁剪图片至指定尺寸
-        cropped_image = resized_image.crop((crop_left, crop_top, crop_right, crop_bottom))
-
-        return cropped_image
+        return resized_image.crop((crop_left, crop_top, crop_right, crop_bottom))
 
     # 适应最长边
     @staticmethod
@@ -266,10 +263,7 @@ class ImageUtils:
         new_width = int(original_width * scale_ratio)
         new_height = int(original_height * scale_ratio)
 
-        # 缩放图像
-        scaled_image = image.resize((new_width, new_height), Image.LANCZOS)
-
-        return scaled_image
+        return image.resize((new_width, new_height), Image.LANCZOS)
 
     @staticmethod
     def paste_center(background_img: Image.Image, overlay_img: Image.Image) -> Image.Image:
@@ -305,11 +299,9 @@ class ImageUtils:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
-                        img = await resp.read()
-                        return img
-                    else:
-                        logger.warning(f"下载图片失败，url: {url}")
-                        return None
+                        return await resp.read()
+                    logger.warning(f"下载图片失败，url: {url}")
+                    return None
         except TimeoutError:
             logger.warning(f"下载图片失败，url: {url}")
             return None
@@ -445,13 +437,12 @@ class PlayerStatPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if not player_background_path:
-            if background_path.exists():
-                background = random.choice(list(background_path.iterdir())).open("rb").read()
-            else:
-                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        else:
+        if player_background_path:
             background = player_background_path.open("rb").read()
+        elif background_path.exists():
+            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        else:
+            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         if not player_background_path:  # 如果没有背景图，就用默认的，且放大
             # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
             background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
@@ -772,7 +763,7 @@ class PlayerStatPic:
         else:
             platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
             platoon_template_draw = ImageDraw.Draw(platoon_template)
-            file_path = f"./data/battlefield/小标语/data.json"
+            file_path = "./data/battlefield/小标语/data.json"
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
                 data.append({'name': "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
@@ -1352,13 +1343,12 @@ class PlayerWeaponPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if not player_background_path:
-            if background_path.exists():
-                background = random.choice(list(background_path.iterdir())).open("rb").read()
-            else:
-                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        else:
+        if player_background_path:
             background = player_background_path.open("rb").read()
+        elif background_path.exists():
+            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        else:
+            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         if not player_background_path:  # 如果没有背景图，就用默认的，且放大
             background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
             # 加一点高斯模糊

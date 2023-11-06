@@ -166,10 +166,11 @@ async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source
     bot_member = await app.get_member(group, app.account)
     bot_perm_name = bot_member.permission.name
     # 如果目标是群主、管理，且BOT不是群主，返回无权限
-    if event.sender.permission.name in ["Owner", "Administrator"] and bot_perm_name != "Owner":
-        return await app.send_message(group, MessageChain(
-            f"bot权限不足!"
-        ), quote=source)
+    if event.sender.id != app.account:
+        if event.sender.permission.name in ["Owner", "Administrator"] and bot_perm_name != "Owner":
+            return await app.send_message(group, MessageChain(
+                f"bot权限不足!"
+            ), quote=source)
     try:
         await app.recall_message(quote_id)
     except Exception as e:

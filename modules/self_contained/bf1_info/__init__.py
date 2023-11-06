@@ -638,7 +638,7 @@ async def player_stat_pic(
                 "侦察兵", "侦察", "斟茶兵", "斟茶", "医疗兵", "医疗", "支援兵", "支援"
             ).space(SpacePolicy.PRESERVE) @ "weapon_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=6) @ "row",
             ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "weapon_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",
@@ -814,7 +814,7 @@ async def player_weapon_pic(
                 "载具", "vehicle", "vc", "坦克", "地面", "飞机", "飞船", "飞艇", "空中", "海上", "定点", "巨兽", "机械巨兽"
             ).space(SpacePolicy.PRESERVE) @ "vehicle_type",
             ParamMatch(optional=True) @ "player_name",
-            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=4) @ "row",
+            ArgumentMatch("-r", "-row", "-行", optional=True, type=int, default=6) @ "row",
             ArgumentMatch("-c", "-col", "-列", optional=True, type=int, default=2) @ "col",
             ArgumentMatch("-n", "-name", optional=True) @ "vehicle_name",
             ArgumentMatch("-s", "-sort", optional=True) @ "sort_type",

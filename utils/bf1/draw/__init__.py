@@ -452,14 +452,21 @@ class PlayerStatPic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
-            background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+        # 将background_img_top粘贴到background_img上
+        background_img = ImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def avatar_template_handle(self) -> Image:
@@ -1286,6 +1293,8 @@ class PlayerWeaponPic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg
@@ -1359,13 +1368,20 @@ class PlayerWeaponPic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # 将background_img_top粘贴到background_img上
+        background_img = ImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
@@ -1740,6 +1756,8 @@ class PlayerVehiclePic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg
@@ -1813,13 +1831,20 @@ class PlayerVehiclePic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # 将background_img_top粘贴到background_img上
+        background_img = ImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:

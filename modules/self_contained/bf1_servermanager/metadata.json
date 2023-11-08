@@ -18,6 +18,7 @@
     "查询玩家列表：-玩家列表/-playerlist/-pl/-lb+群组名(可选)服务器序号","如：-pl sakula1, -lb1",
     "刷新session：-refresh 群组名(可选)服务器序号","如：-refresh1, -refresh 1, -refresh sakula1",
     "踢出玩家：-kick/-踢/-k/-滚出+可选群组名+服务器序号+空格+玩家名+可选原因","如：-kick sakula1 shlsan13 你好 (注意这里的sakula1的sakula为群组名,1为服务器序号，中间不加任何符号，服务器序号后一定要跟空格), -k1 shlsan13 你好",
+    "踢出全部玩家：-清服/-炸服+可选群组名+服务器序号+空格+原因","如：-清服 sakula1 晚安，-炸服1 全部睡觉!",
     "模糊搜索踢出: -sk/-searchkick+玩家名+可选原因","如：-sk shlsan13 你好 ,-sk 条形码 不准条形码! (sk不能加服务器序号和群组名，只能在绑定了群组的群使用)",
     "封禁玩家：-ban/-封禁+可选群组名+服务器序号+空格+玩家名+可选原因","如：-ban sakula1 shlsan13 你好, -ban1 shlsan13 你好",
     "解封玩家：-unban/-uban/-解封+可选群组名+服务器序号+空格+玩家名,解封不能加原因！","如：-unban sakula1 shlsan13, -unban1 shlsan13",

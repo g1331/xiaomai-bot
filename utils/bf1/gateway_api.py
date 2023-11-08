@@ -514,7 +514,7 @@ class bf1_api(object):
         """
         根据名字获取Personas
         :param player_name:
-        :return:
+        :return:{'personas': {'persona': [{'personaId': 1004198901469, 'pidId': 1000331701469, 'displayName': 'SHlSAN13', 'name': 'shlsan13', 'namespaceName': 'cem_ea_id', 'isVisible': True, 'status': 'ACTIVE', 'statusReasonCode': '', 'showPersona': 'EVERYONE', 'dateCreated': '2018-11-15T2:19Z', 'lastAuthenticated': '2023-11-07T7:9Z'}]}}
         """
         url = f"https://gateway.ea.com/proxy/identity/personas?namespaceName=cem_ea_id&displayName={player_name}"
         # 头部信息

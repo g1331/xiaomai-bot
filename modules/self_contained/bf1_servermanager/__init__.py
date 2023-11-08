@@ -2219,7 +2219,7 @@ async def kick(
         [
             UnionMatch("-清服", "-炸服").space(SpacePolicy.PRESERVE),  # 根据服务器序号获取玩家列表，根据玩家列表踢出全部玩家
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
-            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "server_rank",
             WildcardMatch(optional=True) @ "reason",
         ]
     )
@@ -2263,7 +2263,7 @@ async def kick_all(
 
     # 原因检测
     if (not reason.matched) or (reason.result.display == ""):
-        reason = "违反规则"
+        return await app.send_message(group, MessageChain(f"清服请输入踢出原因哦~"), quote=source)
     else:
         reason = reason.result.display.replace("ADMINPRIORITY", "违反规则")
     reason = zhconv.convert(reason, 'zh-tw')

@@ -2312,7 +2312,7 @@ async def kick_all(
     ]
     # 需要确认
     try:
-        await app.send_message(group, MessageChain(f"预计踢出{len(tasks)}位玩家,确认执行吗?\n(是/y/yes/确认|回复其他以取消)"), quote=source)
+        await app.send_message(group, MessageChain(f"预计踢出{len(tasks)}位玩家,确认执行吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
         if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
             return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
         await app.send_message(group, MessageChain(f"执行ing"), quote=source)
@@ -4260,9 +4260,13 @@ async def change_map(
         return await app.send_message(group, MessageChain(
             f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
         ), quote=source)
-    await app.send_message(group, MessageChain(
-        f"执行ing"
-    ), quote=source)
+    try:
+        await app.send_message(group, MessageChain(f"确认执行换图吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
+        if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
+            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+        await app.send_message(group, MessageChain(f"执行ing"), quote=source)
+    except asyncio.TimeoutError:
+        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
     account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
     result = await account_instance.chooseLevel(persistedGameId=server_guid, levelIndex=map_index)

@@ -5720,9 +5720,11 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
             ArgumentMatch("-q", "-qq", optional=True, type=int) @ "operator_qq",
             # 被操作人
             ArgumentMatch("-p", "-pid", optional=True, type=int) @ "pid",
-            ArgumentMatch("-n", "-name", optional=True) @ "display_name",
+            ArgumentMatch("-n", "-name", optional=True, type=str) @ "display_name",
             # 时间
             ArgumentMatch("-t", "-time", optional=True) @ "action_time",
+            # 描述
+            ArgumentMatch("-c", "-content", optional=True, type=str) @ "content",
             # 页数
             ArgumentMatch("-page", optional=True, type=int, default=1) @ "page",
         ]
@@ -5731,9 +5733,10 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
 async def bf1_log(
         app: Ariadne, group: Group, sender: Member, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult,
-        action: RegexResult, operator_qq: RegexResult,
-        pid: RegexResult, display_name: RegexResult,
-        action_time: RegexResult, page: RegexResult
+        action: RegexResult, operator_qq: ArgResult,
+        pid: ArgResult, display_name: ArgResult,
+        content: ArgResult,
+        action_time: ArgResult, page: ArgResult
 ):
     """
     前缀：-bflog/-服管日志
@@ -5745,6 +5748,7 @@ async def bf1_log(
     操作人qq：q/qq
     被操作人pid: p/pid
     名字：n/name
+    描述：content
     页数: page
 
     参数是由 减号'-' + 参数名(如你想查qq就是q/qq) + 可选等号(=) +参数(qq就是对应qq)
@@ -5859,6 +5863,12 @@ async def bf1_log(
             if i["display_name"]:
                 if display_name.result.display.upper() in i["display_name"].upper():
                     log_list_temp.append(i)
+        log_list = log_list_temp
+    if content.matched:
+        log_list_temp = []
+        for i in log_list:
+            if (content.result.display.upper() in i["info"].upper()) or i["info"].upper() in content.result.display.upper():
+                log_list_temp.append(i)
         log_list = log_list_temp
     if not log_list:
         return await app.send_message(

@@ -5861,13 +5861,13 @@ async def bf1_log(
         log_list_temp = []
         for i in log_list:
             if i["display_name"]:
-                if display_name.result.display.upper() in i["display_name"].upper():
+                if display_name.result.upper() in i["display_name"].upper():
                     log_list_temp.append(i)
         log_list = log_list_temp
     if content.matched:
         log_list_temp = []
         for i in log_list:
-            if (content.result.display.upper() in i["info"].upper()) or i["info"].upper() in content.result.display.upper():
+            if (content.result.upper() in i["info"].upper()) or i["info"].upper() in content.result.upper():
                 log_list_temp.append(i)
         log_list = log_list_temp
     if not log_list:

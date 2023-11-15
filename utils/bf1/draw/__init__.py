@@ -82,7 +82,7 @@ ColorBlueAndGray = (191, 207, 222)
 ColorWhiteAndGray = (255, 255, 255, 150)
 
 
-class ImageUtils:
+class PilImageUtils:
     @staticmethod
     def draw_centered_text(
             draw: ImageDraw.Draw, text: str,
@@ -91,7 +91,7 @@ class ImageUtils:
             fill: Tuple[int, int, int]
     ) -> None:
         """
-        在图像上居中绘制文本。
+        在图像上居中绘制文本。对于给定的坐标x, y，文本将以x, y为轴心水平居中绘制。
 
         :param draw: PIL.ImageDraw 实例，用于在图像上绘制。
         :param text: 要绘制的文本字符串。
@@ -426,7 +426,7 @@ class PlayerStatPic:
         if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
             return avatar_path.read_bytes()
         # 尝试下载头像
-        avatar = await ImageUtils.read_img_by_url(url)
+        avatar = await PilImageUtils.read_img_by_url(url)
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
@@ -437,20 +437,28 @@ class PlayerStatPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if player_background_path:
-            background = player_background_path.open("rb").read()
-        elif background_path.exists():
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        if not player_background_path:
+            if background_path.exists():
+                background = player_background_path.open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
-            background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+            background = player_background_path.open("rb").read()
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = PilImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = PilImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+        # 将background_img_top粘贴到background_img上
+        background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def avatar_template_handle(self) -> Image:
@@ -477,7 +485,7 @@ class PlayerStatPic:
                 avatar_img_data = DefaultAvatarImg
         avatar_img = Image.open(BytesIO(avatar_img_data))
         # 裁剪为圆形
-        avatar_img = ImageUtils.crop_circle(avatar_img, 79)
+        avatar_img = PilImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
         if not self.server_playing_info["result"][self.player_pid]:
             avatar_template = Image.open(BytesIO(AvatarOfflineImg)).convert("RGBA")
@@ -539,7 +547,7 @@ class PlayerStatPic:
         ban_template = Image.open(BytesIO(BanImg)).convert("RGBA")
         ban_template_draw = ImageDraw.Draw(ban_template)
         # BFBAN
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             ban_template_draw,
             self.bfban_info["stat"] if self.bfban_info["stat"] else "无信息",
             (180, 57),
@@ -547,7 +555,7 @@ class PlayerStatPic:
             font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
         )
         # BFEAC
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             ban_template_draw,
             self.bfeac_info["stat"] if self.bfeac_info["stat"] else "无信息",
             (490, 57),
@@ -731,12 +739,20 @@ class PlayerStatPic:
             platoon_template_draw = ImageDraw.Draw(platoon_template)
             if self.platoon_info["result"]["emblem"]:
                 emblem = self.platoon_info["result"]["emblem"].replace("[SIZE]", "256").replace("[FORMAT]", "png")
-                emblem_img = await ImageUtils.read_img_by_url(emblem)
+                emblem_img = await PilImageUtils.read_img_by_url(emblem)
                 if emblem_img:
                     emblem_img = Image.open(BytesIO(emblem_img)).convert("RGBA")
-                    # 重置为140*140
+                    # 重置为170*170
                     emblem_img = emblem_img.resize((170, 170), Image.LANCZOS)
+                    # 单独将图章做一个放大填充的高斯模糊背景
+                    emblem_img_background = PilImageUtils.resize_and_crop_to_center(
+                        emblem_img, platoon_template.width, platoon_template.height
+                    )
+                    emblem_img_background = emblem_img_background.filter(ImageFilter.GaussianBlur(radius=10))
+                    # 将emblem_img_background粘贴到platoon_template上
+                    platoon_template = PilImageUtils.paste_center(emblem_img_background, platoon_template)
                     platoon_template.paste(emblem_img, (422, 22), emblem_img)
+                    platoon_template_draw = ImageDraw.Draw(platoon_template)
                 else:
                     logger.warning(f"下载战队徽章失败，url: {emblem}")
             # 战队名字、人数、描述
@@ -752,7 +768,7 @@ class PlayerStatPic:
                 fill=ColorWhite,
                 font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
             )
-            ImageUtils.draw_multiline_text(
+            PilImageUtils.draw_multiline_text(
                 platoon_template_draw,
                 f"描述: {self.platoon_info['result']['description']}",
                 (col1_x, start_row + row_diff_distance * 2),
@@ -769,7 +785,7 @@ class PlayerStatPic:
                 data.append({'name': "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
                 data.append({'name': "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~"})
                 tip = zhconv.convert(random.choice(data)['name'], 'zh-cn')
-            ImageUtils.draw_multiline_text(
+            PilImageUtils.draw_multiline_text(
                 platoon_template_draw,
                 tip,
                 (col1_x, start_row + row_diff_distance * 0),
@@ -831,7 +847,7 @@ class PlayerStatPic:
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
                     else:
-                        weapon_img = await ImageUtils.read_img_by_url(skin_url)
+                        weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
@@ -839,7 +855,7 @@ class PlayerStatPic:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
             pic_url = weapon["imageUrl"].replace("[BB_PREFIX]", BB_PREFIX)
-            weapon_img = await ImageUtils.read_img_by_url(pic_url)
+            weapon_img = await PilImageUtils.read_img_by_url(pic_url)
             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
         # 武器的长宽比1024/256 = 4,等比缩放为384*96
         weapon_img = weapon_img.resize((384, 96), Image.LANCZOS)
@@ -947,7 +963,7 @@ class PlayerStatPic:
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
                     else:
-                        vehicle_img = await ImageUtils.read_img_by_url(skin_url)
+                        vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
@@ -955,7 +971,7 @@ class PlayerStatPic:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
             pic_url = vehicle["imageUrl"].replace("[BB_PREFIX]", BB_PREFIX)
-            vehicle_img = await ImageUtils.read_img_by_url(pic_url)
+            vehicle_img = await PilImageUtils.read_img_by_url(pic_url)
             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
         # 载具的长宽比1024/256 = 4,等比缩放为384*96
         vehicle_img = vehicle_img.resize((384, 96), Image.LANCZOS)
@@ -1018,7 +1034,7 @@ class PlayerStatPic:
         best_text_trapezoid = Image.open(BytesIO(BlackTrapezoidImg)).convert("RGBA")
         best_text_trapezoid_draw = ImageDraw.Draw(best_text_trapezoid)
         # 写入text
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             best_text_trapezoid_draw,
             text,
             (72, 22),
@@ -1034,7 +1050,7 @@ class PlayerStatPic:
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid)
-        output_img = ImageUtils.paste_center(output_img, background_img)
+        output_img = PilImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
         avatar_template = await self.avatar_template_handle()
@@ -1099,7 +1115,7 @@ class PlayerStatPic:
         # 水印和时间
         output_img_draw = ImageDraw.Draw(output_img)
         # 居中
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             output_img_draw,
             "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (StatImageWidth // 2, StatImageHeight - 30),
@@ -1251,7 +1267,7 @@ class PlayerWeaponPic:
         if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
             return avatar_path.read_bytes()
         # 尝试下载头像
-        avatar = await ImageUtils.read_img_by_url(url)
+        avatar = await PilImageUtils.read_img_by_url(url)
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
@@ -1277,12 +1293,14 @@ class PlayerWeaponPic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg
         avatar_img = Image.open(BytesIO(avatar_img_data))
         # 裁剪为圆形
-        avatar_img = ImageUtils.crop_circle(avatar_img, 79)
+        avatar_img = PilImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
         if not self.server_playing_info["result"][self.player_pid]:
             avatar_template = Image.open(BytesIO(AvatarOfflineImg)).convert("RGBA")
@@ -1343,19 +1361,27 @@ class PlayerWeaponPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if player_background_path:
-            background = player_background_path.open("rb").read()
-        elif background_path.exists():
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        if not player_background_path:
+            if background_path.exists():
+                background = random.choice(list(background_path.iterdir())).open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            background = player_background_path.open("rb").read()
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # 将background_img_top粘贴到background_img上
+        background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
@@ -1410,7 +1436,7 @@ class PlayerWeaponPic:
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
                     else:
-                        weapon_img = await ImageUtils.read_img_by_url(skin_url)
+                        weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
@@ -1418,7 +1444,7 @@ class PlayerWeaponPic:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
             pic_url = weapon["imageUrl"].replace("[BB_PREFIX]", BB_PREFIX)
-            weapon_img = await ImageUtils.read_img_by_url(pic_url)
+            weapon_img = await PilImageUtils.read_img_by_url(pic_url)
             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
         # 武器的长宽比1024/256 = 4,等比缩放为384*96
         weapon_img = weapon_img.resize((384, 96), Image.LANCZOS)
@@ -1531,7 +1557,7 @@ class PlayerWeaponPic:
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid, image_width, image_height)
-        output_img = ImageUtils.paste_center(output_img, background_img)
+        output_img = PilImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
         avatar_template = await self.avatar_template_handle()
@@ -1565,7 +1591,7 @@ class PlayerWeaponPic:
         # 水印和时间
         output_img_draw = ImageDraw.Draw(output_img)
         # 居中
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             output_img_draw,
             "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (image_width // 2, image_height - 20),
@@ -1704,7 +1730,7 @@ class PlayerVehiclePic:
         if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
             return avatar_path.read_bytes()
         # 尝试下载头像
-        avatar = await ImageUtils.read_img_by_url(url)
+        avatar = await PilImageUtils.read_img_by_url(url)
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
@@ -1730,12 +1756,14 @@ class PlayerVehiclePic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg
         avatar_img = Image.open(BytesIO(avatar_img_data))
         # 裁剪为圆形
-        avatar_img = ImageUtils.crop_circle(avatar_img, 79)
+        avatar_img = PilImageUtils.crop_circle(avatar_img, 79)
         # 根据是否在线选择头像框
         if not self.server_playing_info["result"][self.player_pid]:
             avatar_template = Image.open(BytesIO(AvatarOfflineImg)).convert("RGBA")
@@ -1803,13 +1831,20 @@ class PlayerVehiclePic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-            background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-            # 加一点高斯模糊
-            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        else:  # 如果有背景图，就用原图，且不放大
-            # 保留原图全部内容
-            background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
+        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        #     # 加一点高斯模糊
+        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # else:  # 如果有背景图，就用原图，且不放大
+        #     # 保留原图全部内容
+        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
+
+        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+        # 将background_img_top粘贴到background_img上
+        background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:
@@ -1851,7 +1886,7 @@ class PlayerVehiclePic:
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
                     else:
-                        vehicle_img = await ImageUtils.read_img_by_url(skin_url)
+                        vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
@@ -1859,7 +1894,7 @@ class PlayerVehiclePic:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
             pic_url = vehicle["imageUrl"].replace("[BB_PREFIX]", BB_PREFIX)
-            vehicle_img = await ImageUtils.read_img_by_url(pic_url)
+            vehicle_img = await PilImageUtils.read_img_by_url(pic_url)
             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
         # 载具的长宽比1024/256 = 4,等比缩放为384*96
         vehicle_img = vehicle_img.resize((384, 96), Image.LANCZOS)
@@ -1960,7 +1995,7 @@ class PlayerVehiclePic:
 
         # 粘贴背景
         background_img = await self.get_background(self.player_pid, image_width, image_height)
-        output_img = ImageUtils.paste_center(output_img, background_img)
+        output_img = PilImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
         avatar_template = await self.avatar_template_handle()
@@ -1994,7 +2029,7 @@ class PlayerVehiclePic:
         # 水印和时间
         output_img_draw = ImageDraw.Draw(output_img)
         # 居中
-        ImageUtils.draw_centered_text(
+        PilImageUtils.draw_centered_text(
             output_img_draw,
             "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (image_width // 2, image_height - 20),

@@ -24,6 +24,7 @@ from graia.ariadne.message.parser.twilight import (
 from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
+from graia.broadcast.interrupt import InterruptControl
 from graia.saya import Channel, Saya
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
@@ -47,6 +48,7 @@ from utils.bf1.map_team_info import MapData
 from utils.parse_messagechain import get_targets
 from utils.string import generate_random_str
 from utils.timeutils import DateTimeUtils
+from utils.waiter import ConfirmWaiter
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
@@ -58,6 +60,7 @@ channel = Channel.current()
 #channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
+inc = InterruptControl(saya.broadcast)
 
 #  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,
 #    群组权限分为为拥有者和管理者,表1:群组表,表2:权限表                              [√]
@@ -1021,13 +1024,17 @@ async def check_server_by_index(
         + "=" * 20
     )
     if rspInfo := server_info.get("rspInfo"):
+        owner_info_str = ""
+        if owner_info := rspInfo.get("owner"):
+            owner_name = owner_info.get("displayName")
+            owner_pid = owner_info.get("personaId")
+            owner_info_str = f"服主名: {owner_name}\n服主Pid: {owner_pid}\n"
         result.append(
             f"ServerId:{rspInfo.get('server').get('serverId')}\n"
             f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
             f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
             f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
-            f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
-            f"Pid: {rspInfo.get('owner').get('personaId')}\n"
+            f"{owner_info_str}"
             f"管理数量: {len(rspInfo.get('adminList'))}/50\n"
             f"VIP数量: {len(rspInfo.get('vipList'))}/50\n"
             f"Ban数量: {len(rspInfo.get('bannedList'))}/200\n"
@@ -2197,6 +2204,149 @@ async def kick(
         f"执行出错!{result}"
     ), quote=source)
 
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Permission.group_require(channel.metadata.level),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.user_require(Permission.User, if_noticed=True),
+    QuoteReply.require_not()
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-清服", "-炸服").space(SpacePolicy.PRESERVE),  # 根据服务器序号获取玩家列表，根据玩家列表踢出全部玩家
+            ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "server_rank",
+            WildcardMatch(optional=True) @ "reason",
+        ]
+    )
+)
+async def kick_all(
+        app: Ariadne, sender: Member, group: Group, source: Source,
+        bf_group_name: RegexResult, server_rank: RegexResult, reason: RegexResult
+):
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+    if not server_info:
+        return await app.send_message(group, MessageChain(
+            f"群组[{bf_group_name}]未绑定服务器{server_rank}"
+        ), quote=source)
+    elif isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(server_info), quote=source)
+    server_id = server_info["serverId"]
+    server_gameid = server_info["gameId"]
+    server_guid = server_info["guid"]
+
+    # 原因检测
+    if (not reason.matched) or (reason.result.display == ""):
+        return await app.send_message(group, MessageChain(f"清服请输入踢出原因哦~"), quote=source)
+    else:
+        reason = reason.result.display.replace("ADMINPRIORITY", "违反规则")
+    reason = zhconv.convert(reason, 'zh-tw')
+    if ("空間" or "寬帶" or "帶寬" or "網絡" or "錯誤代碼" or "位置") in reason:
+        await app.send_message(group, MessageChain(
+            "操作失败:踢出原因包含违禁词"
+        ), quote=source)
+        return False
+    # 字数检测
+    if 30 < len(reason.encode("utf-8")):
+        return await app.send_message(group, MessageChain(
+            "原因字数过长(汉字10个以内)"
+        ), quote=source)
+
+    # 获取服管账号实例
+    if not server_info["account"]:
+        return await app.send_message(group, MessageChain(
+            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+        ), quote=source)
+    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+    # 获取玩家列表
+    playerlist_data = await BF1BlazeManager.get_player_list(game_ids=server_gameid)
+    if playerlist_data is None:
+        return await app.send_message(group, MessageChain(
+            "Blaze后端查询出错!"
+        ), quote=source)
+    elif isinstance(playerlist_data, str):
+        return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
+    playerlist_data: dict = playerlist_data[int(server_gameid)]
+    if not playerlist_data["players"]:
+        return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
+
+    # 并发踢出
+    pid_list = []
+    pid_name_dict = {}
+    for player in playerlist_data["players"]:
+        pid_list.append(player["pid"])
+        pid_name_dict[player["pid"]] = player["display_name"]
+    tasks = [
+        account_instance.kickPlayer(
+            gameId=server_gameid,
+            personaId=pid,
+            reason=reason
+        ) for pid in pid_list
+    ]
+    # 需要确认
+    try:
+        await app.send_message(group, MessageChain(f"预计踢出{len(tasks)}位玩家,确认执行吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
+        if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
+            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+        await app.send_message(group, MessageChain(f"执行ing"), quote=source)
+    except asyncio.TimeoutError:
+        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
+
+    try:
+        results = await asyncio.gather(*tasks)
+    except Exception as e:
+        logger.error(f"清服踢出时出错!{e}")
+        return await app.send_message(group, MessageChain(f"执行出错!"), quote=source)
+    success_count = 0
+    fail_count = 0
+    for i, result in enumerate(results):
+        if isinstance(result, dict):
+            await BF1Log.record(
+                operator_qq=sender.id,
+                serverId=server_id,
+                persistedGameId=server_guid,
+                gameId=server_gameid,
+                pid=pid_list[i],
+                display_name=pid_name_dict.get(pid_list[i]),
+                action="kick",
+                info=reason,
+            )
+            success_count += 1
+        else:
+            fail_count += 1
+
+    if success_count:
+        msg = f"踢出成功!成功{success_count}个" + (f",失败{fail_count}个" if fail_count else "") + f"\n踢出理由:{reason}"
+    else:
+        msg = f"踢出失败!失败{fail_count}个"
+    return await app.send_message(group, MessageChain(msg), quote=source)
 
 sk_twilight = Twilight(
     [
@@ -3862,9 +4012,8 @@ async def move_player(
             "奥斯曼帝国": ["奥", "奥斯曼", "奥斯曼帝国", "土耳其"],  # 现在的土耳其
             "意大利王国": ["意", "意大利", "意大利王国", "意呆利"],
             "大英帝国": ["英", "大英", "大英帝国", "英国", "英军"],
-            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军",
-                               "英"],
-            "美国": ["美", "美国", "美军", "美", "US", "USA"],
+            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军", "英"],
+            "美国": ["美", "美国", "美军", "美", "US", "USA", "美利坚"],
             "法国": ["法", "法国", "法军", "法", "FR", "FRA"],
             "俄罗斯帝国": ["俄", "俄罗斯", "俄罗斯帝国", "俄罗斯", "俄军", "白军", "白"],
             "红军": ["红", "红军"],
@@ -4111,9 +4260,13 @@ async def change_map(
         return await app.send_message(group, MessageChain(
             f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
         ), quote=source)
-    await app.send_message(group, MessageChain(
-        f"执行ing"
-    ), quote=source)
+    try:
+        await app.send_message(group, MessageChain(f"确认执行换图吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
+        if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
+            return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
+        await app.send_message(group, MessageChain(f"执行ing"), quote=source)
+    except asyncio.TimeoutError:
+        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
 
     account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
     result = await account_instance.chooseLevel(persistedGameId=server_guid, levelIndex=map_index)
@@ -5567,9 +5720,11 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
             ArgumentMatch("-q", "-qq", optional=True, type=int) @ "operator_qq",
             # 被操作人
             ArgumentMatch("-p", "-pid", optional=True, type=int) @ "pid",
-            ArgumentMatch("-n", "-name", optional=True) @ "display_name",
+            ArgumentMatch("-n", "-name", optional=True, type=str) @ "display_name",
             # 时间
             ArgumentMatch("-t", "-time", optional=True) @ "action_time",
+            # 描述
+            ArgumentMatch("-c", "-content", optional=True, type=str) @ "content",
             # 页数
             ArgumentMatch("-page", optional=True, type=int, default=1) @ "page",
         ]
@@ -5578,9 +5733,10 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
 async def bf1_log(
         app: Ariadne, group: Group, sender: Member, source: Source,
         bf_group_name: RegexResult, server_rank: RegexResult,
-        action: RegexResult, operator_qq: RegexResult,
-        pid: RegexResult, display_name: RegexResult,
-        action_time: RegexResult, page: RegexResult
+        action: RegexResult, operator_qq: ArgResult,
+        pid: ArgResult, display_name: ArgResult,
+        content: ArgResult,
+        action_time: ArgResult, page: ArgResult
 ):
     """
     前缀：-bflog/-服管日志
@@ -5592,6 +5748,7 @@ async def bf1_log(
     操作人qq：q/qq
     被操作人pid: p/pid
     名字：n/name
+    描述：content
     页数: page
 
     参数是由 减号'-' + 参数名(如你想查qq就是q/qq) + 可选等号(=) +参数(qq就是对应qq)
@@ -5704,8 +5861,14 @@ async def bf1_log(
         log_list_temp = []
         for i in log_list:
             if i["display_name"]:
-                if display_name.result.display.upper() in i["display_name"].upper():
+                if display_name.result.upper() in i["display_name"].upper():
                     log_list_temp.append(i)
+        log_list = log_list_temp
+    if content.matched:
+        log_list_temp = []
+        for i in log_list:
+            if (content.result.upper() in i["info"].upper()) or i["info"].upper() in content.result.upper():
+                log_list_temp.append(i)
         log_list = log_list_temp
     if not log_list:
         return await app.send_message(

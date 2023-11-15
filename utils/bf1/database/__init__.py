@@ -673,7 +673,7 @@ class bf1_db:
             all_records = await orm.fetch_all(
                 select(
                     Bf1ServerBan.serverId, Bf1ServerBan.personaId, Bf1ServerBan.displayName
-                ).where(Bf1ServerBan.serverId.in_(ban_dict.keys()))
+                )
             )
             all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
             now_records = {
@@ -839,7 +839,7 @@ class bf1_db:
                     Bf1ServerAdmin.serverId,
                     Bf1ServerAdmin.personaId,
                     Bf1ServerAdmin.displayName,
-                ).where(Bf1ServerAdmin.serverId.in_(admin_dict.keys()))
+                )
             )
             all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
             now_records = {
@@ -1005,7 +1005,7 @@ class bf1_db:
                     Bf1ServerOwner.serverId,
                     Bf1ServerOwner.personaId,
                     Bf1ServerOwner.displayName,
-                ).where(Bf1ServerOwner.serverId.in_(owner_dict.keys()))
+                )
             )
             all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
             now_records = {

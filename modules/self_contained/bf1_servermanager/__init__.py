@@ -1024,13 +1024,17 @@ async def check_server_by_index(
         + "=" * 20
     )
     if rspInfo := server_info.get("rspInfo"):
+        owner_info_str = ""
+        if owner_info := rspInfo.get("owner"):
+            owner_name = owner_info.get("displayName")
+            owner_pid = owner_info.get("personaId")
+            owner_info_str = f"服主名: {owner_name}\n服主Pid: {owner_pid}\n"
         result.append(
             f"ServerId:{rspInfo.get('server').get('serverId')}\n"
             f"创建时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['createdDate']) / 1000))}\n"
             f"到期时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['expirationDate']) / 1000))}\n"
             f"更新时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(rspInfo['server']['updatedDate']) / 1000))}\n"
-            f"服务器拥有者: {rspInfo.get('owner').get('displayName')}\n"
-            f"Pid: {rspInfo.get('owner').get('personaId')}\n"
+            f"{owner_info_str}"
             f"管理数量: {len(rspInfo.get('adminList'))}/50\n"
             f"VIP数量: {len(rspInfo.get('vipList'))}/50\n"
             f"Ban数量: {len(rspInfo.get('bannedList'))}/200\n"

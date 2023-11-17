@@ -850,7 +850,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
                     logger.success(f"更新群组{bfgroups_name}[{index}]服GameId为{gameId_cache}")
 
     # 并发查找
-    tasks = [(await BF1DA.get_api_instance()).getFullServerDetails(gameid) for gameid in server_list if gameid]
+    tasks = [(await BF1DA.get_api_instance()).getFullServerDetails(gameId) for gameId in server_list if gameId]
     tasks = asyncio.gather(*tasks)
     try:
         tasks = await tasks

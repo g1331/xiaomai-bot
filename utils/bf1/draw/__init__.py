@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import datetime
 import io
 import json
@@ -19,12 +18,11 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
 from zhconv import zhconv
 
-from utils.bf1.bf_utils import download_skin, gt_get_player_id_by_name
+from utils.bf1.bf_utils import download_skin
 from utils.bf1.data_handle import VehicleData, WeaponData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw.choose_bg_pic import bg_pic
 from utils.bf1.map_team_info import MapData
-from utils.text2img import template2img
 
 BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
 # 整图大小
@@ -145,15 +143,24 @@ class PilImageUtils:
             draw.text((x, y), line, font=font, fill=fill)
 
     @staticmethod
-    def crop_circle(img: Image, radius: int) -> Image:
+    def crop_circle(image_input: Union[Image.Image, bytes], radius: int) -> Image:
         """
-        裁剪为圆形
-        :param img: PIL.Image 对象
+        将传入的图片，根据指定的半径裁剪为圆形。
+        :param image_input: PIL.Image 对象
         :param radius: 圆的半径
         :return: PIL.Image 对象
         """
+
+        # 检查输入类型并加载图片
+        if isinstance(image_input, bytes):
+            image_input = Image.open(BytesIO(image_input))
+        elif isinstance(image_input, Image.Image):
+            image_input = image_input
+        else:
+            raise TypeError("image_input must be a PIL.Image.Image object or bytes")
+
         # 将图片调整为2*radius大小
-        img = img.resize((2 * radius, 2 * radius), Image.LANCZOS)
+        image_input = image_input.resize((2 * radius, 2 * radius), Image.LANCZOS)
 
         # 创建一个遮罩用于裁剪
         mask = Image.new('L', (2 * radius, 2 * radius), 0)
@@ -162,8 +169,7 @@ class PilImageUtils:
 
         # 应用遮罩裁剪图片
         result = Image.new('RGBA', (2 * radius, 2 * radius))
-        result.paste(img, (0, 0), mask)
-        result.save("test.png")
+        result.paste(image_input, (0, 0), mask)
         return result
 
     @staticmethod
@@ -175,7 +181,7 @@ class PilImageUtils:
         """
         将图片调整为指定宽高，并且居中裁剪。
 
-        此函数接受图片对象或图片的二进制数据，先对图片进行缩放，确保图片的宽度或高度与目标匹配，
+        此函数接受图片对象或图片的二进制数据，先对图片进行缩放，确保图片缩放后的宽度和高度包含目标尺寸，
         然后从缩放后的图片中心裁剪出目标尺寸的图片。
 
         参数:
@@ -237,7 +243,7 @@ class PilImageUtils:
             target_height: int
     ) -> Image:
         """
-        根据提供的目标尺寸缩放图像。如果原图的宽度或高度比例大于目标尺寸，按较小的比例缩放图像。
+        根据提供的目标尺寸缩放图像。会将图形最长边缩放至目标尺寸，另一边按比例缩放，保证图像内容全部被包含。
 
         :param image_input: PIL.Image.Image 对象或图片的二进制数据。
         :param target_width: 目标宽度。
@@ -272,7 +278,10 @@ class PilImageUtils:
         return scaled_image
 
     @staticmethod
-    def paste_center(background_img: Image.Image, overlay_img: Image.Image) -> Image.Image:
+    def paste_center(
+            background_img: Union[Image.Image, bytes],
+            overlay_img: Union[Image.Image, bytes]
+    ) -> Image.Image:
         """
         将一个图像居中粘贴到另一个图像上。
 
@@ -280,6 +289,21 @@ class PilImageUtils:
         :param overlay_img: 覆盖图像，将被居中粘贴到背景上。
         :return: 合成后的图像。
         """
+        # 检查输入类型并加载图片
+        if isinstance(background_img, bytes):
+            background_img = Image.open(BytesIO(background_img))
+        elif isinstance(background_img, Image.Image):
+            background_img = background_img
+        else:
+            raise TypeError("background_img must be a PIL.Image.Image object or bytes")
+
+        if isinstance(overlay_img, bytes):
+            overlay_img = Image.open(BytesIO(overlay_img))
+        elif isinstance(overlay_img, Image.Image):
+            overlay_img = overlay_img
+        else:
+            raise TypeError("overlay_img must be a PIL.Image.Image object or bytes")
+
         # 背景图像的尺寸
         bg_width, bg_height = background_img.size
 
@@ -308,10 +332,10 @@ class PilImageUtils:
                         img = await resp.read()
                         return img
                     else:
-                        logger.warning(f"下载图片失败，url: {url}")
+                        logger.warning(f"读取图片失败，url: {url}")
                         return None
         except TimeoutError:
-            logger.warning(f"下载图片失败，url: {url}")
+            logger.warning(f"读取图片失败，url: {url}")
             return None
 
 
@@ -433,7 +457,7 @@ class PlayerStatPic:
         # 如果头像文件存在且最后修改时间距现在不足一天，则直接读取
         if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
             return avatar_path.read_bytes()
-        # 尝试下载头像
+        # 读取头像
         avatar = await PilImageUtils.read_img_by_url(url)
         if avatar:
             avatar_path.write_bytes(avatar)
@@ -854,11 +878,13 @@ class PlayerStatPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
@@ -891,7 +917,9 @@ class PlayerStatPic:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         weapon_template_draw.text(
@@ -970,11 +998,13 @@ class PlayerStatPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
@@ -1007,7 +1037,9 @@ class PlayerStatPic:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         vehicle_template_draw.text(
@@ -1376,20 +1408,18 @@ class PlayerWeaponPic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        #     # 加一点高斯模糊
-        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        # else:  # 如果有背景图，就用原图，且不放大
-        #     # 保留原图全部内容
-        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
-
-        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
-        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
-        # 将background_img_top粘贴到background_img上
-        background_img = PilImageUtils.paste_center(background_img, background_img_top)
+        # 默认背景，直接放大填充
+        if not player_background_path:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            # 加一点高斯模糊
+            # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        else:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            # 将background_img_top粘贴到background_img上
+            background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
@@ -1443,11 +1473,13 @@ class PlayerWeaponPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
@@ -1480,7 +1512,9 @@ class PlayerWeaponPic:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         weapon_template_draw.text(
@@ -1839,20 +1873,18 @@ class PlayerVehiclePic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        #     # 加一点高斯模糊
-        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        # else:  # 如果有背景图，就用原图，且不放大
-        #     # 保留原图全部内容
-        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
-
-        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
-        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
-        # 将background_img_top粘贴到background_img上
-        background_img = PilImageUtils.paste_center(background_img, background_img_top)
+        # 默认背景，直接放大填充
+        if not player_background_path:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            # 加一点高斯模糊
+            # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        else:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            # 将background_img_top粘贴到background_img上
+            background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:
@@ -1893,11 +1925,13 @@ class PlayerVehiclePic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
@@ -1930,7 +1964,9 @@ class PlayerVehiclePic:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         vehicle_template_draw.text(

@@ -462,6 +462,8 @@ class PlayerStatPic:
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
@@ -1311,6 +1313,8 @@ class PlayerWeaponPic:
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
@@ -1776,6 +1780,8 @@ class PlayerVehiclePic:
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 

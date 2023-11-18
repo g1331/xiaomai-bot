@@ -2048,13 +2048,33 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     }
 
     # 文字版本：
+    # 服务器总数(官/私): xxx (xxx/xxx)                 服务器数量 = 官服数量 + 私服数量
     # 总人数(官/私): xxx (xxx/xxx)                 总人数 = 游玩人数 + 排队人数 + 观众人数
-    # 游玩人数(官/私/亚/欧): xxx (xxx/xxx/xxx/xxx)
-    # 排队人数(官/私/亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 游玩人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 排队人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
     # 观众人数(官/私): xxx (xxx/xxx)
     # 热门地图: xxx,xxx,xxx      (只显示前三个，地图名：数量)
     # 征服: xx   ,行动: xx       (所有模式的人数)
     # 时间: xx.xx.xx xx:xx:xx
+    # 示例:
+    # 服务器总数(官/私):
+    # 总:100 (50/50)
+    # 总人数(官/私):
+    # 总:1000 (500/500)
+    # 游玩人数(官/私|亚/欧):
+    # 总:900, 100/800, 400/200
+    # 排队人数(官/私|亚/欧):
+    # 总:60, 10/50, 15,23
+    # 观众人数(官/私):
+    # 总:40, 10/30
+    # ==========================
+    # 热门地图:
+    # xxx:100, xxx:90, xxx:80
+    # ==========================
+    # 游玩模式:
+    # 征服: 100, 行动: 90
+    # ==========================
+    # 更新时间: 2021-08-04 12:00:00
 
     # 总人数
     total_players = 0
@@ -2101,17 +2121,35 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     # if img.matched:
     #     img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
     #     return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
+    # 用一个变量存 =*15 用于发送
+    equals = "=" * 15
     send = [
-        f"总人数(官/私): {total_players + total_queues + total_spectators} "
+        f"服务器总数(官/私):\n"
+        f"总:{len(server_list)} ({len([server for server in server_list if server['official']])}/"
+        f"{len([server for server in server_list if not server['official']])})\n"
+        f"总人数(官/私):\n"
+        f"总:{total_players + total_queues + total_spectators} "
         f"({official_players + official_queues + official_spectators}/"
-        f"{private_players + private_queues + private_spectators})\n",
-        f"游玩人数(官/私/亚/欧): {official_players + private_players} "
-        f"({official_players}/{private_players}/{asia_players}/{eu_players})\n",
-        f"排队人数(官/私/亚/欧): {official_queues + private_queues} "
-        f"({official_queues}/{private_queues}/{asia_queues}/{eu_queues})\n",
-        f"观众人数(官/私): {official_spectators + private_spectators} "
-        f"({official_spectators}/{private_spectators})",
+        f"{private_players + private_queues + private_spectators})\n"
+        f"游玩人数(官/私|亚/欧):\n"
+        f"总:{total_players} ({official_players}/{private_players}|{asia_players}/{eu_players})\n"
+        f"排队人数(官/私|亚/欧):\n"
+        f"总:{total_queues} ({official_queues}/{private_queues}|{asia_queues}/{eu_queues})\n"
+        f"观众人数(官/私):\n"
+        f"总:{total_spectators} ({official_spectators}/{private_spectators})\n"
+        f"{equals}\n"
     ]
+    # 热门地图
+    map_list = {}
+    for server in server_list:
+        if server["mapNamePretty"] not in map_list:
+            map_list[server["mapNamePretty"]] = 0
+        map_list[server["mapNamePretty"]] += 1
+    map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
+    map_list = [f"{item[0]}:{item[1]}" for item in map_list]
+    map_list = map_list[:3]
+    map_list = ", ".join(map_list)
+    send.append(f"前三热门地图:\n{map_list}\n{equals}\n")
     # 模式 每两个换一行
     mode_list = {}
     for server in server_list:
@@ -2123,19 +2161,10 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     mode_list = [mode_list[i:i + 2] for i in range(0, len(mode_list), 2)]
     mode_list = [" ".join(item) for item in mode_list]
     mode_list = "\n".join(mode_list)
-    send.append(f"游玩模式:\n{mode_list}")
-    # 热门地图
-    map_list = {}
-    for server in server_list:
-        if server["mapNamePretty"] not in map_list:
-            map_list[server["mapNamePretty"]] = 0
-        map_list[server["mapNamePretty"]] += 1
-    map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
-    map_list = [f"{item[0]}:{item[1]}" for item in map_list[:3]]
-    send.append(f"热门地图:\n{','.join(map_list)}")
-    # 时间
-    send.append(f"更新时间:{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    send = "\n".join(send)
+    send.append(f"游玩模式:\n{mode_list}\n{equals}\n")
+    # 更新时间
+    send.append(f"更新时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    send = "".join(send)
     return await app.send_message(group, MessageChain(f"{send}"), quote=source)
 
 

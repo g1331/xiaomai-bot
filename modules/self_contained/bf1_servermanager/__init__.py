@@ -727,7 +727,7 @@ async def bfgroup_change_perm(
     action = action.result.display
     action_perm = await BF1GROUPPERM.get_permission(group_name, member.id)
     group_perm = await Permission.get_user_perm_byID(group.id, member.id)
-    if ((not action_perm) or (action_perm == 0)) and (group_perm < Permission.BotAdmin):
+    if ((not action_perm) or (action_perm <= 0)) and (group_perm < Permission.BotAdmin):
         return await app.send_message(group, MessageChain(
             "你没有权限执行此操作!"
         ), quote=source)

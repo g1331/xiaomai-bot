@@ -1940,6 +1940,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Twilight(
         [
             UnionMatch("-bf1", "-bfstat").space(SpacePolicy.PRESERVE),
+            ArgumentMatch("-i", "-img", action="store_true", optional=True) @ "img",
         ]
     )
 )
@@ -1950,7 +1951,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
 )
-async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
+async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img: ArgResult):
     # 弃用的gt_bf1_stat
     # result = await gt_bf1_stat()
     # if not isinstance(result, str):
@@ -1996,8 +1997,9 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(f"获取服务器信息失败!"), quote=source)
     logger.success(f"共获取{len(server_total_list)}个服务器,耗时{round(time.time() - time_start, 2)}秒")
     # 人数、排队数、观众、模式、地图、地区、国家
-    official_server_list = []
-    private_server_list = []
+    server_list = []
+    # official_server_list = []
+    # private_server_list = []
     for server in server_total_list:
         players = server["slots"]["Soldier"]["current"]
         queues = server["slots"]["Queue"]["current"]
@@ -2018,11 +2020,13 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
             "mapModePretty": mapModePretty,
             "region": region,
             "country": country,
+            "official": True if server["serverType"] == "OFFICIAL" else False,
         }
-        if server["serverType"] != "OFFICIAL":
-            private_server_list.append(temp)
-        else:
-            official_server_list.append(temp)
+        server_list.append(temp)
+        # if server["serverType"] != "OFFICIAL":
+        #     private_server_list.append(temp)
+        # else:
+        #     official_server_list.append(temp)
     region_dict = {
         "OC": "大洋洲",
         "Asia": "亚洲",
@@ -2042,80 +2046,97 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
         "AE": "阿联酋",
         "ZA": "南非",
     }
-    # 整理私服数据
-    private_server_players = 0
-    private_server_queues = 0
-    private_server_spectators = 0
-    private_server_modes = {}
-    private_server_maps = {}
-    private_server_regions = {}
-    private_server_countries = {}
-    for server in private_server_list:
-        private_server_players += server["players"]
-        private_server_queues += server["queues"]
-        private_server_spectators += server["spectators"]
-        if server["mapModePretty"] not in private_server_modes:
-            private_server_modes[server["mapModePretty"]] = 0
-        private_server_modes[server["mapModePretty"]] += 1
-        if server["mapNamePretty"] not in private_server_maps:
-            private_server_maps[server["mapNamePretty"]] = 0
-        private_server_maps[server["mapNamePretty"]] += 1
-        region_temp = region_dict.get(server["region"], server["region"])
-        if region_temp not in private_server_regions:
-            private_server_regions[region_temp] = 0
-        private_server_regions[region_temp] += 1
-        country_temp = country_dict.get(server["country"], server["country"])
-        if country_temp not in private_server_countries:
-            private_server_countries[country_temp] = 0
-        private_server_countries[country_temp] += 1
-    # 整理官服数据
-    official_server_players = 0
-    official_server_queues = 0
-    official_server_spectators = 0
-    official_server_modes = {}
-    official_server_maps = {}
-    official_server_regions = {}
-    official_server_countries = {}
-    for server in official_server_list:
-        official_server_players += server["players"]
-        official_server_queues += server["queues"]
-        official_server_spectators += server["spectators"]
-        if server["mapModePretty"] not in official_server_modes:
-            official_server_modes[server["mapModePretty"]] = 0
-        official_server_modes[server["mapModePretty"]] += 1
-        if server["mapNamePretty"] not in official_server_maps:
-            official_server_maps[server["mapNamePretty"]] = 0
-        official_server_maps[server["mapNamePretty"]] += 1
-        region_temp = region_dict.get(server["region"], server["region"])
-        if region_temp not in official_server_regions:
-            official_server_regions[region_temp] = 0
-        official_server_regions[region_temp] += 1
-        country_temp = country_dict.get(server["country"], server["country"])
-        if country_temp == " ":
-            country_temp = "未知"
-        if country_temp not in official_server_countries:
-            official_server_countries[country_temp] = 0
-        official_server_countries[country_temp] += 1
-    private_server_data = {
-        "regions": private_server_regions,
-        "countries": private_server_countries,
-        "modes": private_server_modes,
-        "maps": private_server_maps,
-        "players": private_server_players,
-        "queues": private_server_queues,
-        "spectators": private_server_spectators,
-    }
-    official_server_data = {
-        "regions": official_server_regions,
-        "countries": official_server_countries,
-        "modes": official_server_modes,
-        "maps": official_server_maps,
-        "players": official_server_players,
-        "queues": official_server_queues,
-        "spectators": official_server_spectators,
-    }
-    img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
-    return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
+
+    # 文字版本：
+    # 总人数(官/私): xxx (xxx/xxx)                 总人数 = 游玩人数 + 排队人数 + 观众人数
+    # 游玩人数(官/私/亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 排队人数(官/私/亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 观众人数(官/私): xxx (xxx/xxx)
+    # 热门地图: xxx,xxx,xxx      (只显示前三个，地图名：数量)
+    # 征服: xx   ,行动: xx       (所有模式的人数)
+    # 时间: xx.xx.xx xx:xx:xx
+
+    # 总人数
+    total_players = 0
+    total_queues = 0
+    total_spectators = 0
+    # 官服人数
+    official_players = 0
+    official_queues = 0
+    official_spectators = 0
+    # 私服人数
+    private_players = 0
+    private_queues = 0
+    private_spectators = 0
+    # 亚服人数
+    asia_players = 0
+    asia_queues = 0
+    asia_spectators = 0
+    # 欧服人数
+    eu_players = 0
+    eu_queues = 0
+    eu_spectators = 0
+    # 整理数据
+    for server in server_list:
+        total_players += server["players"]
+        total_queues += server["queues"]
+        total_spectators += server["spectators"]
+        if server["official"]:
+            official_players += server["players"]
+            official_queues += server["queues"]
+            official_spectators += server["spectators"]
+        else:
+            private_players += server["players"]
+            private_queues += server["queues"]
+            private_spectators += server["spectators"]
+        if server["region"] == "Asia":
+            asia_players += server["players"]
+            asia_queues += server["queues"]
+            asia_spectators += server["spectators"]
+        elif server["region"] == "EU":
+            eu_players += server["players"]
+            eu_queues += server["queues"]
+            eu_spectators += server["spectators"]
+    # TODO: 可视化
+    # if img.matched:
+    #     img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
+    #     return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
+    send = [
+        f"总人数(官/私): {total_players + total_queues + total_spectators} "
+        f"({official_players + official_queues + official_spectators}/"
+        f"{private_players + private_queues + private_spectators})\n",
+        f"游玩人数(官/私/亚/欧): {official_players + private_players} "
+        f"({official_players}/{private_players}/{asia_players}/{eu_players})\n",
+        f"排队人数(官/私/亚/欧): {official_queues + private_queues} "
+        f"({official_queues}/{private_queues}/{asia_queues}/{eu_queues})\n",
+        f"观众人数(官/私): {official_spectators + private_spectators} "
+        f"({official_spectators}/{private_spectators})",
+    ]
+    # 模式 每两个换一行
+    mode_list = {}
+    for server in server_list:
+        if server["mapModePretty"] not in mode_list:
+            mode_list[server["mapModePretty"]] = 0
+        mode_list[server["mapModePretty"]] += 1
+    mode_list = sorted(mode_list.items(), key=lambda x: x[1], reverse=True)
+    mode_list = [f"{item[0]}:{item[1]}" for item in mode_list]
+    mode_list = [mode_list[i:i + 2] for i in range(0, len(mode_list), 2)]
+    mode_list = [" ".join(item) for item in mode_list]
+    mode_list = "\n".join(mode_list)
+    send.append(f"游玩模式:\n{mode_list}")
+    # 热门地图
+    map_list = {}
+    for server in server_list:
+        if server["mapNamePretty"] not in map_list:
+            map_list[server["mapNamePretty"]] = 0
+        map_list[server["mapNamePretty"]] += 1
+    map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
+    map_list = [f"{item[0]}:{item[1]}" for item in map_list[:3]]
+    send.append(f"热门地图:\n{','.join(map_list)}")
+    # 时间
+    send.append(f"更新时间:{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    send = "\n".join(send)
+    return await app.send_message(group, MessageChain(f"{send}"), quote=source)
 
 
 # 交换

@@ -13,7 +13,7 @@ from graia.ariadne.message.parser.twilight import (
     SpacePolicy,
     ElementMatch,
     FullMatch,
-    ElementResult, ArgumentMatch, MatchResult
+    ElementResult, ArgumentMatch, MatchResult, ParamMatch, RegexResult
 )
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
@@ -365,4 +365,57 @@ async def unmute_all(app: Ariadne, group: Group, sender: Member, source: Source)
         logger.error(e)
         return await app.send_message(group, MessageChain(
             f"处理出错啦!"
+        ), quote=source)
+
+
+# 指定BOT退群
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.user_require(Permission.BotAdmin, if_noticed=True),
+    Permission.group_require(channel.metadata.level, if_noticed=False),
+)
+@dispatch(
+    # 指令为: -quit group_id bot_id
+    Twilight([
+        FullMatch("-quit"),
+        ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "group_id",
+        ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "bot_id"
+    ])
+)
+async def quit_group(
+        app: Ariadne, group: Group, source: Source,
+        group_id: RegexResult, bot_id: RegexResult
+):
+    group_id = group_id.result.display
+    if not group_id.isdigit():
+        return await app.send_message(group, MessageChain(
+            f"群号必须为数字!"
+        ), quote=source)
+    else:
+        group_id = int(group_id)
+    bot_id = bot_id.result.display
+    if not bot_id.isdigit():
+        return await app.send_message(group, MessageChain(
+            f"BOT账号必须为数字!"
+        ), quote=source)
+    else:
+        bot_id = int(bot_id)
+    # 获取目标群和目标BOT
+    target_app, target_group = await account_controller.get_app_from_total_groups(group_id, bot_id=bot_id)
+    if not (target_app and target_group):
+        return await app.send_message(group, MessageChain(
+            f"没有找到目标群和BOT!"
+        ), quote=source)
+    try:
+        _ = await target_app.quit_group(target_group)
+        return await app.send_message(group, MessageChain(
+            f"BOT{target_app.account}已退出群{target_group.id}!"
+        ), quote=source)
+    except Exception as e:
+        logger.error(e)
+        return await app.send_message(group, MessageChain(
+            f"退出群失败!"
         ), quote=source)

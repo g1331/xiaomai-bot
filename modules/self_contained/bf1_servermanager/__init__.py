@@ -2068,6 +2068,7 @@ async def bfgroup_refresh(
         no_valid = await account_instance.check_session_expire()
         if no_valid:
             no_valid = await account_instance.login(account_instance.remid, account_instance.sid)
+        no_valid = await account_instance.check_session_expire()
         if no_valid:
             msg = f"群组{bf_group_name}服务器{server_rank}服管号登录失败"
         else:

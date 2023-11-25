@@ -47,7 +47,7 @@ from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
     BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
-    gt_get_player_id_by_pid, EACUtils
+    gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid
 )
 
 config = create(GlobalConfig)
@@ -336,19 +336,39 @@ async def info(
         )
     else:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
-        if not player_info:
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            else:
+                player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
+        if player_info is None:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
+        elif not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+
         pid = player_info["personas"]["persona"][0]["personaId"]
         uid = player_info["personas"]["persona"][0]["pidId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
@@ -395,17 +415,39 @@ async def player_stat_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -673,17 +715,39 @@ async def player_weapon_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -849,17 +913,39 @@ async def player_vehicle_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -995,17 +1081,39 @@ async def player_recent_info(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1083,17 +1191,39 @@ async def player_match_info(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1499,17 +1629,39 @@ async def tyc(
             )
     else:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1770,9 +1922,6 @@ async def report(
     }
     # noinspection PyBroadException
     try:
-        await app.send_message(group, MessageChain(
-            f"查询信息ing"
-        ), quote=source)
         async with httpx.AsyncClient() as client:
             response = await client.get(check_eacInfo_url, headers=header, timeout=10)
             response = response.json()
@@ -1828,7 +1977,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"请在30秒内发送举报的理由(请不要附带图片,否则将退出)"
+        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出)"
     ), quote=source)
     saying = None
 
@@ -1843,7 +1992,7 @@ async def report(
     try:
         operator, report_reason = await FunctionWaiter(
             waiter_report_reason, [GroupMessage], block_propagation=True
-        ).wait(timeout=30)
+        ).wait(timeout=60)
         # report_reason 要对html信息进行转义，防止别人恶意发送html信息,然后再转换为 <p>标签
         report_reason = report_reason.display
         report_reason = html.escape(report_reason)
@@ -1851,6 +2000,9 @@ async def report(
 
     except asyncio.exceptions.TimeoutError:
         return await app.send_message(group, MessageChain(f'操作超时,请重新举报!'), quote=source)
+    except Exception as e:
+        logger.error(f"获取举报理由出错:{e}")
+        return await app.send_message(group, MessageChain(f'获取举报理由出错,请重新举报!'), quote=source)
 
     saying: MessageChain = saying
     if saying.has(Image):
@@ -1861,11 +2013,7 @@ async def report(
     # 进行预审核
     pre_str = saying.display
     logger.debug(pre_str)
-    if len(pre_str) < 10:
-        return await app.send_message(group, MessageChain(
-            f"举报理由长度不符合要求,已退出举报!"
-        ), quote=source)
-    elif len(pre_str) < 500:
+    if len(pre_str) < 500:
         await app.send_message(group, MessageChain(f'处理ing'), quote=source)
         pre_check_result = await EACUtils.report_precheck(pre_str)
         if not pre_check_result.get("valid"):
@@ -1875,7 +2023,7 @@ async def report(
             ), quote=source)
 
     await app.send_message(group, MessageChain(
-        f"获取到举报理由:{saying.display}\n若需补充图片请在30秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"
+        f"获取到举报理由:{saying.display}\n若需补充图片请在60秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"
     ), quote=source)
 
     # 5.发送举报的图片,其他则退出
@@ -1907,9 +2055,12 @@ async def report(
         try:
             result, img = await FunctionWaiter(
                 waiter_report_pic, [GroupMessage], block_propagation=True
-            ).wait(timeout=30)
+            ).wait(timeout=60)
         except asyncio.exceptions.TimeoutError:
             return await app.send_message(group, MessageChain(f'操作超时,已自动退出!'), quote=source)
+        except Exception as e:
+            logger.error(f"获取举报图片出错:{e}")
+            return await app.send_message(group, MessageChain(f'获取举报图片出错,请重新举报!'), quote=source)
 
         if result:
             # 如果是图片则下载

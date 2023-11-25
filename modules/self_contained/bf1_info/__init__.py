@@ -1864,7 +1864,7 @@ async def report(
     if not pre_check_result.get("valid"):
         pre_check_reason = pre_check_result.get("reason")
         return await app.send_message(group, MessageChain(
-            f"举报理由未通过预审核,原因:{pre_check_reason},已退出举报!"
+            f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
         ), quote=source)
 
     await app.send_message(group, MessageChain(

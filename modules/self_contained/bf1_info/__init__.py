@@ -1915,7 +1915,8 @@ async def report(
             # 如果是图片则下载
             if img.display == '[图片]':
                 try:
-                    img_url = img[Image]
+                    img_url = img[Image][0]
+                    logger.debug(img_url)
                     img_url = img_url.url
                     headers = {
                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 '
@@ -2010,7 +2011,7 @@ async def report(
                                     "playerPid": player_pid,
                                 }
                             )
-                            with open(file_path, "r", encoding="utf-8") as file_write:
+                            with open(file_path, "w", encoding="utf-8") as file_write:
                                 json.dump(log_data, file_write, indent=4, ensure_ascii=False)
                     except Exception as e:
                         logger.error(f"日志出错:{e}")

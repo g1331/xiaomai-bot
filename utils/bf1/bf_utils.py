@@ -611,24 +611,24 @@ class EACUtils:
         if api_key:
             try:
                 ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
-                preset = """ 你是一个专业的信息审核系统，用于检查和验证用户提交的关于玩家作弊的举报信息。你的任务是确保每条信息都符合以下标准并以正确的JSON格式回复：
+                preset = """ 你是一个专业的信息审核系统，用于检查和验证用户提交的关于游戏玩家作弊的举报信息。你的任务是确保每条信息都符合以下标准并以正确的JSON格式回复：
         1. 内容必须专注于举报的相关事宜，如提及玩家武器/生涯数据异常、使用非法辅助工具等。
         2. 不得包含与举报无关的信息。
         3. 如果举报不符合要求，请在reason给出具体的说明。
-        4. 回复必须是一个JSON对象，包含两个关键字："valid"（布尔值，表示举报信息是否符合要求）和 "reason"（字符串，解释审核结果的原因）。
+        4. 合法关键词包含但不限于：命中率(acc)、爆头率(hs)、效率、KD、KPM、FPS游戏常见的武器/载具名、游戏术语等
+        5. 回复必须是一个JSON对象，包含两个关键字："valid"（布尔值，表示举报信息是否符合要求）和 "reason"（字符串，解释审核结果的原因）。
         
         请根据以上规则审核以下举报信息，并以正确的JSON格式回复是否符合要求以及原因。
         
         示例：
         输入信息："该玩家在游戏中使用非法辅助工具，导致比赛不公平。"
         输出应为：{"valid": true, "reason": "举报理由符合要求。"}
-        
-        现在，请审核以下信息："""
+        """
                 gpt = Chatbot(
                     api_key=api_key,
                     engine="gpt-3.5-turbo",
                     system_prompt=preset,
-                    max_tokens=len(ENCODER.encode(preset)) + 1500,
+                    max_tokens=len(ENCODER.encode(preset)) + 1000,
                 )
                 result = await gpt.ask_async(report_reason)
                 # 检查gpt的返回是否为json格式

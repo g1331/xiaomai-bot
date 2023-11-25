@@ -1859,13 +1859,20 @@ async def report(
         ), quote=source)
 
     # 进行预审核
-    await app.send_message(group, MessageChain(f'处理ing'), quote=source)
-    pre_check_result = await EACUtils.report_precheck(saying.display)
-    if not pre_check_result.get("valid"):
-        pre_check_reason = pre_check_result.get("reason")
+    pre_str = saying.display
+    logger.debug(pre_str)
+    if len(pre_str) < 10:
         return await app.send_message(group, MessageChain(
-            f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
+            f"举报理由长度不符合要求,已退出举报!"
         ), quote=source)
+    elif len(pre_str) < 500:
+        await app.send_message(group, MessageChain(f'处理ing'), quote=source)
+        pre_check_result = await EACUtils.report_precheck(pre_str)
+        if not pre_check_result.get("valid"):
+            pre_check_reason = pre_check_result.get("reason")
+            return await app.send_message(group, MessageChain(
+                f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
+            ), quote=source)
 
     await app.send_message(group, MessageChain(
         f"获取到举报理由:{saying.display}\n若需补充图片请在30秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"

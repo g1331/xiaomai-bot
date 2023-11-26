@@ -2335,6 +2335,8 @@ class PlayerListPic:
             await tasks
             for i in range(len(playerlist_data["teams"][0])):
                 if scrape_index_tasks_t1[i].result():
+                    if not isinstance(scrape_index_tasks_t1[i].result(), dict):
+                        continue
                     player_stat_data = scrape_index_tasks_t1[i].result()["result"]
                     # 重新计算等级
                     time_seconds = player_stat_data.get('basicStats').get('timePlayed')
@@ -2364,6 +2366,8 @@ class PlayerListPic:
             await tasks
             for i in range(len(playerlist_data["teams"][1])):
                 if scrape_index_tasks_t2[i].result():
+                    if not isinstance(scrape_index_tasks_t2[i].result(), dict):
+                        continue
                     player_stat_data = scrape_index_tasks_t2[i].result()["result"]
                     # 重新计算等级
                     time_seconds = player_stat_data.get('basicStats').get('timePlayed')

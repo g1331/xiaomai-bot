@@ -2325,6 +2325,9 @@ class PlayerListPic:
             1: [item for item in playerlist_data["players"] if item["team"] == 1]
         }
 
+        # 战绩信息dict
+        stat_dict = {}
+
         # 获取玩家生涯战绩
         # 队伍1
         scrape_index_tasks_t1 = [
@@ -2354,6 +2357,7 @@ class PlayerListPic:
                             rank = _ - 1
                             break
                     playerlist_data["teams"][0][i]["rank"] = rank
+                    stat_dict[playerlist_data["teams"][0][i]["pid"]] = player_stat_data
         except asyncio.TimeoutError:
             pass
 
@@ -2385,6 +2389,7 @@ class PlayerListPic:
                             rank = _ - 1
                             break
                     playerlist_data["teams"][1][i]["rank"] = rank
+                    stat_dict[playerlist_data["teams"][0][i]["pid"]] = player_stat_data
         except asyncio.TimeoutError:
             pass
 
@@ -2522,9 +2527,11 @@ class PlayerListPic:
             # 语言
             draw.text((940, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
 
-            # KD KPM 时长
+            # 生涯数据
             try:
-                player_stat_data = scrape_index_tasks_t1[i].result()["result"]
+                player_stat_data = stat_dict[player_item["pid"]]
+                if not player_stat_data:
+                    continue
 
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (
@@ -2629,7 +2636,9 @@ class PlayerListPic:
             draw.text((1800, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
             # 生涯数据
             try:
-                player_stat_data = scrape_index_tasks_t2[i].result()["result"]
+                player_stat_data = stat_dict[player_item["pid"]]
+                if not player_stat_data:
+                    continue
 
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (

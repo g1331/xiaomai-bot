@@ -2590,9 +2590,6 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     # 用一个变量存 =*15 用于发送
     equals = "=" * 15
     send = [
-        f"服务器总数(官/私):\n"
-        f"{len(server_list)} ({len([server for server in server_list if server['official']])}/"
-        f"{len([server for server in server_list if not server['official']])})\n"
         f"总人数(官/私):\n"
         f"{total_players + total_queues + total_spectators} "
         f"({official_players + official_queues + official_spectators}/"
@@ -2604,17 +2601,26 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
         f"观众人数(官/私):\n"
         f"{total_spectators} ({official_spectators}/{private_spectators})\n"
         f"{equals}\n"
+        f"服务器总数(官/私):\n"
+        f"{len(server_list)} ({len([server for server in server_list if server['official']])}/"
+        f"{len([server for server in server_list if not server['official']])})\n"
+        f"{equals}\n"
     ]
     # 热门地图
     map_list = {}
     for server in server_list:
-        if server["mapNamePretty"] not in map_list:
-            map_list[server["mapNamePretty"]] = 0
-        map_list[server["mapNamePretty"]] += 1
+        # if server["mapNamePretty"] not in map_list:
+        #     map_list[server["mapNamePretty"]] = 0
+        # map_list[server["mapNamePretty"]] += 1
+        # 组成 模式-地图
+        temp = f"{server['mapModePretty']}-{server['mapNamePretty']}"
+        if temp not in map_list:
+            map_list[temp] = 0
+        map_list[temp] += 1
     map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
     map_list = [f"{item[0]}:{item[1]}" for item in map_list]
     map_list = map_list[:3]
-    map_list = ", ".join(map_list)
+    map_list = "\n".join(map_list)
     send.append(f"前三热门地图:\n{map_list}\n{equals}\n")
     # 模式 每两个换一行
     mode_list = {}

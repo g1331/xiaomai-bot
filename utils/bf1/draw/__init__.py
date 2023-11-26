@@ -2303,6 +2303,23 @@ class PlayerListPic:
         bind_counter = 0
         max_level_counter = 0
 
+        rank_list = [
+            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
+            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
+            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
+            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
+            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
+            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
+            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
+            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
+            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
+            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
+            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
+            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
+            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
+            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+        ]
+
         playerlist_data["teams"] = {
             0: [item for item in playerlist_data["players"] if item["team"] == 0],
             1: [item for item in playerlist_data["players"] if item["team"] == 1]
@@ -2413,18 +2430,19 @@ class PlayerListPic:
             # 序号
             draw.text((135, 156 + i * 23), f"{i + 1}", anchor="ra", fill='white', font=player_font)
 
-            # 等级框 30*15  等级 居中显示
-            draw.rectangle([155, 159 + i * 23, 185, 173.5 + i * 23],
-                           fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
-            RANK_counter1 += player_item['rank']
-            if player_item['rank'] == 150:
-                max_level_counter += 1
-            rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
-            leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
-            draw.text(leve_position_1, f"{player_item['rank']}",
-                      fill="white",
-                      font=rank_font)
+            if not scrape_index_tasks_t1[i].result():
+                # 等级框 30*15  等级 居中显示
+                draw.rectangle([155, 159 + i * 23, 185, 173.5 + i * 23],
+                               fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
+                RANK_counter1 += player_item['rank']
+                if player_item['rank'] == 150:
+                    max_level_counter += 1
+                rank_font_temp = ImageFont.truetype(font_path, 15)
+                ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
+                leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
+                draw.text(leve_position_1, f"{player_item['rank']}",
+                          fill="white",
+                          font=rank_font)
             # 战队 名字
             color_temp = 'white'
             if str(player_item["display_name"]).upper() in bind_pid_list:
@@ -2464,6 +2482,33 @@ class PlayerListPic:
             # KD KPM 时长
             try:
                 player_stat_data = scrape_index_tasks_t1[i].result()["result"]
+
+                # 重新计算等级
+                time_seconds = player_stat_data.get('basicStats').get('timePlayed')
+                spm = player_stat_data.get('basicStats').get('spm')
+                exp = spm * time_seconds / 60
+                rank = 0
+                for _ in range(len(rank_list)):
+                    if exp <= rank_list[1]:
+                        rank = 0
+                        break
+                    if exp >= rank_list[-1]:
+                        rank = 150
+                        break
+                    if exp <= rank_list[_]:
+                        rank = _ - 1
+                        break
+                # 等级框 30*15  等级 居中显示
+                draw.rectangle([155, 159 + i * 23, 185, 173.5 + i * 23],
+                               fill=max_level_color if rank == 150 else None, outline=None, width=1)
+                RANK_counter1 += rank
+                if rank == 150:
+                    max_level_counter += 1
+                rank_font_temp = ImageFont.truetype(font_path, 15)
+                ascent, descent = rank_font_temp.getsize(f"{rank}")
+                leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
+                draw.text(leve_position_1, f"{rank}", fill="white", font=rank_font)
+
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (
                         player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
@@ -2517,20 +2562,21 @@ class PlayerListPic:
             # 序号
             draw.text((995, 156 + i * 23), f"{int(i + 1 + server_info['serverInfo']['slots']['Soldier']['max'] / 2)}",
                       anchor="ra", fill='white', font=player_font)
-            # 等级框 30*15 等级居中显示
-            draw.rectangle([1015, 159 + i * 23, 1045, 173.5 + i * 23],
-                           fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
-            RANK_counter2 += player_item['rank']
-            if player_item['rank'] == 150:
-                max_level_counter += 1
-            rank_font_temp = ImageFont.truetype(font_path, 15)
-            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
-            leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
-            draw.text(
-                leve_position_2, f"{player_item['rank']}",
-                fill="white",
-                font=rank_font
-            )
+            if not scrape_index_tasks_t2[i].result():
+                # 等级框 30*15 等级居中显示
+                draw.rectangle([1015, 159 + i * 23, 1045, 173.5 + i * 23],
+                               fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
+                RANK_counter2 += player_item['rank']
+                if player_item['rank'] == 150:
+                    max_level_counter += 1
+                rank_font_temp = ImageFont.truetype(font_path, 15)
+                ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
+                leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
+                draw.text(
+                    leve_position_2, f"{player_item['rank']}",
+                    fill="white",
+                    font=rank_font
+                )
             # 战队 名字
             color_temp = 'white'
             if str(player_item["display_name"]).upper() in bind_pid_list:
@@ -2568,6 +2614,37 @@ class PlayerListPic:
             # 生涯数据
             try:
                 player_stat_data = scrape_index_tasks_t2[i].result()["result"]
+
+                # 重新计算等级
+                time_seconds = player_stat_data.get('basicStats').get('timePlayed')
+                spm = player_stat_data.get('basicStats').get('spm')
+                exp = spm * time_seconds / 60
+                rank = 0
+                for _ in range(len(rank_list)):
+                    if exp <= rank_list[1]:
+                        rank = 0
+                        break
+                    if exp >= rank_list[-1]:
+                        rank = 150
+                        break
+                    if exp <= rank_list[_]:
+                        rank = _ - 1
+                        break
+                # 等级框 30*15 等级居中显示
+                draw.rectangle([1015, 159 + i * 23, 1045, 173.5 + i * 23],
+                               fill=max_level_color if rank == 150 else None, outline=None, width=1)
+                RANK_counter2 += rank
+                if rank == 150:
+                    max_level_counter += 1
+                rank_font_temp = ImageFont.truetype(font_path, 15)
+                ascent, descent = rank_font_temp.getsize(f"{rank}")
+                leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
+                draw.text(
+                    leve_position_2, f"{rank}",
+                    fill="white",
+                    font=rank_font
+                )
+
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (
                         player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)

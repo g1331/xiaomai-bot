@@ -1486,7 +1486,7 @@ async def get_server_playerList_pic(
         if (await perm_judge(bf_group_name, waiter_group, waiter_member)) and waiter_group.id == group.id and (
                 event.quote and event.quote.id == bot_message.id):
             waiter_message = waiter_message.replace(At(app.account), "")
-            saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "")
+            saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "").strip()
             return saying
 
     try:

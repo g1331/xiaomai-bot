@@ -2389,7 +2389,7 @@ class PlayerListPic:
                             rank = _ - 1
                             break
                     playerlist_data["teams"][1][i]["rank"] = rank
-                    stat_dict[playerlist_data["teams"][0][i]["pid"]] = player_stat_data
+                    stat_dict[playerlist_data["teams"][1][i]["pid"]] = player_stat_data
         except asyncio.TimeoutError:
             pass
 

@@ -1269,7 +1269,6 @@ async def who_are_playing(
         ]
     )
 )
-@bf1_perm_check()
 async def get_server_playerList(
         app: Ariadne, group: Group, source: Source, sender: Member,
         bf_group_name: RegexResult, server_rank: RegexResult

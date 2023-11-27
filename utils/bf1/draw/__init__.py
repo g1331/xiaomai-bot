@@ -514,6 +514,8 @@ class PlayerStatPic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg

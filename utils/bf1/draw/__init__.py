@@ -1564,7 +1564,7 @@ class PlayerWeaponPic:
     async def draw(
             self,
             col: int = 2,
-            row: int = 4,
+            row: int = 6,
     ) -> Union[bytes, Path, None]:
         """绘制武器数据图片
         与生涯不同，武器只绘制头像框+武器数据，默认为两列四行
@@ -2006,7 +2006,7 @@ class PlayerVehiclePic:
     async def draw(
             self,
             col: int = 2,
-            row: int = 4,
+            row: int = 6,
     ) -> Union[bytes, Path, None]:
         """绘制载具数据图片
         与生涯不同，载具只绘制头像框+载具数据，默认为两列四行

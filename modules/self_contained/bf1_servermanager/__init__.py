@@ -40,10 +40,12 @@ from core.control import (
 from core.models import saya_model, response_model
 from utils.UI import *
 from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM, \
-    get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager
+    get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager, bfeac_checkBan, \
+    bfban_checkBan, gt_get_player_id_by_pid
+from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerListPic
+from utils.bf1.draw import PlayerListPic, PlayerStatPic, PlayerWeaponPic, PlayerVehiclePic
 from utils.bf1.map_team_info import MapData
 from utils.parse_messagechain import get_targets
 from utils.string import generate_random_str
@@ -61,6 +63,7 @@ channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(saya.broadcast)
+
 
 #  1.创建群组，增删改查，群组名为唯一标识，且不区分大小写，即若ABC存在,则abc无法创建,
 #    群组权限分为为拥有者和管理者,表1:群组表,表2:权限表                              [√]
@@ -1375,6 +1378,16 @@ async def get_server_playerList_pic(
         app: Ariadne, sender: Member, group: Group, source: Source,
         server_rank: MatchResult, bf_group_name: MatchResult
 ):
+    help_str = (
+        f"示例回复:\n"
+        f"踢出: -k 1 2 3 reason\n"
+        f"封禁: -b 3 4 5 reason\n"
+        f"换边: -m 1\n"
+        f"战绩: -s 1\n"
+        f"武器: -wp 2\n"
+        f"载具: -vh 3\n"
+        f"注: 查询战绩只能查一位玩家,所有回复指令只能执行一次,失败/执行完成后需要重新查询pl"
+    )
     # 服务器序号检查
     server_rank = server_rank.result.display
     if not server_rank.isdigit():
@@ -1478,7 +1491,7 @@ async def get_server_playerList_pic(
     logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     bot_message = await app.send_message(group, MessageChain([
         GraiaImage(data_bytes=pl_pic),
-        "\n回复'-k 序号 原因'可踢出玩家(120秒内有效)"
+        f"\n`回复`指令可执行操作(120秒内有效)\n{help_str}"
     ]), quote=source)
 
     # TODO 待重构的回复踢出
@@ -1496,113 +1509,541 @@ async def get_server_playerList_pic(
     if not result:
         return
 
-    kick_action = result.split(' ')
+    action = result.split(' ')
+    if len(action) == 1:
+        return await app.send_message(group, MessageChain(f"参数不足!{help_str}"), quote=source)
+    action = list(filter(lambda x: x != '', action))
+    logger.debug(f"玩家列表pic回复:{action}")
 
-    kick_action = list(filter(lambda x: x != '', kick_action))
-    if kick_action[0] != "-k":
-        return
-    ending = None
-    for i, item in enumerate(kick_action):
-        if i == 0:
-            continue
-        if item.isnumeric():
-            pass
+    # 执行踢出
+    if action[0] in ["k", "-k", "-kick", "-踢", "-踢出"]:
+        ending = None
+        for i, item in enumerate(action):
+            if i == 0:
+                continue
+            if item.isnumeric():
+                pass
+            else:
+                ending = i
+        if ending is not None:
+            index_list = action[1:ending]
+            reason = ''
+            for r in action[ending:]:
+                reason += r
         else:
-            ending = i
-    if ending is not None:
-        index_list = kick_action[1:ending]
-        reason = ''
-        for r in kick_action[ending:]:
-            reason += r
-    else:
-        index_list = kick_action[1:]
-        reason = "违反规则"
-    reason = reason.replace("ADMINPRIORITY", "违反规则")
-    # 获取服管帐号实例
-    if not server_info_temp["account"]:
-        return await app.send_message(group, MessageChain(
-            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
-        ), quote=source)
-    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info_temp["account"])
-    # 并发踢出
-    scrape_index_tasks = []
-    name_temp = []
-    for index in index_list:
-        index = int(index)
+            index_list = action[1:]
+            reason = "违反规则"
+        reason = reason.replace("ADMINPRIORITY", "违反规则")
+        # 获取服管帐号实例
+        if not server_info_temp["account"]:
+            return await app.send_message(group, MessageChain(
+                f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+            ), quote=source)
+        account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info_temp["account"])
+        # 并发踢出
+        scrape_index_tasks = []
+        name_temp = []
+        pid_list = []
+        for index in index_list:
+            original_index = index
+            index = int(index)
+            try:
+                if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                    index = index - 1
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.kickPlayer(gameId=server_gameid,
+                                                    personaId=playerlist_data["teams"][0][index]["pid"], reason=reason)
+                    ))
+                    pid_list.append(playerlist_data["teams"][0][index]["pid"])
+                    name_temp.append(playerlist_data["teams"][0][index]["display_name"])
+                else:
+                    index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.kickPlayer(gameId=server_gameid,
+                                                    personaId=playerlist_data["teams"][1][index]["pid"], reason=reason)
+                    ))
+                    pid_list.append(playerlist_data["teams"][1][index]["pid"])
+                    name_temp.append(playerlist_data["teams"][1][index]["display_name"])
+            except:
+                await app.send_message(group, MessageChain(
+                    f"无效序号:{original_index}"
+                ), quote=source)
+                return False
+        tasks = asyncio.gather(*scrape_index_tasks)
         try:
+            await tasks
+        except Exception as e:
+            await app.send_message(group, MessageChain(
+                f"执行中出现了一个错误!{e}"
+            ), quote=source)
+            return False
+        kick_result = []
+        suc = 0
+        suc_list = []
+        fal = 0
+        fal_list = []
+        for i, result in enumerate(scrape_index_tasks):
+            result = result.result()
+            if type(result) == dict:
+                suc += 1
+                suc_list.append(
+                    f"{name_temp[i]},"
+                )
+                await BF1Log.record(
+                    operator_qq=sender.id,
+                    serverId=server_id,
+                    persistedGameId=server_guid,
+                    gameId=server_gameid,
+                    pid=pid_list[i],
+                    display_name=name_temp[i],
+                    action="kick",
+                    info=reason,
+                )
+            else:
+                fal += 1
+                fal_list.append(
+                    f"踢出玩家{name_temp[i]}失败\n原因:{result}\n"
+                )
+        if 0 < suc <= 3:
+            kick_result = [f"{name}" for name in suc_list]
+            kick_result.insert(0, "成功踢出:")
+            kick_result.append(f"\n原因:{reason}")
+        elif suc != 0:
+            kick_result.append(f"成功踢出{suc}位玩家\n原因:{reason}\n")
+        if fal != 0:
+            try:
+                fal_list[-1] = fal_list[-1].replace("\n", "")
+            except:
+                pass
+            kick_result.append(fal_list)
+        try:
+            kick_result[-1] = kick_result[-1].replace("\n", "")
+        except:
+            pass
+        return await app.send_message(group, MessageChain(kick_result), quote=source)
+    # 封禁
+    elif action[0] in ["b", "-b", "-ban", "-封禁"]:
+        ending = None
+        for i, item in enumerate(action):
+            if i == 0:
+                continue
+            if item.isnumeric():
+                pass
+            else:
+                ending = i
+        if ending is not None:
+            index_list = action[1:ending]
+            reason = ''
+            for r in action[ending:]:
+                reason += r
+        else:
+            index_list = action[1:]
+            reason = "违反规则"
+        reason = reason.replace("ADMINPRIORITY", "违反规则")
+        # 获取服管帐号实例
+        if not server_info_temp["account"]:
+            return await app.send_message(group, MessageChain(
+                f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+            ), quote=source)
+        account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info_temp["account"])
+        # 并发踢出
+        scrape_index_tasks = []
+        name_temp = []
+        pid_list = []
+        for index in index_list:
+            original_index = index
+            index = int(index)
+            try:
+                if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                    index = index - 1
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.addServerBan(serverId=server_id,
+                                                      personaId=playerlist_data["teams"][0][index]["pid"])
+                    ))
+                    name_temp.append(playerlist_data["teams"][0][index]["display_name"])
+                    pid_list.append(playerlist_data["teams"][0][index]["pid"])
+                else:
+                    index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.addServerBan(serverId=server_id,
+                                                      personaId=playerlist_data["teams"][1][index]["pid"])
+                    ))
+                    name_temp.append(playerlist_data["teams"][1][index]["display_name"])
+                    pid_list.append(playerlist_data["teams"][1][index]["pid"])
+            except:
+                await app.send_message(group, MessageChain(
+                    f"无效序号:{original_index}"
+                ), quote=source)
+                return False
+        tasks = asyncio.gather(*scrape_index_tasks)
+        try:
+            await tasks
+        except Exception as e:
+            await app.send_message(group, MessageChain(
+                f"执行时出现了一个错误!{e}"
+            ), quote=source)
+            return False
+        ban_result = []
+        suc = 0
+        suc_list = []
+        fal = 0
+        fal_list = []
+        for i, result in enumerate(scrape_index_tasks):
+            result = result.result()
+            if type(result) == dict:
+                suc += 1
+                suc_list.append(
+                    f"{name_temp[i]},"
+                )
+                await BF1Log.record(
+                    operator_qq=sender.id,
+                    serverId=server_id,
+                    persistedGameId=server_guid,
+                    gameId=server_gameid,
+                    pid=pid_list[i],
+                    display_name=name_temp[i],
+                    action="ban",
+                    info=reason,
+                )
+            else:
+                fal += 1
+                fal_list.append(
+                    f"封禁玩家{name_temp[i]}失败\n原因:{result}\n"
+                )
+        if 0 < suc <= 3:
+            ban_result = [f"{name}" for name in suc_list]
+            ban_result.insert(0, "成功封禁:")
+            ban_result.append(f"\n原因:{reason}")
+        elif suc != 0:
+            ban_result.append(f"成功封禁{suc}位玩家\n原因:{reason}\n")
+        if fal != 0:
+            try:
+                fal_list[-1] = fal_list[-1].replace("\n", "")
+            except:
+                pass
+            ban_result.append(fal_list)
+        try:
+            ban_result[-1] = ban_result[-1].replace("\n", "")
+        except:
+            pass
+        await app.send_message(group, MessageChain(
+            ban_result
+        ), quote=source)
+        return
+        # 换边
+    elif action[0] in ["m", "-m", "-move", "-换边"]:
+        ending = None
+        # 换边没有reason
+        for i, item in enumerate(action):
+            if i == 0:
+                continue
+            if item.isnumeric():
+                pass
+            else:
+                ending = i
+        if ending is not None:
+            index_list = action[1:ending]
+        else:
+            index_list = action[1:]
+        # 获取服管帐号实例
+        if not server_info_temp["account"]:
+            return await app.send_message(group, MessageChain(
+                f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+            ), quote=source)
+        account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info_temp["account"])
+        # 换边逻辑: 在队伍1的玩家换到队伍2,在队伍2的玩家换到队伍1
+        scrape_index_tasks = []
+        name_temp = []
+        pid_list = []
+        for index in index_list:
+            original_index = index
+            index = int(index)
+            try:
+                if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                    index = index - 1
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.movePlayer(gameId=server_gameid,
+                                                    personaId=playerlist_data["teams"][0][index]["pid"],
+                                                    teamId=2)
+                    ))
+                    name_temp.append(playerlist_data["teams"][0][index]["display_name"])
+                    pid_list.append(playerlist_data["teams"][0][index]["pid"])
+                else:
+                    index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                    scrape_index_tasks.append(asyncio.ensure_future(
+                        account_instance.movePlayer(gameId=server_gameid,
+                                                    personaId=playerlist_data["teams"][1][index]["pid"],
+                                                    teamId=1)
+                    ))
+                    name_temp.append(playerlist_data["teams"][1][index]["display_name"])
+                    pid_list.append(playerlist_data["teams"][1][index]["pid"])
+            except:
+                await app.send_message(group, MessageChain(
+                    f"无效序号:{original_index}"
+                ), quote=source)
+                return False
+        tasks = asyncio.gather(*scrape_index_tasks)
+        try:
+            await tasks
+        except Exception as e:
+            await app.send_message(group, MessageChain(
+                f"执行时出现了一个错误!{e}"
+            ), quote=source)
+            return False
+        move_result = []
+        suc = 0
+        suc_list = []
+        fal = 0
+        fal_list = []
+        for i, result in enumerate(scrape_index_tasks):
+            result = result.result()
+            if type(result) == dict:
+                suc += 1
+                suc_list.append(
+                    f"{name_temp[i]},"
+                )
+                await BF1Log.record(
+                    operator_qq=sender.id,
+                    serverId=server_id,
+                    persistedGameId=server_guid,
+                    gameId=server_gameid,
+                    pid=pid_list[i],
+                    display_name=name_temp[i],
+                    action="move",
+                    info="",
+                )
+            else:
+                fal += 1
+                fal_list.append(
+                    f"换边玩家{name_temp[i]}失败\n原因:{result}\n"
+                )
+        if 0 < suc <= 3:
+            move_result = [f"{name}" for name in suc_list]
+            move_result.insert(0, "成功换边:")
+        elif suc != 0:
+            move_result.append(f"成功换边{suc}位玩家\n")
+        if fal != 0:
+            try:
+                fal_list[-1] = fal_list[-1].replace("\n", "")
+            except:
+                pass
+            move_result.append(fal_list)
+        try:
+            move_result[-1] = move_result[-1].replace("\n", "")
+        except:
+            pass
+        return await app.send_message(group, MessageChain(move_result), quote=source)
+    # 查询战绩
+    elif action[0] in ["s", "-s", "-stat", "-战绩", "-生涯"]:
+        index = action[1]
+        try:
+            index = int(index)
             if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
                 index = index - 1
-                scrape_index_tasks.append(asyncio.ensure_future(
-                    account_instance.kickPlayer(gameId=server_gameid,
-                                                personaId=playerlist_data["teams"][0][index]["pid"], reason=reason)
-                ))
-                name_temp.append(playerlist_data["teams"][0][index]["display_name"])
+                player_pid = playerlist_data["teams"][0][index]["pid"]
+                display_name = playerlist_data["teams"][0][index]["display_name"]
             else:
                 index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
-                scrape_index_tasks.append(asyncio.ensure_future(
-                    account_instance.kickPlayer(gameId=server_gameid,
-                                                personaId=playerlist_data["teams"][0][index]["pid"], reason=reason)
-                ))
-                name_temp.append(playerlist_data["teams"][1][index]["display_name"])
+                player_pid = playerlist_data["teams"][1][index]["pid"]
+                display_name = playerlist_data["teams"][1][index]["display_name"]
         except:
             await app.send_message(group, MessageChain(
                 f"无效序号:{index}"
             ), quote=source)
             return False
-    tasks = asyncio.gather(*scrape_index_tasks)
-    try:
-        await tasks
-    except Exception as e:
-        await app.send_message(group, MessageChain(
-            f"执行中出现了一个错误!{e}"
-        ), quote=source)
-        return False
-    kick_result = []
-    suc = 0
-    suc_list = []
-    fal = 0
-    fal_list = []
-    for i, result in enumerate(scrape_index_tasks):
-        result = result.result()
-        if type(result) == dict:
-            suc += 1
-            suc_list.append(
-                f"{name_temp[i]},"
-            )
-            await BF1Log.record(
-                operator_qq=sender.id,
-                serverId=server_id,
-                persistedGameId=server_guid,
-                gameId=server_gameid,
-                pid=0000,
-                display_name=name_temp[i],
-                action="kick",
-                info=reason,
-            )
-        else:
-            fal += 1
-            fal_list.append(
-                f"踢出玩家{name_temp[i]}失败\n原因:{result}\n"
-            )
-    if 0 < suc <= 3:
-        kick_result = [f"{name}" for name in suc_list]
-        kick_result.insert(0, "成功踢出:")
-        kick_result.append(f"\n原因:{reason}")
-    elif suc != 0:
-        kick_result.append(f"成功踢出{suc}位玩家\n原因:{reason}\n")
-    if fal != 0:
+        # 并发获取生涯、武器、载具、正在游玩
+        origin_start_time = start_time = time.time()
+        tasks = [
+            (await BF1DA.get_api_instance()).getPersonasByIds(player_pid),
+            (await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_pid),
+            (await BF1DA.get_api_instance()).getWeaponsByPersonaId(player_pid),
+            (await BF1DA.get_api_instance()).getVehiclesByPersonaId(player_pid),
+            bfeac_checkBan(display_name),
+            bfban_checkBan(player_pid),
+            (await BF1DA.get_api_instance()).getServersByPersonaIds(player_pid),
+            (await BF1DA.get_api_instance()).getActivePlatoon(player_pid),
+            (await BF1DA.get_api_instance()).getPresetsByPersonaId(player_pid),
+            gt_get_player_id_by_pid(player_pid)
+        ]
+        tasks = await asyncio.gather(*tasks)
+        logger.debug(f"查询玩家战绩耗时: {round(time.time() - start_time)}秒")
+        for task in tasks:
+            if isinstance(task, str):
+                logger.error(task)
+                return await app.send_message(
+                    group,
+                    MessageChain(f"查询出错!{task}"),
+                    quote=source
+                )
+        # 检查返回结果
+        (
+            player_persona, player_stat, player_weapon, player_vehicle, bfeac_info, bfban_info,
+            server_playing_info, platoon_info, skin_info, gt_id_info
+        ) = tasks
+        player_stat["result"]["displayName"] = display_name
+        # 生成图片
+        start_time = time.time()
+        player_stat_img = await PlayerStatPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            vehicles=player_vehicle,
+            bfeac_info=bfeac_info,
+            bfban_info=bfban_info,
+            server_playing_info=server_playing_info,
+            platoon_info=platoon_info,
+            skin_info=skin_info,
+            gt_id_info=gt_id_info
+        ).draw()
+        logger.debug(f"生成玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+        msg_chain = [GraiaImage(path=player_stat_img)]
+        bfeac_info = (
+            f'\nBFEAC状态:{bfeac_info.get("stat")}\n案件地址:{bfeac_info.get("url")}'
+            if bfeac_info.get("stat")
+            else None
+        )
+        if bfeac_info:
+            msg_chain.append(bfeac_info)
+        bfban_info = (
+            f'\nBFBAN状态:{bfban_info.get("stat")}\n案件地址:{bfban_info.get("url")}'
+            if bfban_info.get("stat")
+            else None
+        )
+        if bfban_info:
+            msg_chain.append(bfban_info)
+        if player_stat_img:
+            start_time = time.time()
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_stat_img).unlink()
+            logger.debug(f"发送玩家战绩图片耗时: {round(time.time() - start_time)}秒")
+            logger.debug(f"查询玩家战绩总耗时: {round(time.time() - origin_start_time)}秒")
+            return
+        return await app.send_message(group, MessageChain(f"查询玩家 {display_name} 战绩失败!"), quote=source)
+    # 查询武器
+    elif action[0] in ["w", "wp", "-w", "-weapon", "-wp", "-武器"]:
+        index = action[1]
         try:
-            fal_list[-1] = fal_list[-1].replace("\n", "")
+            index = int(index)
+            if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                index = index - 1
+                player_pid = playerlist_data["teams"][0][index]["pid"]
+                display_name = playerlist_data["teams"][0][index]["display_name"]
+            else:
+                index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                player_pid = playerlist_data["teams"][1][index]["pid"]
+                display_name = playerlist_data["teams"][1][index]["display_name"]
         except:
-            pass
-        kick_result.append(fal_list)
-    try:
-        kick_result[-1] = kick_result[-1].replace("\n", "")
-    except:
-        pass
-    await app.send_message(group, MessageChain(
-        kick_result
-    ), quote=source)
+            await app.send_message(group, MessageChain(
+                f"无效序号:{index}"
+            ), quote=source)
+            return False
+        # 获取武器信息
+        api_instance_temp = await BF1DA.get_api_instance()
+        player_weapon_task = api_instance_temp.getWeaponsByPersonaId(player_pid)
+        player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+        player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+        skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+        playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+        gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+        player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+            player_stat_task,
+            player_weapon_task,
+            player_persona_task,
+            skin_info_task,
+            playing_info_task,
+            gt_id_info_task
+        )
+        # 检查返回结果
+        for task in [player_stat, player_weapon, player_persona, skin_info, playing_info, gt_id_info_task]:
+            if isinstance(task, str):
+                logger.error(task)
+                return await app.send_message(
+                    group,
+                    MessageChain(f"查询出错!{task}"),
+                    quote=source
+                )
+        player_weapon: list = WeaponData(player_weapon).filter()
+        player_weapon_img = await PlayerWeaponPic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            weapons=player_weapon,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw()
+        if player_weapon_img:
+            msg_chain = [GraiaImage(path=player_weapon_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_weapon_img).unlink()
+            return
+    # 查询载具
+    elif action[0] in ["vh", "-vehicle", "-vh", "-载具"]:
+        index = action[1]
+        try:
+            index = int(index)
+            if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
+                index = index - 1
+                player_pid = playerlist_data["teams"][0][index]["pid"]
+                display_name = playerlist_data["teams"][0][index]["display_name"]
+            else:
+                index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
+                player_pid = playerlist_data["teams"][1][index]["pid"]
+                display_name = playerlist_data["teams"][1][index]["display_name"]
+        except:
+            await app.send_message(group, MessageChain(
+                f"无效序号:{index}"
+            ), quote=source)
+            return False
+        # 获取载具信息
+        api_instance_temp = await BF1DA.get_api_instance()
+        player_vehicle_task = api_instance_temp.getVehiclesByPersonaId(player_pid)
+        player_stat_task = api_instance_temp.detailedStatsByPersonaId(player_pid)
+        player_persona_task = api_instance_temp.getPersonasByIds(player_pid)
+        skin_info_task = api_instance_temp.getPresetsByPersonaId(player_pid)
+        playing_info_task = api_instance_temp.getServersByPersonaIds(player_pid)
+        gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+        player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info = await asyncio.gather(
+            player_stat_task,
+            player_vehicle_task,
+            player_persona_task,
+            skin_info_task,
+            playing_info_task,
+            gt_id_info_task
+        )
+        # 检查返回结果
+        for task in [player_stat, player_vehicle, player_persona, skin_info, playing_info, gt_id_info_task]:
+            if isinstance(task, str):
+                logger.error(task)
+                return await app.send_message(
+                    group,
+                    MessageChain(f"查询出错!{task}"),
+                    quote=source
+                )
+        player_vehicle: list = VehicleData(player_vehicle).filter()
+        player_vehicle_img = await PlayerVehiclePic(
+            player_name=display_name,
+            player_pid=player_pid,
+            personas=player_persona,
+            stat=player_stat,
+            vehicles=player_vehicle,
+            skin_info=skin_info,
+            server_playing_info=playing_info,
+            gt_id_info=gt_id_info
+        ).draw()
+        if player_vehicle_img:
+            msg_chain = [GraiaImage(path=player_vehicle_img)]
+            await app.send_message(group, MessageChain(msg_chain), quote=source)
+            # 移除图片临时文件
+            Path(player_vehicle_img).unlink()
+            return
+    else:
+        return await app.send_message(group, MessageChain(f"未识别的指令: '{action[0]}'"), quote=source)
 
 
 # 3.服管账号相关-查增改、删、绑定到bfgroups-servers里的managerAccount
@@ -2316,7 +2757,8 @@ async def kick_all(
     ]
     # 需要确认
     try:
-        await app.send_message(group, MessageChain(f"预计踢出{len(tasks)}位玩家,确认执行吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
+        await app.send_message(group, MessageChain(
+            f"预计踢出{len(tasks)}位玩家,确认执行吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
         if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
             return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
         await app.send_message(group, MessageChain(f"执行ing"), quote=source)
@@ -2347,10 +2789,12 @@ async def kick_all(
             fail_count += 1
 
     if success_count:
-        msg = f"踢出成功!成功{success_count}个" + (f",失败{fail_count}个" if fail_count else "") + f"\n踢出理由:{reason}"
+        msg = f"踢出成功!成功{success_count}个" + (
+            f",失败{fail_count}个" if fail_count else "") + f"\n踢出理由:{reason}"
     else:
         msg = f"踢出失败!失败{fail_count}个"
     return await app.send_message(group, MessageChain(msg), quote=source)
+
 
 sk_twilight = Twilight(
     [
@@ -4007,7 +4451,7 @@ async def move_player(
                 break
         if team_index != 0 and team_index != 1:
             return await app.send_message(group, MessageChain("未在服务器内找到该玩家!"), quote=source)
-        team_index = 2 - team_index
+        team_index = 3 - team_index
     elif team_index.result.display not in ["1", "2"]:
         team_index = team_index.result.display
         team_name_dict = {
@@ -4265,7 +4709,8 @@ async def change_map(
             f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
         ), quote=source)
     try:
-        await app.send_message(group, MessageChain(f"确认执行换图吗?\n(是/y/yes/确认|发送其他消息以取消)"), quote=source)
+        await app.send_message(group, MessageChain(f"确认执行换图吗?\n(是/y/yes/确认|发送其他消息以取消)"),
+                               quote=source)
         if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, sender)), 30):
             return await app.send_message(group, MessageChain(f"未预期回复,操作退出"), quote=source)
         await app.send_message(group, MessageChain(f"执行ing"), quote=source)

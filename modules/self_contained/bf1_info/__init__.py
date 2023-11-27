@@ -1843,7 +1843,7 @@ async def tyc(
 
     # 小助手标记信息
     record_data = tasks[4]
-    try:
+    if record_data:
         browse = record_data["data"]["browse"]
         hacker = record_data["data"]["hacker"]
         doubt = record_data["data"]["doubt"]
@@ -1852,8 +1852,9 @@ async def tyc(
         send.append(f"外挂标记:{hacker} ")
         send.append(f"怀疑标记:{doubt}\n")
         send.append("=" * 20 + '\n')
-    except:
-        pass
+    else:
+        send.append("战绩软件查询出错!\n")
+        send.append("=" * 20 + '\n')
 
     # 正在游玩
     playing_data = tasks[5]

@@ -507,15 +507,19 @@ async def check_vban(player_pid) -> dict or str:
         return '网络出错!'
 
 
-async def record_api(player_pid) -> dict:
+async def record_api(player_pid) -> Union[dict, None]:
     record_url = "https://record.ainios.com/getReport"
     data = {
         "personaId": player_pid
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(record_url, json=data) as response:
-            response = await response.json()
-    return response
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(record_url, json=data) as response:
+                response = await response.json()
+        return response
+    except Exception as e:
+        logger.error(f"record_api: {e}")
+        return None
 
 
 # 下载交换皮肤

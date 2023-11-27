@@ -1730,7 +1730,7 @@ async def get_server_playerList_pic(
             ban_result
         ), quote=source)
         return
-        # 换边
+    # 换边
     elif action[0] in ["m", "-m", "-move", "-换边"]:
         ending = None
         # 换边没有reason
@@ -1764,7 +1764,7 @@ async def get_server_playerList_pic(
                     scrape_index_tasks.append(asyncio.ensure_future(
                         account_instance.movePlayer(gameId=server_gameid,
                                                     personaId=playerlist_data["teams"][0][index]["pid"],
-                                                    teamId=2)
+                                                    teamId=1)
                     ))
                     name_temp.append(playerlist_data["teams"][0][index]["display_name"])
                     pid_list.append(playerlist_data["teams"][0][index]["pid"])
@@ -1773,7 +1773,7 @@ async def get_server_playerList_pic(
                     scrape_index_tasks.append(asyncio.ensure_future(
                         account_instance.movePlayer(gameId=server_gameid,
                                                     personaId=playerlist_data["teams"][1][index]["pid"],
-                                                    teamId=1)
+                                                    teamId=2)
                     ))
                     name_temp.append(playerlist_data["teams"][1][index]["display_name"])
                     pid_list.append(playerlist_data["teams"][1][index]["pid"])
@@ -4447,11 +4447,10 @@ async def move_player(
             return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
         for player in playerlist_data["players"]:
             if player["pid"] == pid:
-                team_index = player["team"]  # 0 or 1
+                team_index = player["team"] + 1  # 1 or 2
                 break
-        if team_index != 0 and team_index != 1:
+        if team_index != 1 and team_index != 2:
             return await app.send_message(group, MessageChain("未在服务器内找到该玩家!"), quote=source)
-        team_index = 3 - team_index
     elif team_index.result.display not in ["1", "2"]:
         team_index = team_index.result.display
         team_name_dict = {
@@ -4492,6 +4491,7 @@ async def move_player(
         team_index = int(team_index.result.display)
 
     # 移动玩家
+    logger.debug(f"目标队伍: {team_index}")
     star_time = time.time()
     result = await account_instance.movePlayer(gameId=server_gameid, personaId=pid, teamId=team_index)
     end_time = time.time()

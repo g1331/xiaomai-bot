@@ -1,12 +1,18 @@
 [project]
-name = "XiaoMaiBot-v4"
+name = ""
 version = "0.4.0"
 description = "Avilla-based version"
 authors = [
     {name = "13",email = "1257661006@qq.com"},
 ]
-dependencies = []
+dependencies = [
+    "avilla-core>=1.0.0a9",
+    "avilla-console>=0.2.0",
+    "avilla-qqapi>=1.0.0a21",
+    "avilla-elizabeth>=1.0.0a16",
+]
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "GNU"}
+
 

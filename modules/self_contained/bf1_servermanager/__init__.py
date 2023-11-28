@@ -1837,18 +1837,9 @@ async def get_server_playerList_pic(
         try:
             index = int(index)
             if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
-<<<<<<< HEAD
-                index -= 1
-                scrape_index_tasks.append(asyncio.ensure_future(
-                    account_instance.kickPlayer(gameId=server_gameid,
-                                                personaId=playerlist_data["teams"][0][index]["pid"], reason=reason)
-                ))
-                name_temp.append(playerlist_data["teams"][0][index]["display_name"])
-=======
                 index = index - 1
                 player_pid = playerlist_data["teams"][0][index]["pid"]
                 display_name = playerlist_data["teams"][0][index]["display_name"]
->>>>>>> source/v3
             else:
                 index = index - 1 - int((int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2))
                 player_pid = playerlist_data["teams"][1][index]["pid"]

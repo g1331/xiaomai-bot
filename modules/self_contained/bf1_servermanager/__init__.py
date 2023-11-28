@@ -4701,7 +4701,7 @@ async def change_map(
                 f"这是一个bug(奇怪的bug增加了"
             ), quote=source)
     else:
-        map_index = int(map_index.result.display)
+        map_index = int(map_index)
 
     # 调用换图的接口
     if not server_info["account"]:

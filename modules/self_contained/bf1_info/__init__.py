@@ -1768,6 +1768,7 @@ async def tyc(
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
 
     send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
+    # TODO: 添加账号注册和登录信息、重新整理消息格式
     # 查询最近游玩、vip/admin/owner/ban数、bfban信息、bfeac信息、正在游玩
     tasks = [
         (await BF1DA.get_api_instance()).mostRecentServers(player_pid),
@@ -1843,23 +1844,23 @@ async def tyc(
 
     # 小助手标记信息
     record_data = tasks[4]
-    if record_data:
+    if record_data and record_data.get("data"):
         browse = record_data["data"]["browse"]
         hacker = record_data["data"]["hacker"]
         doubt = record_data["data"]["doubt"]
-        send.append("战绩软件查询结果:\n")
+        send.append("标记查询结果:\n")
         send.append(f"浏览量:{browse} ")
         send.append(f"外挂标记:{hacker} ")
         send.append(f"怀疑标记:{doubt}\n")
         send.append("=" * 20 + '\n')
     else:
-        send.append("战绩软件查询出错!\n")
+        send.append("标记查询出错!\n")
         send.append("=" * 20 + '\n')
 
     # 正在游玩
     playing_data = tasks[5]
-    if not isinstance(playing_data, str):
-        playing_data: dict = playing_data["result"]
+    if isinstance(playing_data, dict):
+        playing_data = playing_data["result"]
         send.append("正在游玩:\n")
         if not playing_data[f"{player_pid}"]:
             send.append("玩家未在线/未进入服务器游玩\n")

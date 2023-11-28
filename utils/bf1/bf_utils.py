@@ -1,19 +1,24 @@
 import asyncio
 import datetime
+import json
 import time
 from functools import wraps
 from typing import Union
 
 import aiohttp
 import httpx
+import tiktoken
 from bs4 import BeautifulSoup
+from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.parser.twilight import MatchResult
 from graia.ariadne.model import Member, Group
 from loguru import logger
+from revChatGPT.V3 import Chatbot
 
+from core.config import GlobalConfig
 from core.control import Permission
 from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
 from utils.bf1.blaze.BlazeSocket import BlazeSocket
@@ -502,15 +507,19 @@ async def check_vban(player_pid) -> dict or str:
         return '网络出错!'
 
 
-async def record_api(player_pid) -> dict:
+async def record_api(player_pid) -> Union[dict, None]:
     record_url = "https://record.ainios.com/getReport"
     data = {
         "personaId": player_pid
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(record_url, json=data) as response:
-            response = await response.json()
-    return response
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(record_url, json=data) as response:
+                response = await response.json()
+        return response
+    except Exception as e:
+        logger.error(f"record_api: {e}")
+        return None
 
 
 # 下载交换皮肤
@@ -564,6 +573,74 @@ async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union
         return response["data"][str(server_gameid)] if response["data"][str(server_gameid)] != '' else "服务器信息为空!"
     else:
         return f"获取服务器信息失败:{response}"
+
+
+class EACUtils:
+
+    # EAC举报接口
+    @staticmethod
+    async def report_interface(
+            report_qq: int, player_name: str, report_reason: str, apikey: str
+    ):
+        report_url = "https://api.bfeac.com/inner_api/case_report"
+        headers = {"apikey": apikey}
+        body = {
+            "target_EAID": player_name,
+            "case_body": report_reason,
+            "game_type": 1,
+            "report_by": {
+                "report_platform": "qq",
+                "user_id": report_qq
+            }
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(report_url, headers=headers, json=body, timeout=10)
+            logger.debug(response.text)
+            return response.json()
+        except Exception as e:
+            logger.error(e)
+            return None
+
+    # 使用gpt3.5进行预审核
+    @staticmethod
+    async def report_precheck(report_reason: str) -> dict:
+        """
+        使用gpt3.5进行预审核
+        :param report_reason: 举报理由
+        :return: {"valid": bool, "reason": str}
+        """
+        result = {"valid": True, "reason": None}
+        api_key = create(GlobalConfig).functions.get("ChatGPT", {}).get("api_key")
+        if api_key:
+            try:
+                ENCODER = tiktoken.encoding_for_model("gpt-3.5-turbo")
+                preset = """ 你是一个专业的信息审核系统，用于检查和验证用户提交的关于游戏玩家作弊的举报信息。你的任务是确保每条信息都符合以下标准并以正确的JSON格式回复：
+        1. 内容必须专注于举报的相关事宜，如提及玩家武器/生涯数据异常、使用非法辅助工具等。
+        2. 不得包含与举报无关的信息。
+        3. 如果举报不符合要求，请在reason给出具体的说明。
+        4. 合法关键词包含但不限于：命中率(acc)、爆头率(hs)、效率、KD、KPM、FPS游戏常见的武器/载具名，
+        常见作弊方式如锁头、锁身子、透视、魔法子弹、改伤等，举报平台包含bfban(联ban)、bfeac、gt、vban等。
+        5. 回复必须是一个JSON对象，包含两个关键字："valid"（布尔值，表示举报信息是否符合要求）和 "reason"（字符串，解释审核结果的原因）。
+        
+        请根据以上规则审核以下举报信息，并以正确的JSON格式回复是否符合要求以及原因。
+        
+        示例：
+        输入信息："该玩家在游戏中使用非法辅助工具，导致比赛不公平。"
+        输出应为：{"valid": true, "reason": "举报理由符合要求。"}
+        """
+                gpt = Chatbot(
+                    api_key=api_key,
+                    engine="gpt-3.5-turbo",
+                    system_prompt=preset,
+                    max_tokens=len(ENCODER.encode(preset)) + 1000,
+                )
+                result = await gpt.ask_async(report_reason)
+                # 检查gpt的返回是否为json格式
+                result = json.loads(result)
+            except Exception as e:
+                logger.warning(f"gpt3.5预审核举报时出错: {e}")
+        return result
 
 
 class BF1GROUP:

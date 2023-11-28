@@ -251,9 +251,9 @@ class VehicleData:
                 elif vehicle["sortOrder"] == 2:
                     # 重型轰炸机
                     vehicle["sortOrder"] = "21"
-                elif vehicle["sortOrder"] == 3:
-                    # 戰鬥機
-                    vehicle["sortOrder"] = "14"
+                # elif vehicle["sortOrder"] == 3:
+                #     # 戰鬥機
+                #     vehicle["sortOrder"] = "14"
                 elif vehicle["name"] == "飛船":
                     # 飛船
                     vehicle["sortOrder"] = "24"

@@ -1,12 +1,15 @@
 import asyncio
 import datetime
+import html
 import json
 import math
+import os
 import random
 import time
 from pathlib import Path
 from typing import List, Tuple
 
+import httpx
 from creart import create
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.app import Ariadne
@@ -17,6 +20,7 @@ from graia.ariadne.message.element import Source, Image, At, ForwardNode, Forwar
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
     RegexResult, ArgumentMatch, ArgResult, WildcardMatch
 from graia.ariadne.model import Group, Friend, Member
+from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, dispatch, decorate
 from graia.scheduler.saya.schema import SchedulerSchema
 from graia.scheduler import timers
@@ -43,7 +47,7 @@ from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
     BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
-    gt_get_player_id_by_pid
+    gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid
 )
 
 config = create(GlobalConfig)
@@ -332,19 +336,39 @@ async def info(
         )
     else:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
-        if not player_info:
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            else:
+                player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
+        if player_info is None:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
                 quote=source
             )
+        elif not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+
         pid = player_info["personas"]["persona"][0]["personaId"]
         uid = player_info["personas"]["persona"][0]["pidId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
@@ -391,17 +415,39 @@ async def player_stat_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -669,17 +715,39 @@ async def player_weapon_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -845,17 +913,39 @@ async def player_vehicle_pic(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -991,17 +1081,39 @@ async def player_recent_info(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1079,17 +1191,39 @@ async def player_match_info(
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         # player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1495,17 +1629,39 @@ async def tyc(
             )
     else:
         player_name = player_name.result.display
-        player_info = await get_personas_by_name(player_name)
-        if isinstance(player_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
+        if player_name.startswith("#"):
+            player_pid = player_name[1:]
+            if not player_pid.isdigit():
+                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+            player_pid = int(player_pid)
+            player_info = await get_personas_by_player_pid(player_pid)
+            if player_info is None:
+                return await app.send_message(
+                    group,
+                    MessageChain(f"玩家 {player_name} 不存在"),
+                    quote=source
+                )
+            if not isinstance(player_info, dict):
+                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+            dict_temp = {
+                "personas": {
+                    "persona": [player_info["result"][str(player_pid)]]
+                }
+            }
+            player_info = dict_temp
+        else:
+            player_info = await get_personas_by_name(player_name)
         if not player_info:
             return await app.send_message(
                 group,
                 MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(
+                group,
+                MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
         player_pid = player_info["personas"]["persona"][0]["personaId"]
@@ -1612,6 +1768,7 @@ async def tyc(
         return await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
 
     send = [f'玩家名:{display_name}\n玩家Pid:{player_pid}\n' + "=" * 20 + '\n']
+    # TODO: 添加账号注册和登录信息、重新整理消息格式
     # 查询最近游玩、vip/admin/owner/ban数、bfban信息、bfeac信息、正在游玩
     tasks = [
         (await BF1DA.get_api_instance()).mostRecentServers(player_pid),
@@ -1687,22 +1844,23 @@ async def tyc(
 
     # 小助手标记信息
     record_data = tasks[4]
-    try:
+    if record_data and record_data.get("data"):
         browse = record_data["data"]["browse"]
         hacker = record_data["data"]["hacker"]
         doubt = record_data["data"]["doubt"]
-        send.append("战绩软件查询结果:\n")
+        send.append("标记查询结果:\n")
         send.append(f"浏览量:{browse} ")
         send.append(f"外挂标记:{hacker} ")
         send.append(f"怀疑标记:{doubt}\n")
         send.append("=" * 20 + '\n')
-    except:
-        pass
+    else:
+        send.append("标记查询出错!\n")
+        send.append("=" * 20 + '\n')
 
     # 正在游玩
     playing_data = tasks[5]
-    if not isinstance(playing_data, str):
-        playing_data: dict = playing_data["result"]
+    if isinstance(playing_data, dict):
+        playing_data = playing_data["result"]
         send.append("正在游玩:\n")
         if not playing_data[f"{player_pid}"]:
             send.append("玩家未在线/未进入服务器游玩\n")
@@ -1714,6 +1872,316 @@ async def tyc(
     if send[-1].endswith("\n"):
         send[-1] = send[-1][:-1]
     return await app.send_message(group, MessageChain(f"{''.join(send)}"), quote=source)
+
+
+# 举报到EAC，指令：-举报 玩家名
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-举报", "-report").space(SpacePolicy.PRESERVE),
+            ParamMatch(optional=False) @ "player_name",
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.GroupAdmin),
+)
+async def report(
+        app: Ariadne, sender: Member, group: Group, source: Source,
+        player_name: RegexResult,
+):
+    # 1.查询玩家是否存在
+    player_name = player_name.result.display
+    player_info = await get_personas_by_name(player_name)
+    if isinstance(player_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{player_info}"),
+            quote=source
+        )
+    if not player_info:
+        return await app.send_message(
+            group,
+            MessageChain(f"玩家 {player_name} 不存在"),
+            quote=source
+        )
+    player_pid = player_info["personas"]["persona"][0]["personaId"]
+    display_name = player_info["personas"]["persona"][0]["displayName"]
+    player_name = display_name
+
+    await app.send_message(group, MessageChain(
+        f"注意:请勿随意、乱举报,“垃圾”举报将会影响eac的处理效率,同时将撤销bot的使用"
+    ), quote=source)
+    # 2.查验是否已经有举报信息
+    check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
+    header = {
+        "Connection": "Keep-Alive"
+    }
+    # noinspection PyBroadException
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(check_eacInfo_url, headers=header, timeout=10)
+            response = response.json()
+    except Exception as e:
+        logger.error(e)
+        await app.send_message(group, MessageChain(
+            f"网络出错，请稍后再试"
+        ), quote=source)
+        return False
+    if response["data"]:
+        data = response["data"][0]
+        case_id = data["case_id"]
+        case_url = f"https://bfeac.com/#/case/{case_id}"
+        await app.send_message(group, MessageChain(
+            f"查询到已有案件信息如下:\n",
+            case_url
+        ), quote=source)
+        return
+
+    # 3.选择举报类型 1/5,其他则退出
+    # report_type = 0
+    # await app.send_message(group, MessageChain(
+    #     f"请在10秒内发送举报的游戏:1"
+    # ), quote=message[Source][0])
+    #
+    # async def waiter_report_type(waiter_member: Member, waiter_group: Group,
+    #                              waiter_message: MessageChain):
+    #     if waiter_member.id == sender.id and waiter_group.id == group.id:
+    #         choices = ["1"]
+    #         say = waiter_message.display
+    #         if say in choices:
+    #             return True, waiter_member.id, say
+    #         else:
+    #             return False, waiter_member.id, say
+    #
+    # try:
+    #     result, operator, report_type = await FunctionWaiter(waiter_report_type, [GroupMessage],
+    #                                                          block_propagation=True).wait(timeout=10)
+    # except asyncio.exceptions.TimeoutError:
+    #     await app.send_message(group, MessageChain(
+    #         f'操作超时,请重新举报!'), quote=message[Source][0])
+    #     return
+    # if result:
+    #     await app.send_message(group, MessageChain(
+    #         f"已获取到举报的游戏:bf{report_type},请在30秒内发送举报的理由(不带图片)!"
+    #     ), quote=message[Source][0])
+    # else:
+    #     await app.send_message(group, MessageChain(
+    #         f"获取到举报的游戏:{report_type}无效的选项,已退出举报!"
+    #     ), quote=message[Source][0])
+    #     return False
+
+    # 4.发送举报的理由
+    # report_reason = None
+    await app.send_message(group, MessageChain(
+        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出)"
+    ), quote=source)
+    saying = None
+
+    async def waiter_report_reason(
+            waiter_member: Member, waiter_group: Group, waiter_message: MessageChain
+    ):
+        if waiter_member.id == sender.id and waiter_group.id == group.id:
+            nonlocal saying
+            saying = waiter_message
+            return waiter_member.id, saying
+
+    try:
+        operator, report_reason = await FunctionWaiter(
+            waiter_report_reason, [GroupMessage], block_propagation=True
+        ).wait(timeout=60)
+        # report_reason 要对html信息进行转义，防止别人恶意发送html信息,然后再转换为 <p>标签
+        report_reason = report_reason.display
+        report_reason = html.escape(report_reason)
+        report_reason = f"<p>{report_reason}</p>"
+
+    except asyncio.exceptions.TimeoutError:
+        return await app.send_message(group, MessageChain(f'操作超时,请重新举报!'), quote=source)
+    except Exception as e:
+        logger.error(f"获取举报理由出错:{e}")
+        return await app.send_message(group, MessageChain(f'获取举报理由出错,请重新举报!'), quote=source)
+
+    saying: MessageChain = saying
+    if saying.has(Image):
+        return await app.send_message(group, MessageChain(
+            f"举报理由请不要附带图片,已退出举报!"
+        ), quote=source)
+
+    # 进行预审核
+    # pre_str = saying.display
+    # logger.debug(pre_str)
+    # if len(pre_str) < 500:
+    #     await app.send_message(group, MessageChain(f'处理ing'), quote=source)
+    #     pre_check_result = await EACUtils.report_precheck(pre_str)
+    #     if not pre_check_result.get("valid"):
+    #         pre_check_reason = pre_check_result.get("reason")
+    #         return await app.send_message(group, MessageChain(
+    #             f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
+    #         ), quote=source)
+
+    await app.send_message(group, MessageChain(
+        f"获取到举报理由:{saying.display}\n若需补充图片请在60秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"
+    ), quote=source)
+
+    # 5.发送举报的图片,其他则退出
+    list_pic = []
+    if_confirm = False
+    while not if_confirm:
+        if len(list_pic) == 0:
+            pass
+        else:
+            await app.send_message(group, MessageChain(
+                f"收到{len(list_pic)}张图片,如需添加请继续发送图片,否则发送'确认'以提交举报。"
+            ), quote=source)
+
+        async def waiter_report_pic(
+                waiter_member: Member, waiter_message: MessageChain, waiter_group: Group
+        ) -> Tuple[bool, MessageChain]:
+            nonlocal if_confirm  # 内部函数修改外部函数的变量
+            waiter_message = waiter_message.replace(At(app.account), '')
+            if group.id == waiter_group.id and waiter_member.id == sender.id:
+                say = waiter_message.display
+                if say == '[图片]' and waiter_message.has(Image):
+                    return True, waiter_message
+                elif say == "确认":
+                    if_confirm = True
+                    return True, waiter_message
+                else:
+                    return False, waiter_message
+
+        try:
+            result, img = await FunctionWaiter(
+                waiter_report_pic, [GroupMessage], block_propagation=True
+            ).wait(timeout=60)
+        except asyncio.exceptions.TimeoutError:
+            return await app.send_message(group, MessageChain(f'操作超时,已自动退出!'), quote=source)
+        except Exception as e:
+            logger.error(f"获取举报图片出错:{e}")
+            return await app.send_message(group, MessageChain(f'获取举报图片出错,请重新举报!'), quote=source)
+
+        if result:
+            # 如果是图片则下载
+            if img.display == '[图片]':
+                try:
+                    img_url = img[Image][0]
+                    logger.debug(img_url)
+                    img_url = img_url.url
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_3) AppleWebKit/537.36 '
+                                      '(KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36'
+                    }
+                    # noinspection PyBroadException
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            response = await client.get(img_url, headers=headers, timeout=5)
+                            r = response
+                    except Exception as e:
+                        logger.error(e)
+                        await app.send_message(group, MessageChain(
+                            f'获取图片出错,请重新举报!'
+                        ), quote=source)
+                        return False
+                    # wb 以二进制打开文件并写入，文件名不存在会创
+                    file_name = int(time.time())
+                    file_path = f'./data/battlefield/Temp/{file_name}.png'
+                    with open(file_path, 'wb') as f:
+                        f.write(r.content)  # 写入二进制内容
+                        f.close()
+
+                    # 获取图床
+                    # tc_url = "https://www.imgurl.org/upload/aws_s3"
+                    tc_url = "https://api.bfeac.com/inner_api/upload_image"
+                    tc_files = {'file': open(file_path, 'rb')}
+                    # tc_data = {'file': tc_files}
+                    apikey = config.functions.get("bf1", {}).get("apikey", "")
+                    tc_headers = {
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                                      '(KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
+                        "apikey": apikey
+                    }
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            response = await client.post(tc_url, files=tc_files, headers=tc_headers)
+                    except Exception as e:
+                        logger.error(e)
+                        await app.send_message(group, MessageChain(
+                            f'获取图片图床失败,请重新举报!'
+                        ), quote=source)
+                        return False
+                    json_temp = response.json()
+
+                    # img_temp = f"<img src = '{json_temp['data']}' />"
+                    img_temp = f'<img class="img-fluid" src="{json_temp["data"]}">'
+                    report_reason += img_temp
+                    list_pic.append(json_temp['data'])
+                    # noinspection PyBroadException
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        logger.error(e)
+                        pass
+                except Exception as e:
+                    logger.error(response)
+                    logger.error(e)
+                    await app.send_message(group, MessageChain(
+                        f'获取图片图床失败,请重新举报!'
+                    ), quote=source)
+                    return False
+            # 是确认则提交
+            if img.display == '确认':
+                # 添加水印图片: https://s2.loli.net/2023/11/25/MpHD5Wbv9IqeVTa.png
+                report_reason += '<img class="img-fluid" src="https://s2.loli.net/2023/11/25/MpHD5Wbv9IqeVTa.png">'
+                await app.send_message(group, MessageChain(
+                    f"提交举报ing"
+                ), quote=source)
+                # 调用接口
+                report_result = await EACUtils.report_interface(
+                    sender.id, player_name, report_reason, config.functions.get("bf1", {}).get("apikey", "")
+                )
+                if not isinstance(report_result, dict):
+                    return await app.send_message(group, MessageChain(f"举报出错:{report_result}"), quote=source)
+                if isinstance(report_result["data"], int):
+                    file_path = Path(f"./data/battlefield/report_log/data.json")
+                    if not file_path.exists():
+                        file_path.touch()
+                    try:
+                        # 记录日志，包含举报人QQ，举报时间，案件ID，举报人所在群号，举报信息，被举报玩家的name、pid
+                        with open(file_path, "r", encoding="utf-8") as file_read:
+                            log_data = json.load(file_read)
+                            log_data["data"].append(
+                                {
+                                    "time": time.time(),
+                                    "operatorQQ": sender.id,
+                                    "caseId": report_result['data'],
+                                    "sourceGroupId": f"{group.id}",
+                                    "reason": report_reason,
+                                    "playerName": player_name,
+                                    "playerPid": player_pid,
+                                }
+                            )
+                            with open(file_path, "w", encoding="utf-8") as file_write:
+                                json.dump(log_data, file_write, indent=4, ensure_ascii=False)
+                    except Exception as e:
+                        logger.error(f"日志出错:{e}")
+                    await app.send_message(group, MessageChain(
+                        f"举报成功!案件地址:https://bfeac.com/?#/case/{report_result['data']}"
+                    ), quote=source)
+                    return
+                else:
+                    await app.send_message(group, MessageChain(
+                        f"举报结果:{report_result}"
+                    ), quote=source)
+                    return
+        else:
+            await app.send_message(group, MessageChain(
+                f'未识成功别到图片,请重新举报!'
+            ), quote=source)
+            return
 
 
 # 查询排名信息
@@ -1940,6 +2408,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Twilight(
         [
             UnionMatch("-bf1", "-bfstat").space(SpacePolicy.PRESERVE),
+            ArgumentMatch("-i", "-img", action="store_true", optional=True) @ "img",
         ]
     )
 )
@@ -1950,7 +2419,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
 )
-async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
+async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img: ArgResult):
     # 弃用的gt_bf1_stat
     # result = await gt_bf1_stat()
     # if not isinstance(result, str):
@@ -1996,8 +2465,9 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(f"获取服务器信息失败!"), quote=source)
     logger.success(f"共获取{len(server_total_list)}个服务器,耗时{round(time.time() - time_start, 2)}秒")
     # 人数、排队数、观众、模式、地图、地区、国家
-    official_server_list = []
-    private_server_list = []
+    server_list = []
+    # official_server_list = []
+    # private_server_list = []
     for server in server_total_list:
         players = server["slots"]["Soldier"]["current"]
         queues = server["slots"]["Queue"]["current"]
@@ -2018,11 +2488,13 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
             "mapModePretty": mapModePretty,
             "region": region,
             "country": country,
+            "official": True if server["serverType"] == "OFFICIAL" else False,
         }
-        if server["serverType"] != "OFFICIAL":
-            private_server_list.append(temp)
-        else:
-            official_server_list.append(temp)
+        server_list.append(temp)
+        # if server["serverType"] != "OFFICIAL":
+        #     private_server_list.append(temp)
+        # else:
+        #     official_server_list.append(temp)
     region_dict = {
         "OC": "大洋洲",
         "Asia": "亚洲",
@@ -2042,80 +2514,132 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source):
         "AE": "阿联酋",
         "ZA": "南非",
     }
-    # 整理私服数据
-    private_server_players = 0
-    private_server_queues = 0
-    private_server_spectators = 0
-    private_server_modes = {}
-    private_server_maps = {}
-    private_server_regions = {}
-    private_server_countries = {}
-    for server in private_server_list:
-        private_server_players += server["players"]
-        private_server_queues += server["queues"]
-        private_server_spectators += server["spectators"]
-        if server["mapModePretty"] not in private_server_modes:
-            private_server_modes[server["mapModePretty"]] = 0
-        private_server_modes[server["mapModePretty"]] += 1
-        if server["mapNamePretty"] not in private_server_maps:
-            private_server_maps[server["mapNamePretty"]] = 0
-        private_server_maps[server["mapNamePretty"]] += 1
-        region_temp = region_dict.get(server["region"], server["region"])
-        if region_temp not in private_server_regions:
-            private_server_regions[region_temp] = 0
-        private_server_regions[region_temp] += 1
-        country_temp = country_dict.get(server["country"], server["country"])
-        if country_temp not in private_server_countries:
-            private_server_countries[country_temp] = 0
-        private_server_countries[country_temp] += 1
-    # 整理官服数据
-    official_server_players = 0
-    official_server_queues = 0
-    official_server_spectators = 0
-    official_server_modes = {}
-    official_server_maps = {}
-    official_server_regions = {}
-    official_server_countries = {}
-    for server in official_server_list:
-        official_server_players += server["players"]
-        official_server_queues += server["queues"]
-        official_server_spectators += server["spectators"]
-        if server["mapModePretty"] not in official_server_modes:
-            official_server_modes[server["mapModePretty"]] = 0
-        official_server_modes[server["mapModePretty"]] += 1
-        if server["mapNamePretty"] not in official_server_maps:
-            official_server_maps[server["mapNamePretty"]] = 0
-        official_server_maps[server["mapNamePretty"]] += 1
-        region_temp = region_dict.get(server["region"], server["region"])
-        if region_temp not in official_server_regions:
-            official_server_regions[region_temp] = 0
-        official_server_regions[region_temp] += 1
-        country_temp = country_dict.get(server["country"], server["country"])
-        if country_temp == " ":
-            country_temp = "未知"
-        if country_temp not in official_server_countries:
-            official_server_countries[country_temp] = 0
-        official_server_countries[country_temp] += 1
-    private_server_data = {
-        "regions": private_server_regions,
-        "countries": private_server_countries,
-        "modes": private_server_modes,
-        "maps": private_server_maps,
-        "players": private_server_players,
-        "queues": private_server_queues,
-        "spectators": private_server_spectators,
-    }
-    official_server_data = {
-        "regions": official_server_regions,
-        "countries": official_server_countries,
-        "modes": official_server_modes,
-        "maps": official_server_maps,
-        "players": official_server_players,
-        "queues": official_server_queues,
-        "spectators": official_server_spectators,
-    }
-    img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
-    return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
+
+    # 文字版本：
+    # 服务器总数(官/私): xxx (xxx/xxx)                 服务器数量 = 官服数量 + 私服数量
+    # 总人数(官/私): xxx (xxx/xxx)                 总人数 = 游玩人数 + 排队人数 + 观众人数
+    # 游玩人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 排队人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
+    # 观众人数(官/私): xxx (xxx/xxx)
+    # 热门地图: xxx,xxx,xxx      (只显示前三个，地图名：数量)
+    # 征服: xx   ,行动: xx       (所有模式的人数)
+    # 时间: xx.xx.xx xx:xx:xx
+    # 示例:
+    # 服务器总数(官/私):
+    # 总:100 (50/50)
+    # 总人数(官/私):
+    # 总:1000 (500/500)
+    # 游玩人数(官/私|亚/欧):
+    # 总:900, 100/800, 400/200
+    # 排队人数(官/私|亚/欧):
+    # 总:60, 10/50, 15,23
+    # 观众人数(官/私):
+    # 总:40, 10/30
+    # ==========================
+    # 热门地图:
+    # xxx:100, xxx:90, xxx:80
+    # ==========================
+    # 游玩模式:
+    # 征服: 100, 行动: 90
+    # ==========================
+    # 更新时间: 2021-08-04 12:00:00
+
+    # 总人数
+    total_players = 0
+    total_queues = 0
+    total_spectators = 0
+    # 官服人数
+    official_players = 0
+    official_queues = 0
+    official_spectators = 0
+    # 私服人数
+    private_players = 0
+    private_queues = 0
+    private_spectators = 0
+    # 亚服人数
+    asia_players = 0
+    asia_queues = 0
+    asia_spectators = 0
+    # 欧服人数
+    eu_players = 0
+    eu_queues = 0
+    eu_spectators = 0
+    # 整理数据
+    for server in server_list:
+        total_players += server["players"]
+        total_queues += server["queues"]
+        total_spectators += server["spectators"]
+        if server["official"]:
+            official_players += server["players"]
+            official_queues += server["queues"]
+            official_spectators += server["spectators"]
+        else:
+            private_players += server["players"]
+            private_queues += server["queues"]
+            private_spectators += server["spectators"]
+        if server["region"] == "Asia":
+            asia_players += server["players"]
+            asia_queues += server["queues"]
+            asia_spectators += server["spectators"]
+        elif server["region"] == "EU":
+            eu_players += server["players"]
+            eu_queues += server["queues"]
+            eu_spectators += server["spectators"]
+    # TODO: 可视化
+    # if img.matched:
+    #     img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
+    #     return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
+    # 用一个变量存 =*15 用于发送
+    equals = "=" * 15
+    send = [
+        f"总人数(官/私):\n"
+        f"{total_players + total_queues + total_spectators} "
+        f"({official_players + official_queues + official_spectators}/"
+        f"{private_players + private_queues + private_spectators})\n"
+        f"游玩人数(官/私|亚/欧):\n"
+        f"{total_players} ({official_players}/{private_players}|{asia_players}/{eu_players})\n"
+        f"排队人数(官/私|亚/欧):\n"
+        f"{total_queues} ({official_queues}/{private_queues}|{asia_queues}/{eu_queues})\n"
+        f"观众人数(官/私):\n"
+        f"{total_spectators} ({official_spectators}/{private_spectators})\n"
+        f"{equals}\n"
+        f"服务器总数(官/私):\n"
+        f"{len(server_list)} ({len([server for server in server_list if server['official']])}/"
+        f"{len([server for server in server_list if not server['official']])})\n"
+        f"{equals}\n"
+    ]
+    # 热门地图
+    map_list = {}
+    for server in server_list:
+        # if server["mapNamePretty"] not in map_list:
+        #     map_list[server["mapNamePretty"]] = 0
+        # map_list[server["mapNamePretty"]] += 1
+        # 组成 模式-地图
+        temp = f"{server['mapModePretty']}-{server['mapNamePretty']}"
+        if temp not in map_list:
+            map_list[temp] = 0
+        map_list[temp] += 1
+    map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
+    map_list = [f"{item[0]}:{item[1]}" for item in map_list]
+    map_list = map_list[:3]
+    map_list = "\n".join(map_list)
+    send.append(f"前三热门地图:\n{map_list}\n{equals}\n")
+    # 模式 每两个换一行
+    mode_list = {}
+    for server in server_list:
+        if server["mapModePretty"] not in mode_list:
+            mode_list[server["mapModePretty"]] = 0
+        mode_list[server["mapModePretty"]] += 1
+    mode_list = sorted(mode_list.items(), key=lambda x: x[1], reverse=True)
+    mode_list = [f"{item[0]}:{item[1]}" for item in mode_list]
+    mode_list = [mode_list[i:i + 2] for i in range(0, len(mode_list), 2)]
+    mode_list = [" ".join(item) for item in mode_list]
+    mode_list = "\n".join(mode_list)
+    send.append(f"游玩模式:\n{mode_list}\n{equals}\n")
+    # 更新时间
+    send.append(f"更新时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    send = "".join(send)
+    return await app.send_message(group, MessageChain(f"{send}"), quote=source)
 
 
 # 交换

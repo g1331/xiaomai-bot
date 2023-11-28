@@ -311,7 +311,8 @@ class bf1_api(object):
                     else:
                         logger.error(f"BF1账号:{self.pid}登录失败次数过多!请检查账密信息是否正确!")
                         return await response.text()
-            except Exception:
+            except Exception as e:
+                logger.error(f"BF1账号{self.pid}登录刷新session失败!{e}")
                 pass
             logger.error(f"BF1账号{self.pid}登录刷新session失败!")
             return await response.text()

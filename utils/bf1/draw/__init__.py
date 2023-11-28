@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import datetime
 import io
 import json
@@ -19,12 +18,11 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
 from zhconv import zhconv
 
-from utils.bf1.bf_utils import download_skin, gt_get_player_id_by_name
+from utils.bf1.bf_utils import download_skin
 from utils.bf1.data_handle import VehicleData, WeaponData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw.choose_bg_pic import bg_pic
 from utils.bf1.map_team_info import MapData
-from utils.text2img import template2img
 
 BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
 # 整图大小
@@ -145,15 +143,24 @@ class PilImageUtils:
             draw.text((x, y), line, font=font, fill=fill)
 
     @staticmethod
-    def crop_circle(img: Image, radius: int) -> Image:
+    def crop_circle(image_input: Union[Image.Image, bytes], radius: int) -> Image:
         """
-        裁剪为圆形
-        :param img: PIL.Image 对象
+        将传入的图片，根据指定的半径裁剪为圆形。
+        :param image_input: PIL.Image 对象
         :param radius: 圆的半径
         :return: PIL.Image 对象
         """
+
+        # 检查输入类型并加载图片
+        if isinstance(image_input, bytes):
+            image_input = Image.open(BytesIO(image_input))
+        elif isinstance(image_input, Image.Image):
+            image_input = image_input
+        else:
+            raise TypeError("image_input must be a PIL.Image.Image object or bytes")
+
         # 将图片调整为2*radius大小
-        img = img.resize((2 * radius, 2 * radius), Image.LANCZOS)
+        image_input = image_input.resize((2 * radius, 2 * radius), Image.LANCZOS)
 
         # 创建一个遮罩用于裁剪
         mask = Image.new('L', (2 * radius, 2 * radius), 0)
@@ -162,8 +169,7 @@ class PilImageUtils:
 
         # 应用遮罩裁剪图片
         result = Image.new('RGBA', (2 * radius, 2 * radius))
-        result.paste(img, (0, 0), mask)
-        result.save("test.png")
+        result.paste(image_input, (0, 0), mask)
         return result
 
     @staticmethod
@@ -175,7 +181,7 @@ class PilImageUtils:
         """
         将图片调整为指定宽高，并且居中裁剪。
 
-        此函数接受图片对象或图片的二进制数据，先对图片进行缩放，确保图片的宽度或高度与目标匹配，
+        此函数接受图片对象或图片的二进制数据，先对图片进行缩放，确保图片缩放后的宽度和高度包含目标尺寸，
         然后从缩放后的图片中心裁剪出目标尺寸的图片。
 
         参数:
@@ -234,7 +240,7 @@ class PilImageUtils:
             target_height: int
     ) -> Image:
         """
-        根据提供的目标尺寸缩放图像。如果原图的宽度或高度比例大于目标尺寸，按较小的比例缩放图像。
+        根据提供的目标尺寸缩放图像。会将图形最长边缩放至目标尺寸，另一边按比例缩放，保证图像内容全部被包含。
 
         :param image_input: PIL.Image.Image 对象或图片的二进制数据。
         :param target_width: 目标宽度。
@@ -266,7 +272,10 @@ class PilImageUtils:
         return image.resize((new_width, new_height), Image.LANCZOS)
 
     @staticmethod
-    def paste_center(background_img: Image.Image, overlay_img: Image.Image) -> Image.Image:
+    def paste_center(
+            background_img: Union[Image.Image, bytes],
+            overlay_img: Union[Image.Image, bytes]
+    ) -> Image.Image:
         """
         将一个图像居中粘贴到另一个图像上。
 
@@ -274,6 +283,21 @@ class PilImageUtils:
         :param overlay_img: 覆盖图像，将被居中粘贴到背景上。
         :return: 合成后的图像。
         """
+        # 检查输入类型并加载图片
+        if isinstance(background_img, bytes):
+            background_img = Image.open(BytesIO(background_img))
+        elif isinstance(background_img, Image.Image):
+            background_img = background_img
+        else:
+            raise TypeError("background_img must be a PIL.Image.Image object or bytes")
+
+        if isinstance(overlay_img, bytes):
+            overlay_img = Image.open(BytesIO(overlay_img))
+        elif isinstance(overlay_img, Image.Image):
+            overlay_img = overlay_img
+        else:
+            raise TypeError("overlay_img must be a PIL.Image.Image object or bytes")
+
         # 背景图像的尺寸
         bg_width, bg_height = background_img.size
 
@@ -299,11 +323,13 @@ class PilImageUtils:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
-                        return await resp.read()
-                    logger.warning(f"下载图片失败，url: {url}")
-                    return None
+                        img = await resp.read()
+                        return img
+                    else:
+                        logger.warning(f"读取图片失败，url: {url}")
+                        return None
         except TimeoutError:
-            logger.warning(f"下载图片失败，url: {url}")
+            logger.warning(f"读取图片失败，url: {url}")
             return None
 
 
@@ -425,11 +451,13 @@ class PlayerStatPic:
         # 如果头像文件存在且最后修改时间距现在不足一天，则直接读取
         if avatar_path.is_file() and avatar_path.stat().st_mtime + 86400 > time.time():
             return avatar_path.read_bytes()
-        # 尝试下载头像
+        # 读取头像
         avatar = await PilImageUtils.read_img_by_url(url)
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
@@ -480,6 +508,8 @@ class PlayerStatPic:
 
             if avatar_url:
                 avatar_img_data = await self.get_avatar(avatar_url, self.player_pid)
+            elif local_avatar_path.is_file():
+                avatar_img_data = local_avatar_path.read_bytes()
             else:
                 # 链接也获取失败，使用默认头像
                 avatar_img_data = DefaultAvatarImg
@@ -846,11 +876,13 @@ class PlayerStatPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
@@ -883,7 +915,9 @@ class PlayerStatPic:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         weapon_template_draw.text(
@@ -962,11 +996,13 @@ class PlayerStatPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
@@ -999,7 +1035,9 @@ class PlayerStatPic:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         vehicle_template_draw.text(
@@ -1271,6 +1309,8 @@ class PlayerWeaponPic:
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
@@ -1368,20 +1408,18 @@ class PlayerWeaponPic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        #     # 加一点高斯模糊
-        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        # else:  # 如果有背景图，就用原图，且不放大
-        #     # 保留原图全部内容
-        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
-
-        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
-        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
-        # 将background_img_top粘贴到background_img上
-        background_img = PilImageUtils.paste_center(background_img, background_img_top)
+        # 默认背景，直接放大填充
+        if not player_background_path:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            # 加一点高斯模糊
+            # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        else:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            # 将background_img_top粘贴到background_img上
+            background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
@@ -1435,11 +1473,13 @@ class PlayerWeaponPic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         weapon_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         weapon_img = await PilImageUtils.read_img_by_url(skin_url)
                         if weapon_img:
                             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
                             weapon_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载武器皮肤失败，url: {skin_url}")
         if not weapon_img:
@@ -1472,7 +1512,9 @@ class PlayerWeaponPic:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         weapon_template_draw.text(
@@ -1516,7 +1558,7 @@ class PlayerWeaponPic:
     async def draw(
             self,
             col: int = 2,
-            row: int = 4,
+            row: int = 6,
     ) -> Union[bytes, Path, None]:
         """绘制武器数据图片
         与生涯不同，武器只绘制头像框+武器数据，默认为两列四行
@@ -1734,6 +1776,8 @@ class PlayerVehiclePic:
         if avatar:
             avatar_path.write_bytes(avatar)
             return avatar
+        elif avatar_path.is_file():
+            return avatar_path.read_bytes()
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
@@ -1831,20 +1875,18 @@ class PlayerVehiclePic:
                 background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
             background = player_background_path.open("rb").read()
-        # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
-        #     background_img = ImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        #     # 加一点高斯模糊
-        #     background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
-        # else:  # 如果有背景图，就用原图，且不放大
-        #     # 保留原图全部内容
-        #     background_img = ImageUtils.scale_image_to_dimension(background, target_width, target_height)
-
-        # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
-        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
-        background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-        background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
-        # 将background_img_top粘贴到background_img上
-        background_img = PilImageUtils.paste_center(background_img, background_img_top)
+        # 默认背景，直接放大填充
+        if not player_background_path:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            # 加一点高斯模糊
+            # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
+        # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
+        else:
+            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
+            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            # 将background_img_top粘贴到background_img上
+            background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:
@@ -1885,11 +1927,13 @@ class PlayerVehiclePic:
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
                         vehicle_img = Image.open(skin_file_path).convert("RGBA")
+                        break
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
                             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
                             vehicle_img.save(skin_file_path)
+                            break
                         else:
                             logger.warning(f"下载载具皮肤失败，url: {skin_url}")
         if not vehicle_img:
@@ -1922,7 +1966,9 @@ class PlayerVehiclePic:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior" else ColorBlueAndGray if skin_level == "Enhanced" else ColorWhiteAndGray,
+                fill=ColorGoldAndGray if skin_level == "Superior"
+                else ColorBlueAndGray if skin_level == "Enhanced"
+                else ColorWhiteAndGray,
                 font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
             )
         vehicle_template_draw.text(
@@ -1954,7 +2000,7 @@ class PlayerVehiclePic:
     async def draw(
             self,
             col: int = 2,
-            row: int = 4,
+            row: int = 6,
     ) -> Union[bytes, Path, None]:
         """绘制载具数据图片
         与生涯不同，载具只绘制头像框+载具数据，默认为两列四行
@@ -2253,13 +2299,30 @@ class PlayerListPic:
         bind_counter = 0
         max_level_counter = 0
 
+        rank_list = [
+            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
+            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
+            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
+            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
+            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
+            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
+            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
+            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
+            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
+            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
+            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
+            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
+            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
+            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+        ]
+
         playerlist_data["teams"] = {
             0: [item for item in playerlist_data["players"] if item["team"] == 0],
             1: [item for item in playerlist_data["players"] if item["team"] == 1]
         }
-        playerlist_data["teams"][0].sort(key=lambda x: x["rank"], reverse=True)
-        playerlist_data["teams"][1].sort(key=lambda x: x["rank"], reverse=True)
-        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"]))
+
+        # 战绩信息dict
+        stat_dict = {}
 
         # 获取玩家生涯战绩
         # 队伍1
@@ -2269,6 +2332,28 @@ class PlayerListPic:
         tasks = asyncio.gather(*scrape_index_tasks_t1)
         try:
             await tasks
+            for i in range(len(playerlist_data["teams"][0])):
+                if scrape_index_tasks_t1[i].result():
+                    if not isinstance(scrape_index_tasks_t1[i].result(), dict):
+                        continue
+                    player_stat_data = scrape_index_tasks_t1[i].result()["result"]
+                    # 重新计算等级
+                    time_seconds = player_stat_data.get('basicStats').get('timePlayed')
+                    spm = player_stat_data.get('basicStats').get('spm')
+                    exp = spm * time_seconds / 60
+                    rank = 0
+                    for _ in range(len(rank_list)):
+                        if exp <= rank_list[1]:
+                            rank = 0
+                            break
+                        if exp >= rank_list[-1]:
+                            rank = 150
+                            break
+                        if exp <= rank_list[_]:
+                            rank = _ - 1
+                            break
+                    playerlist_data["teams"][0][i]["rank"] = rank
+                    stat_dict[playerlist_data["teams"][0][i]["pid"]] = player_stat_data
         except asyncio.TimeoutError:
             pass
 
@@ -2279,8 +2364,35 @@ class PlayerListPic:
         tasks = asyncio.gather(*scrape_index_tasks_t2)
         try:
             await tasks
+            for i in range(len(playerlist_data["teams"][1])):
+                if scrape_index_tasks_t2[i].result():
+                    if not isinstance(scrape_index_tasks_t2[i].result(), dict):
+                        continue
+                    player_stat_data = scrape_index_tasks_t2[i].result()["result"]
+                    # 重新计算等级
+                    time_seconds = player_stat_data.get('basicStats').get('timePlayed')
+                    spm = player_stat_data.get('basicStats').get('spm')
+                    exp = spm * time_seconds / 60
+                    rank = 0
+                    for _ in range(len(rank_list)):
+                        if exp <= rank_list[1]:
+                            rank = 0
+                            break
+                        if exp >= rank_list[-1]:
+                            rank = 150
+                            break
+                        if exp <= rank_list[_]:
+                            rank = _ - 1
+                            break
+                    playerlist_data["teams"][1][i]["rank"] = rank
+                    stat_dict[playerlist_data["teams"][1][i]["pid"]] = player_stat_data
         except asyncio.TimeoutError:
             pass
+
+        # 按等级排序
+        playerlist_data["teams"][0].sort(key=lambda x: x["rank"], reverse=True)
+        playerlist_data["teams"][1].sort(key=lambda x: x["rank"], reverse=True)
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"]))
 
         # 服务器名
         server_name = server_info["serverInfo"]["name"]
@@ -2411,9 +2523,12 @@ class PlayerListPic:
             # 语言
             draw.text((940, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
 
-            # KD KPM 时长
+            # 生涯数据
             try:
-                player_stat_data = scrape_index_tasks_t1[i].result()["result"]
+                player_stat_data = stat_dict[player_item["pid"]]
+                if not player_stat_data:
+                    continue
+
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (
                         player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
@@ -2517,7 +2632,10 @@ class PlayerListPic:
             draw.text((1800, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
             # 生涯数据
             try:
-                player_stat_data = scrape_index_tasks_t2[i].result()["result"]
+                player_stat_data = stat_dict[player_item["pid"]]
+                if not player_stat_data:
+                    continue
+
                 # 胜率
                 win_p = int(player_stat_data['basicStats']['wins'] / (
                         player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)

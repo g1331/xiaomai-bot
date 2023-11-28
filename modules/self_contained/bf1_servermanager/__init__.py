@@ -2635,7 +2635,7 @@ async def kick_by_searched(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-ban", "-b", "-封禁").space(SpacePolicy.PRESERVE),
+            UnionMatch("-ban", "-封禁").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",

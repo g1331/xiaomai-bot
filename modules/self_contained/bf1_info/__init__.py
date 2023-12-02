@@ -1253,6 +1253,8 @@ async def player_match_info(
             )
         result = [f"玩家: {display_name}\n" + "=" * 15]
         # 处理数据
+        # 按game_info['game_time']时间排序,game_info['game_time']是datetime类型
+        player_match.sort(key=lambda x: x.get("game_info").get("game_time"), reverse=True)
         for match in player_match:
             game_info = match.get("game_info")
             player_data = match.get("player")

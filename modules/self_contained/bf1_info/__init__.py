@@ -1275,12 +1275,12 @@ async def player_match_info(
                     )
                     # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
                     team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
-                        if player["team_id"] == game_info["team_win"] else "🏳"
+                        if player["team_name"] == game_info["team_win"] else "🏳"
                     # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
                     time_played = player["time_played"]
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"
-                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M')}\n"
+                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
                         f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
                         f"队伍: {team_name}  {team_win}\n"
                         f"击杀: {player['kills']}\t死亡: {player['deaths']}\n"

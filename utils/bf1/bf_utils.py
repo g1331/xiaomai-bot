@@ -577,17 +577,17 @@ class BattlefieldTracker:
         map_name = match_detail["data"]["attributes"]["mapKey"]
         map_name = MapData.MapTeamDict.get(map_name, {}).get("Chinese", map_name)
         mode_name = MapData.ModeDict.get(
-            match_detail["data"]["metadata"]["gamemodeName"],
-            match_detail["data"]["metadata"]["gamemodeName"]
+            match_detail["data"]["attributes"]["gamemodeKey"][:-1],
+            match_detail["data"]["attributes"]["gamemodeKey"][:-1]
         )
         match_time = match_detail["data"]["metadata"]["timestamp"]  # "2023-10-02T16:57:13+00:00"
         # 转成datetime
         match_time = datetime.datetime.strptime(match_time, "%Y-%m-%dT%H:%M:%S+00:00")
-        team_win = match_detail["metadata"]["winner"]
+        team_win = match_detail["data"]["metadata"]["winner"]
         # 不记录对局时间小于30秒的对局
         duration = match_detail["data"]["metadata"]["duration"]
         if duration < 30:
-            await BF1DB.bf1_match_id_cache.update_bf1_match_id_cache(match_id)
+            await BF1DB.bf1_match_cache.update_bf1_match_id_cache(match_id)
             return
         players = match_detail["data"]["segments"]
         # 处理数据
@@ -604,11 +604,14 @@ class BattlefieldTracker:
             kills = player["stats"].get("kills", {}).get("value", 0)
             deaths = player["stats"].get("deaths", {}).get("value", 0)
             kd = kills / deaths if deaths else kills
+            kd = round(kd, 2)
             kpm = round(player["stats"].get("killsPerMinute", {}).get("value", 0), 2)
             score = player["stats"].get("roundScore", {}).get("value", 0)
+            if score == 0:
+                continue
             spm = round(player["stats"].get("scorePerMinute", {}).get("value", 0), 2)
             headshotsPercentage = f'{player["stats"].get("headshotsPercentage", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
-            shotAccuracy = f'{player["stats"].get("shotsAccuracy", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
+            shotAccuracy = f'{player["stats"].get("shotAccuracy", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
             time_played = player["stats"].get("time", {}).get("value", 0)  # 秒
             if time_played >= 3600:
                 time_played = "{:.0f}小时{:.0f}分{:.0f}秒".format(
@@ -616,6 +619,8 @@ class BattlefieldTracker:
                     (time_played % 3600) // 60,
                     time_played % 60,
                 )
+            elif time_played <= 60:
+                continue
             else:
                 time_played = "{:.0f}分{:.0f}秒".format(
                     time_played // 60, time_played % 60
@@ -673,12 +678,15 @@ class BattlefieldTracker:
     #     4. 根据对局详情，处理数据，如果对局无效，就将id写入数据库
     @staticmethod
     async def update_match_data(player_name: str):
+        logger.debug(f"开始更新玩家{player_name}的对局数据")
         # 获取对局列表
         match_list = await BattlefieldTracker.get_match_list(player_name)
         if not isinstance(match_list, dict):
+            logger.error(f"获取对局列表失败: {match_list}")
             return
         match_list = match_list.get("data").get("matches")
         if not match_list:
+            logger.error(f"获取对局列表失败: {match_list}")
             return
         # 获取对局详情
         tasks = []
@@ -688,9 +696,9 @@ class BattlefieldTracker:
                 continue
             tasks.append(asyncio.ensure_future(BattlefieldTracker.get_match_detail(match_id)))
         if not tasks:
+            logger.debug(f"玩家{player_name}没有新的有效对局数据")
             return
         try:
-            logger.debug(f"开始更新玩家{player_name}的对局数据")
             match_detail_list = await asyncio.gather(*tasks)
         except Exception as e:
             logger.error(f"获取对局详情失败: {e}")

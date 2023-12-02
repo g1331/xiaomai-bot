@@ -45,3 +45,16 @@ class MapData:
         "MP_Blitz": {"Chinese": "伦敦的呼唤：夜袭", "Team1": GER, "Team2": UK},
         "MP_London": {"Chinese": "伦敦的呼唤：灾祸", "Team1": GER, "Team2": UK}
     }
+
+    ModeDict = {
+        "Rush": "突袭",
+        "Conquest": "征服",
+        "TeamDeathMatch": "团队死斗",
+        "Breakthrough": "闪击行动",
+        "Domination": "抢攻",
+        "Possession": "战争信鸽",
+        "BreakthroughLarge": "行动模式",
+        "TugOfWar": "前线",
+        "ZoneControl": "空降补给",
+        "AirAssault": "空中突击"
+    }

@@ -11,20 +11,20 @@ from typing import List, Tuple
 
 import httpx
 from creart import create
-from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
-from graia.ariadne.event.mirai import NudgeEvent
 from graia.ariadne.event.message import GroupMessage, FriendMessage
+from graia.ariadne.event.mirai import NudgeEvent
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, Image, At, ForwardNode, Forward
 from graia.ariadne.message.parser.twilight import Twilight, UnionMatch, SpacePolicy, FullMatch, ParamMatch, \
     RegexResult, ArgumentMatch, ArgResult, WildcardMatch
 from graia.ariadne.model import Group, Friend, Member
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, dispatch, decorate
-from graia.scheduler.saya.schema import SchedulerSchema
-from graia.scheduler import timers
 from graia.saya import Channel, Saya
+from graia.scheduler import timers
+from graia.scheduler.saya.schema import SchedulerSchema
 from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
@@ -38,17 +38,17 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
-from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
-from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange, Bf1Status
-from utils.bf1.gateway_api import api_instance
-from utils.bf1.map_team_info import MapData
-from utils.bf1.database import BF1DB
 from utils.bf1.bf_utils import (
     get_personas_by_name, check_bind, BTR_get_recent_info,
-    BTR_get_match_info, BTR_update_data, bfeac_checkBan, bfban_checkBan, gt_checkVban, gt_bf1_stat, record_api,
-    gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid
+    bfeac_checkBan, bfban_checkBan, gt_checkVban, record_api,
+    gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid, BattlefieldTracker
 )
+from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
+from utils.bf1.database import BF1DB
+from utils.bf1.default_account import BF1DA
+from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange
+from utils.bf1.gateway_api import api_instance
+from utils.bf1.map_team_info import MapData
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -1226,7 +1226,7 @@ async def player_match_info(
                 MessageChain(f"查询出错!{player_info}"),
                 quote=source
             )
-        # player_pid = player_info["personas"]["persona"][0]["personaId"]
+        player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
     elif bind_info := await check_bind(sender.id):
         if isinstance(bind_info, str):
@@ -1236,17 +1236,15 @@ async def player_match_info(
                 quote=source
             )
         display_name = bind_info.get("displayName")
-        # player_pid = bind_info.get("pid")
+        player_pid = bind_info.get("pid")
     else:
-        return await app.send_message(
-            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
-        )
+        return await app.send_message(group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source)
     await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 从BTR获取数据
     try:
-        await BTR_update_data(display_name)
-        player_match = await BTR_get_match_info(display_name)
+        _ = await BattlefieldTracker.update_match_data(player_name)
+        player_match = await BattlefieldTracker.get_player_match_data(player_pid)
         if not player_match:
             return await app.send_message(
                 group,
@@ -1275,7 +1273,11 @@ async def player_match_info(
                         ),
                         "No Team",
                     )
-                    team_win = "🏆" if player['team_win'] else "🏳"
+                    # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
+                    team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
+                        if player["team_id"] == game_info["team_win"] else "🏳"
+                    # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
+                    time_played = player["time_played"]
                     result.append(
                         f"服务器: {game_info['server_name'][:20]}\n"
                         f"时间: {game_info['game_time'].strftime('%Y年%m月%d日 %H:%M')}\n"
@@ -1285,16 +1287,12 @@ async def player_match_info(
                         f"KD: {player['kd']}\tKPM: {player['kpm']}\n"
                         f"得分: {player['score']}\tSPM: {player['spm']}\n"
                         f"命中率: {player['accuracy']}\t爆头: {player['headshots']}\n"
-                        f"游玩时长: {player['time_played']}\n"
+                        f"游玩时长: {time_played}\n"
                         + "=" * 15
                     )
         result = result[:4]
         result = "\n".join(result)
-        await app.send_message(
-            group,
-            MessageChain(result),
-            quote=source
-        )
+        return await app.send_message(group, MessageChain(result), quote=source)
     except Exception as e:
         logger.error(e)
         return await app.send_message(

@@ -26,6 +26,7 @@ from utils.bf1.data_handle import BTRMatchesData, BlazeData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from utils.bf1.gateway_api import api_instance
+from utils.bf1.map_team_info import MapData
 
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
@@ -178,137 +179,6 @@ async def get_match_detail(session, match_url: str) -> list[dict]:
     except Exception as e:
         logger.error(f"获取对局详情失败{e}")
         return None
-
-
-async def BTR_get_match_info(player_name: str) -> list[dict]:
-    """
-    从BTR获取最近的对局信息
-    :param player_name: 玩家名称
-    :return: 返回一个字典，包含对局信息和玩家信息
-    """
-    result = []
-    # 先从数据库查询数据,如果数据库中有数据则直接返回
-    if matches := await BF1DB.bf1_match_cache.get_btr_match_by_displayName(player_name):
-        for data in matches:
-            server_name = data['server_name']
-            map_name = data['map_name']
-            mode_name = data['mode_name']
-            game_time = data['time']
-            match_result = {
-                "game_info": {
-                    "server_name": server_name,
-                    "map_name": map_name,
-                    "mode_name": mode_name,
-                    "game_time": game_time,
-                },
-                "players": [{
-                    "player_name": data['display_name'],
-                    "team_name": data['team_name'],
-                    "team_win": data['team_win'],
-                    "kills": data['kills'],
-                    "deaths": data['deaths'],
-                    "kd": data['kd'],
-                    "kpm": data['kpm'],
-                    "score": data['score'],
-                    "spm": data['spm'],
-                    "headshots": data['headshots'],
-                    "accuracy": data['accuracy'],
-                    "time_played": data['time_played'],
-                }]}
-            result.append(match_result)
-    return result
-
-
-async def BTR_update_data(player_name: str) -> None:
-    """
-    更新BTR对局数据
-    :param player_name: 玩家名称
-    :return: None
-    """
-    logger.debug("开始更新BTR对局数据")
-    result = []
-    # BTR玩家最近对局列表页面
-    header = {
-        "Connection": "keep-alive",
-        "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
-    }
-    matches_url = f'https://battlefieldtracker.com/bf1/profile/pc/{player_name}/matches'
-    # 网络请求
-    async with aiohttp.ClientSession(headers=header) as session:
-        async with session.get(matches_url) as resp:
-            matches_list = await resp.text()
-            if not matches_list:
-                return result
-            # 解析网页，结合上面html代码
-            soup = BeautifulSoup(matches_list, 'lxml')
-            # 每一个对局都在div card matches中,每次最多能获取到30个，这里只获取前10个对局的信息，每个对局的链接都在a标签中的href属性中
-            # 如果找不到card matches，说明没有对局
-            if not soup.select('div.card.matches'):
-                return result
-            matches_url_list = []
-            match_id_list = []
-            # 获取每个对局的链接
-            for match in soup.select('div.card.matches')[0].select('a.match'):
-                match_url = match['href']
-                # match_url: bf1/matches/pc/1639959006078647616?context=playerName
-                # 只取?context=playerName前面的部分
-                match_url = match_url.split('?')[0]
-                match_url = f'https://battlefieldtracker.com{match_url}'
-                matches_url_list.append(match_url)
-                match_id_list.append(match_url.split('pc/')[1].split('?')[0])
-
-            # 并发获取每个对局的详细信息
-            tasks = [asyncio.ensure_future(get_match_detail(session, match_url)) for match_url in matches_url_list[:5]]
-            if not tasks:
-                return result
-            matches_result = await asyncio.gather(*tasks)
-
-            # 处理每个对局的详细信息
-            matches_info_list = await BTRMatchesData(matches_result).handle()
-            for i, match_info in enumerate(matches_info_list):
-                result_temp = match_info
-                # 写入数据库
-                if match_info['players']:
-                    for player in match_info['players']:
-                        if player_name.lower() == player['player_name'].lower():
-                            player_name_item = player['player_name']
-                            player_kills = player['kills']
-                            player_deaths = player['deaths']
-                            kd = player['kd']
-                            kpm = player['kpm']
-                            player_score = player['score']
-                            spm = player['spm']
-                            player_headshots = player['headshots']
-                            player_accuracy = player['accuracy']
-                            player_time = player['time_played']
-                            team_win = player['team_win']
-                            await BF1DB.bf1_match_cache.update_btr_match_cache(
-                                # 服务器信息
-                                match_id=match_id_list[i],
-                                server_name=match_info['game_info']['server_name'],
-                                map_name=match_info['game_info']['map_name'],
-                                mode_name=match_info['game_info']['mode_name'],
-                                time=match_info['game_info']['game_time'],
-                                # 队伍信息
-                                team_name=match_info['players'][0]['team_name'],
-                                team_win=team_win,
-                                # 基本信息
-                                display_name=player_name_item,
-                                kills=player_kills,
-                                deaths=player_deaths,
-                                kd=kd,
-                                kpm=kpm,
-                                # 得分
-                                score=player_score,
-                                spm=spm,
-                                # 其他
-                                headshots=player_headshots,
-                                accuracy=player_accuracy,
-                                time_played=player_time
-                            )
-                            result.append(result_temp)
-
-            return result
 
 
 async def bfeac_checkBan(player_name: str) -> dict:
@@ -573,6 +443,310 @@ async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union
         return response["data"][str(server_gameid)] if response["data"][str(server_gameid)] != '' else "服务器信息为空!"
     else:
         return f"获取服务器信息失败:{response}"
+
+
+class BattlefieldTracker:
+    """
+    玩家不存在时的返回:
+    {
+        "errors": [
+            {
+                "code": "CollectorResultStatus::NotFound",
+                "message": "We could not find the player sdawdjasd on Origin.",
+                "data": {}
+            }
+        ]
+    }
+    header:
+    Host:api.tracker.gg
+    Accept-Encoding:gzip
+    Content-Type:application/json
+    User-Agent:Tracker Network App/3.22.9
+    x-app-version:3.22.9
+
+    获取对局的步骤:
+    1. 查询对局列表
+    2. 遍历对局列表，如果对局id有效，就放到获取对局详情的task中
+    3. 并发执行获取对局详情的task
+    4. 根据对局详情，处理数据，如果对局无效，就将id写入数据库
+    """
+    url_root = "https://api.tracker.gg/api/v2/bf1/standard/"
+    header = {
+        "Host": "api.tracker.gg",
+        "Connection": "keep-alive",
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "Content-Type": "application/json",
+        "User-Agent": "Tracker Network App/3.22.9",
+        "x-app-version": "3.22.9",
+    }
+
+    @staticmethod
+    async def get_player_profile(player_name: str) -> Union[dict, str, None]:
+        route = "profile/origin/"
+        url = f"{BattlefieldTracker.url_root}{route}{player_name}"
+        try:
+            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
+                async with session.get(url) as response:
+                    response = await response.json()
+            if response.get("errors"):
+                return response["errors"][0]["message"]
+            return response
+        except Exception as e:
+            logger.error(f"get_player_profile: {e}")
+            return None
+
+    @staticmethod
+    async def get_match_list(player_name: str) -> Union[dict, str, None]:
+        """
+        获取玩家对局列表
+        :param player_name: 玩家名称
+        :return:
+        {
+        "data": {
+            "matches": [
+                {
+                    "attributes": {
+                        "id": "5-1708888840270100224",
+                        "mapKey": "MP_MountainFort",
+                        "gamemodeKey": "Conquest0"
+                    },
+                    "metadata": {
+                        "timestamp": "2023-10-02T16:57:13+00:00",
+                        "mapName": "Monte Grappa",
+                        "mapImageUrl": "https://trackercdn.com/cdn/battlefieldtracker.com/bf1/maps/MP_MountainFort.jpg",
+                        "gamemodeName": "Conquest",
+                        "isRanked": true,
+                        "serverName": "HOT01 noobMAX/lv<145 kill<60 kd<2.5 kp<2/ ban hack qq:781495553"
+                    },
+                    "segments": [],
+                    "streams": null,
+                    "expiryDate": "0001-01-01T00:00:00+00:00"
+                },...
+            ],
+            "metadata": {
+                "next": "1690897905"
+            },
+            "paginationType": "Next",
+            "requestingPlayerAttributes": {
+                "platformId": 5,
+                "platformUserIdentifier": "shlsan13"
+            },
+            "expiryDate": "2023-12-02T13:23:44.783425+00:00"
+        }
+        """
+        route = "matches/origin/"
+        url = f"{BattlefieldTracker.url_root}{route}{player_name}"
+        try:
+            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
+                async with session.get(url) as response:
+                    response = await response.json()
+            if response.get("errors"):
+                return response["errors"][0]["message"]
+            return response
+        except Exception as e:
+            logger.error(f"get_match_list: {e}")
+            return None
+
+    @staticmethod
+    async def get_match_detail(match_id: str) -> Union[dict, str, None]:
+        route = "matches/"
+        url = f"{BattlefieldTracker.url_root}{route}{match_id}"
+        try:
+            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
+                async with session.get(url) as response:
+                    response = await response.json()
+            if response.get("errors"):
+                return response["errors"][0]["message"]
+            return response
+        except Exception as e:
+            logger.error(f"get_match_detail: {e}")
+            return None
+
+    @staticmethod
+    async def handle_match_detail(match_detail: dict) -> Union[dict, None]:
+        """
+        处理对局详情
+        :param match_detail: 对局详情
+        :return:
+        """
+        # 从对局详情中提取数据
+        # 服务器信息
+        match_id = match_detail["data"]["attributes"]["id"]
+        server_name = match_detail["data"]["metadata"]["serverName"]
+        map_name = match_detail["data"]["attributes"]["mapKey"]
+        map_name = MapData.MapTeamDict.get(map_name, {}).get("Chinese", map_name)
+        mode_name = MapData.ModeDict.get(
+            match_detail["data"]["metadata"]["gamemodeName"],
+            match_detail["data"]["metadata"]["gamemodeName"]
+        )
+        match_time = match_detail["data"]["metadata"]["timestamp"]  # "2023-10-02T16:57:13+00:00"
+        # 转成datetime
+        match_time = datetime.datetime.strptime(match_time, "%Y-%m-%dT%H:%M:%S+00:00")
+        team_win = match_detail["metadata"]["winner"]
+        # 不记录对局时间小于30秒的对局
+        duration = match_detail["data"]["metadata"]["duration"]
+        if duration < 30:
+            await BF1DB.bf1_match_id_cache.update_bf1_match_id_cache(match_id)
+            return
+        players = match_detail["data"]["segments"]
+        # 处理数据
+        players_data = []
+        for player in players:
+            if player["type"] != "player":
+                continue
+            player_name = player["metadata"]["playerName"]
+            player_pid: str = player["attributes"]["playerId"]
+            if player_name == "Unknown":
+                continue
+            # 队伍信息
+            team_id = player["attributes"]["teamId"]
+            kills = player["stats"].get("kills", {}).get("value", 0)
+            deaths = player["stats"].get("deaths", {}).get("value", 0)
+            kd = kills / deaths if deaths else kills
+            kpm = round(player["stats"].get("killsPerMinute", {}).get("value", 0), 2)
+            score = player["stats"].get("roundScore", {}).get("value", 0)
+            spm = round(player["stats"].get("scorePerMinute", {}).get("value", 0), 2)
+            headshotsPercentage = f'{player["stats"].get("headshotsPercentage", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
+            shotAccuracy = f'{player["stats"].get("shotsAccuracy", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
+            time_played = player["stats"].get("time", {}).get("value", 0)  # 秒
+            if time_played >= 3600:
+                time_played = "{:.0f}小时{:.0f}分{:.0f}秒".format(
+                    time_played // 3600,
+                    (time_played % 3600) // 60,
+                    time_played % 60,
+                )
+            else:
+                time_played = "{:.0f}分{:.0f}秒".format(
+                    time_played // 60, time_played % 60
+                )
+            await BF1DB.bf1_match_cache.update_btr_match_cache(
+                match_id=match_id,
+                server_name=server_name,
+                map_name=map_name,
+                mode_name=mode_name,
+                time=match_time,
+                team_name=team_id,
+                team_win=team_win,
+                display_name=player_name,
+                persona_id=player_pid,
+                kills=kills,
+                deaths=deaths,
+                kd=kd,
+                kpm=kpm,
+                score=score,
+                spm=spm,
+                accuracy=shotAccuracy,
+                headshots=headshotsPercentage,
+                time_played=time_played,
+            )
+            players_data.append({
+                "player_name": player_name,
+                "team_name": team_id,
+                "team_win": team_win,
+                "kills": kills,
+                "deaths": deaths,
+                "kd": kd,
+                "kpm": kpm,
+                "score": score,
+                "spm": spm,
+                "headshots": headshotsPercentage,
+                "accuracy": shotAccuracy,
+                "time_played": time_played,
+            })
+        return {
+            "game_info": {
+                "server_name": server_name,
+                "map_name": map_name,
+                "mode_name": mode_name,
+                "game_time": match_time,
+                "match_id": match_id,
+                "team_win": team_win,
+            },
+            "players": players_data
+        }
+
+    # 更新玩家对局数据
+    #     1. 查询对局列表
+    #     2. 遍历对局列表，如果对局id有效，就放到获取对局详情的task中
+    #     3. 并发执行获取对局详情的task
+    #     4. 根据对局详情，处理数据，如果对局无效，就将id写入数据库
+    @staticmethod
+    async def update_match_data(player_name: str):
+        # 获取对局列表
+        match_list = await BattlefieldTracker.get_match_list(player_name)
+        if not isinstance(match_list, dict):
+            return
+        match_list = match_list.get("data").get("matches")
+        if not match_list:
+            return
+        # 获取对局详情
+        tasks = []
+        for match in match_list:
+            match_id = match.get("attributes").get("id")
+            if await BF1DB.bf1_match_cache.check_bf1_match_id_cache(match_id):
+                continue
+            tasks.append(asyncio.ensure_future(BattlefieldTracker.get_match_detail(match_id)))
+        if not tasks:
+            return
+        try:
+            logger.debug(f"开始更新玩家{player_name}的对局数据")
+            match_detail_list = await asyncio.gather(*tasks)
+        except Exception as e:
+            logger.error(f"获取对局详情失败: {e}")
+            return
+        # 处理对局详情
+        for match_detail in match_detail_list:
+            if not isinstance(match_detail, dict):
+                continue
+            if match_detail.get("errors"):
+                logger.error(f"获取对局详情失败: {match_detail['errors'][0]['message']}")
+                continue
+            # 从对局详情中提取数据,并写入数据库
+            _ = await BattlefieldTracker.handle_match_detail(match_detail)
+
+    @staticmethod
+    async def get_player_match_data(player_pid: int) -> Union[list, None]:
+        """
+        获取玩家对局数据
+        :param player_pid: 玩家pid
+        :return: 返回一个列表，包含对局信息和玩家信息
+        """
+        # 先从数据库查询数据,如果数据库中有数据则直接返回
+        if matches := await BF1DB.bf1_match_cache.get_btr_match_by_pid(player_pid):
+            result = []
+            for data in matches:
+                server_name = data['server_name']
+                map_name = data['map_name']
+                mode_name = data['mode_name']
+                game_time = data['time']
+                match_id = data['match_id']
+                team_win = data['team_win']
+                match_result = {
+                    "game_info": {
+                        "server_name": server_name,
+                        "map_name": map_name,
+                        "mode_name": mode_name,
+                        "game_time": game_time,
+                        "match_id": match_id,
+                        "team_win": team_win,
+                    },
+                    "player": {
+                        "player_name": data['display_name'],
+                        "team_name": data['team_name'],
+                        "kills": data['kills'],
+                        "deaths": data['deaths'],
+                        "kd": data['kd'],
+                        "kpm": data['kpm'],
+                        "score": data['score'],
+                        "spm": data['spm'],
+                        "headshots": data['headshots'],
+                        "accuracy": data['accuracy'],
+                        "time_played": data['time_played'],  # 秒
+                    }}
+                result.append(match_result)
+            return result
+        return None
 
 
 class EACUtils:

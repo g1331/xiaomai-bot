@@ -1253,43 +1253,41 @@ async def player_match_info(
             )
         result = [f"玩家: {display_name}\n" + "=" * 15]
         # 处理数据
-        for item in player_match:
-            players = item.get("players")
-            for player in players:
-                if player.get("player_name").upper() == display_name.upper():
-                    game_info = item.get("game_info")
-                    # 如果得为0则跳过
-                    if player["score"] == 0:
-                        continue
-                    map_name = game_info['map_name']
-                    player["team_name"] = f"Team{player['team_name']}" if player["team_name"] else "No Team"
-                    team_name = next(
-                        (
-                            MapData.MapTeamDict.get(key).get(
-                                player["team_name"], "No Team"
-                            )
-                            for key in MapData.MapTeamDict
-                            if MapData.MapTeamDict.get(key).get("Chinese") == map_name
-                        ),
-                        "No Team",
+        for match in player_match:
+            game_info = match.get("game_info")
+            player_data = match.get("player")
+            # 如果得为0则跳过
+            if player_data["score"] == 0:
+                continue
+            map_name = game_info['map_name']
+            player_data["team_name"] = f"Team{player_data['team_name']}" if player_data["team_name"] else "No Team"
+            team_name = next(
+                (
+                    MapData.MapTeamDict.get(key).get(
+                        player_data["team_name"], "No Team"
                     )
-                    # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
-                    team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
-                        if player["team_name"] == game_info["team_win"] else "🏳"
-                    # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
-                    time_played = player["time_played"]
-                    result.append(
-                        f"服务器: {game_info['server_name'][:20]}\n"
-                        f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
-                        f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
-                        f"队伍: {team_name}  {team_win}\n"
-                        f"击杀: {player['kills']}\t死亡: {player['deaths']}\n"
-                        f"KD: {player['kd']}\tKPM: {player['kpm']}\n"
-                        f"得分: {player['score']}\tSPM: {player['spm']}\n"
-                        f"命中率: {player['accuracy']}\t爆头: {player['headshots']}\n"
-                        f"游玩时长: {time_played}\n"
-                        + "=" * 15
-                    )
+                    for key in MapData.MapTeamDict
+                    if MapData.MapTeamDict.get(key).get("Chinese") == map_name
+                ),
+                "No Team",
+            )
+            # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
+            team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
+                if player_data["team_name"] == game_info["team_win"] else "🏳"
+            # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
+            time_played = player_data["time_played"]
+            result.append(
+                f"服务器: {game_info['server_name'][:20]}\n"
+                f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
+                f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                f"队伍: {team_name}  {team_win}\n"
+                f"击杀: {player_data['kills']}\t死亡: {player_data['deaths']}\n"
+                f"KD: {player_data['kd']}\tKPM: {player_data['kpm']}\n"
+                f"得分: {player_data['score']}\tSPM: {player_data['spm']}\n"
+                f"命中率: {player_data['accuracy']}\t爆头: {player_data['headshots']}\n"
+                f"游玩时长: {time_played}\n"
+                + "=" * 15
+            )
         result = result[:4]
         result = "\n".join(result)
         return await app.send_message(group, MessageChain(result), quote=source)

@@ -1243,7 +1243,7 @@ async def player_match_info(
 
     # 从BTR获取数据
     try:
-        _ = await BattlefieldTracker.update_match_data(player_name)
+        _ = await BattlefieldTracker.update_match_data(display_name)
         player_match = await BattlefieldTracker.get_player_match_data(player_pid)
         if not player_match:
             return await app.send_message(

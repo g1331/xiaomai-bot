@@ -601,7 +601,13 @@ class BattlefieldTracker:
                 continue
             # 队伍信息
             team_id = player["attributes"]["teamId"]
-            kills = player["stats"].get("kills", {}).get("value", 0)
+            # kills = player["stats"].get("kills", {}).get("value", 0)
+            # squadKillsAssistAsKills = player["stats"].get("squadKillsAssistAsKills", {}).get("value", 0)
+            # killsAssistAsKills = player["stats"].get("killsAssistAsKills", {}).get("value", 0)
+            rushArtilleryDefenseKills = player["stats"].get("rushArtilleryDefenseKills", {}).get("value", 0)
+            # rushArtilleryDefenseKills = kills + squadKillsAssistAsKills + killsAssistAsKills
+            # 这里的rushArtilleryDefenseKills是总击杀,不再自己计算
+            kills = rushArtilleryDefenseKills
             deaths = player["stats"].get("deaths", {}).get("value", 0)
             kd = kills / deaths if deaths else kills
             kd = round(kd, 2)
@@ -677,7 +683,7 @@ class BattlefieldTracker:
     #     3. 并发执行获取对局详情的task
     #     4. 根据对局详情，处理数据，如果对局无效，就将id写入数据库
     @staticmethod
-    async def update_match_data(player_name: str):
+    async def update_match_data(player_name: str, player_pid: int):
         logger.debug(f"开始更新玩家{player_name}的对局数据")
         # 获取对局列表
         match_list = await BattlefieldTracker.get_match_list(player_name)
@@ -690,9 +696,14 @@ class BattlefieldTracker:
             return
         # 获取对局详情
         tasks = []
-        for match in match_list:
+        # 只获取最近的5场对局
+        for match in match_list[:5]:
             match_id = match.get("attributes").get("id")
+            # 跳过无效对局id
             if await BF1DB.bf1_match_cache.check_bf1_match_id_cache(match_id):
+                continue
+            # 跳过已缓存过的玩家对局
+            if await BF1DB.bf1_match_cache.check_bf1_match_id_cache_by_pid(player_pid, match_id):
                 continue
             tasks.append(asyncio.ensure_future(BattlefieldTracker.get_match_detail(match_id)))
         if not tasks:

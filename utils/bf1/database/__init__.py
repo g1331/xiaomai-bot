@@ -1780,6 +1780,18 @@ class bf1_db:
                 return True
             return False
 
+        # 检查玩家的对局id是否在Bf1MatchIdCache表中
+        @staticmethod
+        async def check_bf1_match_id_cache_by_pid(persona_id: int, match_id: str) -> bool:
+            if _ := await orm.fetch_one(
+                    select(Bf1MatchIdCache.match_id).where(
+                        Bf1MatchIdCache.match_id == match_id,
+                        Bf1MatchIdCache.persona_id == persona_id,
+                    )
+            ):
+                return True
+            return False
+
     # TODO
     #   权限组
     #   读:

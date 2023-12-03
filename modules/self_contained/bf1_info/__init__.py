@@ -1243,7 +1243,7 @@ async def player_match_info(
 
     # 从BTR获取数据
     try:
-        _ = await BattlefieldTracker.update_match_data(display_name)
+        _ = await BattlefieldTracker.update_match_data(display_name, player_pid)
         player_match = await BattlefieldTracker.get_player_match_data(player_pid)
         if not player_match:
             return await app.send_message(
@@ -1258,9 +1258,6 @@ async def player_match_info(
         for match in player_match:
             game_info = match.get("game_info")
             player_data = match.get("player")
-            # 如果得为0则跳过
-            if player_data["score"] == 0:
-                continue
             map_name = game_info['map_name']
             player_data["team_name"] = f"Team{player_data['team_name']}" if player_data["team_name"] else "No Team"
             team_name = next(

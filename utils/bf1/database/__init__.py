@@ -1784,9 +1784,9 @@ class bf1_db:
         @staticmethod
         async def check_bf1_match_id_cache_by_pid(persona_id: int, match_id: str) -> bool:
             if _ := await orm.fetch_one(
-                    select(Bf1MatchIdCache.match_id).where(
-                        Bf1MatchIdCache.match_id == match_id,
-                        Bf1MatchIdCache.persona_id == persona_id,
+                    select(Bf1MatchCache.match_id).where(
+                        Bf1MatchCache.persona_id == persona_id,
+                        Bf1MatchCache.match_id == match_id,
                     )
             ):
                 return True

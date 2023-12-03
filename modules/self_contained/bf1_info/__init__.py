@@ -800,14 +800,15 @@ async def player_weapon_pic(
             sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
+        weapon_name = weapon_name.result.display.strip("\"").strip("'")
         player_weapon: list = WeaponData(player_weapon).search_weapon(
-            weapon_name.result.display,
+            weapon_name,
             sort_type=sort_type.result.display if sort_type.matched else "",
         )
         if not player_weapon:
             return await app.send_message(
                 group,
-                MessageChain(f"没有找到武器[{weapon_name.result.display}]哦~"),
+                MessageChain(f"没有找到武器[{weapon_name}]哦~"),
                 quote=source
             )
 
@@ -998,14 +999,15 @@ async def player_vehicle_pic(
             sort_type=sort_type.result.display if sort_type.matched else "",
         )
     else:
+        vehicle_name = vehicle_name.result.display.strip("\"").strip("'")
         player_vehicle: list = VehicleData(player_vehicle).search_vehicle(
-            target_vehicle_name=vehicle_name.result.display,
+            target_vehicle_name=vehicle_name,
             sort_type=sort_type.result.display if sort_type.matched else "",
         )
         if not player_vehicle:
             return await app.send_message(
                 group,
-                MessageChain(f"没有找到载具[{vehicle_name.result.display}]哦~"),
+                MessageChain(f"没有找到载具[{vehicle_name}]哦~"),
                 quote=source
             )
 

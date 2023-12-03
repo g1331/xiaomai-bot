@@ -323,11 +323,9 @@ class PilImageUtils:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
-                        img = await resp.read()
-                        return img
-                    else:
-                        logger.warning(f"读取图片失败，url: {url}")
-                        return None
+                        return await resp.read()
+                    logger.warning(f"读取图片失败，url: {url}")
+                    return None
         except TimeoutError:
             logger.warning(f"读取图片失败，url: {url}")
             return None
@@ -465,13 +463,14 @@ class PlayerStatPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if not player_background_path:
-            if background_path.exists():
-                background = player_background_path.open("rb").read()
-            else:
-                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        else:
+        if (
+            not player_background_path
+            and background_path.exists()
+            or player_background_path
+        ):
             background = player_background_path.open("rb").read()
+        else:
+            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
         #     # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         #     background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
@@ -1401,13 +1400,12 @@ class PlayerWeaponPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if not player_background_path:
-            if background_path.exists():
-                background = random.choice(list(background_path.iterdir())).open("rb").read()
-            else:
-                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        else:
+        if player_background_path:
             background = player_background_path.open("rb").read()
+        elif background_path.exists():
+            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        else:
+            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         # 默认背景，直接放大填充
         if not player_background_path:
             background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)

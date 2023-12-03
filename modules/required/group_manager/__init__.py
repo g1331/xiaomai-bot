@@ -161,9 +161,9 @@ async def recall(app: Ariadne, group: Group, event: GroupMessage, source: Source
         await app.recall_message(quote_id)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"执行出错/bot权限不足!"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("执行出错/bot权限不足!"), quote=source
+        )
 
 
 # TODO 禁言 @qq 禁言
@@ -341,9 +341,7 @@ async def unmute_all(app: Ariadne, group: Group, sender: Member, source: Source)
         ), quote=source)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"处理出错啦!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("处理出错啦!"), quote=source)
 
 
 # 指定BOT退群
@@ -369,24 +367,20 @@ async def quit_group(
 ):
     group_id = group_id.result.display
     if not group_id.isdigit():
-        return await app.send_message(group, MessageChain(
-            f"群号必须为数字!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("群号必须为数字!"), quote=source)
     else:
         group_id = int(group_id)
     bot_id = bot_id.result.display
     if not bot_id.isdigit():
-        return await app.send_message(group, MessageChain(
-            f"BOT账号必须为数字!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("BOT账号必须为数字!"), quote=source)
     else:
         bot_id = int(bot_id)
     # 获取目标群和目标BOT
     target_app, target_group = await account_controller.get_app_from_total_groups(group_id, bot_id=bot_id)
     if not (target_app and target_group):
-        return await app.send_message(group, MessageChain(
-            f"没有找到目标群和BOT!"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("没有找到目标群和BOT!"), quote=source
+        )
     try:
         _ = await target_app.quit_group(target_group)
         return await app.send_message(group, MessageChain(
@@ -394,6 +388,4 @@ async def quit_group(
         ), quote=source)
     except Exception as e:
         logger.error(e)
-        return await app.send_message(group, MessageChain(
-            f"退出群失败!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("退出群失败!"), quote=source)

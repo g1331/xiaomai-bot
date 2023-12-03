@@ -18,7 +18,7 @@ from utils.bf1.database.tables import (
     Bf1ServerPlayerCount,
     Bf1GroupBind,
     Bf1PermGroupBind,
-    Bf1PermMemberInfo, Bf1ManagerLog, Bf1ServerManagerVip,
+    Bf1PermMemberInfo, Bf1ManagerLog, Bf1ServerManagerVip, Bf1MatchIdCache,
 )
 
 
@@ -1593,7 +1593,7 @@ class bf1_db:
     class bf1_match_cache:
 
         @staticmethod
-        async def get_btr_match_by_displayName(display_name: str) -> Union[list, None]:
+        async def get_btr_match_by_displayName(display_name: str, limit=10) -> Union[list, None]:
             """根据pid获取对应的btr对局信息"""
             # 根据时间获取该display_name最新的10条记录
             if match := await orm.fetch_all(
@@ -1616,7 +1616,59 @@ class bf1_db:
                         Bf1MatchCache.accuracy,
                         Bf1MatchCache.headshots,
                         Bf1MatchCache.time_played,
-                    ).where(Bf1MatchCache.display_name == display_name).order_by(-Bf1MatchCache.time).limit(5)
+                    ).where(Bf1MatchCache.display_name == display_name).order_by(-Bf1MatchCache.time).limit(limit)
+            ):
+                result = []
+                for match_item in match:
+                    temp = {
+                        "match_id": match_item[0],
+                        "server_name": match_item[1],
+                        "map_name": match_item[2],
+                        "mode_name": match_item[3],
+                        "time": match_item[4],
+                        "team_name": match_item[5],
+                        "team_win": match_item[6],
+                        "persona_id": match_item[7],
+                        "display_name": match_item[8],
+                        "kills": match_item[9],
+                        "deaths": match_item[10],
+                        "kd": match_item[11],
+                        "kpm": match_item[12],
+                        "score": match_item[13],
+                        "spm": match_item[14],
+                        "accuracy": match_item[15],
+                        "headshots": match_item[16],
+                        "time_played": match_item[17],
+                    }
+                    result.append(temp)
+                return result
+            return None
+
+        @staticmethod
+        async def get_btr_match_by_pid(persona_id: int, limit=10) -> Union[list, None]:
+            """根据pid获取对应的btr对局信息"""
+            # 根据时间获取该pid最新的10条记录
+            if match := await orm.fetch_all(
+                    select(
+                        Bf1MatchCache.match_id,
+                        Bf1MatchCache.server_name,
+                        Bf1MatchCache.map_name,
+                        Bf1MatchCache.mode_name,
+                        Bf1MatchCache.time,
+                        Bf1MatchCache.team_name,
+                        Bf1MatchCache.team_win,
+                        Bf1MatchCache.persona_id,
+                        Bf1MatchCache.display_name,
+                        Bf1MatchCache.kills,
+                        Bf1MatchCache.deaths,
+                        Bf1MatchCache.kd,
+                        Bf1MatchCache.kpm,
+                        Bf1MatchCache.score,
+                        Bf1MatchCache.spm,
+                        Bf1MatchCache.accuracy,
+                        Bf1MatchCache.headshots,
+                        Bf1MatchCache.time_played,
+                    ).where(Bf1MatchCache.persona_id == persona_id).order_by(-Bf1MatchCache.time).limit(limit)
             ):
                 result = []
                 for match_item in match:
@@ -1652,7 +1704,7 @@ class bf1_db:
                 mode_name: str,
                 time: datetime.datetime,
                 team_name: str,
-                team_win: bool,
+                team_win: int,
                 display_name: str,
                 kills: int,
                 deaths: int,
@@ -1663,7 +1715,7 @@ class bf1_db:
                 accuracy: str,
                 headshots: str,
                 time_played: int,
-                persona_id: int = 0,
+                persona_id: int,
         ) -> bool:
             await orm.insert_or_ignore(
                 table=Bf1MatchCache,
@@ -1689,9 +1741,56 @@ class bf1_db:
                 },
                 condition=[
                     Bf1MatchCache.match_id == match_id,
-                    Bf1MatchCache.display_name == display_name,
+                    Bf1MatchCache.persona_id == persona_id,
                 ],
             )
+            return True
+
+        # 写入对局id到Bf1MatchIdCache表
+        @staticmethod
+        async def update_bf1_match_id_cache(match_id: str) -> bool:
+            await orm.insert_or_ignore(
+                table=Bf1MatchIdCache,
+                data={
+                    "match_id": match_id,
+                },
+                condition=[
+                    Bf1MatchIdCache.match_id == match_id,
+                ],
+            )
+            return True
+
+        # 从Bf1MatchIdCache表中删除对局id
+        @staticmethod
+        async def delete_bf1_match_id_cache(match_id: str) -> bool:
+            await orm.delete(
+                table=Bf1MatchIdCache,
+                condition=[
+                    Bf1MatchIdCache.match_id == match_id,
+                ],
+            )
+            return True
+
+        # 检查一个对局id是否在Bf1MatchIdCache表中
+        @staticmethod
+        async def check_bf1_match_id_cache(match_id: str) -> bool:
+            if _ := await orm.fetch_one(
+                    select(Bf1MatchIdCache.match_id).where(Bf1MatchIdCache.match_id == match_id)
+            ):
+                return True
+            return False
+
+        # 检查玩家的对局id是否在Bf1MatchIdCache表中
+        @staticmethod
+        async def check_bf1_match_id_cache_by_pid(persona_id: int, match_id: str) -> bool:
+            if _ := await orm.fetch_one(
+                    select(Bf1MatchCache.match_id).where(
+                        Bf1MatchCache.persona_id == persona_id,
+                        Bf1MatchCache.match_id == match_id,
+                    )
+            ):
+                return True
+            return False
 
     # TODO
     #   权限组
@@ -1831,7 +1930,8 @@ class bf1_db:
         @staticmethod
         async def is_qq_in_permission_group(bf1_group_name: str, qq_id: int) -> bool:
             result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id).where(
-                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
+                func.lower(
+                    Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
             if result:
                 for item in result:
                     if item[0] == qq_id:
@@ -1842,7 +1942,8 @@ class bf1_db:
         @staticmethod
         async def get_qq_perm_in_permission_group(bf1_group_name: str, qq_id: int) -> int:
             result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
-                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
+                func.lower(
+                    Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
             return next((item[1] for item in result if item[0] == qq_id), -1)
 
         @staticmethod

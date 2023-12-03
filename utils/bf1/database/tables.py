@@ -177,7 +177,7 @@ class Bf1MatchCache(orm.Base):
 
     __tablename__ = "bf1_match_cache"
     id = Column(Integer, primary_key=True)
-    match_id = Column(BIGINT)
+    match_id = Column(String)
 
     server_name = Column(String, nullable=False)
     map_name = Column(String, nullable=False)
@@ -186,7 +186,7 @@ class Bf1MatchCache(orm.Base):
     time = Column(DateTime, nullable=False)
 
     team_name = Column(String, nullable=False)
-    team_win = Column(Boolean, nullable=False)
+    team_win = Column(Integer, nullable=False)
 
     persona_id = Column(BIGINT, nullable=True)
     display_name = Column(String(collation='NOCASE'), nullable=False)
@@ -202,6 +202,14 @@ class Bf1MatchCache(orm.Base):
     accuracy = Column(String, nullable=False)
     headshots = Column(String, nullable=False)
     time_played = Column(Integer, nullable=False)
+
+
+class Bf1MatchIdCache(orm.Base):
+    """记录无效对局id"""
+
+    __tablename__ = "bf1_match_id_cache"
+    id = Column(Integer, primary_key=True)
+    match_id = Column(String, nullable=False)
 
 
 # 权限

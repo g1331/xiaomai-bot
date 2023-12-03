@@ -484,7 +484,7 @@ class BattlefieldTracker:
     @staticmethod
     async def get_player_profile(player_name: str) -> Union[dict, str, None]:
         route = "profile/origin/"
-        url = f"{BattlefieldTracker.url_root}{route}{player_name}"
+        url = f"{BattlefieldTracker.url_root}{route}{player_name}?forceCollect=true"
         try:
             async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
                 async with session.get(url) as response:
@@ -611,22 +611,25 @@ class BattlefieldTracker:
             deaths = player["stats"].get("deaths", {}).get("value", 0)
             kd = kills / deaths if deaths else kills
             kd = round(kd, 2)
-            kpm = round(player["stats"].get("killsPerMinute", {}).get("value", 0), 2)
+            # btr原生kpm不准
+            # kpm = round(player["stats"].get("killsPerMinute", {}).get("value", 0), 2)
             score = player["stats"].get("roundScore", {}).get("value", 0)
             if score == 0:
                 continue
-            spm = round(player["stats"].get("scorePerMinute", {}).get("value", 0), 2)
+            # spm = round(player["stats"].get("scorePerMinute", {}).get("value", 0), 2)
             headshotsPercentage = f'{player["stats"].get("headshotsPercentage", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
             shotAccuracy = f'{player["stats"].get("shotAccuracy", {}).get("value", 0)}%'  # 百分比，使用时直接添加%即可
             time_played = player["stats"].get("time", {}).get("value", 0)  # 秒
+            if time_played <= 60:
+                continue
+            kpm = round(kills / (time_played / 60), 2)
+            spm = round(score / (time_played / 60), 2)
             if time_played >= 3600:
                 time_played = "{:.0f}小时{:.0f}分{:.0f}秒".format(
                     time_played // 3600,
                     (time_played % 3600) // 60,
                     time_played % 60,
                 )
-            elif time_played <= 60:
-                continue
             else:
                 time_played = "{:.0f}分{:.0f}秒".format(
                     time_played // 60, time_played % 60
@@ -684,6 +687,7 @@ class BattlefieldTracker:
     #     4. 根据对局详情，处理数据，如果对局无效，就将id写入数据库
     @staticmethod
     async def update_match_data(player_name: str, player_pid: int):
+        _ = await BattlefieldTracker.get_player_profile(player_name)
         logger.debug(f"开始更新玩家{player_name}的对局数据")
         # 获取对局列表
         match_list = await BattlefieldTracker.get_match_list(player_name)
@@ -696,8 +700,8 @@ class BattlefieldTracker:
             return
         # 获取对局详情
         tasks = []
-        # 只获取最近的5场对局
-        for match in match_list[:5]:
+        # 只获取最前n场数据
+        for match in match_list[:7]:
             match_id = match.get("attributes").get("id")
             # 跳过无效对局id
             if await BF1DB.bf1_match_cache.check_bf1_match_id_cache(match_id):
@@ -707,9 +711,10 @@ class BattlefieldTracker:
                 continue
             tasks.append(asyncio.ensure_future(BattlefieldTracker.get_match_detail(match_id)))
         if not tasks:
-            logger.debug(f"玩家{player_name}没有新的有效对局数据")
+            logger.debug(f"玩家{player_name}没有新的对局数据")
             return
         try:
+            logger.debug(f"正在更新玩家{player_name}的{len(tasks)}场对局数据")
             match_detail_list = await asyncio.gather(*tasks)
         except Exception as e:
             logger.error(f"获取对局详情失败: {e}")

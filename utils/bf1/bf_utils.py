@@ -582,7 +582,9 @@ class BattlefieldTracker:
         )
         match_time = match_detail["data"]["metadata"]["timestamp"]  # "2023-10-02T16:57:13+00:00"
         # 转成datetime
-        match_time = datetime.datetime.strptime(match_time, "%Y-%m-%dT%H:%M:%S+00:00")
+        match_time = datetime.datetime.fromisoformat(match_time)
+        # 转换成北京时间（UTC+8）
+        match_time = match_time + datetime.timedelta(hours=8)
         team_win = match_detail["data"]["metadata"]["winner"]
         # 不记录对局时间小于30秒的对局
         duration = match_detail["data"]["metadata"]["duration"]

@@ -861,7 +861,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
     except Exception as e:
         logger.error(f"查询{bfgroups_name}服务器失败{e}")
         await app.send_message(group, MessageChain(
-            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
+            GraiaImage(path='./statics/query_timeout.jpg')
         ), quote=source)
         return False
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18]

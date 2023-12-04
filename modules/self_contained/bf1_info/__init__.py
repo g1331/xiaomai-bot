@@ -1459,8 +1459,8 @@ async def detailed_server(
     )
 
 
-# 定时服务器详细信息收集，每20分钟执行一次
-@channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
+# 定时服务器详细信息收集，每60分钟执行一次
+@channel.use(SchedulerSchema(timers.every_custom_minutes(60)))
 async def server_info_collect():
     time_start = time.time()
     filter_dict = {

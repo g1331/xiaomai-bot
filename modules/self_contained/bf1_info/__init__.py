@@ -2009,7 +2009,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出)"
+        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出,发送`exit`取消举报)"
     ), quote=source)
     saying = None
 
@@ -2054,6 +2054,10 @@ async def report(
     #             f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
     #         ), quote=source)
 
+    if saying.display.strip() == "exit":
+        return await app.send_message(group, MessageChain(
+            "已退出举报!"
+        ), quote=source)
     await app.send_message(group, MessageChain(
         f"获取到举报理由:{saying.display}\n若需补充图片请在60秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"
     ), quote=source)

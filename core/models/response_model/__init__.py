@@ -90,7 +90,8 @@ class AccountController:
 
     async def get_response_account(self, group_id: int, source_id: int = time.time()) -> int:
         if group_id not in self.account_dict:
-            return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]
+            if group_id in self.total_groups:
+                return random.choice(list(self.total_groups[group_id].keys()))
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
         return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]

@@ -1462,6 +1462,10 @@ async def detailed_server(
 # 定时服务器详细信息收集，每60分钟执行一次
 @channel.use(SchedulerSchema(timers.every_custom_minutes(60)))
 async def server_info_collect():
+    await update_server_info()
+
+
+async def update_server_info():
     time_start = time.time()
     filter_dict = {
         "name": "",  # 服务器名
@@ -1570,7 +1574,36 @@ async def server_info_collect():
     await BF1DB.server.update_serverOwnerList(owner_dict)
     logger.debug(f"更新服务器所有者完成，耗时{round(time.time() - start_time, 2)}秒")
     logger.success(f"共更新{len(serverId_list)}个私服详细信息，耗时{round(time.time() - time_start, 2)}秒")
+    return len(serverId_list)
 
+
+# 手动指令更新
+@listen(GroupMessage)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-更新服务器", "-ups").space(SpacePolicy.PRESERVE)
+        ]
+    )
+)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.BotAdmin),
+)
+async def update_server(app: Ariadne, group: Group, source: Source):
+    await app.send_message(group, MessageChain("更新服务器信息ing"), quote=source)
+    start_time = time.time()
+    result = await update_server_info()
+    end_time = time.time()
+    time_cost = round(end_time - start_time, 2)
+    if result:
+        return await app.send_message(group, MessageChain(
+                f"成功更新了{result}个服务器的信息!耗时{time_cost}秒"
+            ), quote=source)
+    return await app.send_message(group, MessageChain(f"更新失败!耗时{time_cost}秒"), quote=source)
 
 # TODO 定时记录服务器人数曲线
 
@@ -1976,7 +2009,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出)"
+        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出,发送`exit`取消举报)"
     ), quote=source)
     saying = None
 
@@ -2021,6 +2054,10 @@ async def report(
     #             f"举报理由未通过预审核!\n原因:{pre_check_reason}\n已退出举报!"
     #         ), quote=source)
 
+    if saying.display.strip() == "exit":
+        return await app.send_message(group, MessageChain(
+            "已退出举报!"
+        ), quote=source)
     await app.send_message(group, MessageChain(
         f"获取到举报理由:{saying.display}\n若需补充图片请在60秒内发送一张图片,无图片则发送'确认'以提交举报。\n(每次只能发送1张图片!)"
     ), quote=source)

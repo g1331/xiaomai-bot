@@ -35,9 +35,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("AvatarFunPic")
-#channel.author("SAGIRI-kawaii")
-#channel.description("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
+channel.meta["name"] = ("AvatarFunPic")
+channel.meta["author"] = ("SAGIRI-kawaii")
+channel.meta["description"] = ("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 frame_spec = [
     (27, 31, 86, 90),

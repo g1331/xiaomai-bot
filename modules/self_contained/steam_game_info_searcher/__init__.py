@@ -27,10 +27,10 @@ from utils.type import parse_match_type
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-#channel.name("SteamGameInfoSearch")
-#channel.author("SAGIRI-kawaii")
-#channel.author("13")
-#channel.description("一个可以搜索steam游戏信息的插件，在群中发送 `steam {游戏名}` 即可")
+channel.meta["name"] = ("SteamGameInfoSearch")
+channel.meta["author"] = ("SAGIRI-kawaii")
+channel.meta["author"] = ("13")
+channel.meta["description"] = ("一个可以搜索steam游戏信息的插件，在群中发送 `steam {游戏名}` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)

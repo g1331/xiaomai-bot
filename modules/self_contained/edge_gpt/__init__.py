@@ -28,9 +28,9 @@ module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 
 channel = Channel.current()
-#channel.name("EdgeGPT")
-#channel.description("一个与必应AI对话的插件")
-#channel.author("十三")
+channel.meta["name"] = ("EdgeGPT")
+channel.meta["description"] = ("一个与必应AI对话的插件")
+channel.meta["author"] = ("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)

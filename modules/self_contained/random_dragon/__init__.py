@@ -18,9 +18,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("RandomDragon")
-#channel.author("13")
-#channel.description("发送随机龙图的插件")
+channel.meta["name"] = ("RandomDragon")
+channel.meta["author"] = ("13")
+channel.meta["description"] = ("发送随机龙图的插件")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

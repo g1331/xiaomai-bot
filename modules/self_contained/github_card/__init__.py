@@ -21,9 +21,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("GithubCard")
-#channel.description("自动解析消息中的Github链接转为图片")
-#channel.author("13")
+channel.meta["name"] = ("GithubCard")
+channel.meta["description"] = ("自动解析消息中的Github链接转为图片")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 url_re = r"https?://github\.com/.*"

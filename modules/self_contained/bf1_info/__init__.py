@@ -56,9 +56,9 @@ module_controller = saya_model.get_module_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("Bf1Info")
-#channel.description("战地一战绩查询")
-#channel.author("十三")
+channel.meta["name"] = ("Bf1Info")
+channel.meta["description"] = ("战地一战绩查询")
+channel.meta["author"] = ("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

@@ -45,9 +45,9 @@ account_controller = response_model.get_acc_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("PermissionManager")
-#channel.description("负责权限管理(必须插件)")
-#channel.author("13")
+channel.meta["name"] = ("PermissionManager")
+channel.meta["description"] = ("负责权限管理(必须插件)")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

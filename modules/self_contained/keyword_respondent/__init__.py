@@ -40,13 +40,13 @@ from utils.waiter import ConfirmWaiter
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-#channel.name("KeywordRespondent")
-#channel.author("SAGIRI-kawaii")
-#channel.description(
-#    "一个关键字回复插件，在群中发送已添加关键词可自动回复\n"
-#    "在群中发送 `添加回复关键词#{keyword}#{reply}` 可添加关键词\n"
-#    "在群中发送 `删除回复关键词#{keyword}` 可删除关键词"
-#)
+channel.meta["name"] = ("KeywordRespondent")
+channel.meta["author"] = ("SAGIRI-kawaii")
+channel.meta["description"] = (
+    "一个关键字回复插件，在群中发送已添加关键词可自动回复\n"
+    "在群中发送 `添加回复关键词#{keyword}#{reply}` 可添加关键词\n"
+    "在群中发送 `删除回复关键词#{keyword}` 可删除关键词"
+)
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(create(Broadcast))

@@ -35,9 +35,9 @@ global_config = create(GlobalConfig)
 saya = Saya.current()
 # 获取属于这个模组的实例
 channel = Channel.current()
-#channel.name("识图")
-#channel.description("识图、搜番功能")
-#channel.author("13")
+channel.meta["name"] = ("识图")
+channel.meta["description"] = ("识图、搜番功能")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

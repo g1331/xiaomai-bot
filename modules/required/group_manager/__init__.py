@@ -39,9 +39,9 @@ account_controller = response_model.get_acc_controller()
 global_config = create(GlobalConfig)
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("QQ群管")
-#channel.description("简易的qq群管理功能")
-#channel.author("13")
+channel.meta["name"] = ("QQ群管")
+channel.meta["description"] = ("简易的qq群管理功能")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

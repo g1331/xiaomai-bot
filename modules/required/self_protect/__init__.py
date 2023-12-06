@@ -20,9 +20,9 @@ account_controller = response_model.get_acc_controller()
 global_config = create(GlobalConfig)
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("自我保护")
-#channel.description("bot被禁言时会退出该群")
-#channel.author("13")
+channel.meta["name"] = ("自我保护")
+channel.meta["description"] = ("bot被禁言时会退出该群")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

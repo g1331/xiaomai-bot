@@ -33,9 +33,9 @@ global_config = create(GlobalConfig)
 
 saya = Saya.current()
 channel = Channel.current()
-#channel.name("RandomWife")
-#channel.author("13")
-#channel.description("生成随机老婆图片的插件，在群中发送 -随机<老婆/wife> ")
+channel.meta["name"] = ("RandomWife")
+channel.meta["author"] = ("13")
+channel.meta["description"] = ("生成随机老婆图片的插件，在群中发送 -随机<老婆/wife> ")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

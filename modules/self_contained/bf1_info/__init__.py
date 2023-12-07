@@ -2125,7 +2125,7 @@ async def report(
                         f.close()
 
                     # 获取图床
-                    image_api_option = apikey = config.functions.get("bf1", {}).get("image_api", "")
+                    image_api_option = config.functions.get("bf1", {}).get("image_api", "")
                     # TODO Use switch case to support more image API in future
                     # Use which image API by reading option in config
                     if image_api_option == "smms":
@@ -2146,7 +2146,6 @@ async def report(
                             return False
                         json_temp = response.json()
                         response_data = json_temp["data"]
-                        print("image url is ", response_data["url"])
 
                         img_temp = f'<img class="img-fluid" src="{response_data["url"]}">'
                         report_reason += img_temp

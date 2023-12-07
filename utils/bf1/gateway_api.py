@@ -68,6 +68,7 @@ class bf1_api(object):
             "Internal Error: org.apache.thrift.TApplicationException": "账号无权限",  # 一般错误
             "Internal Error: java.lang.NumberFormatException": "EA后端未知错误",
             "Internal Error: java.lang.NullPointerException": "EA后端未知错误",
+            "Internal Error: com.ea.sparta.hachiko.generated.thrift.InvocationException": "EA后端未知错误",
             "Internal Error: se.dice.operations.commons.rx.time.TimeoutNamedException": "EA服务器超时",
             "Invalid Params: no valid session": "Session无效",
             "Authentication failed": "登录失败",

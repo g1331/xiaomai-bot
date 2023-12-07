@@ -1944,9 +1944,6 @@ async def report(
     display_name = player_info["personas"]["persona"][0]["displayName"]
     player_name = display_name
 
-    await app.send_message(group, MessageChain(
-        f"注意:请勿随意、乱举报,“垃圾”举报将会影响eac的处理效率,同时将撤销bot的使用"
-    ), quote=source)
     # 2.查验是否已经有举报信息
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
@@ -2009,7 +2006,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出,发送`exit`取消举报)"
+        f"注意:请勿随意、乱举报,否则将会撤销BOT的使用权!请在1分钟内发送举报的理由(请不要附带图片,发送`exit`取消举报)"
     ), quote=source)
     saying = None
 

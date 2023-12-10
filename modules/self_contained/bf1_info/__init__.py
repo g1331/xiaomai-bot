@@ -2182,7 +2182,8 @@ async def report(
                 if isinstance(report_result["data"], int):
                     file_path = Path(f"./data/battlefield/report_log/data.json")
                     if not file_path.exists():
-                        file_path.touch()
+                        with open(file_path, "w", encoding="utf-8") as file_write:
+                            json.dump({"data": []}, file_write, indent=4, ensure_ascii=False)
                     try:
                         # 记录日志，包含举报人QQ，举报时间，案件ID，举报人所在群号，举报信息，被举报玩家的name、pid
                         with open(file_path, "r", encoding="utf-8") as file_read:

@@ -2182,6 +2182,7 @@ async def report(
                 if isinstance(report_result["data"], int):
                     file_path = Path(f"./data/battlefield/report_log/data.json")
                     if not file_path.exists():
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
                         with open(file_path, "w", encoding="utf-8") as file_write:
                             json.dump({"data": []}, file_write, indent=4, ensure_ascii=False)
                     try:

@@ -278,6 +278,7 @@ class bf1_api(object):
         :param sid: 玩家登录时cookie的sid
         :return: 成功登录后的session
         """
+        from utils.bf1.database import BF1DB
         logger.debug(f"BF1账号{self.pid}登录ing\nremid={remid}\nsid={sid}")
         self.remid = remid
         self.sid = sid
@@ -301,6 +302,14 @@ class bf1_api(object):
             self.access_token = res["access_token"]
             self.access_token_expires_time = res["expires_in"]
             logger.success(f"获取access_token成功!access_token:{self.access_token}")
+            # 获取返回值的头部
+            header = dict(response.headers)
+            # 取出 Set-Cookie
+            logger.debug(f"type:{type(header['Set-Cookie'])},header['Set-Cookie']:{header['Set-Cookie']}")
+            sid = header['Set-Cookie'][header['Set-Cookie'].find('sid=') + 4:header['Set-Cookie'].find(';')]
+            logger.success(f"更新sid成功!sid:{sid}")
+            self.sid = sid
+            await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), sid=sid)
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
@@ -349,7 +358,6 @@ class bf1_api(object):
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
         self.auto_login_count = 0
-        from utils.bf1.database import BF1DB
         await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
 

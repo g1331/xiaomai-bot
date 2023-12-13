@@ -63,6 +63,8 @@ WeaponGoldImg = Path("./data/battlefield/pic/src/template/weapon_gold.png").open
 WeaponBlueImg = Path("./data/battlefield/pic/src/template/weapon_blue.png").open("rb").read()
 WeaponWhiteImg = Path("./data/battlefield/pic/src/template/weapon_white.png").open("rb").read()
 BlackTrapezoidImg = Path("./data/battlefield/pic/src/template/black_trapezoid.png").open("rb").read()
+# 交换
+ExchangePricePath = Path("./statics/Battlefield/exchange/price.png")
 # 字体
 FontRootPath = Path("./data/battlefield/font/")
 GlobalFontPath = FontRootPath / "BFText-Regular-SC-19cf572c.ttf"
@@ -70,11 +72,16 @@ GlobalFontPath = FontRootPath / "BFText-Regular-SC-19cf572c.ttf"
 NormalFontSize = 30
 StatFontSize = 25
 SkinFontSize = 20
+ExchangePriceFontSize = 18
+ExchangeNameFontSize = 13
+ExchangeSkinNameFontSize = 18
 # 颜色
 ColorGold = (202, 132, 58)
 ColorBlue = (30, 144, 255)
 ColorWhite = (255, 255, 255)
+ColorBlack = (0, 0, 0)
 ColorRed = (255, 0, 0)
+ColorGray = (169, 169, 169)
 ColorGoldAndGray = (236, 217, 150)
 ColorBlueAndGray = (191, 207, 222)
 ColorWhiteAndGray = (255, 255, 255, 150)
@@ -2104,125 +2111,208 @@ class Exchange:
         """
         self.data: dict = data
         self.img: bytes = bytes()
-
-    async def draw(self) -> Union[bytes, None]:
-        """绘制兑换图片"""
-        if not self.data:
-            return None
-        now_date = datetime.datetime.now()
-        # 文件名为xxxx年xx月xx日
-        # 先查询是否有当天的文件，否则获取gw api的数据制图
-        file_name = f"{now_date.year}年{now_date.month}月{now_date.day}日"
+        self.now_date = datetime.datetime.now()
         SE_data_list = self.data["result"]["items"]
         # 创建一个交换物件的列表列表，元素列表的元素有价格，皮肤名字，武器名字，品质，武器图片
-        SE_list = []
+        self.exchange_item_list = []
         for item in SE_data_list:
             temp_list = [item["price"], zhconv.convert(item["item"]["name"], 'zh-cn')]
             # 处理成简体
             parentName = item["item"]["parentName"] if item["item"]["parentName"] is not None else ""
-            temp_list.append(zhconv.convert(f"{parentName}外观", 'zh-cn'))
+            temp_list.append(zhconv.convert(f"{parentName}外观", 'zh-cn') if parentName != "" else "")
             temp_list.append(
                 item["item"]["rarenessLevel"]["name"].replace(
                     "Superior", "传奇").replace(
                     "Enhanced", "精英").replace(
-                    "Standard", "特殊"))
+                    "Standard", "特殊")
+            )
             temp_list.append(
                 item["item"]["images"]["Png1024xANY"].replace(
                     "[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
                 )
             )
-            SE_list.append(temp_list)
-        # 保存/获取皮肤图片路径
-        i = 0
-        while i < len(SE_list):
-            SE_list[i][4] = await download_skin(SE_list[i][4])
-            i += 1
-        # 制作图片,总大小:2351*1322,黑框间隔为8,黑框尺寸220*292，第一张黑框距左边界39，上边界225，武器尺寸为180*45,第一个钱币图片的位置是72*483
-        # 交换的背景图
-        bg_img = Image.open('./data/battlefield/pic/bg/SE_bg.png')
-        draw = ImageDraw.Draw(bg_img)
+            self.exchange_item_list.append(temp_list)
+        self.XD_skin_list = [
+            "菲姆", "菲姆特", "索得格雷",
+            "巴赫馬奇", "菲力克斯穆勒", "狼人", "黑貓",
+            "苟白克", "比利‧米契尔", "在那边", "飞蛾扑火", "佛伦",
+            "默勒谢什蒂", "奥伊图兹", "埃丹", "滨海努瓦耶勒", "唐登空袭",
+            "青春誓言", "德塞夫勒", "克拉奥讷之歌", "芙萝山德斯", "死去的君王",
+            "波佐洛", "奧提加拉山", "奧托‧迪克斯", "保罗‧克利", "阿莫斯‧怀德",
+            "集合点", "法兰兹‧马克", "风暴", "我的机枪", "加利格拉姆", "多贝尔多",
+            "茨纳河", "莫纳斯提尔", "科巴丁", "德•奇里诃", "若宫丸", "波珀灵厄",
+            "K连", "玛德蓉", "巨马", "罗曼诺卡夫", "薩利卡米什", "贝利库尔隧道",
+            "史特拉姆", "阿道戴", "克里夫兰", "家乡套件", "夏日套件", "监禁者",
+            "罗曼诺夫卡", "阿涅森", "波珀灵厄", "威玛猎犬", "齐格飞防线",
+            "华盛顿", "泰罗林猎犬", "怪奇之物", "法兰兹‧马克", "风暴"
+        ]
 
-        # 字体路径
-        font_path = './data/battlefield/font/BFText-Regular-SC-19cf572c.ttf'
-        price_font = ImageFont.truetype(font_path, 18)
-        seName_font = ImageFont.truetype(font_path, 13)
-        seSkinName_font = ImageFont.truetype(font_path, 18)
-        # 保存路径
-        SavePic = f"./data/battlefield/exchange/{file_name}.png"
-        x = 59
-        y = 340
-        for i in range(len(SE_list)):
-            while y < 1097:
-                while x < 2131 and i < len(SE_list):
-                    if SE_list[i][3] == "特殊":
-                        i += 1
-                        continue
-                    # 从上到下分别是武器图片、武器名字、皮肤名字、品质、价格
-                    # [
-                    #   300,
-                    #   '魯特斯克戰役',
-                    #   'SMG 08/18',
-                    #   '特殊',
-                    #   'https://eaassets-a.akamaihd.net/battlelog/battlebinary
-                    #   /gamedata/Tunguska/123/1/U_MAXIMSMG_BATTLEPACKS_FABERGE_T1S3_LARGE-7b01c879.png'
-                    #   ]
-                    # 打开交换图像
-                    SE_png = Image.open(SE_list[i][4]).convert('RGBA')
-                    # 武器名字
-                    draw.text((x, y + 52), SE_list[i][2], (169, 169, 169), font=seName_font)
-                    # 皮肤名字
-                    draw.text((x, y + 79), SE_list[i][1], (255, 255, 255), font=seSkinName_font)
-                    # 如果品质为传奇则品质颜色为(255, 132, 0)，精英则为(74, 151, 255)，特殊则为白色
-                    XD_skin_list = ["菲姆", "菲姆特", "索得格雷",
-                                    "巴赫馬奇", "菲力克斯穆勒", "狼人", "黑貓",
-                                    "苟白克", "比利‧米契尔", "在那边", "飞蛾扑火", "佛伦",
-                                    "默勒谢什蒂", "奥伊图兹", "埃丹", "滨海努瓦耶勒", "唐登空袭",
-                                    "青春誓言", "德塞夫勒", "克拉奥讷之歌", "芙萝山德斯", "死去的君王",
-                                    "波佐洛", "奧提加拉山", "奧托‧迪克斯", "保罗‧克利", "阿莫斯‧怀德",
-                                    "集合点", "法兰兹‧马克", "风暴", "我的机枪", "加利格拉姆", "多贝尔多",
-                                    "茨纳河", "莫纳斯提尔", "科巴丁", "德•奇里诃", "若宫丸", "波珀灵厄",
-                                    "K连", "玛德蓉", "巨马", "罗曼诺卡夫", "薩利卡米什", "贝利库尔隧道",
-                                    "史特拉姆", "阿道戴", "克里夫兰", "家乡套件", "夏日套件", "监禁者",
-                                    "罗曼诺夫卡", "阿涅森", "波珀灵厄", "威玛猎犬", "齐格飞防线",
-                                    "华盛顿", "泰罗林猎犬", "怪奇之物", "法兰兹‧马克", "风暴"]
-                    if SE_list[i][3] == "传奇":
-                        if SE_list[i][0] in [270, 300]:
-                            draw.text((x, y + 110), f"{SE_list[i][3]}(限定)", (255, 132, 0), font=price_font)
-                        elif SE_list[i][1] in XD_skin_list:
-                            draw.text((x, y + 110), f"{SE_list[i][3]}(限定)", (255, 132, 0), font=price_font)
-                        else:
-                            draw.text((x, y + 110), SE_list[i][3], (255, 132, 0), font=price_font)
-                        # 打开特效图像
-                        tx_png = Image.open('./data/battlefield/pic/tx/1.png').convert('RGBA')
-                    elif SE_list[i][1] in XD_skin_list:
-                        draw.text((x, y + 110), f"{SE_list[i][3]}(限定)", (255, 132, 0), font=price_font)
-                        # 打开特效图像
-                        tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
-                    else:
-                        draw.text((x, y + 110), SE_list[i][3], (74, 151, 255), font=price_font)
-                        # 打开特效图像
-                        tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
-                    # 特效图片拉伸
-                    tx_png = tx_png.resize((100, 153), Image.ANTIALIAS)
-                    # 特效图片拼接
-                    bg_img.paste(tx_png, (x + 36, y - 105), tx_png)
-                    # 武器图片拉伸
-                    SE_png = SE_png.resize((180, 45), Image.ANTIALIAS)
-                    # 武器图片拼接
-                    bg_img.paste(SE_png, (x, y - 45), SE_png)
-                    # 价格
-                    draw.text((x + 24, y + 134), str(SE_list[i][0]), (255, 255, 255), font=price_font)
-                    x += 228
-                    i += 1
-                    # bg_img.show()
-                y += 298
-                x = 59
-        bg_img.save(SavePic, 'png', quality=100)
-        # 返回bytes
+    # 重构
+    #   1. 整张图的大小不固定，根据交换的数量来动态确定wp数量和整张图的大小
+    #   2. 不过滤wp，而是将所有的wp全部绘制到图片上
+    #   3. 背景采用轻微的高斯模糊+暗色处理，使绘制的图片能够清晰可见
+    #   相关改动及步骤:
+    #   1. 获取交换数据中items的长度，暂选择每行最多10个item，超过10个则换行
+    #   2. 每个item单独封装为item_template_handle方法，返回一个Image对象
+    #   3. 每个item template的长宽为222*295, 每个template要绘制物件物品、物件名字、品质、价格
+    #   4. 每个template之间的上下左右间距为8
+    #   5. 第一个item粘贴的起点为80,160即左右边距为80，上下边距为160，底图总宽为: 80 * 2 + 222 * 10 + 8 * 9 = 2452，
+    #   总宽为动态计算: 160 * 2 + 295 * 行数 + 8 * (行数 - 1)，则创建一个画布，大小为(2452, 160 * 2 + 295 * 行数 + 8 * (行数 - 1))
+    #   打开底图，将其放大适应画布大小，然后将画布粘贴到底图上，然后将每个item template粘贴到画布上
+
+    @staticmethod
+    async def get_background(target_width, target_height) -> Image:
+        background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        return background_img
+
+    async def item_template_handle(self, item: list) -> Image:
+        # list的元素分别为价格，皮肤名字，物件名字，品质，物件图片
+        item_price = item[0]
+        item_skin_name = item[1]
+        item_name = item[2]
+        item_rareness = item[3]
+        # 物件图片 - 1024*256
+        item_img_path = await download_skin(item[4])
+        # 每个物件放在一个222*295的半透明黑色背景上
+        output_img = Image.new("RGBA", (222, 295), ColorBlack)
+        # 调整透明度为70%
+        output_img = output_img.point(lambda p: p * 0.7)
+        output_img_draw = ImageDraw.Draw(output_img)
+        item_img = Image.open(item_img_path).convert("RGBA")
+        # 将其等比缩放到180*45
+        item_img = item_img.resize((180, 45), Image.LANCZOS)
+        # 粘贴到20，115
+        x = 20
+        y = 70
+        output_img.paste(item_img, (x, y), item_img)
+        # 物件名字, 115 + 52
+        output_img_draw.text(
+            (19, 167),
+            item_name,
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangeNameFontSize)
+        )
+        # 皮肤名字, 115 +79
+        output_img_draw.text(
+            (19, 194),
+            item_skin_name,
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangeSkinNameFontSize)
+        )
+        # 品质, 115 + 110
+        if item_rareness == "传奇":
+            if item_price in [270, 300]:
+                output_img_draw.text(
+                    (19, 225),
+                    f"{item_rareness}(限定)",
+                    fill=ColorGold,
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                )
+            elif item_skin_name in self.XD_skin_list:
+                output_img_draw.text(
+                    (19, 225),
+                    f"{item_rareness}(限定)",
+                    fill=ColorGold,
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                )
+            else:
+                output_img_draw.text(
+                    (19, 225),
+                    item_rareness,
+                    fill=ColorGold,
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                )
+            tx_png = Image.open('./data/battlefield/pic/tx/1.png').convert('RGBA')
+        elif item_skin_name in self.XD_skin_list:
+            output_img_draw.text(
+                (19, 225),
+                f"{item_rareness}(限定)",
+                fill=ColorGold,
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+            )
+            tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
+        elif item_rareness == "精英":
+            output_img_draw.text(
+                (19, 225),
+                item_rareness,
+                fill=ColorBlue,
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+            )
+            tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
+        else:
+            output_img_draw.text(
+                (19, 225),
+                item_rareness,
+                fill=ColorWhite,
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+            )
+            tx_png = Image.open('./data/battlefield/pic/tx/3.png').convert('RGBA')
+        # 特效图片拉伸
+        tx_png = tx_png.resize((100, 153), Image.LANCZOS)
+        # 特效图片拼接 55, 10
+        output_img.paste(tx_png, (55, 10), tx_png)
+        # 价格, 43, 70
+        output_img_draw.text(
+            (43, 249),
+            str(item_price),
+            fill=ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+        )
+        # 价格的图片
+        price_img = Image.open(ExchangePricePath).convert("RGBA")
+        # 缩放为 20*20
+        price_img = price_img.resize((25, 25), Image.LANCZOS)
+        # 粘贴
+        output_img.paste(price_img, (17, 247), price_img)
+        return output_img
+
+    async def draw(self) -> Union[bytes, Path, None]:
+        if not self.data or not self.exchange_item_list:
+            return None
+        # 每行10个，即10列
+        cols = 10
+        rows = len(self.exchange_item_list) // cols + 1
+        total_width = 40 * 2 + 222 * cols + 8 * (cols - 1)
+        total_height = 160 * 2 + 295 * rows + 8 * (rows - 1)
+        # 画布
+        output_img = Image.new("RGB", (total_width, total_height), ColorWhite)
+
+        # 粘贴背景
+        background_img = await self.get_background(total_width, total_height)
+        output_img = PilImageUtils.paste_center(output_img, background_img)
+        output_img_draw = ImageDraw.Draw(output_img)
+
+        # 间距
+        diff_distance = 8
+        # 粘贴物件
+        for index, item in enumerate(self.exchange_item_list):
+            item_template = await self.item_template_handle(item)
+            # 一行一行的粘贴
+            paste_x = 40 + (index % cols) * (222 + diff_distance)
+            paste_y = 160 + (index // cols) * (295 + diff_distance)
+            output_img.paste(item_template, (paste_x, paste_y), item_template)
+
+        # 水印和时间
+        # 居中
+        PilImageUtils.draw_centered_text(
+            output_img_draw,
+            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            (total_width // 2, total_height - 20),
+            fill=(253, 245, 242),
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+        )
+
+        # 交换更新频率比较低，所以直接存png原图
+        # output_img.save(file_path, format="JPEG", quality=95)
+        now_date = datetime.datetime.now()
+        # 文件名为xxxx年xx月xx日.png
+        file_name = f"{now_date.year}年{now_date.month}月{now_date.day}日"
+        save_path = f"./data/battlefield/exchange/{file_name}.png"
+        output_img.save(save_path, format="PNG")
         output_buffer = BytesIO()
-        bg_img.save(output_buffer, format='PNG')
-        self.img = output_buffer.getvalue()
-        return self.img
+        output_img.save(output_buffer, format='PNG')
+        return output_buffer.getvalue()
 
 
 class PlayerListPic:

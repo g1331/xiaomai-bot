@@ -697,30 +697,31 @@ class PlayerStatPic:
 
     async def soldier_template_handle(self) -> Image:
         favoriteClass = self.stat["result"]["favoriteClass"]
-        if favoriteClass == "Assault":
-            soldier_img = Image.open(BytesIO(AssaultImg)).convert("RGBA")
-            favoriteClass = "突击兵"
-        elif favoriteClass == "Cavalry":
-            soldier_img = Image.open(BytesIO(CavalryImg)).convert("RGBA")
-            favoriteClass = "骑兵"
-        elif favoriteClass == "Medic":
-            soldier_img = Image.open(BytesIO(MedicImg)).convert("RGBA")
-            favoriteClass = "医疗兵"
-        elif favoriteClass == "Pilot":
-            soldier_img = Image.open(BytesIO(PilotImg)).convert("RGBA")
-            favoriteClass = "飞行员"
-        elif favoriteClass == "Scout":
-            soldier_img = Image.open(BytesIO(ScoutImg)).convert("RGBA")
-            favoriteClass = "侦察兵"
-        elif favoriteClass == "Support":
-            soldier_img = Image.open(BytesIO(SupportImg)).convert("RGBA")
-            favoriteClass = "支援兵"
-        elif favoriteClass == "Tanker":
-            soldier_img = Image.open(BytesIO(TankerImg)).convert("RGBA")
-            favoriteClass = "坦克手"
-        else:
-            soldier_img = Image.open(BytesIO(AssaultImg)).convert("RGBA")
-            favoriteClass = "突击兵"
+        match favoriteClass:
+            case "Assault":
+                soldier_img = Image.open(BytesIO(AssaultImg)).convert("RGBA")
+                favoriteClass = "突击兵"
+            case "Cavalry":
+                soldier_img = Image.open(BytesIO(CavalryImg)).convert("RGBA")
+                favoriteClass = "骑兵"
+            case "Medic":
+                soldier_img = Image.open(BytesIO(MedicImg)).convert("RGBA")
+                favoriteClass = "医疗兵"
+            case "Pilot":
+                soldier_img = Image.open(BytesIO(PilotImg)).convert("RGBA")
+                favoriteClass = "飞行员"
+            case "Scout":
+                soldier_img = Image.open(BytesIO(ScoutImg)).convert("RGBA")
+                favoriteClass = "侦察兵"
+            case "Support":
+                soldier_img = Image.open(BytesIO(SupportImg)).convert("RGBA")
+                favoriteClass = "支援兵"
+            case "Tanker":
+                soldier_img = Image.open(BytesIO(TankerImg)).convert("RGBA")
+                favoriteClass = "坦克手"
+            case _:
+                soldier_img = Image.open(BytesIO(AssaultImg)).convert("RGBA")
+                favoriteClass = "突击兵"
         soldier_template_draw = ImageDraw.Draw(soldier_img)
         # 最佳兵种名字、协助击杀、最高连杀、复活数、修理数、狗牌数
         row_diff_distance = 60

@@ -1,1 +1,12 @@
-start poetry run python main.py
+@echo off
+echo Checking if Poetry is installed...
+where poetry >nul 2>nul
+if %errorlevel% neq 0 (
+    echo Poetry is not installed. Installing Poetry...
+    pip install poetry
+)
+
+echo Installing dependencies...
+poetry install
+echo Dependencies installed. Running the program...
+cmd /k "poetry run python main.py"

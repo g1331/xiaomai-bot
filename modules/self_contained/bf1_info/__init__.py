@@ -2828,9 +2828,17 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     place_list = ','.join(place_list)
     return_list.append(place_list)
     # 每日重置minutesToDailyReset,eg:1205,表示距离下次重置还有1205分钟
-    return_list.append(strftime("距每日重置还有:%H时%M分", gmtime(data["result"]["minutesToDailyReset"] * 60)))
+    reset_time = datetime.timedelta(minutes=data["result"]["minutesToDailyReset"])
+    rst_hour = reset_time.seconds // 3600
+    rst_minute = reset_time.seconds % 3600 // 60
+    return_list.append(f"距每日重置还有:{rst_hour}小时{rst_minute}分钟")
     # 结束时间和剩余时间
-    end_time = datetime.datetime.now() + datetime.timedelta(minutes=data["result"]["minutesRemaining"])
+    remain_time = datetime.timedelta(minutes=data["result"]["minutesRemaining"])
+    end_time = datetime.datetime.now() + remain_time
     return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
-    return_list.append(strftime(f"战役剩余时间: %m月%d天%H时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
+    res_month = remain_time.days // 30
+    res_day = remain_time.days % 30
+    res_hour = remain_time.seconds // 3600
+    res_minute = remain_time.seconds % 3600 // 60
+    return_list.append(f"战役剩余时间:{res_month}月{res_day}天{res_hour}小时{res_minute}分")
     return await app.send_message(group, MessageChain("\n".join(return_list)), quote=source)

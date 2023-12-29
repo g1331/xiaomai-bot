@@ -2832,5 +2832,5 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     # 结束时间和剩余时间
     end_time = datetime.datetime.now() + datetime.timedelta(minutes=data["result"]["minutesRemaining"])
     return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
-    return_list.append(strftime("剩余时间:%d天%H时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
+    return_list.append(strftime(f"战役剩余时间: %m月%d天%H时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
     return await app.send_message(group, MessageChain("\n".join(return_list)), quote=source)

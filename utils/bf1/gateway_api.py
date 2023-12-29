@@ -68,6 +68,8 @@ class bf1_api(object):
             "Internal Error: org.apache.thrift.TApplicationException": "账号无权限",  # 一般错误
             "Internal Error: java.lang.NumberFormatException": "EA后端未知错误",
             "Internal Error: java.lang.NullPointerException": "EA后端未知错误",
+            "Internal Error: com.ea.sparta.hachiko.generated.thrift.InvocationException": "EA后端未知错误",
+            "Internal Error: se.dice.operations.commons.rx.time.TimeoutNamedException": "EA服务器超时",
             "Invalid Params: no valid session": "Session无效",
             "Authentication failed": "登录失败",
             "com.fasterxml.jackson.core.JsonParseException": "JSON解析失败",
@@ -276,6 +278,7 @@ class bf1_api(object):
         :param sid: 玩家登录时cookie的sid
         :return: 成功登录后的session
         """
+        from utils.bf1.database import BF1DB
         logger.debug(f"BF1账号{self.pid}登录ing\nremid={remid}\nsid={sid}")
         self.remid = remid
         self.sid = sid
@@ -299,6 +302,14 @@ class bf1_api(object):
             self.access_token = res["access_token"]
             self.access_token_expires_time = res["expires_in"]
             logger.success(f"获取access_token成功!access_token:{self.access_token}")
+            # 获取返回值的头部
+            header = dict(response.headers)
+            # 取出 Set-Cookie
+            logger.debug(f"type:{type(header['Set-Cookie'])},header['Set-Cookie']:{header['Set-Cookie']}")
+            sid = header['Set-Cookie'][header['Set-Cookie'].find('sid=') + 4:header['Set-Cookie'].find(';')]
+            logger.success(f"更新sid成功!sid:{sid}")
+            self.sid = sid
+            await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), sid=sid)
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
@@ -347,7 +358,6 @@ class bf1_api(object):
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
         self.auto_login_count = 0
-        from utils.bf1.database import BF1DB
         await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
 
@@ -920,6 +930,73 @@ class CampaignOperations(bf1_api):
     async def getPlayerCampaignStatus(self) -> dict:
         """
         获取战役信息
+        示例响应：
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": {
+                "campaignId": "119",
+                "minutesRemaining": 45129,
+                "name": "火與冰",
+                "shortDesc": "德國在 1916 年 2 月對凡爾登高地猛烈進攻，讓法國人大吃一驚，地獄般的戰鬥很快地就折損了許多法國軍力。霞飛元帥要求俄羅斯人加速他們在東部戰線的計畫，引開部署在凡爾登的德國軍隊。就在 6 月 4 日，勃魯西洛夫就沿著加利西亞 250 英里長的前線發動了全面進攻。 ",
+                "campaignIndex": "2",
+                "currentCompletionCount": 0,
+                "previousCompletionCount": 0,
+                "dailyLimitReached": false,
+                "minutesToDailyReset": 1210,
+                "firstBattlepack": {
+                    "visualName": "行動戰鬥包",
+                    "images": {
+                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                    },
+                    "rarenessLevel": {
+                        "originalName": "STANDARD",
+                        "name": "Standard",
+                        "value": 0
+                    }
+                },
+                "extraBattlepack": {
+                    "visualName": "行動戰鬥包",
+                    "images": {
+                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                    },
+                    "rarenessLevel": {
+                        "originalName": "STANDARD",
+                        "name": "Standard",
+                        "value": 0
+                    }
+                },
+                "op1": {
+                    "operationIndex": 6,
+                    "name": "勃魯西洛夫攻勢",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/49/103/Operation7campaign-cf991e2f.png",
+                    "previousScore": 0,
+                    "currentScore": 0,
+                    "requiredScore": 25000
+                },
+                "op2": {
+                    "operationIndex": 5,
+                    "name": "惡魔熔爐",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/17/32/Operation6campaign-ef206c2e.png",
+                    "previousScore": 0,
+                    "currentScore": 0,
+                    "requiredScore": 25000
+                },
+                "op3": null,
+                "op4": null,
+                "op5": null
+            }
+}
         :return:
         """
         return await self.api_call(

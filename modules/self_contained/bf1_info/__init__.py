@@ -2206,7 +2206,9 @@ async def report(
                 if isinstance(report_result["data"], int):
                     file_path = Path(f"./data/battlefield/report_log/data.json")
                     if not file_path.exists():
-                        file_path.touch()
+                        file_path.parent.mkdir(parents=True, exist_ok=True)
+                        with open(file_path, "w", encoding="utf-8") as file_write:
+                            json.dump({"data": []}, file_write, indent=4, ensure_ascii=False)
                     try:
                         # 记录日志，包含举报人QQ，举报时间，案件ID，举报人所在群号，举报信息，被举报玩家的name、pid
                         with open(file_path, "r", encoding="utf-8") as file_read:
@@ -2840,8 +2842,8 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
         ), quote=source)
     return_list = []
     from time import strftime, gmtime
-    return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}\n", "zh-cn"))
-    return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}\n', "zh-cn"))
+    return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}", "zh-cn"))
+    return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}', "zh-cn"))
     return_list.append('战役地点:')
     place_list = []
     for key in data["result"]:
@@ -2849,7 +2851,18 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
             place_list.append(zhconv.convert(f'{data["result"][key]["name"]} ', "zh-cn"))
     place_list = ','.join(place_list)
     return_list.append(place_list)
-    return_list.append(strftime("\n剩余时间:%d天%H小时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
-    return await app.send_message(group, MessageChain(
-        return_list
-    ), quote=source)
+    # 每日重置minutesToDailyReset,eg:1205,表示距离下次重置还有1205分钟
+    reset_time = datetime.timedelta(minutes=data["result"]["minutesToDailyReset"])
+    rst_hour = reset_time.seconds // 3600
+    rst_minute = reset_time.seconds % 3600 // 60
+    return_list.append(f"距每日重置还有:{rst_hour}小时{rst_minute}分钟")
+    # 结束时间和剩余时间
+    remain_time = datetime.timedelta(minutes=data["result"]["minutesRemaining"])
+    end_time = datetime.datetime.now() + remain_time
+    return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
+    res_month = remain_time.days // 30
+    res_day = remain_time.days % 30
+    res_hour = remain_time.seconds // 3600
+    res_minute = remain_time.seconds % 3600 // 60
+    return_list.append(f"战役剩余时间:{res_month}月{res_day}天{res_hour}小时{res_minute}分")
+    return await app.send_message(group, MessageChain("\n".join(return_list)), quote=source)

@@ -930,6 +930,73 @@ class CampaignOperations(bf1_api):
     async def getPlayerCampaignStatus(self) -> dict:
         """
         获取战役信息
+        示例响应：
+        {
+            "jsonrpc": "2.0",
+            "id": "5550a321-f899-4912-8625-966f29a77a6a",
+            "result": {
+                "campaignId": "119",
+                "minutesRemaining": 45129,
+                "name": "火與冰",
+                "shortDesc": "德國在 1916 年 2 月對凡爾登高地猛烈進攻，讓法國人大吃一驚，地獄般的戰鬥很快地就折損了許多法國軍力。霞飛元帥要求俄羅斯人加速他們在東部戰線的計畫，引開部署在凡爾登的德國軍隊。就在 6 月 4 日，勃魯西洛夫就沿著加利西亞 250 英里長的前線發動了全面進攻。 ",
+                "campaignIndex": "2",
+                "currentCompletionCount": 0,
+                "previousCompletionCount": 0,
+                "dailyLimitReached": false,
+                "minutesToDailyReset": 1210,
+                "firstBattlepack": {
+                    "visualName": "行動戰鬥包",
+                    "images": {
+                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                    },
+                    "rarenessLevel": {
+                        "originalName": "STANDARD",
+                        "name": "Standard",
+                        "value": 0
+                    }
+                },
+                "extraBattlepack": {
+                    "visualName": "行動戰鬥包",
+                    "images": {
+                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                    },
+                    "rarenessLevel": {
+                        "originalName": "STANDARD",
+                        "name": "Standard",
+                        "value": 0
+                    }
+                },
+                "op1": {
+                    "operationIndex": 6,
+                    "name": "勃魯西洛夫攻勢",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/49/103/Operation7campaign-cf991e2f.png",
+                    "previousScore": 0,
+                    "currentScore": 0,
+                    "requiredScore": 25000
+                },
+                "op2": {
+                    "operationIndex": 5,
+                    "name": "惡魔熔爐",
+                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/17/32/Operation6campaign-ef206c2e.png",
+                    "previousScore": 0,
+                    "currentScore": 0,
+                    "requiredScore": 25000
+                },
+                "op3": null,
+                "op4": null,
+                "op5": null
+            }
+}
         :return:
         """
         return await self.api_call(

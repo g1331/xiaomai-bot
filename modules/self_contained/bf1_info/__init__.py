@@ -2818,8 +2818,8 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
         ), quote=source)
     return_list = []
     from time import strftime, gmtime
-    return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}\n", "zh-cn"))
-    return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}\n', "zh-cn"))
+    return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}", "zh-cn"))
+    return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}', "zh-cn"))
     return_list.append('战役地点:')
     place_list = []
     for key in data["result"]:
@@ -2827,7 +2827,12 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
             place_list.append(zhconv.convert(f'{data["result"][key]["name"]} ', "zh-cn"))
     place_list = ','.join(place_list)
     return_list.append(place_list)
-    return_list.append(strftime("\n剩余时间:%d天%H小时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
+    # 每日重置minutesToDailyReset,eg:1205,表示距离下次重置还有1205分钟
+    return_list.append(strftime("距每日重置还有:%H时%M分", gmtime(data["result"]["minutesToDailyReset"] * 60)))
+    # 结束时间和剩余时间
+    end_time = datetime.datetime.now() + datetime.timedelta(minutes=data["result"]["minutesRemaining"])
+    return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
+    return_list.append(strftime("战役剩余时间:%d天%H小时%M分", gmtime(data["result"]["minutesRemaining"] * 60)))
     return await app.send_message(group, MessageChain(
-        return_list
+        "\n".join(return_list)
     ), quote=source)

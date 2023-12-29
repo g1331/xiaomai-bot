@@ -38,9 +38,9 @@ account_controller = response_model.get_acc_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("ResponseManager")
-channel.description("负责响应管理(必须插件)")
-channel.author("13")
+channel.meta["name"] = ("ResponseManager")
+channel.meta["description"] = ("负责响应管理(必须插件)")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -281,10 +281,7 @@ async def change_group_responseType(
         target_type: RegexResult, group_id: RegexResult
 ):
     target_type = target_type.result.display
-    if target_type == "随机":
-        target_type = "random"
-    else:
-        target_type = "deterministic"
+    target_type = "random" if target_type == "随机" else "deterministic"
     group_id = int(group_id.result.display) if group_id.matched else group.id
     if group_id != group.id:
         target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
@@ -327,13 +324,11 @@ async def choose_response_bot(
     try:
         bot_account = int(bot_account.result.display)
     except:
-        return await app.send_message(group, MessageChain(
-            f"请检查指定的BOT账号!"
-        ), quote=source)
+        return await app.send_message(
+            group, MessageChain("请检查指定的BOT账号!"), quote=source
+        )
     if not account_controller.check_account_available(bot_account):
-        return await app.send_message(group, MessageChain(
-            f"该BOT账号不在线!"
-        ), quote=source)
+        return await app.send_message(group, MessageChain("该BOT账号不在线!"), quote=source)
     if group_id != group.id:
         target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
         if not (target_app and target_group):

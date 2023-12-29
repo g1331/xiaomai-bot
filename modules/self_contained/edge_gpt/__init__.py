@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import TypedDict
 
-from EdgeGPT import Chatbot, ConversationStyle
+from EdgeGPT.EdgeGPT import Chatbot, ConversationStyle
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage, Member
@@ -28,9 +28,9 @@ module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 
 channel = Channel.current()
-channel.name("EdgeGPT")
-channel.description("一个与必应AI对话的插件")
-channel.author("十三")
+channel.meta["name"] = ("EdgeGPT")
+channel.meta["description"] = ("一个与必应AI对话的插件")
+channel.meta["author"] = ("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)
@@ -58,8 +58,9 @@ class ConversationManager(object):
             else:
                 self.data[group][member] = {"running": False, "gpt": Chatbot(cookiePath=cookie_path)}
         else:
-            self.data[group] = {}
-            self.data[group][member] = {"running": False, "gpt": Chatbot(cookiePath=cookie_path)}
+            self.data[group] = {
+                member: {"running": False, "gpt": Chatbot(cookiePath=cookie_path)}
+            }
 
     async def send_message(
             self, group: Group | int, member: Member | int,
@@ -76,10 +77,7 @@ class ConversationManager(object):
         self.data[group][member]["running"] = True
         response = None
         try:
-            if texted:
-                result = []
-            else:
-                result = [f"问题:\n\n{content}\n\n必应:\n\n"]
+            result = [] if texted else [f"问题:\n\n{content}\n\n必应:\n\n"]
             conversation_style = ConversationStyle.balanced if style == 1 else ConversationStyle.creative if style == 2 else ConversationStyle.precise
             response = (
                 await self.data[group][member]["gpt"].ask(prompt=content, conversation_style=conversation_style)
@@ -105,20 +103,16 @@ class ConversationManager(object):
 
             if sourceAttributions := response["item"]["messages"][1].get("sourceAttributions"):
                 result.append("引用:")
-                for i, item in enumerate(sourceAttributions):
-                    result.append(f"[{i + 1}]{item.get('providerDisplayName')}:{item.get('seeMoreUrl')}")
-
+                result.extend(
+                    f"[{i + 1}]{item.get('providerDisplayName')}:{item.get('seeMoreUrl')}"
+                    for i, item in enumerate(sourceAttributions)
+                )
             if suggestedResponses := response["item"]["messages"][1].get("suggestedResponses"):
                 result.append("猜你想问:")
-                for item in suggestedResponses:
-                    result.append(f"{item.get('text')}")
-
+                result.extend(f"{item.get('text')}" for item in suggestedResponses)
             result.append(f"(对话轮次:{numUserMessagesInConversation}/{maxNumUserMessagesInConversation})")
 
-            if texted:
-                result = "\n".join(result)
-            else:
-                result = "\n\n".join(result)
+            result = "\n".join(result) if texted else "\n\n".join(result)
         except Exception as e:
             logger.error(response)
             if response:

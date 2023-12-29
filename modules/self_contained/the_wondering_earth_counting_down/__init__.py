@@ -25,8 +25,8 @@ from core.control import (
 module_controller = saya_model.get_module_controller()
 saya = create(Saya)
 channel = Channel.current()
-channel.name("WonderingEarthCountingDown")
-channel.author("SAGIRI-kawaii")
+channel.meta["name"] = ("WonderingEarthCountingDown")
+channel.meta["author"] = ("SAGIRI-kawaii")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

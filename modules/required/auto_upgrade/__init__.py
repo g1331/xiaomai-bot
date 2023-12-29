@@ -23,9 +23,9 @@ module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 channel = Channel.current()
 saya = Saya.current()
-channel.name("AutoUpgrade")
-channel.author("十三")
-channel.description("自动更新")
+channel.meta["name"] = ("AutoUpgrade")
+channel.meta["author"] = ("十三")
+channel.meta["description"] = ("自动更新")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 upgrade_dict = {}

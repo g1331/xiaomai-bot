@@ -19,9 +19,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.name("Random_Dingzhen")
-channel.author("13")
-channel.description("发送随机丁真的插件")
+channel.meta["name"] = ("Random_Dingzhen")
+channel.meta["author"] = ("13")
+channel.meta["description"] = ("发送随机丁真的插件")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -52,7 +52,7 @@ async def main(app: Ariadne, group: Group, source: Source):
             background = Image.new("RGB", im.size, (255, 255, 255))
             background.paste(im, mask=im.split()[3])
         save_name = pic_path.replace('webp', 'jpg')
-        im.save('{}'.format(save_name), 'JPEG')
+        im.save(f'{save_name}', 'JPEG')
         await app.send_message(group, MessageChain(
             Graia_Image(path=save_name)
         ), quote=source)

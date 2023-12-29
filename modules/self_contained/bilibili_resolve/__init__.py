@@ -28,9 +28,9 @@ from .utils import get_video_info, b23_url_extract, math, info_json_dump, gen_im
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.name("BilibiliResolve")
-channel.description("自动解析消息中的B站链接、小程序")
-channel.author("13")
+channel.meta["name"] = ("BilibiliResolve")
+channel.meta["description"] = ("自动解析消息中的B站链接、小程序")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 avid_re = r"(av|AV)(\d{1,12})"

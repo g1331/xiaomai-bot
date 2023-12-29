@@ -56,9 +56,9 @@ module_controller = saya_model.get_module_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.name("Bf1Info")
-channel.description("战地一战绩查询")
-channel.author("十三")
+channel.meta["name"] = ("Bf1Info")
+channel.meta["description"] = ("战地一战绩查询")
+channel.meta["author"] = ("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -204,7 +204,7 @@ async def set_default_account(
 @dispatch(
     Twilight(
         [
-            FullMatch("-绑定"),
+            UnionMatch("-bind", "-绑定"),
             ParamMatch() @ "player_name",
         ]
     )
@@ -290,7 +290,7 @@ async def bind(app: Ariadne, group: Group, source: Source, sender: Member, playe
 @dispatch(
     Twilight(
         [
-            FullMatch("-信息"),
+            UnionMatch("-info", "-信息"),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -391,7 +391,7 @@ async def info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
+            UnionMatch("-s", "-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
@@ -1061,7 +1061,7 @@ async def player_vehicle_pic(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-最近").space(SpacePolicy.PRESERVE),
+            UnionMatch("-r", "-recent", "-最近").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -1171,7 +1171,7 @@ async def player_recent_info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-对局").space(SpacePolicy.PRESERVE),
+            UnionMatch("-match", "-对局").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
         ]
     )
@@ -1459,8 +1459,8 @@ async def detailed_server(
     )
 
 
-# 定时服务器详细信息收集，每20分钟执行一次
-@channel.use(SchedulerSchema(timers.every_custom_minutes(20)))
+# 定时服务器详细信息收集，每60分钟执行一次
+@channel.use(SchedulerSchema(timers.every_custom_minutes(60)))
 async def server_info_collect():
     await update_server_info()
 
@@ -1944,9 +1944,6 @@ async def report(
     display_name = player_info["personas"]["persona"][0]["displayName"]
     player_name = display_name
 
-    await app.send_message(group, MessageChain(
-        f"注意:请勿随意、乱举报,“垃圾”举报将会影响eac的处理效率,同时将撤销bot的使用"
-    ), quote=source)
     # 2.查验是否已经有举报信息
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
@@ -2009,7 +2006,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"请在1分钟内发送举报的理由(请不要附带图片,否则将退出,发送`exit`取消举报)"
+        f"注意:请勿随意、乱举报,否则将会撤销BOT的使用权!请在1分钟内发送举报的理由(请不要附带图片,发送`exit`取消举报)"
     ), quote=source)
     saying = None
 
@@ -2128,31 +2125,58 @@ async def report(
                         f.close()
 
                     # 获取图床
-                    # tc_url = "https://www.imgurl.org/upload/aws_s3"
-                    tc_url = "https://api.bfeac.com/inner_api/upload_image"
-                    tc_files = {'file': open(file_path, 'rb')}
-                    # tc_data = {'file': tc_files}
-                    apikey = config.functions.get("bf1", {}).get("apikey", "")
-                    tc_headers = {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
-                                      '(KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
-                        "apikey": apikey
-                    }
-                    try:
-                        async with httpx.AsyncClient() as client:
-                            response = await client.post(tc_url, files=tc_files, headers=tc_headers)
-                    except Exception as e:
-                        logger.error(e)
-                        await app.send_message(group, MessageChain(
-                            f'获取图片图床失败,请重新举报!'
-                        ), quote=source)
-                        return False
-                    json_temp = response.json()
+                    image_api_option = config.functions.get("bf1", {}).get("image_api", "")
+                    # TODO Use switch case to support more image API in future
+                    # Use which image API by reading option in config
+                    if image_api_option == "smms":
+                        tc_url = "https://sm.ms/api/v2/upload?format=json"
+                        tc_files = {'smfile': open(file_path, 'rb')}
+                        image_apikey = config.functions.get("bf1", {}).get("image_apikey", "")
+                        tc_headers = {
+                            "Authorization": image_apikey
+                        }
+                        try:
+                            async with httpx.AsyncClient() as client:
+                                response = await client.post(tc_url, files=tc_files, headers=tc_headers)
+                        except Exception as e:
+                            logger.error(e)
+                            await app.send_message(group, MessageChain(
+                                f'获取图片图床失败,请重新举报!'
+                            ), quote=source)
+                            return False
+                        json_temp = response.json()
+                        response_data = json_temp["data"]
 
-                    # img_temp = f"<img src = '{json_temp['data']}' />"
-                    img_temp = f'<img class="img-fluid" src="{json_temp["data"]}">'
-                    report_reason += img_temp
-                    list_pic.append(json_temp['data'])
+                        img_temp = f'<img class="img-fluid" src="{response_data["url"]}">'
+                        report_reason += img_temp
+                        list_pic.append(response_data['url'])
+                    # Use BFEAC image API by default
+                    else :
+                        # tc_url = "https://www.imgurl.org/upload/aws_s3"
+                        tc_url = "https://api.bfeac.com/inner_api/upload_image"
+                        tc_files = {'file': open(file_path, 'rb')}
+                        # tc_data = {'file': tc_files}
+                        apikey = config.functions.get("bf1", {}).get("apikey", "")
+                        tc_headers = {
+                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                                          '(KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
+                            "apikey": apikey
+                        }
+                        try:
+                            async with httpx.AsyncClient() as client:
+                                response = await client.post(tc_url, files=tc_files, headers=tc_headers)
+                        except Exception as e:
+                            logger.error(e)
+                            await app.send_message(group, MessageChain(
+                                f'获取图片图床失败,请重新举报!'
+                            ), quote=source)
+                            return False
+                        json_temp = response.json()
+
+                        # img_temp = f"<img src = '{json_temp['data']}' />"
+                        img_temp = f'<img class="img-fluid" src="{json_temp["data"]}">'
+                        report_reason += img_temp
+                        list_pic.append(json_temp['data'])
                     # noinspection PyBroadException
                     try:
                         os.remove(file_path)
@@ -2683,7 +2707,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
 @dispatch(
     Twilight(
         [
-            UnionMatch("-交换").space(SpacePolicy.PRESERVE),
+            UnionMatch("-exchange", "-ex", "-交换").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
         ]
     )
@@ -2797,7 +2821,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
 @dispatch(
     Twilight(
         [
-            UnionMatch("-战役", "-行动").space(SpacePolicy.PRESERVE),
+            UnionMatch("-战役", "-行动", "-op").space(SpacePolicy.PRESERVE),
         ]
     )
 )

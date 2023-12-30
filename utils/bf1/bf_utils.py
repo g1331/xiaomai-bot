@@ -1323,7 +1323,10 @@ class BF1BlazeManager:
                 "GLST 40": game_ids,
             }
         }
-        response = await blaze_socket.send(packet)
+        try:
+            response = await blaze_socket.send(packet)
+        except TimeoutError:
+            return "Blaze后端超时!"
         if origin:
             return response
         response = BlazeData.player_list_handle(response)

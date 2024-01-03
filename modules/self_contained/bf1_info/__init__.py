@@ -1294,8 +1294,8 @@ async def player_match_info(
                     f"游玩时长: {time_played}\n"
                     + "=" * 15
                 )
-            result = result[:4]
             result = "\n".join(result)
+            return await app.send_message(group, MessageChain(result), quote=source)
         else:
             fwd_nodeList = [
                 ForwardNode(
@@ -1344,8 +1344,10 @@ async def player_match_info(
                         )
                     )
                 )
-            result = fwd_nodeList
-        return await app.send_message(group, MessageChain(result), quote=source)
+            msg_send = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
+            if msg_send.id <= 0:
+                return await app.send_message(group, MessageChain("转发消息发送失败!"), quote=source)
+            return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
     except Exception as e:
         logger.error(e)
         return await app.send_message(

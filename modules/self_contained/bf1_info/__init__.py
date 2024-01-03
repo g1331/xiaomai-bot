@@ -1056,114 +1056,114 @@ async def player_vehicle_pic(
     )
 
 
-# 最近数据
-@listen(GroupMessage)
-@dispatch(
-    Twilight(
-        [
-            UnionMatch("-最近").space(SpacePolicy.PRESERVE),
-            ParamMatch(optional=True) @ "player_name",
-        ]
-    )
-)
-@decorate(
-    Distribute.require(),
-    Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
-    Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.User),
-)
-async def player_recent_info(
-        app: Ariadne,
-        sender: Member,
-        group: Group,
-        source: Source,
-        player_name: RegexResult
-):
-    # 如果没有参数，查询绑定信息,获取display_name
-    if player_name.matched:
-        player_name = player_name.result.display
-        if player_name.startswith("#"):
-            player_pid = player_name[1:]
-            if not player_pid.isdigit():
-                return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
-            player_pid = int(player_pid)
-            player_info = await get_personas_by_player_pid(player_pid)
-            if player_info is None:
-                return await app.send_message(
-                    group,
-                    MessageChain(f"玩家 {player_name} 不存在"),
-                    quote=source
-                )
-            if not isinstance(player_info, dict):
-                return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
-            player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
-            dict_temp = {
-                "personas": {
-                    "persona": [player_info["result"][str(player_pid)]]
-                }
-            }
-            player_info = dict_temp
-        else:
-            player_info = await get_personas_by_name(player_name)
-        if not player_info:
-            return await app.send_message(
-                group,
-                MessageChain(f"玩家 {player_name} 不存在"),
-                quote=source
-            )
-        if not isinstance(player_info, dict):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{player_info}"),
-                quote=source
-            )
-        # player_pid = player_info["personas"]["persona"][0]["personaId"]
-        display_name = player_info["personas"]["persona"][0]["displayName"]
-    elif bind_info := await check_bind(sender.id):
-        if isinstance(bind_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"查询出错!{bind_info}"),
-                quote=source
-            )
-        display_name = bind_info.get("displayName")
-        # player_pid = bind_info.get("pid")
-    else:
-        return await app.send_message(
-            group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
-        )
-    await app.send_message(group, MessageChain("查询ing"), quote=source)
-
-    # 从BTR获取数据
-    try:
-        player_recent = await BTR_get_recent_info(display_name)
-        if not player_recent:
-            return await app.send_message(
-                group,
-                MessageChain("没有查询到最近记录哦~"),
-                quote=source
-            )
-        result = [f"玩家: {display_name}\n" + "=" * 15]
-        result.extend(
-            f"{item['time']}\n"
-            f"得分: {item['score']}\nSPM: {item['spm']}\n"
-            f"KD: {item['kd']}  KPM: {item['kpm']}\n"
-            f"游玩时长: {item['time_play']}\n局数: {item['win_rate']}\n" + "=" * 15
-            for item in player_recent[:3]
-        )
-        return await app.send_message(
-            group,
-            MessageChain("\n".join(result)),
-            quote=source
-        )
-    except Exception as e:
-        logger.error(e)
-        return await app.send_message(
-            group,
-            MessageChain("查询出错!"),
-            quote=source
-        )
+# 最近数据 - 由于BTR改版，此功能已弃用
+# @listen(GroupMessage)
+# @dispatch(
+#     Twilight(
+#         [
+#             UnionMatch("-最近").space(SpacePolicy.PRESERVE),
+#             ParamMatch(optional=True) @ "player_name",
+#         ]
+#     )
+# )
+# @decorate(
+#     Distribute.require(),
+#     Function.require(channel.module),
+#     FrequencyLimitation.require(channel.module),
+#     Permission.group_require(channel.metadata.level),
+#     Permission.user_require(Permission.User),
+# )
+# async def player_recent_info(
+#         app: Ariadne,
+#         sender: Member,
+#         group: Group,
+#         source: Source,
+#         player_name: RegexResult
+# ):
+#     # 如果没有参数，查询绑定信息,获取display_name
+#     if player_name.matched:
+#         player_name = player_name.result.display
+#         if player_name.startswith("#"):
+#             player_pid = player_name[1:]
+#             if not player_pid.isdigit():
+#                 return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+#             player_pid = int(player_pid)
+#             player_info = await get_personas_by_player_pid(player_pid)
+#             if player_info is None:
+#                 return await app.send_message(
+#                     group,
+#                     MessageChain(f"玩家 {player_name} 不存在"),
+#                     quote=source
+#                 )
+#             if not isinstance(player_info, dict):
+#                 return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+#             player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+#             dict_temp = {
+#                 "personas": {
+#                     "persona": [player_info["result"][str(player_pid)]]
+#                 }
+#             }
+#             player_info = dict_temp
+#         else:
+#             player_info = await get_personas_by_name(player_name)
+#         if not player_info:
+#             return await app.send_message(
+#                 group,
+#                 MessageChain(f"玩家 {player_name} 不存在"),
+#                 quote=source
+#             )
+#         if not isinstance(player_info, dict):
+#             return await app.send_message(
+#                 group,
+#                 MessageChain(f"查询出错!{player_info}"),
+#                 quote=source
+#             )
+#         # player_pid = player_info["personas"]["persona"][0]["personaId"]
+#         display_name = player_info["personas"]["persona"][0]["displayName"]
+#     elif bind_info := await check_bind(sender.id):
+#         if isinstance(bind_info, str):
+#             return await app.send_message(
+#                 group,
+#                 MessageChain(f"查询出错!{bind_info}"),
+#                 quote=source
+#             )
+#         display_name = bind_info.get("displayName")
+#         # player_pid = bind_info.get("pid")
+#     else:
+#         return await app.send_message(
+#             group, MessageChain("你还没有绑定!请使用'-绑定 玩家名'进行绑定!"), quote=source
+#         )
+#     await app.send_message(group, MessageChain("查询ing"), quote=source)
+#
+#     # 从BTR获取数据
+#     try:
+#         player_recent = await BTR_get_recent_info(display_name)
+#         if not player_recent:
+#             return await app.send_message(
+#                 group,
+#                 MessageChain("没有查询到最近记录哦~"),
+#                 quote=source
+#             )
+#         result = [f"玩家: {display_name}\n" + "=" * 15]
+#         result.extend(
+#             f"{item['time']}\n"
+#             f"得分: {item['score']}\nSPM: {item['spm']}\n"
+#             f"KD: {item['kd']}  KPM: {item['kpm']}\n"
+#             f"游玩时长: {item['time_play']}\n局数: {item['win_rate']}\n" + "=" * 15
+#             for item in player_recent[:3]
+#         )
+#         return await app.send_message(
+#             group,
+#             MessageChain("\n".join(result)),
+#             quote=source
+#         )
+#     except Exception as e:
+#         logger.error(e)
+#         return await app.send_message(
+#             group,
+#             MessageChain("查询出错!"),
+#             quote=source
+#         )
 
 
 # 对局数据
@@ -1171,8 +1171,10 @@ async def player_recent_info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-对局").space(SpacePolicy.PRESERVE),
+            UnionMatch("-对局", "-最近").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
+            ArgumentMatch("-n", "-num", optional=True, type=int, default=3) @ "match_num"
+            # TODO: 使用参数用于搜索对局，关键词包括服名、时间、时长、击杀、kpm、死亡、kd、spm、地图、模式、队伍、胜利等
         ]
     )
 )
@@ -1188,7 +1190,8 @@ async def player_match_info(
         sender: Member,
         group: Group,
         source: Source,
-        player_name: RegexResult
+        player_name: RegexResult,
+        match_num: ArgResult
 ):
     # 如果没有参数，查询绑定信息,获取display_name
     if player_name.matched:
@@ -1246,51 +1249,102 @@ async def player_match_info(
     # 从BTR获取数据
     try:
         _ = await BattlefieldTracker.update_match_data(display_name, player_pid)
-        player_match = await BattlefieldTracker.get_player_match_data(player_pid)
+        player_match = await BattlefieldTracker.get_player_match_data(player_pid, match_num.result)
         if not player_match:
             return await app.send_message(
                 group,
                 MessageChain("没有查询到对局记录哦~"),
                 quote=source
             )
-        result = [f"玩家: {display_name}\n" + "=" * 15]
-        # 处理数据
         # 按game_info['game_time']时间排序,game_info['game_time']是datetime类型
         player_match.sort(key=lambda x: x.get("game_info").get("game_time"), reverse=True)
-        for match in player_match:
-            game_info = match.get("game_info")
-            player_data = match.get("player")
-            map_name = game_info['map_name']
-            player_data["team_name"] = f"Team{player_data['team_name']}" if player_data["team_name"] else "No Team"
-            team_name = next(
-                (
-                    MapData.MapTeamDict.get(key).get(
-                        player_data["team_name"], "No Team"
+        # 3局以下直接发送，否则构造转发消息
+        if len(player_match) <= 3:
+            result = [f"玩家: {display_name}\n" + "=" * 15]
+            # 处理数据
+            for match in player_match:
+                game_info = match.get("game_info")
+                player_data = match.get("player")
+                map_name = game_info['map_name']
+                player_data["team_name"] = f"Team{player_data['team_name']}" if player_data["team_name"] else "No Team"
+                team_name = next(
+                    (
+                        MapData.MapTeamDict.get(key).get(
+                            player_data["team_name"], "No Team"
+                        )
+                        for key in MapData.MapTeamDict
+                        if MapData.MapTeamDict.get(key).get("Chinese") == map_name
+                    ),
+                    "No Team",
+                )
+                # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
+                team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
+                    if player_data["team_name"] == game_info["team_win"] else "🏳"
+                # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
+                time_played = player_data["time_played"]
+                result.append(
+                    f"服务器: {game_info['server_name'][:20]}\n"
+                    f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
+                    f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                    f"队伍: {team_name}  {team_win}\n"
+                    f"击杀: {player_data['kills']}\t死亡: {player_data['deaths']}\n"
+                    f"KD: {player_data['kd']}\tKPM: {player_data['kpm']}\n"
+                    f"得分: {player_data['score']}\tSPM: {player_data['spm']}\n"
+                    f"命中率: {player_data['accuracy']}\t爆头: {player_data['headshots']}\n"
+                    f"游玩时长: {time_played}\n"
+                    + "=" * 15
+                )
+            result = result[:4]
+            result = "\n".join(result)
+        else:
+            fwd_nodeList = [
+                ForwardNode(
+                    target=sender,
+                    time=datetime.datetime.now(),
+                    message=MessageChain(
+                        f"玩家: {display_name}\n"
+                        f"PID: {player_pid}"
+                    ),
+                )
+            ]
+            for match in player_match:
+                game_info = match.get("game_info")
+                player_data = match.get("player")
+                map_name = game_info['map_name']
+                player_data["team_name"] = f"Team{player_data['team_name']}" if player_data["team_name"] else "No Team"
+                team_name = next(
+                    (
+                        MapData.MapTeamDict.get(key).get(
+                            player_data["team_name"], "No Team"
+                        )
+                        for key in MapData.MapTeamDict
+                        if MapData.MapTeamDict.get(key).get("Chinese") == map_name
+                    ),
+                    "No Team",
+                )
+                # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
+                team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
+                    if player_data["team_name"] == game_info["team_win"] else "🏳"
+                # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
+                time_played = player_data["time_played"]
+                fwd_nodeList.append(
+                    ForwardNode(
+                        target=sender,
+                        time=game_info['game_time'],
+                        message=MessageChain(
+                            f"服务器: {game_info['server_name'][:20]}\n"
+                            f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
+                            f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
+                            f"队伍: {team_name}  {team_win}\n"
+                            f"击杀: {player_data['kills']}\t死亡: {player_data['deaths']}\n"
+                            f"KD: {player_data['kd']}\tKPM: {player_data['kpm']}\n"
+                            f"得分: {player_data['score']}\tSPM: {player_data['spm']}\n"
+                            f"命中率: {player_data['accuracy']}\t爆头: {player_data['headshots']}\n"
+                            f"游玩时长: {time_played}"
+                        )
                     )
-                    for key in MapData.MapTeamDict
-                    if MapData.MapTeamDict.get(key).get("Chinese") == map_name
-                ),
-                "No Team",
-            )
-            # team_win是胜利队伍的id,如果为0则显示未结算，如果玩家的队伍id和胜利队伍id相同则显示🏆,否则显示🏳
-            team_win = "未结算" if game_info["team_win"] == 0 else "🏆" \
-                if player_data["team_name"] == game_info["team_win"] else "🏳"
-            # 将游玩时间秒转换为 如果大于1小时则显示xxhxxmxxs,如果小于1小时则显示xxmxxs
-            time_played = player_data["time_played"]
-            result.append(
-                f"服务器: {game_info['server_name'][:20]}\n"
-                f"时间: {game_info['game_time'].strftime('%Y年%m月%d日-%H时%M分')}\n"
-                f"地图: {game_info['map_name']}-{game_info['mode_name']}\n"
-                f"队伍: {team_name}  {team_win}\n"
-                f"击杀: {player_data['kills']}\t死亡: {player_data['deaths']}\n"
-                f"KD: {player_data['kd']}\tKPM: {player_data['kpm']}\n"
-                f"得分: {player_data['score']}\tSPM: {player_data['spm']}\n"
-                f"命中率: {player_data['accuracy']}\t爆头: {player_data['headshots']}\n"
-                f"游玩时长: {time_played}\n"
-                + "=" * 15
-            )
-        result = result[:4]
-        result = "\n".join(result)
+                )
+            result = fwd_nodeList
         return await app.send_message(group, MessageChain(result), quote=source)
     except Exception as e:
         logger.error(e)

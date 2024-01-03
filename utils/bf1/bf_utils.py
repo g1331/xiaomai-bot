@@ -732,14 +732,15 @@ class BattlefieldTracker:
             _ = await BattlefieldTracker.handle_match_detail(match_detail)
 
     @staticmethod
-    async def get_player_match_data(player_pid: int) -> Union[list, None]:
+    async def get_player_match_data(player_pid: int, match_num: Union[int, None] = None) -> Union[list, None]:
         """
         获取玩家对局数据
         :param player_pid: 玩家pid
+        :param match_num: 获取对局数量
         :return: 返回一个列表，包含对局信息和玩家信息
         """
         # 先从数据库查询数据,如果数据库中有数据则直接返回
-        if matches := await BF1DB.bf1_match_cache.get_btr_match_by_pid(player_pid):
+        if matches := await BF1DB.bf1_match_cache.get_btr_match_by_pid(player_pid, match_num):
             result = []
             for data in matches:
                 server_name = data['server_name']

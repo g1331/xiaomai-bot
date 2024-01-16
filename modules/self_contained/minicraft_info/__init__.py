@@ -149,4 +149,5 @@ async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
         "max_players": players.max,
         "ping": round(status.latency, 2),
         "players": [player.name for player in players.sample],
+        f"favicon": status.favicon
     }

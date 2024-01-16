@@ -13,6 +13,6 @@
   ],
   "example": [
   ],
-  "default_switch": false,
+  "default_switch": true,
   "default_notice": true
 }

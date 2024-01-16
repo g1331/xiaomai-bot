@@ -136,10 +136,16 @@ async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
     try:
         server = JavaServer.lookup(server_host)
         status = server.status()
+        players = status.players
     except ConnectionRefusedError as e:
         logger.error(f"[MC查询]无法连接到服务器 {server_host}, {e}")
         return f"未能连接到服务器「{server_host}」"
-    players = status.players
+    except TimeoutError as e:
+        logger.error(f"[MC查询]连接服务器 {server_host} 超时, {e}")
+        return f"连接服务器 {server_host} 超时"
+    except ConnectionResetError as e:
+        logger.error(f"[MC查询]连接服务器 {server_host} 被重置, {e}")
+        return f"连接服务器 {server_host} 被重置"
     return {
         "server_host": server_host,
         "description": ''.join([item for item in status.motd.parsed if isinstance(item, str)]),
@@ -149,5 +155,5 @@ async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
         "max_players": players.max,
         "ping": round(status.latency, 2),
         "players": [player.name for player in players.sample],
-        f"favicon": status.favicon
+        "favicon": status.favicon
     }

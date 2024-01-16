@@ -1,0 +1,18 @@
+{
+  "level": 1,
+  "name": "MCInfo",
+  "version": "0.1",
+  "display_name": "MineCraft查询",
+  "authors": [
+    "13"
+  ],
+  "description": "查询MC服务器信息",
+  "usage": [
+    "查询服务器信息: /mcs 服务器ip",
+    "查询在线人数: /mcpl 服务器ip"
+  ],
+  "example": [
+  ],
+  "default_switch": false,
+  "default_notice": true
+}

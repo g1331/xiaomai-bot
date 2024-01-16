@@ -49,6 +49,7 @@ slack-sdk = "3.21.3"
 matplotlib = "^3.8.0"
 pandas = "^2.1.1"
 seaborn = "^0.13.0"
+mcstatus = "^11.1.1"
 
 
 [tool.poetry.group.dev.dependencies]

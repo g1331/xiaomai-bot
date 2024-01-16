@@ -64,7 +64,7 @@ async def server_info_handle(
         group,
         MessageChain([
             f"服务器地址: {server_host}\n",
-            Image(base64=result["favicon"]),
+            Image(base64=result["favicon"][result["favicon"].find(",") + 1:]),
             f"描述:\n{result['description']}\n",
             f"游戏版本:{result['version']}\n",
             f"协议版本:{result['protocol']}\n",
@@ -119,7 +119,7 @@ async def server_player_handle(
         group,
         MessageChain([
             f"服务器地址: {server_host}\n",
-            Image(base64=result["favicon"]),
+            Image(base64=result["favicon"][result["favicon"].find(",") + 1:]),
             f"在线人数:{result['online_players']}/{result['max_players']}\n",
             f"{players_str}"
         ]),

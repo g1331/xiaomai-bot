@@ -68,6 +68,8 @@ async def chat_gpt(
     if mode.matched:
         if not await Permission.require_user_perm(group.id, member.id, Permission.BotAdmin):
             return await app.send_group_message(group, MessageChain("权限不足!"), quote=source)
+        if os.environ.get("API_URL"):
+            return await app.send_group_message(group, MessageChain("使用自订API_URL时只能使用api模式!"), quote=source)
         target_mode = mode.result
         await manager.change_mode(target_mode)
         return await app.send_group_message(group, MessageChain(f"已清空所有对话并切换模式为:{target_mode}模式"), quote=source)

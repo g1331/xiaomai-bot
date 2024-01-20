@@ -221,6 +221,7 @@ class bf1_api(object):
             }
         }
         self.auto_login_count = 0
+        self.session = aiohttp.ClientSession()
 
     # api调用
     async def check_session_expire(self) -> bool:
@@ -258,15 +259,14 @@ class bf1_api(object):
 
     async def api_call(self, body: dict) -> Union[dict, str]:
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        url=self.api_url,
-                        headers=await self.get_api_header(),
-                        data=json.dumps(body),
-                        timeout=10,
-                        ssl=False
-                ) as response:
-                    return await self.error_handle(await response.json())
+            async with self.session.post(
+                    url=self.api_url,
+                    headers=await self.get_api_header(),
+                    data=json.dumps(body),
+                    timeout=10,
+                    ssl=False
+            ) as response:
+                return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -316,7 +316,7 @@ class bf1_api(object):
             try:
                 error_data = eval(await response.text())
                 if error_data.get("error") == "login_required":
-                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count+1}次刷新")
+                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count + 1}次刷新")
                     if self.auto_login_count <= 2:
                         await self.auto_login(str(self.pid))
                     else:

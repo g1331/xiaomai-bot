@@ -221,7 +221,7 @@ class bf1_api(object):
             }
         }
         self.auto_login_count = 0
-        self.session = aiohttp.ClientSession()
+        self.http_session = aiohttp.ClientSession()
 
     # api调用
     async def check_session_expire(self) -> bool:
@@ -259,7 +259,7 @@ class bf1_api(object):
 
     async def api_call(self, body: dict) -> Union[dict, str]:
         try:
-            async with self.session.post(
+            async with self.http_session.post(
                     url=self.api_url,
                     headers=await self.get_api_header(),
                     data=json.dumps(body),

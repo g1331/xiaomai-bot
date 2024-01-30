@@ -10,14 +10,16 @@
   "usage": [
     "发送(随机|一眼|来[点张])[顶丁钉][真针]",
     "发送随机/来张/来点龙图",
-    "发送随机/来张/来点柴郡"
+    "发送随机/来张/来点柴郡",
+    "发送随机/来张/来点咖波"
   ],
   "example": [
     "随机丁真",
     "一眼丁真",
     "ding",
     "long",
-    "chai"
+    "chai",
+    "capoo"
   ],
   "default_switch": true,
   "default_notice": false

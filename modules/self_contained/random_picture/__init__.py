@@ -28,7 +28,8 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 pic_map = {
     "ding": "ding",
     "long": "long",
-    "chai": "chai"
+    "chai": "chai",
+    "capoo": "capoo"
 }
 
 
@@ -47,7 +48,7 @@ async def random_ding(app: Ariadne, group: Group, source: Source):
     pic_path = Path(__file__).parent / "imgs" / pic_map["ding"]
     if not pic_path.exists():
         return await app.send_message(group, MessageChain(
-            "未找到图库"
+            f"未找到图库 '{pic_map['ding']}'"
         ), quote=source)
     pic_list = os.listdir(pic_path)
     pic = random.choice(pic_list)
@@ -79,13 +80,13 @@ async def random_ding(app: Ariadne, group: Group, source: Source):
     Permission.user_require(Permission.User),
 )
 @dispatch(
-    Twilight([RegexMatch(r"^(随机|来[点张])[龙🐉][图]|[Ll]ong[！!]?$")])
+    Twilight([RegexMatch(r"^(随机|来[点张])[龙][图]|🐉|[Ll]ong[！!]?$")])
 )
 async def random_long(app: Ariadne, group: Group, source: Source):
     pic_path = Path(__file__).parent / "imgs" / pic_map["long"]
     if not pic_path.exists():
         return await app.send_message(group, MessageChain(
-            "未找到图库"
+            f"未找到图库 '{pic_map['long']}'"
         ), quote=source)
     pic_list = os.listdir(pic_path)
     pic = random.choice(pic_list)
@@ -94,7 +95,6 @@ async def random_long(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(
             Graia_Image(path=pic_path)
         ), quote=source)
-
     except Exception as e:
         logger.error(f"发送{pic}失败")
         logger.error(e)
@@ -115,7 +115,7 @@ async def random_chai(app: Ariadne, group: Group, source: Source):
     pic_path = Path(__file__).parent / "imgs" / pic_map["chai"]
     if not pic_path.exists():
         return await app.send_message(group, MessageChain(
-            "未找到图库"
+            f"未找到图库 '{pic_map['chai']}'"
         ), quote=source)
     pic_list = os.listdir(pic_path)
     pic = random.choice(pic_list)
@@ -124,7 +124,35 @@ async def random_chai(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(
             Graia_Image(path=pic_path)
         ), quote=source)
+    except Exception as e:
+        logger.error(f"发送{pic}失败")
+        logger.error(e)
 
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+@dispatch(
+    Twilight([RegexMatch(r"^(随机|来[点张])[咖][波]|capoo[！!]?$")])
+)
+async def random_capoo(app: Ariadne, group: Group, source: Source):
+    pic_path = Path(__file__).parent / "imgs" / pic_map["capoo"]
+    if not pic_path.exists():
+        return await app.send_message(group, MessageChain(
+            f"未找到图库 '{pic_map['capoo']}'"
+        ), quote=source)
+    pic_list = os.listdir(pic_path)
+    pic = random.choice(pic_list)
+    pic_path = f"{pic_path}/{pic}"
+    try:
+        return await app.send_message(group, MessageChain(
+            Graia_Image(path=pic_path)
+        ), quote=source)
     except Exception as e:
         logger.error(f"发送{pic}失败")
         logger.error(e)

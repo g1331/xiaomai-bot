@@ -271,7 +271,7 @@ class bf1_api(object):
             return "网络超时!"
 
     # 玩家信息相关
-    async def login(self, remid: str, sid: str) -> str:
+    async def login(self, remid: str, sid: str) -> Union[str, None]:
         """
         使用remid和sid登录，返回session
         :param remid: 玩家登录时cookie的remid
@@ -289,13 +289,12 @@ class bf1_api(object):
             'ContentType': 'application/json',
             'Cookie': f'remid={self.remid}; sid={self.sid}'
         }
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(
-                url=url,
-                headers=header,
-                timeout=10,
-                ssl=False
-            )
+        response = await self.http_session.get(
+            url=url,
+            headers=header,
+            timeout=10,
+            ssl=False
+        )
         try:
             res = eval(await response.text())
             logger.debug(res)
@@ -328,7 +327,8 @@ class bf1_api(object):
             logger.error(f"BF1账号{self.pid}登录刷新session失败!")
             return await response.text()
         # 获取authcode
-        url2 = f"https://accounts.ea.com/connect/auth?access_token={self.access_token}&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod"
+        url2 = (f"https://accounts.ea.com/connect/auth?access_token={self.access_token}"
+                f"&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod")
         header2 = {
             "UserAgent": "Mozilla / 5.0 EA Download Manager Origin/ 10.5.94.46774",
             'Cookie': f'remid={self.remid}; sid={self.sid}',
@@ -441,13 +441,12 @@ class bf1_api(object):
             'Accept-Language': 'zh-TW',
             'Cookie': f'remid={remid}; sid={sid}'
         }
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(
-                url=url,
-                headers=header,
-                timeout=60,
-                allow_redirects=False
-            )
+        response = await self.http_session.get(
+            url=url,
+            headers=header,
+            timeout=10,
+            allow_redirects=False
+        )
         try:
             authcode = response.headers['location']
             return authcode[authcode.rfind('=') + 1:]
@@ -487,10 +486,14 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10,
-                                        ssl=False) as response:
-                    return await self.error_handle(await response.json())
+            response = await self.http_session.post(
+                url=self.api_url,
+                headers=header,
+                data=json.dumps(body),
+                timeout=10,
+                ssl=False
+            )
+            return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -521,7 +524,7 @@ class bf1_api(object):
             }
         )
 
-    async def getPersonasByName(self, player_name: str) -> dict:
+    async def getPersonasByName(self, player_name: str) -> dict | str:
         """
         根据名字获取Personas
         :param player_name:
@@ -538,14 +541,13 @@ class bf1_api(object):
             "Accept-Encoding": "deflate"
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                response = await session.get(
-                    url=url,
-                    headers=head,
-                    timeout=10,
-                    ssl=False
-                )
-                return await response.json()
+            response = await self.http_session.get(
+                url=url,
+                headers=head,
+                timeout=10,
+                ssl=False
+            )
+            return await response.json()
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -605,25 +607,13 @@ class bf1_api(object):
         )
 
     async def Companion_isLoggedIn_noLogin(self):
-        body = {
-            "jsonrpc": "2.0",
-            "method": "Companion.isLoggedIn",
-            "id": await get_a_uuid()
-        }
-        self.api_header["X-Gatewaysession"] = self.session
-        logger.debug("调用api:Companion.isLoggedIn")
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        url=self.api_url,
-                        headers=self.api_header,
-                        data=json.dumps(body),
-                        timeout=10,
-                        ssl=False
-                ) as response:
-                    return await self.error_handle(await response.json())
-        except asyncio.exceptions.TimeoutError:
-            return "网络超时!"
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Companion.isLoggedIn",
+                "id": await get_a_uuid()
+            }
+        )
 
     # 返回数据前进行错误处理
     async def error_handle(self, data: dict) -> Union[dict, str]:
@@ -1318,7 +1308,7 @@ class RSP(bf1_api):
             }
         )
 
-    async def kickPlayer(self, gameId: Union[int, str], personaId, reason: str) -> dict:
+    async def kickPlayer(self, gameId: Union[int, str], personaId, reason: str) -> dict | str:
         """
         踢人
         :param gameId: 服务器gameId
@@ -1400,7 +1390,7 @@ class RSP(bf1_api):
                 }
             }
         """
-        return self.api_call(
+        return await self.api_call(
             {
                 "jsonrpc": "2.0",
                 "method": "RSP.addServerAdmin",

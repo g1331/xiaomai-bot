@@ -1,0 +1,24 @@
+{
+  "level": 1,
+  "name": "RandomPicture",
+  "version": "0.1",
+  "display_name": "随机图片",
+  "authors": [
+  "十三"
+  ],
+  "description": "发送随机图的插件",
+  "usage": [
+    "发送(随机|一眼|来[点张])[顶丁钉][真针]",
+    "发送随机/来张/来点龙图",
+    "发送随机/来张/来点柴郡"
+  ],
+  "example": [
+    "随机丁真",
+    "一眼丁真",
+    "ding",
+    "long",
+    "chai"
+  ],
+  "default_switch": false,
+  "default_notice": false
+}

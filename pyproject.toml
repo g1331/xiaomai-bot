@@ -5,7 +5,6 @@ description = "基于Graia-Ariadne开的qqbot-小埋，v3重构版本"
 authors = ["13"]
 license = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
-packages = [{include = "bot_xiaomai_open"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"

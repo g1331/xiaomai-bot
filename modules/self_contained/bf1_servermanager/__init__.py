@@ -1586,7 +1586,7 @@ async def get_server_playerList_pic(
         fal_list = []
         for i, result in enumerate(scrape_index_tasks):
             result = result.result()
-            if type(result) == dict:
+            if isinstance(result, dict):
                 suc += 1
                 suc_list.append(
                     f"{name_temp[i]},"
@@ -1603,26 +1603,23 @@ async def get_server_playerList_pic(
                 )
             else:
                 fal += 1
-                fal_list.append(
-                    f"踢出玩家{name_temp[i]}失败\n原因:{result}\n"
-                )
+                fal_list.append(f"踢出玩家{name_temp[i]}失败")
+                fal_list.append(f"原因:{result}")
+        # 3个人以下则显示id，否则只显示数量
         if 0 < suc <= 3:
             kick_result = [f"{name}" for name in suc_list]
             kick_result.insert(0, "成功踢出:")
-            kick_result.append(f"\n原因:{reason}")
+            kick_result.append(f"原因:{reason}")
         elif suc != 0:
-            kick_result.append(f"成功踢出{suc}位玩家\n原因:{reason}\n")
-        if fal != 0:
-            try:
-                fal_list[-1] = fal_list[-1].replace("\n", "")
-            except:
-                pass
-            kick_result.append(fal_list)
-        try:
-            kick_result[-1] = kick_result[-1].replace("\n", "")
-        except:
-            pass
-        return await app.send_message(group, MessageChain(kick_result), quote=source)
+            kick_result.append(f"成功踢出{suc}位玩家")
+            kick_result.append(f"原因:{reason}")
+        if fal_list:
+            fal_list = "\n".join(fal_list)
+        kick_result.append(fal_list)
+        kick_result = "\n".join(kick_result)
+        if kick_result:
+            return await app.send_message(group, MessageChain(kick_result), quote=source)
+        return await app.send_message(group, MessageChain("执行出错!"), quote=source)
     # 封禁
     elif action[0] in ["b", "-b", "-ban", "-封禁"]:
         ending = None
@@ -1694,7 +1691,7 @@ async def get_server_playerList_pic(
         fal_list = []
         for i, result in enumerate(scrape_index_tasks):
             result = result.result()
-            if type(result) == dict:
+            if isinstance(result, dict):
                 suc += 1
                 suc_list.append(
                     f"{name_temp[i]},"
@@ -1711,29 +1708,22 @@ async def get_server_playerList_pic(
                 )
             else:
                 fal += 1
-                fal_list.append(
-                    f"封禁玩家{name_temp[i]}失败\n原因:{result}\n"
-                )
+                fal_list.append(f"封禁玩家{name_temp[i]}失败")
+                fal_list.append(f"原因:{result}")
         if 0 < suc <= 3:
             ban_result = [f"{name}" for name in suc_list]
             ban_result.insert(0, "成功封禁:")
-            ban_result.append(f"\n原因:{reason}")
+            ban_result.append(f"原因:{reason}")
         elif suc != 0:
-            ban_result.append(f"成功封禁{suc}位玩家\n原因:{reason}\n")
-        if fal != 0:
-            try:
-                fal_list[-1] = fal_list[-1].replace("\n", "")
-            except:
-                pass
-            ban_result.append(fal_list)
-        try:
-            ban_result[-1] = ban_result[-1].replace("\n", "")
-        except:
-            pass
-        await app.send_message(group, MessageChain(
-            ban_result
-        ), quote=source)
-        return
+            ban_result.append(f"成功封禁{suc}位玩家")
+            ban_result.append(f"原因:{reason}")
+        if fal_list:
+            fal_list = "\n".join(fal_list)
+        ban_result.append(fal_list)
+        ban_result = "\n".join(ban_result)
+        if ban_result:
+            return await app.send_message(group, MessageChain(ban_result), quote=source)
+        return await app.send_message(group, MessageChain("执行出错!"), quote=source)
     # 换边
     elif action[0] in ["m", "-m", "-move", "-换边"]:
         ending = None
@@ -1802,7 +1792,7 @@ async def get_server_playerList_pic(
         fal_list = []
         for i, result in enumerate(scrape_index_tasks):
             result = result.result()
-            if type(result) == dict:
+            if isinstance(result, dict):
                 suc += 1
                 suc_list.append(
                     f"{name_temp[i]},"
@@ -1819,25 +1809,20 @@ async def get_server_playerList_pic(
                 )
             else:
                 fal += 1
-                fal_list.append(
-                    f"换边玩家{name_temp[i]}失败\n原因:{result}\n"
-                )
+                fal_list.append(f"换边玩家{name_temp[i]}失败")
+                fal_list.append(f"原因:{result}")
         if 0 < suc <= 3:
             move_result = [f"{name}" for name in suc_list]
             move_result.insert(0, "成功换边:")
         elif suc != 0:
-            move_result.append(f"成功换边{suc}位玩家\n")
-        if fal != 0:
-            try:
-                fal_list[-1] = fal_list[-1].replace("\n", "")
-            except:
-                pass
-            move_result.append(fal_list)
-        try:
-            move_result[-1] = move_result[-1].replace("\n", "")
-        except:
-            pass
-        return await app.send_message(group, MessageChain(move_result), quote=source)
+            move_result.append(f"成功换边{suc}位玩家")
+        if fal_list:
+            fal_list = "\n".join(fal_list)
+        move_result.append(fal_list)
+        move_result = "\n".join(move_result)
+        if move_result:
+            return await app.send_message(group, MessageChain(move_result), quote=source)
+        return await app.send_message(group, MessageChain("执行出错!"), quote=source)
     # 查询战绩
     elif action[0] in ["s", "-s", "-stat", "-战绩", "-生涯"]:
         index = action[1]
@@ -4464,7 +4449,8 @@ async def move_player(
             "奥斯曼帝国": ["奥", "奥斯曼", "奥斯曼帝国", "土耳其"],  # 现在的土耳其
             "意大利王国": ["意", "意大利", "意大利王国", "意呆利"],
             "大英帝国": ["英", "大英", "大英帝国", "英国", "英军"],
-            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军", "英"],
+            "皇家海军陆战队": ["海", "海军", "皇家海军陆战队", "皇家海军陆战队", "英国海军陆战队", "英国", "英军",
+                               "英"],
             "美国": ["美", "美国", "美军", "美", "US", "USA", "美利坚"],
             "法国": ["法", "法国", "法军", "法", "FR", "FRA"],
             "俄罗斯帝国": ["俄", "俄罗斯", "俄罗斯帝国", "俄罗斯", "俄军", "白军", "白"],
@@ -4693,7 +4679,7 @@ async def change_map(
                     f"未识别到有效图池序号,退出换图"
                 ), quote=source)
         elif len(map_index_list) == 1:
-            if type(map_index_list[0]) != int:
+            if not isinstance(map_index_list[0], int):
                 map_index = map_list.index(map_index_list[0])
             else:
                 map_index = map_index_list[0]

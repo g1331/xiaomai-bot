@@ -1525,6 +1525,7 @@ async def get_server_playerList_pic(
                 pass
             else:
                 ending = i
+                break
         if ending is not None:
             index_list = action[1:ending]
             reason = ''
@@ -1534,6 +1535,7 @@ async def get_server_playerList_pic(
             index_list = action[1:]
             reason = "违反规则"
         reason = reason.replace("ADMINPRIORITY", "违反规则")
+        logger.debug(f"踢出原因:{reason}")
         # 获取服管帐号实例
         if not server_info_temp["account"]:
             return await app.send_message(group, MessageChain(
@@ -1546,8 +1548,8 @@ async def get_server_playerList_pic(
         pid_list = []
         for index in index_list:
             original_index = index
-            index = int(index)
             try:
+                index = int(index)
                 if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
                     index = index - 1
                     scrape_index_tasks.append(asyncio.ensure_future(
@@ -1631,6 +1633,7 @@ async def get_server_playerList_pic(
                 pass
             else:
                 ending = i
+                break
         if ending is not None:
             index_list = action[1:ending]
             reason = ''
@@ -1640,6 +1643,7 @@ async def get_server_playerList_pic(
             index_list = action[1:]
             reason = "违反规则"
         reason = reason.replace("ADMINPRIORITY", "违反规则")
+        logger.debug(f"封禁原因:{reason}")
         # 获取服管帐号实例
         if not server_info_temp["account"]:
             return await app.send_message(group, MessageChain(
@@ -1652,8 +1656,8 @@ async def get_server_playerList_pic(
         pid_list = []
         for index in index_list:
             original_index = index
-            index = int(index)
             try:
+                index = int(index)
                 if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
                     index = index - 1
                     scrape_index_tasks.append(asyncio.ensure_future(
@@ -1741,6 +1745,7 @@ async def get_server_playerList_pic(
                 pass
             else:
                 ending = i
+                break
         if ending is not None:
             index_list = action[1:ending]
         else:
@@ -1757,8 +1762,8 @@ async def get_server_playerList_pic(
         pid_list = []
         for index in index_list:
             original_index = index
-            index = int(index)
             try:
+                index = int(index)
                 if index <= (int(server_info["serverInfo"]["slots"]["Soldier"]["max"]) / 2):
                     index = index - 1
                     scrape_index_tasks.append(asyncio.ensure_future(

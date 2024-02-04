@@ -1607,8 +1607,8 @@ async def get_server_playerList_pic(
                 fal_list.append(f"原因:{result}")
         # 3个人以下则显示id，否则只显示数量
         if 0 < suc <= 3:
-            kick_result = [f"{name}" for name in suc_list]
-            kick_result.insert(0, "成功踢出:")
+            kick_result.append("成功踢出:")
+            kick_result.extend([f"{name}" for name in suc_list])
             kick_result.append(f"原因:{reason}")
         elif suc != 0:
             kick_result.append(f"成功踢出{suc}位玩家")
@@ -1711,8 +1711,8 @@ async def get_server_playerList_pic(
                 fal_list.append(f"封禁玩家{name_temp[i]}失败")
                 fal_list.append(f"原因:{result}")
         if 0 < suc <= 3:
-            ban_result = [f"{name}" for name in suc_list]
-            ban_result.insert(0, "成功封禁:")
+            ban_result.append("成功封禁:")
+            ban_result.extend([f"{name}" for name in suc_list])
             ban_result.append(f"原因:{reason}")
         elif suc != 0:
             ban_result.append(f"成功封禁{suc}位玩家")
@@ -1812,8 +1812,8 @@ async def get_server_playerList_pic(
                 fal_list.append(f"换边玩家{name_temp[i]}失败")
                 fal_list.append(f"原因:{result}")
         if 0 < suc <= 3:
-            move_result = [f"{name}" for name in suc_list]
-            move_result.insert(0, "成功换边:")
+            move_result.append("成功换边:")
+            move_result.extend([f"{name}" for name in suc_list])
         elif suc != 0:
             move_result.append(f"成功换边{suc}位玩家")
         if fal_list:

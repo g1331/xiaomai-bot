@@ -1615,7 +1615,7 @@ async def get_server_playerList_pic(
             kick_result.append(f"原因:{reason}")
         if fal_list:
             fal_list = "\n".join(fal_list)
-        kick_result.append(fal_list)
+            kick_result.append(fal_list)
         kick_result = "\n".join(kick_result)
         if kick_result:
             return await app.send_message(group, MessageChain(kick_result), quote=source)
@@ -1719,7 +1719,7 @@ async def get_server_playerList_pic(
             ban_result.append(f"原因:{reason}")
         if fal_list:
             fal_list = "\n".join(fal_list)
-        ban_result.append(fal_list)
+            ban_result.append(fal_list)
         ban_result = "\n".join(ban_result)
         if ban_result:
             return await app.send_message(group, MessageChain(ban_result), quote=source)
@@ -1818,7 +1818,7 @@ async def get_server_playerList_pic(
             move_result.append(f"成功换边{suc}位玩家")
         if fal_list:
             fal_list = "\n".join(fal_list)
-        move_result.append(fal_list)
+            move_result.append(fal_list)
         move_result = "\n".join(move_result)
         if move_result:
             return await app.send_message(group, MessageChain(move_result), quote=source)

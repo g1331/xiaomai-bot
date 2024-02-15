@@ -59,12 +59,12 @@ async def server_info_handle(
         return await app.send_message(
             group, MessageChain(result), quote=source
         )
-
+    img_base64 = result["favicon"]
     return await app.send_message(
         group,
         MessageChain([
             f"服务器地址: {server_host}\n",
-            Image(base64=result["favicon"][result["favicon"].find(",") + 1:]),
+            Image(base64=img_base64[img_base64.find(",") + 1:]) if img_base64 else "",
             f"描述:\n{result['description']}\n",
             f"游戏版本:{result['version']}\n",
             f"协议版本:{result['protocol']}\n",
@@ -115,11 +115,12 @@ async def server_player_handle(
     else:
         players_str = "玩家列表:\n" + "\n".join([f"{player}" for player in result["players"]])
 
+    img_base64 = result["favicon"]
     return await app.send_message(
         group,
         MessageChain([
             f"服务器地址: {server_host}\n",
-            Image(base64=result["favicon"][result["favicon"].find(",") + 1:]),
+            Image(base64=img_base64[img_base64.find(",") + 1:]) if img_base64 else "",
             f"在线人数:{result['online_players']}/{result['max_players']}\n",
             f"{players_str}"
         ]),

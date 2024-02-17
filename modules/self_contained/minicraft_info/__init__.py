@@ -147,6 +147,9 @@ async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
     except ConnectionResetError as e:
         logger.error(f"[MC查询]连接服务器 {server_host} 被重置, {e}")
         return f"连接服务器 {server_host} 被重置"
+    except OSError as e:
+        logger.error(f"[MC查询]连接服务器 {server_host} 出现错误, {e}")
+        return f"连接服务器 {server_host} 出现错误"
 
     return {
         "server_host": server_host,

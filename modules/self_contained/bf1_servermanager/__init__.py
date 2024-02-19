@@ -41,7 +41,7 @@ from core.models import saya_model, response_model
 from utils.UI import *
 from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM, \
     get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager, bfeac_checkBan, \
-    bfban_checkBan, gt_get_player_id_by_pid
+    bfban_checkBan, gt_get_player_id_by_pid, EACUtils
 from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
@@ -3139,7 +3139,6 @@ async def add_ban(
         reason = "违反规则"
     else:
         reason = reason.result.display
-    reason = zhconv.convert(reason, 'zh-tw')
     # 字数检测
     if 150 < len(reason.encode("utf-8")):
         return await app.send_message(group, MessageChain(
@@ -3313,7 +3312,7 @@ async def del_ban(
             f"玩家 {player_name} 不在封禁列表中!",
         ), quote=source)
 
-    # 封禁玩家
+    # 解封玩家
     star_time = time.time()
     result = await account_instance.removeServerBan(personaId=pid, serverId=server_id)
     end_time = time.time()
@@ -3887,7 +3886,434 @@ async def clear_ban(
     ), quote=source)
 
 
-# =======================================================================================================================
+# cloudban - 22
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-cloudban", "-cb").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "player_name",
+            WildcardMatch(optional=True) @ "reason",
+        ]
+    )
+)
+async def add_cloudban(
+        app: Ariadne, sender: Member, group: Group, source: Source,
+        bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult, reason: RegexResult
+):
+    # 指令冲突相应
+    if bf_group_name.matched and bf_group_name.result.display in ["list", "列表", "l", "列", "lis", "li"]:
+        return
+
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+    if not server_info:
+        return await app.send_message(group, MessageChain(
+            f"群组[{bf_group_name}]未绑定服务器{server_rank}"
+        ), quote=source)
+    elif isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(server_info), quote=source)
+    server_id = server_info["serverId"]
+    server_gameid = server_info["gameId"]
+    server_guid = server_info["guid"]
+
+    # 原因检测
+    if (not reason.matched) or (reason.result.display == ""):
+        reason = "违反规则"
+    else:
+        reason = reason.result.display
+    # 字数检测
+    if 150 < len(reason.encode("utf-8")):
+        return await app.send_message(group, MessageChain(
+            "原因字数过长(汉字50个以内)"
+        ), quote=source)
+
+    # 查验玩家是否存在
+    player_name = player_name.result.display
+    player_info = await get_personas_by_name(player_name)
+    if isinstance(player_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{player_info}"),
+            quote=source
+        )
+    if not player_info:
+        return await app.send_message(
+            group,
+            MessageChain(f"玩家 {player_name} 不存在"),
+            quote=source
+        )
+    pid = player_info["personas"]["persona"][0]["personaId"]
+    # uid = player_info["personas"]["persona"][0]["pidId"]
+    player_name = player_info["personas"]["persona"][0]["displayName"]
+
+    # 获取服管账号实例
+    if not server_info["account"]:
+        return await app.send_message(group, MessageChain(
+            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+        ), quote=source)
+    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+    # 获取封禁列表查询玩家是否已经在封禁列表了
+    cb_list = await account_instance.cb_listServerBan(server_id)
+    if isinstance(cb_list, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询封禁信息时出错!{cb_list}"),
+            quote=source
+        )
+    cb_list = cb_list["result"]
+    ban_list = [f"{item['personaId']}" for item in cb_list]
+    if str(pid) in ban_list:
+        return await app.send_message(group, MessageChain(
+            f"玩家 {player_name} 已经在封禁列表中了!",
+        ), quote=source)
+
+    # 封禁玩家
+    star_time = time.time()
+    result = await account_instance.cb_addServerBan(serverId=server_id, personaId=pid, reason=reason)
+    end_time = time.time()
+    logger.debug(f"封禁耗时:{(end_time - star_time):.2f}秒")
+
+    if isinstance(result, dict):
+        await app.send_message(group, MessageChain(
+            f"封禁成功!原因:{reason}"
+        ), quote=source)
+        # 日志记录
+        await BF1Log.record(
+            operator_qq=sender.id,
+            serverId=server_id,
+            persistedGameId=server_guid,
+            gameId=server_gameid,
+            pid=pid,
+            display_name=player_name,
+            action="cloudban",
+            info=reason,
+        )
+        # 检查是否接入EAC，若没有接入EAC则警告cb无作用
+        server_info = await account_instance.getFullServerDetails(server_gameid)
+        if isinstance(server_info, str):
+            return await app.send_message(
+                group,
+                MessageChain(f"WANING: 校验EAC状态时出错!{server_info}"),
+                quote=source
+            )
+        server_info = server_info["result"]
+        admin_list = [item["personaId"] for item in server_info["rspInfo"]["adminList"]]
+        tvbot_list = await EACUtils().get_22tvbot_list()
+        if not tvbot_list:
+            return await app.send_message(
+                group,
+                MessageChain(f"WANING: 校验EAC状态时出错!获取BOT列表失败"),
+                quote=source
+            )
+        bot_pid_list = {str(bot["personaId"]) for bot in tvbot_list}
+        if not any(admin_id in bot_pid_list for admin_id in admin_list):
+            return await app.send_message(
+                group,
+                MessageChain(f"WANING: 校验EAC状态时出错!服务器未接入EAC,CloudBan is not working!"),
+                quote=source
+            )
+        return
+    return await app.send_message(group, MessageChain(
+        f"执行出错!{result}"
+    ), quote=source)
+
+
+# uncloudban
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-uncloudban", "-ucb").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
+            ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "player_name"
+        ]
+    )
+)
+async def del_cloudban(
+        app: Ariadne, sender: Member, group: Group, source: Source,
+        bf_group_name: RegexResult, server_rank: RegexResult, player_name: RegexResult,
+):
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    if not await perm_judge(bf_group_name, group, sender):
+        return await app.send_message(
+            group,
+            MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+            quote=source,
+        )
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+    if not server_info:
+        return await app.send_message(group, MessageChain(
+            f"群组[{bf_group_name}]未绑定服务器{server_rank}"
+        ), quote=source)
+    elif isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(server_info), quote=source)
+    server_id = server_info["serverId"]
+    server_gameid = server_info["gameId"]
+    server_guid = server_info["guid"]
+
+    # 查验玩家是否存在
+    player_name = player_name.result.display
+    player_info = await get_personas_by_name(player_name)
+    if isinstance(player_info, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询出错!{player_info}"),
+            quote=source
+        )
+    if not player_info:
+        return await app.send_message(
+            group,
+            MessageChain(f"玩家 {player_name} 不存在"),
+            quote=source
+        )
+    pid = player_info["personas"]["persona"][0]["personaId"]
+    # uid = player_info["personas"]["persona"][0]["pidId"]
+    player_name = player_info["personas"]["persona"][0]["displayName"]
+
+    # 获取服管账号实例
+    if not server_info["account"]:
+        return await app.send_message(group, MessageChain(
+            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+        ), quote=source)
+    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+    # 获取封禁列表查询玩家是否已经在封禁列表了
+    cb_list = await account_instance.cb_listServerBan(server_id)
+    if isinstance(cb_list, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询封禁信息时出错!{cb_list}"),
+            quote=source
+        )
+
+    cb_list = cb_list["result"]
+    ban_list: list[str] = [f"{item['personaId']}" for item in cb_list]
+    if str(pid) not in ban_list:
+        return await app.send_message(group, MessageChain(
+            f"玩家 {player_name} 不在封禁列表中!",
+        ), quote=source)
+
+    # 解封玩家
+    star_time = time.time()
+    result = await account_instance.cb_removeServerBan(serverId=server_id, personaId=pid)
+    end_time = time.time()
+    logger.debug(f"解封耗时:{(end_time - star_time):.2f}秒")
+
+    if isinstance(result, dict):
+        await app.send_message(group, MessageChain(
+            f"解封成功!"
+        ), quote=source)
+        # 日志记录
+        await BF1Log.record(
+            operator_qq=sender.id,
+            serverId=server_id,
+            persistedGameId=server_guid,
+            gameId=server_gameid,
+            pid=pid,
+            display_name=player_name,
+            action="uncloudban",
+            info="解封",
+        )
+        return
+    return await app.send_message(group, MessageChain(
+        f"执行出错!{result}"
+    ), quote=source)
+
+
+# 由于cb_list可能很长，所以这里要进行分页和搜索设计
+# -cbl, -cblist, -cloudbanlist
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            UnionMatch("-cbl", "-cblist", "-cloudbanlist").space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
+            FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
+            ParamMatch(optional=False) @ "server_rank",
+            ArgumentMatch("-page", optional=True, type=int, default=1) @ "page",
+            ArgumentMatch("-p", "-pid", optional=True, type=int) @ "pid"
+        ]
+    )
+)
+async def cloudban_list(
+        app: Ariadne, sender: Member, group: Group, source: Source,
+        bf_group_name: RegexResult, server_rank: RegexResult, page: ArgResult, pid: ArgResult
+):
+    # 服务器序号检查
+    server_rank = server_rank.result.display
+    if not server_rank.isdigit():
+        return await app.send_message(group, MessageChain("请输入正确的服务器序号"), quote=source)
+    server_rank = int(server_rank)
+    if server_rank < 1 or server_rank > 30:
+        return await app.send_message(group, MessageChain("服务器序号只能在1~30内"), quote=source)
+
+    # 获取群组信息
+    bf_group_name = bf_group_name.result.display if bf_group_name and bf_group_name.matched else None
+    if not bf_group_name:
+        bf1_group_info = await BF1GROUP.get_bf1Group_byQQ(group.id)
+        if not bf1_group_info:
+            return await app.send_message(group, MessageChain("请先绑定BF1群组/指定群组名"), quote=source)
+        bf_group_name = bf1_group_info.get("group_name")
+
+    # if not await perm_judge(bf_group_name, group, sender):
+    #     return await app.send_message(
+    #         group,
+    #         MessageChain(f"您不是群组[{bf_group_name}]的成员"),
+    #         quote=source,
+    #     )
+
+    server_info = await BF1GROUP.get_bindInfo_byIndex(bf_group_name, server_rank)
+    if not server_info:
+        return await app.send_message(group, MessageChain(
+            f"群组[{bf_group_name}]未绑定服务器{server_rank}"
+        ), quote=source)
+    elif isinstance(server_info, str):
+        return await app.send_message(group, MessageChain(server_info), quote=source)
+    server_id = server_info["serverId"]
+    server_gameid = server_info["gameId"]
+    server_guid = server_info["guid"]
+
+    # 获取服管账号实例
+    if not server_info["account"]:
+        return await app.send_message(group, MessageChain(
+            f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+        ), quote=source)
+    account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+    # 获取封禁列表查询玩家是否已经在封禁列表了
+    cb_list = await account_instance.cb_listServerBan(server_id)
+    if isinstance(cb_list, str):
+        return await app.send_message(
+            group,
+            MessageChain(f"查询封禁信息时出错!{cb_list}"),
+            quote=source
+        )
+
+    cb_list = cb_list["result"]
+
+    # 如果不带id或者名字就不搜索直接返回对应页数的数据，否则在全部id中进行搜索
+    if pid.matched:
+        search_result = []
+        if pid.matched:
+            pid = pid.result
+            if pid:
+                for item in cb_list:
+                    if str(item["personaId"]) == str(pid):
+                        search_result.append(item)
+        cb_list = search_result
+
+    # 分页,每页75个
+    total_pages = ceil(len(cb_list) / 75)
+    cb_list_temp = [cb_list[i:i + 75] for i in range(0, len(cb_list), 75)]
+
+    page: int = page.result
+    # 判断page是否在有效的index内
+    if page > total_pages or page < 1:
+        return await app.send_message(
+            group,
+            MessageChain(f"当前共{total_pages}页，输入 {page} 无效!"),
+            quote=source,
+        )
+
+    cb_list_send = cb_list_temp[page - 1]
+
+    fwd_node_list = [ForwardNode(
+        target=sender,
+        time=datetime.now(),
+        message=MessageChain(
+            f"群组: {bf_group_name}\n"
+            f"查询到{len(cb_list)}条ClouBan记录\n"
+            f"页面: {page}/{total_pages}"
+        ),
+    )]
+
+    for cb_item in cb_list_send:
+        time_stamp = cb_item["createdDate"]
+        time_stamp = time_stamp / 1000
+        # 转换成datetime对象
+        dt_object = datetime.fromtimestamp(time_stamp)
+        # 格式化
+        formatted_time = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+        fwd_node_list.append(ForwardNode(
+            target=sender,
+            time=dt_object,
+            message=MessageChain(
+                f"PID: {cb_item['personaId']}\n"
+                f"原因: {cb_item['reason']}\n"
+                f"实体占位: {'否' if cb_item['cloud'] else '是'}\n"
+                f"封禁时间: {formatted_time}"
+            ),
+        ))
+    message = MessageChain(Forward(nodeList=fwd_node_list))
+    await app.send_message(group, message)
+    return app.send_message(group, MessageChain([At(sender.id), "请点击转发消息查看!"]), quote=source)
+
+
+# ====================================================================================================================
 # TODO 重构VBAN
 # 加vban
 @listen(GroupMessage)
@@ -6134,6 +6560,12 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
     )
 
 
+bflog_action_list = [
+    "kick", "ban", "unban", "change_map", "vip", "unvip", "踢出", "封禁", "解封", "换图", "上v", "下v",
+    "cloudban", "uncloudban"
+]
+
+
 # 查询服管操作日志
 @listen(GroupMessage)
 @decorate(
@@ -6150,8 +6582,7 @@ async def where_are_my_admins(app: Ariadne, group: Group, sender: Member, source
             UnionMatch("-bflog", "-服管日志").space(SpacePolicy.PRESERVE),
             # 操作
             UnionMatch(
-                "kick", "ban", "unban", "change_map", "vip", "unvip",
-                "踢出", "封禁", "解封", "换图", "上v", "下v",
+                bflog_action_list,
                 optional=True
             ).space(SpacePolicy.PRESERVE) @ "action",
             ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "bf_group_name",
@@ -6262,12 +6693,13 @@ async def bf1_log(
             "换图": "change_map",
             "上v": "vip",
             "下v": "unvip",
+            "云封": "cloudban",
+            "云解封": "uncloudban"
         }
-        if action not in ["kick", "ban", "unban", "change_map", "vip", "unvip", "踢出", "封禁", "解封", "换图", "上v",
-                          "下v"]:
+        if action not in bflog_action_list:
             return await app.send_message(
                 group,
-                MessageChain("请输入正确的操作!"),
+                MessageChain(f"请输入正确的操作!当前支持的查询操作有:{', '.join(bflog_action_list)}"),
                 quote=source,
             )
         action = action_dict.get(action, action)

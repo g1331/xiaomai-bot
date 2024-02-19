@@ -41,6 +41,7 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
             "Connection": "keep-alive",
         }
+        self.proxied_api_url = "https://ea-api.2788.pro/jsonrpc/pc/api"
         self.body = {
             "jsonrpc": "2.0",
             "method": str,
@@ -257,10 +258,10 @@ class bf1_api(object):
         self.api_header["X-Gatewaysession"] = await self.get_session()
         return self.api_header
 
-    async def api_call(self, body: dict) -> Union[dict, str]:
+    async def api_call(self, body: dict, proxied=False) -> Union[dict, str]:
         try:
             async with self.http_session.post(
-                    url=self.api_url,
+                    url=self.api_url if not proxied else self.proxied_api_url,
                     headers=await self.get_api_header(),
                     data=json.dumps(body),
                     timeout=10,
@@ -1776,6 +1777,98 @@ class RSP(bf1_api):
             }
         )
 
+    async def proxiedMethodGetLogs(self, serverId: Union[int, str]) -> dict:
+        """
+        获取服务器日志
+        :param serverId: serverId
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "RSP.getLogs",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class CloudBanBy22(bf1_api):
+    """22的云封禁"""
+
+    async def cb_listServerBan(self, serverId: Union[int, str]) -> dict:
+        """
+        获取服务器封禁列表
+        :param serverId:
+        :return: list[dict] - result: [
+        {
+            "platform": "pc",
+            "personaId": "1003517866915",
+            "cloud": false,
+            "reason": null,
+            "createdDate": "1708228215000"
+        }]
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.listServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
+        )
+
+    async def cb_addServerBan(self, serverId: Union[int, str], personaId: Union[int, str], reason: str) -> dict:
+        """
+        添加服务器封禁
+        :param serverId:
+        :param personaId:
+        :param reason:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.addServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId,
+                    "personaId": personaId,
+                    "reason": reason
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
+        )
+
+    async def cb_removeServerBan(self, serverId: Union[int, str], personaId: Union[int, str]) -> dict:
+        """
+        移除服务器封禁
+        :param serverId:
+        :param personaId:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.removeServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId,
+                    "personaId": personaId
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
+        )
+
 
 class Platoons(bf1_api):
     """
@@ -2226,7 +2319,7 @@ class InstanceExistsError(Exception):
 class api_instance(
     Game, Progression, Stats, ServerHistory, Gamedata,
     GameServer, RSP, Platoons, ScrapExchange, CampaignOperations,
-    Emblems, Loadout
+    Emblems, Loadout, CloudBanBy22
 ):
     # 存储所有实例的字典
     instances = {}

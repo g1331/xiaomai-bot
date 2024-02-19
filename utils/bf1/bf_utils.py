@@ -778,6 +778,12 @@ class BattlefieldTracker:
 
 class EACUtils:
 
+    def __init__(self):
+        self.tvbot_list = {
+            "result": [],
+            "time": time.time()
+        }
+
     # EAC举报接口
     @staticmethod
     async def report_interface(
@@ -842,6 +848,41 @@ class EACUtils:
             except Exception as e:
                 logger.warning(f"gpt3.5预审核举报时出错: {e}")
         return result
+
+    # 获取小电视机器人list
+    async def get_22tvbot_list(self) -> list:
+        """
+        元素为：
+        {
+            "name": "bot_btv15",
+            "personaId": 1006388664805,
+            "valid": 1,
+            "lastUsed": "2024/2/17 18:01:26",
+            "lastUpdated": "2024/2/3 13:58:05",
+            "userId": 1013223064805,
+            "features": [
+                "bfeac"
+            ],
+            "flags": [
+                "bf1Gateway"
+            ]
+        }
+        """
+        # 每小时更新一次
+        if self.tvbot_list["result"] and time.time() - self.tvbot_list["time"] < 60 * 60:
+            return self.tvbot_list["result"]
+        url = "https://ea-api.2788.pro/account/list/bfeac"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=5)
+            response = response.json()
+            if isinstance(response, list):
+                self.tvbot_list["result"] = response
+                self.tvbot_list["time"] = time.time()
+                return response
+        except Exception as e:
+            logger.error(e)
+            return []
 
 
 class BF1GROUP:

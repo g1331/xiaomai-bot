@@ -77,7 +77,7 @@ def generate_reports_md(exception: BaseException) -> str:
         # 使用二级标题，并在标题中直接包含原因和索引，使其更具信息性
         report_md.append(
             f"\n---\n\n## step[{index + 1}]: {reason}\n"
-            f"*异常原因*: `{description}`\n"
+            f"*异常描述*: `{description}`\n"
             f"*出错位置*: `{report.info.file}` 第 `{report.info.line}` 行, 函数 `{report.info.name}`\n"
             f"*出错代码*: \n\n```python\n{report.info.code}\n```\n"
         )
@@ -104,4 +104,4 @@ def generate_reports_md(exception: BaseException) -> str:
             else:
                 report_md.append(f"*参数*: \n{params}")
 
-    return "\n".join(report_md)
+    return "\n".join(report_md).replace("\n", "<br>")

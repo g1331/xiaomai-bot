@@ -4292,7 +4292,7 @@ async def cloudban_list(
     )]
 
     for cb_item in cb_list_send:
-        time_stamp = cb_item["createdDate"]
+        time_stamp = int(cb_item["createdDate"])
         time_stamp = time_stamp / 1000
         # 转换成datetime对象
         dt_object = datetime.fromtimestamp(time_stamp)
@@ -4305,7 +4305,7 @@ async def cloudban_list(
                 f"PID: {cb_item['personaId']}\n"
                 f"原因: {cb_item['reason']}\n"
                 f"实体占位: {'否' if cb_item['cloud'] else '是'}\n"
-                f"封禁时间: {formatted_time}"
+                f"创建时间: {formatted_time}"
             ),
         ))
     message = MessageChain(Forward(nodeList=fwd_node_list))

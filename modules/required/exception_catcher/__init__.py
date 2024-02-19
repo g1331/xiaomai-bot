@@ -75,12 +75,10 @@ def generate_reports_md(exception: BaseException) -> str:
     for index, report in enumerate(reports):
         reason, description = get_reason_description(report.flag)
         # 使用二级标题，并在标题中直接包含原因和索引，使其更具信息性
-        report_md.append(
-            f"\n---\n\n## step[{index + 1}]: {reason}\n"
-            f"*异常描述*: `{description}`\n"
-            f"*出错位置*: `{report.info.file}` 第 `{report.info.line}` 行, 函数 `{report.info.name}`\n"
-            f"*出错代码*: \n\n```python\n{report.info.code}\n```\n"
-        )
+        report_md.append(f"\n---\n\n## step[{index + 1}]: {reason}\n")
+        report_md.append(f"*异常描述*: `{description}`\n")
+        report_md.append(f"*出错位置*: `{report.info.file}` 第 `{report.info.line}` 行, 函数 `{report.info.name}`\n")
+        report_md.append(f"*出错代码*: \n\n```python\n{report.info.code}\n```\n")
         if report.flag == ReportFlag.ACTIVE:
             report_md.extend([
                 f"*错误类型*: `{report.type}`\n",
@@ -93,9 +91,9 @@ def generate_reports_md(exception: BaseException) -> str:
                 locals_formatted = "\n".join(
                     [f" - `{k}`: `{v}`" if str(k) in report.info.code else "" for k, v in
                      locals_.items()])
-                report_md.append(f"*局部变量*: \n{locals_formatted}")
+                report_md.append(f"*局部变量*: \n{locals_formatted}\n")
             else:
-                report_md.append(f"*局部变量*: \n{locals_}")
+                report_md.append(f"*局部变量*: \n{locals_}\n")
         else:
             params = report.args or '无'
             if isinstance(params, dict):
@@ -104,4 +102,4 @@ def generate_reports_md(exception: BaseException) -> str:
             else:
                 report_md.append(f"*参数*: \n{params}")
 
-    return "\n".join(report_md).replace("\n", "<br>")
+    return "\n".join(report_md)

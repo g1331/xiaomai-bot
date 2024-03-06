@@ -4528,7 +4528,7 @@ async def move_player(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-换图", "-map", "-切图", "-m").space(SpacePolicy.PRESERVE),
+            UnionMatch("-换图", "-map", "-切图").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",

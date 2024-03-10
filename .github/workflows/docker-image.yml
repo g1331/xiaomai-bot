@@ -5,6 +5,13 @@ on:
     branches: [ "v3" ]
   pull_request:
     branches: [ "v3" ]
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+
 
 jobs:
   build:

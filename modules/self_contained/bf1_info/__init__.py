@@ -1892,7 +1892,7 @@ async def tyc(
             isFreeJoin = platoon_data["result"]["joinConfig"]["isFreeJoin"]
             description = platoon_data["result"]["description"]
             send.append(f"代表战排: [{tag}]{name}\n")
-            send.append(f"人数: {size}\t是否开放加入: {'是' if isFreeJoin else '否'}\n")
+            send.append(f"人数: {size}, 是否开放加入: {'是' if isFreeJoin else '否'}\n")
             send.append(f"描述: {description}\n")
             send.append("=" * 20 + '\n')
 

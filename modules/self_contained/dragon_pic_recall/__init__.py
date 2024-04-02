@@ -51,7 +51,7 @@ async def dragon_recall(group: Group, event: MessageEvent, source: Source):
         try:
             img_bytes = await event.message_chain.get(Image)[0].get_bytes()
             async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, data=img_bytes) as resp:
+                async with session.post(api_url, data={'file': img_bytes}) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         if data.get("is_dragon", False):

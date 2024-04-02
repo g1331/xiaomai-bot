@@ -1,0 +1,16 @@
+{
+  "level": 1,
+  "name": "13",
+  "version": "0.1",
+  "display_name": "龙图撤回",
+  "authors": [
+    "13"
+  ],
+  "description": "自动撤回龙图",
+  "usage": ["自动触发"],
+  "example": [
+    "自动触发"
+  ],
+  "default_switch": true,
+  "default_notice": true
+}

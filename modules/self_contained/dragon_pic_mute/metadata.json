@@ -11,6 +11,6 @@
   "example": [
     "自动触发"
   ],
-  "default_switch": true,
-  "default_notice": true
+  "default_switch": false,
+  "default_notice": false
 }

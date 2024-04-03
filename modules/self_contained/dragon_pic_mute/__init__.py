@@ -14,7 +14,6 @@ from core.config import GlobalConfig
 from core.control import (
     Permission,
     Function,
-    FrequencyLimitation,
     Distribute
 )
 from core.models import saya_model, response_model
@@ -54,5 +53,10 @@ async def dragon_mute(group: Group, event: MessageEvent, source: Source):
                         data = await resp.json()
                         if data.get("is_dragon", False):
                             await app.mute_member(group, event.sender.id, 60)
+                            logger.success(
+                                f"[Function: {channel.module}] "
+                                f"在群 {group.name}({group.id}) "
+                                f"禁言了 {event.sender.name}({event.sender.id})"
+                            )
         except Exception as e:
             logger.error(f"[Function: {channel.module}] [Group: {group.id}] [Error: {e}]")

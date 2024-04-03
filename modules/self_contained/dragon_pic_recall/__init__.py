@@ -14,7 +14,6 @@ from core.config import GlobalConfig
 from core.control import (
     Permission,
     Function,
-    FrequencyLimitation,
     Distribute
 )
 from core.models import saya_model, response_model
@@ -54,5 +53,10 @@ async def dragon_recall(group: Group, event: MessageEvent, source: Source):
                         data = await resp.json()
                         if data.get("is_dragon", False):
                             await app.recall_message(message=source, target=group)
+                            logger.success(
+                                f"[Function: {channel.module}] "
+                                f"在群 {group.name}({group.id}) "
+                                f"撤回了 {event.sender.name}({event.sender.id}) 发送的龙图"
+                            )
         except Exception as e:
             logger.error(f"[Function: {channel.module}] [Group: {group.id}] [Error: {e}] ")

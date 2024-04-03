@@ -35,9 +35,7 @@ api_url = config.functions.get("dragon_detect", {}).get("api_url", "")
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
-    FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level, if_noticed=True),
-    Permission.user_require(Permission.User, if_noticed=True),
 )
 async def dragon_recall(group: Group, event: MessageEvent, source: Source):
     target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])

@@ -65,7 +65,7 @@ class BlazeSocket:
 
     def __init__(self, host: str, port: int, callback=None):
         self.callback = callback
-        self.connect = True
+        self.connect = False
         self.finish = True
         self.map = {}
         self.id = 1
@@ -91,6 +91,7 @@ class BlazeSocket:
         self.reader, self.writer = await asyncio.open_connection(
             self.host, self.port, ssl=self.ssl_context
         )
+        self.connect = True
         logger.success(f"已连接到Blaze服务器 {self.host}:{self.port}")
         asyncio.create_task(self.receive_data())
 

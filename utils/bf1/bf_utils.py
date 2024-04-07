@@ -1368,6 +1368,8 @@ class BF1BlazeManager:
         try:
             response = await blaze_socket.send(packet)
         except TimeoutError:
+            await blaze_socket.close()
+            logger.error("Blaze后端超时!")
             return "Blaze后端超时!"
         if origin:
             return response

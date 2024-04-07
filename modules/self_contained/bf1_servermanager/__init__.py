@@ -3382,6 +3382,7 @@ async def add_banall(
         return await app.send_message(group, MessageChain(f"{server_info} 使用banall时必须指定群组名且不加服务器序号!"),
                                       quote=source)
     task_list = []
+    account_instance_temp_dict = {}
     for i, id_item in enumerate(server_info["bind_ids"]):
         if not id_item:
             task_list.append(None)
@@ -3389,12 +3390,16 @@ async def add_banall(
         if not id_item['account']:
             task_list.append("未绑定服管账号")
             continue
+        else:
+            if id_item["account"] not in account_instance_temp_dict:
+                account_instance_temp_dict[id_item["account"]] = await BF1ManagerAccount.get_manager_account_instance(
+                    id_item["account"])
         task_list.append({
             "guid": id_item['guid'],
             "sid": id_item['serverId'],
             "gid": id_item['gameId'],
             "account:": id_item['account'],
-            "instance": await BF1ManagerAccount.get_manager_account_instance(id_item["account"]),
+            "instance": account_instance_temp_dict[id_item["account"]],
             "result": None,
         })
 
@@ -3545,6 +3550,7 @@ async def del_banall(
                                       MessageChain(f"{server_info} 使用unbanall时必须指定群组名且不加服务器序号!"),
                                       quote=source)
     task_list = []
+    account_instance_temp_dict = {}
     for i, id_item in enumerate(server_info["bind_ids"]):
         if not id_item:
             task_list.append(None)
@@ -3552,12 +3558,16 @@ async def del_banall(
         if not id_item['account']:
             task_list.append("未绑定服管账号")
             continue
+        else:
+            if id_item["account"] not in account_instance_temp_dict:
+                account_instance_temp_dict[id_item["account"]] = await BF1ManagerAccount.get_manager_account_instance(
+                    id_item["account"])
         task_list.append({
             "guid": id_item['guid'],
             "sid": id_item['serverId'],
             "gid": id_item['gameId'],
             "account:": id_item['account'],
-            "instance": await BF1ManagerAccount.get_manager_account_instance(id_item["account"]),
+            "instance": account_instance_temp_dict[id_item["account"]],
             "result": None,
         })
 

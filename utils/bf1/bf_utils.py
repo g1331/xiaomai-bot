@@ -1211,6 +1211,7 @@ class BF1ManagerAccount:
                 account_instance.remid = account_info["remid"]
                 account_instance.sid = account_info["sid"]
                 account_instance.session = account_info["session"]
+            await account_instance.get_session()
         return account_instance
 
 

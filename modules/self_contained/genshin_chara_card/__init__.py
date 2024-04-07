@@ -132,6 +132,8 @@ async def init_chara_list():
         async with session.get(url) as resp:
             html = await resp.text()
     datas = re.findall(r"sortable_data.push\(\[(.*?)]\)", html, re.S)
+    if not datas:
+        return logger.error("未找到角色列表数据")
     data = datas[0].replace(r"\"", '"').replace(r"\\", "\\").replace(r"\/", "/")
     cs = data[1:-1].split("],[")
     for c in cs:
@@ -139,7 +141,7 @@ async def init_chara_list():
         chn_name = chn_name.encode().decode("unicode_escape")
         en_name = re.findall(r'<a href="/(.+?)_.+/?lang=CHS"', c, re.S)[0]
         characters["".join(pypinyin.lazy_pinyin(chn_name))] = en_name.lower()
-    print(characters)
+    return characters
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))

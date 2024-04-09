@@ -43,5 +43,7 @@ functions:
 
   # ChatGPT
   ChatGPT:
-    session_token: session_token # ChatGPT的Session Token
-    api_key: api_key # ChatGPT的API KEY
+    session_token: session_token
+     # 支持自订api地址，与api_key配套使用
+    api_url: api_url
+    api_key: api_key

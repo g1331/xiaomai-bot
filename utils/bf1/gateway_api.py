@@ -41,6 +41,7 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
             "Connection": "keep-alive",
         }
+        self.proxied_api_url = "https://ea-api.2788.pro/jsonrpc/pc/api"
         self.body = {
             "jsonrpc": "2.0",
             "method": str,
@@ -221,6 +222,7 @@ class bf1_api(object):
             }
         }
         self.auto_login_count = 0
+        self.http_session = aiohttp.ClientSession()
 
     # api调用
     async def check_session_expire(self) -> bool:
@@ -256,22 +258,21 @@ class bf1_api(object):
         self.api_header["X-Gatewaysession"] = await self.get_session()
         return self.api_header
 
-    async def api_call(self, body: dict) -> Union[dict, str]:
+    async def api_call(self, body: dict, proxied=False) -> Union[dict, str]:
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        url=self.api_url,
-                        headers=await self.get_api_header(),
-                        data=json.dumps(body),
-                        timeout=10,
-                        ssl=False
-                ) as response:
-                    return await self.error_handle(await response.json())
+            async with self.http_session.post(
+                    url=self.api_url if not proxied else self.proxied_api_url,
+                    headers=await self.get_api_header(),
+                    data=json.dumps(body),
+                    timeout=10,
+                    ssl=False
+            ) as response:
+                return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
     # 玩家信息相关
-    async def login(self, remid: str, sid: str) -> str:
+    async def login(self, remid: str, sid: str) -> Union[str, None]:
         """
         使用remid和sid登录，返回session
         :param remid: 玩家登录时cookie的remid
@@ -289,13 +290,12 @@ class bf1_api(object):
             'ContentType': 'application/json',
             'Cookie': f'remid={self.remid}; sid={self.sid}'
         }
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(
-                url=url,
-                headers=header,
-                timeout=10,
-                ssl=False
-            )
+        response = await self.http_session.get(
+            url=url,
+            headers=header,
+            timeout=10,
+            ssl=False
+        )
         try:
             res = eval(await response.text())
             logger.debug(res)
@@ -316,7 +316,7 @@ class bf1_api(object):
             try:
                 error_data = eval(await response.text())
                 if error_data.get("error") == "login_required":
-                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count+1}次刷新")
+                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count + 1}次刷新")
                     if self.auto_login_count <= 2:
                         await self.auto_login(str(self.pid))
                     else:
@@ -328,7 +328,8 @@ class bf1_api(object):
             logger.error(f"BF1账号{self.pid}登录刷新session失败!")
             return await response.text()
         # 获取authcode
-        url2 = f"https://accounts.ea.com/connect/auth?access_token={self.access_token}&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod"
+        url2 = (f"https://accounts.ea.com/connect/auth?access_token={self.access_token}"
+                f"&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod")
         header2 = {
             "UserAgent": "Mozilla / 5.0 EA Download Manager Origin/ 10.5.94.46774",
             'Cookie': f'remid={self.remid}; sid={self.sid}',
@@ -441,13 +442,12 @@ class bf1_api(object):
             'Accept-Language': 'zh-TW',
             'Cookie': f'remid={remid}; sid={sid}'
         }
-        async with aiohttp.ClientSession() as session:
-            response = await session.get(
-                url=url,
-                headers=header,
-                timeout=60,
-                allow_redirects=False
-            )
+        response = await self.http_session.get(
+            url=url,
+            headers=header,
+            timeout=10,
+            allow_redirects=False
+        )
         try:
             authcode = response.headers['location']
             return authcode[authcode.rfind('=') + 1:]
@@ -487,10 +487,14 @@ class bf1_api(object):
             "X-Sparta-Info": "tenancyRootEnv = unknown;tenancyBlazeEnv = unknown",
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(self.api_url, headers=header, data=json.dumps(body), timeout=10,
-                                        ssl=False) as response:
-                    return await self.error_handle(await response.json())
+            response = await self.http_session.post(
+                url=self.api_url,
+                headers=header,
+                data=json.dumps(body),
+                timeout=10,
+                ssl=False
+            )
+            return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -521,7 +525,7 @@ class bf1_api(object):
             }
         )
 
-    async def getPersonasByName(self, player_name: str) -> dict:
+    async def getPersonasByName(self, player_name: str) -> dict | str:
         """
         根据名字获取Personas
         :param player_name:
@@ -538,14 +542,13 @@ class bf1_api(object):
             "Accept-Encoding": "deflate"
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                response = await session.get(
-                    url=url,
-                    headers=head,
-                    timeout=10,
-                    ssl=False
-                )
-                return await response.json()
+            response = await self.http_session.get(
+                url=url,
+                headers=head,
+                timeout=10,
+                ssl=False
+            )
+            return await response.json()
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
@@ -605,25 +608,13 @@ class bf1_api(object):
         )
 
     async def Companion_isLoggedIn_noLogin(self):
-        body = {
-            "jsonrpc": "2.0",
-            "method": "Companion.isLoggedIn",
-            "id": await get_a_uuid()
-        }
-        self.api_header["X-Gatewaysession"] = self.session
-        logger.debug("调用api:Companion.isLoggedIn")
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        url=self.api_url,
-                        headers=self.api_header,
-                        data=json.dumps(body),
-                        timeout=10,
-                        ssl=False
-                ) as response:
-                    return await self.error_handle(await response.json())
-        except asyncio.exceptions.TimeoutError:
-            return "网络超时!"
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "Companion.isLoggedIn",
+                "id": await get_a_uuid()
+            }
+        )
 
     # 返回数据前进行错误处理
     async def error_handle(self, data: dict) -> Union[dict, str]:
@@ -1318,7 +1309,7 @@ class RSP(bf1_api):
             }
         )
 
-    async def kickPlayer(self, gameId: Union[int, str], personaId, reason: str) -> dict:
+    async def kickPlayer(self, gameId: Union[int, str], personaId, reason: str) -> dict | str:
         """
         踢人
         :param gameId: 服务器gameId
@@ -1400,7 +1391,7 @@ class RSP(bf1_api):
                 }
             }
         """
-        return self.api_call(
+        return await self.api_call(
             {
                 "jsonrpc": "2.0",
                 "method": "RSP.addServerAdmin",
@@ -1784,6 +1775,98 @@ class RSP(bf1_api):
                 },
                 "id": await get_a_uuid()
             }
+        )
+
+    async def proxiedMethodGetLogs(self, serverId: Union[int, str]) -> dict:
+        """
+        获取服务器日志
+        :param serverId: serverId
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "RSP.getLogs",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId
+                },
+                "id": await get_a_uuid()
+            }
+        )
+
+
+class CloudBanBy22(bf1_api):
+    """22的云封禁"""
+
+    async def cb_listServerBan(self, serverId: Union[int, str]) -> dict:
+        """
+        获取服务器封禁列表
+        :param serverId:
+        :return: list[dict] - result: [
+        {
+            "platform": "pc",
+            "personaId": "1003517866915",
+            "cloud": false,
+            "reason": null,
+            "createdDate": "1708228215000"
+        }]
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.listServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
+        )
+
+    async def cb_addServerBan(self, serverId: Union[int, str], personaId: Union[int, str], reason: str) -> dict:
+        """
+        添加服务器封禁
+        :param serverId:
+        :param personaId:
+        :param reason:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.addServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId,
+                    "personaId": personaId,
+                    "reason": reason
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
+        )
+
+    async def cb_removeServerBan(self, serverId: Union[int, str], personaId: Union[int, str]) -> dict:
+        """
+        移除服务器封禁
+        :param serverId:
+        :param personaId:
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CloudBan.removeServerBan",
+                "params": {
+                    "game": "tunguska",
+                    "serverId": serverId,
+                    "personaId": personaId
+                },
+                "id": await get_a_uuid()
+            },
+            proxied=True
         )
 
 
@@ -2236,7 +2319,7 @@ class InstanceExistsError(Exception):
 class api_instance(
     Game, Progression, Stats, ServerHistory, Gamedata,
     GameServer, RSP, Platoons, ScrapExchange, CampaignOperations,
-    Emblems, Loadout
+    Emblems, Loadout, CloudBanBy22
 ):
     # 存储所有实例的字典
     instances = {}

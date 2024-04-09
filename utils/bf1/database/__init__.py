@@ -1645,10 +1645,10 @@ class bf1_db:
             return None
 
         @staticmethod
-        async def get_btr_match_by_pid(persona_id: int, limit=10) -> Union[list, None]:
+        async def get_btr_match_by_pid(persona_id: int, limit: int = None) -> Union[list, None]:
             """根据pid获取对应的btr对局信息"""
-            # 根据时间获取该pid最新的10条记录
-            if match := await orm.fetch_all(
+            if limit:
+                match = await orm.fetch_all(
                     select(
                         Bf1MatchCache.match_id,
                         Bf1MatchCache.server_name,
@@ -1669,7 +1669,31 @@ class bf1_db:
                         Bf1MatchCache.headshots,
                         Bf1MatchCache.time_played,
                     ).where(Bf1MatchCache.persona_id == persona_id).order_by(-Bf1MatchCache.time).limit(limit)
-            ):
+                )
+            else:
+                match = await orm.fetch_all(
+                    select(
+                        Bf1MatchCache.match_id,
+                        Bf1MatchCache.server_name,
+                        Bf1MatchCache.map_name,
+                        Bf1MatchCache.mode_name,
+                        Bf1MatchCache.time,
+                        Bf1MatchCache.team_name,
+                        Bf1MatchCache.team_win,
+                        Bf1MatchCache.persona_id,
+                        Bf1MatchCache.display_name,
+                        Bf1MatchCache.kills,
+                        Bf1MatchCache.deaths,
+                        Bf1MatchCache.kd,
+                        Bf1MatchCache.kpm,
+                        Bf1MatchCache.score,
+                        Bf1MatchCache.spm,
+                        Bf1MatchCache.accuracy,
+                        Bf1MatchCache.headshots,
+                        Bf1MatchCache.time_played,
+                    ).where(Bf1MatchCache.persona_id == persona_id).order_by(-Bf1MatchCache.time)
+                )
+            if match:
                 result = []
                 for match_item in match:
                     temp = {

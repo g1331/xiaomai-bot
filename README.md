@@ -62,7 +62,7 @@ docker run -d --name xiaomai-bot\                                               
       -v /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml \                                     # 挂载配置文件
       -v /xiaomai-bot/config/data.db:/xiaomai-bot/data.db \                                             # 挂载数据库
       -v /xiaomai-bot/data/battlefield:/xiaomai-bot/data/battlefield/ \                                 # 挂载战地一机器人资源
-      -v /xiaomai-bot/imgs/random_dingzhen:/xiaomai-bot/modules/self_contained/random_dingzhen/imgs/ \  # 挂载随机丁真图片
+      -v /xiaomai-bot/imgs/random_picture:/xiaomai-bot/modules/self_contained/random_picture/imgs/ \    # 挂载随机图片
       -v /xiaomai-bot/imgs/random_wife:xiaomai-bot/modules/self_contained/random_wife/imgs/ \           # 挂载随机老婆图片
       -v /xiaomai-bot/imgs/random_dragon:xiaomai-bot/modules/self_contained/random_dragon/imgs/ \       # 挂载随机龙图图片
 #      -e bot_accounts=bot所使用的账户使用,做分割

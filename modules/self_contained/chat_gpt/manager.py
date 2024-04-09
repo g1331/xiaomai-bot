@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import os
 import re
 from pathlib import Path
 from typing import TypedDict, Union
@@ -31,6 +32,11 @@ gpt_mode = {
     0: "gpt",
     1: "api"
 }
+# 如果是自订API_URL，只能使用API模式
+if API_URL := config.functions.get("ChatGPT", {}).get("api_url"):
+    if API_URL != "api_url":
+        os.environ["API_URL"] = API_URL
+
 
 gpt_mode_path = Path(__file__).parent / "gpt_mode.json"
 
@@ -39,6 +45,8 @@ def get_gpt_mode():
     if not gpt_mode_path.exists():
         with open(gpt_mode_path, "w", encoding="utf-8") as f:
             json.dump({"mode": 0}, f)
+    if os.environ.get("API_URL"):
+        return "api"
     with open(gpt_mode_path, "r", encoding="utf-8") as f:
         mode_dict = json.load(f)
         return gpt_mode.get(mode_dict["mode"])

@@ -732,14 +732,15 @@ class BattlefieldTracker:
             _ = await BattlefieldTracker.handle_match_detail(match_detail)
 
     @staticmethod
-    async def get_player_match_data(player_pid: int) -> Union[list, None]:
+    async def get_player_match_data(player_pid: int, match_num: Union[int, None] = None) -> Union[list, None]:
         """
         获取玩家对局数据
         :param player_pid: 玩家pid
+        :param match_num: 获取对局数量
         :return: 返回一个列表，包含对局信息和玩家信息
         """
         # 先从数据库查询数据,如果数据库中有数据则直接返回
-        if matches := await BF1DB.bf1_match_cache.get_btr_match_by_pid(player_pid):
+        if matches := await BF1DB.bf1_match_cache.get_btr_match_by_pid(player_pid, match_num):
             result = []
             for data in matches:
                 server_name = data['server_name']
@@ -776,6 +777,12 @@ class BattlefieldTracker:
 
 
 class EACUtils:
+
+    def __init__(self):
+        self.tvbot_list = {
+            "result": [],
+            "time": time.time()
+        }
 
     # EAC举报接口
     @staticmethod
@@ -841,6 +848,41 @@ class EACUtils:
             except Exception as e:
                 logger.warning(f"gpt3.5预审核举报时出错: {e}")
         return result
+
+    # 获取小电视机器人list
+    async def get_22tvbot_list(self) -> list:
+        """
+        元素为：
+        {
+            "name": "bot_btv15",
+            "personaId": 1006388664805,
+            "valid": 1,
+            "lastUsed": "2024/2/17 18:01:26",
+            "lastUpdated": "2024/2/3 13:58:05",
+            "userId": 1013223064805,
+            "features": [
+                "bfeac"
+            ],
+            "flags": [
+                "bf1Gateway"
+            ]
+        }
+        """
+        # 每小时更新一次
+        if self.tvbot_list["result"] and time.time() - self.tvbot_list["time"] < 60 * 60:
+            return self.tvbot_list["result"]
+        url = "https://ea-api.2788.pro/account/list/bfeac"
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=5)
+            response = response.json()
+            if isinstance(response, list):
+                self.tvbot_list["result"] = response
+                self.tvbot_list["time"] = time.time()
+                return response
+        except Exception as e:
+            logger.error(e)
+            return []
 
 
 class BF1GROUP:
@@ -1323,7 +1365,10 @@ class BF1BlazeManager:
                 "GLST 40": game_ids,
             }
         }
-        response = await blaze_socket.send(packet)
+        try:
+            response = await blaze_socket.send(packet)
+        except TimeoutError:
+            return "Blaze后端超时!"
         if origin:
             return response
         response = BlazeData.player_list_handle(response)

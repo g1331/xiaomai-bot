@@ -77,14 +77,14 @@ UMARU_BOT_LOGO = r"""
 class Umaru(object):
     apps: List[Ariadne]
     config: GlobalConfig
-    base_path: str or Path
+    base_path: str | Path
     launch_time: datetime.datetime
     sent_count: int = 0
     received_count: int = 0
     initialized: bool = False
     logs = []
 
-    def __init__(self, g_config: GlobalConfig, base_path: str or Path):
+    def __init__(self, g_config: GlobalConfig, base_path: str | Path):
         logger.opt(colors=True).info(f"<fg 227,122,80>{UMARU_BOT_LOGO}</>")
         self.total_groups = {}
         """
@@ -427,7 +427,7 @@ class Umaru(object):
                 logger.success(f"{' ' * indent}{key} - {dictionary[key]}")
 
     @staticmethod
-    def install_modules(base_path: str or Path, recursion_install: bool = False) -> Dict[str, Exception]:
+    def install_modules(base_path: str | Path, recursion_install: bool = False) -> Dict[str, Exception]:
         """加载 base_path 中的模块
 
         Args:

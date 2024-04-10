@@ -166,7 +166,7 @@ XiaoMaiBot
 
 ```
 
-![可视化图表](./diagram.svg)
+![可视化图表](diagram.svg)
 
 
 ## 核心(core):

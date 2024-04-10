@@ -1,0 +1,16 @@
+{
+  "level": 1,
+  "name": "13",
+  "version": "0.1",
+  "display_name": "龙图禁言",
+  "authors": [
+    "13"
+  ],
+  "description": "自动禁言发送龙图的用户",
+  "usage": ["自动触发"],
+  "example": [
+    "自动触发"
+  ],
+  "default_switch": false,
+  "default_notice": false
+}

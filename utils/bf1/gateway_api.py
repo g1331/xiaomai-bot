@@ -358,9 +358,29 @@ class bf1_api(object):
         self.access_token_time = time.time()
         self.check_login = True
         logger.success(f"BF1账号{self.pid}登录并获取session成功!")
+        # 自动设置语言
+        if isinstance(await self.setLocale(), dict):
+            logger.success(f"BF1账号{self.pid}已自动设置语言为zhtw")
         self.auto_login_count = 0
         await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
         return self.session
+
+    async def setLocale(self, locale: str = "zhtw") -> dict:
+        """
+        设置语言
+        :param locale: 语言
+        :return:
+        """
+        return await self.api_call(
+            {
+                "jsonrpc": "2.0",
+                "method": "CompanionSettings.setLocale",
+                "params": {
+                    "locale": locale
+                },
+                "id": await get_a_uuid()
+            }
+        )
 
     @staticmethod
     async def ap_login(email, password) -> dict:

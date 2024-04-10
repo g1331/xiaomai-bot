@@ -1211,6 +1211,7 @@ class BF1ManagerAccount:
                 account_instance.remid = account_info["remid"]
                 account_instance.sid = account_info["sid"]
                 account_instance.session = account_info["session"]
+            await account_instance.get_session()
         return account_instance
 
 
@@ -1368,6 +1369,8 @@ class BF1BlazeManager:
         try:
             response = await blaze_socket.send(packet)
         except TimeoutError:
+            await blaze_socket.close()
+            logger.error("Blaze后端超时!")
             return "Blaze后端超时!"
         if origin:
             return response

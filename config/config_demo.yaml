@@ -47,3 +47,7 @@ functions:
      # 支持自订api地址，与api_key配套使用
     api_url: api_url
     api_key: api_key
+
+  #龙图检测API
+  dragon_detect:
+    api_url: api_url

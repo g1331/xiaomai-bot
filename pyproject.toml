@@ -58,6 +58,9 @@ pandas = "^2.1.1"
 seaborn = "^0.13.0"
 pexpect = "^4.9.0"
 starlette = "^0.37.2"
+playwright = "~1.41.2"
+# modules/self_contained/minicraft_info
+mcstatus = "^11.1.1"
 
 [tool.poetry.group.dev.dependencies]
 memory-profiler = "^0.61.0"
@@ -68,11 +71,12 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [[tool.poetry.source]]
+name = "tuna-tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+priority = "primary"
+
+[[tool.poetry.source]]
 name = "pypi-public"
 url = "https://pypi.org/simple/"
 priority = "primary"
 
-[[tool.poetry.source]]
-name = "tuna-tsinghua"
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-priority = "default"

@@ -17,7 +17,7 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
 from loguru import logger
-from playwright._impl._api_types import TimeoutError
+from playwright.sync_api import TimeoutError
 
 from core.control import (
     Permission,

@@ -27,9 +27,9 @@ from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.name("MiniCraftInfo")
-channel.description("获取Minecraft服务器信息")
-channel.author("13")
+channel.meta["name"] = ("MiniCraftInfo")
+channel.meta["description"] = ("获取Minecraft服务器信息")
+channel.meta["author"] = ("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

@@ -77,7 +77,7 @@ class bf1_db:
         @staticmethod
         async def update_bf1account(
                 pid: int,
-                display_name: str,
+                display_name: str = None,
                 uid: int = None,
                 name: str = None,
                 remid: str = None,

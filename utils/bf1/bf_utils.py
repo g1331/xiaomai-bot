@@ -1200,7 +1200,7 @@ class BF1ManagerAccount:
     @staticmethod
     async def del_account(player_pid: int) -> bool:
         """删除账号cookie信息"""
-        return await BF1DB.bf1account.update_bf1account_loginInfo(player_pid=player_pid)
+        return await BF1DB.bf1account.update_bf1account(pid=player_pid)
 
     @staticmethod
     async def get_manager_account_instance(player_pid) -> api_instance:

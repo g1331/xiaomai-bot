@@ -2093,7 +2093,7 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("登录", "login").space(SpacePolicy.FORCE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "player_name",
             FullMatch("remid=").space(SpacePolicy.NOSPACE),
@@ -2150,7 +2150,7 @@ async def managerAccount_login(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("删除", "del").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "account_pid"
             # 示例: -bf服管账号 删除 123
@@ -2189,7 +2189,7 @@ async def managerAccount_del(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("信息", "info").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False) @ "account_pid",
             # 示例: -bf服管账号 信息
@@ -6937,23 +6937,23 @@ async def bfgroup_help(app: Ariadne, group: Group, source: Source):
 如：-bfg sakula permlist
 ===================
 #服管帐号相关：
-指令前缀：-bf服管账号 = -bfga
+指令前缀：-bf服管账号 = -bfa
 
 查询服管帐号列表：
 -bf服管账号列表  = -bfal
 
 登录/新建帐号：
 -bf服管帐号 登录 玩家名 remid=xxx,sid=xxx
-如：-bfga login SHlSAN13 remid=xxx,sid=xxx
+如：-bfa login SHlSAN13 remid=xxx,sid=xxx
 
 删除：
 -bf服管帐号 删除 帐号pid
-如：-bfga del 123123      
+如：-bfa del 123123      
 (123123为获取到的帐号pid)
 
 信息：
 -bf服管帐号 信息 帐号pid
-如：-bfga info 123123
+如：-bfa info 123123
 ===================
 # 群组绑定/解绑服管：
 -bf群组 群组名#服务器序号 使用服管(use) 帐号pid

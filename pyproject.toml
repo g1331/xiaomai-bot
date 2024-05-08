@@ -49,6 +49,8 @@ starlette = "^0.37.2"
 playwright = "~1.41.2"
 
 [tool.poetry.group.graia.dependencies]
+# Optional dependency to suppress warning on startup
+# arclet-alconna-graia = "^0.18.2"
 graia-ariadne = {extras = ["standard"], version = "^0.11.7"}
 graia-amnesia = "^0.7.1"
 #graia-amnesia = "^0.8.2"

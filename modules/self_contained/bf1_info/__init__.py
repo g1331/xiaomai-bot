@@ -391,7 +391,7 @@ async def info(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-s", "-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
+            UnionMatch("-stat", "-生涯", "-战绩").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True) @ "player_name",
             ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
         ]
@@ -2004,7 +2004,7 @@ async def report(
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
         "Connection": "Keep-Alive"
-    }
+        }
     # noinspection PyBroadException
     try:
         async with httpx.AsyncClient() as client:
@@ -2499,8 +2499,8 @@ async def BF1Rank(
 # 被戳回复小标语
 @listen(NudgeEvent)
 async def NudgeReply(app: Ariadne, event: NudgeEvent):
-    if event.group_id and event.target == app.account and module_controller.if_module_switch_on(
-            channel.module, event.group_id
+    if event.subject.id and event.target == app.account and module_controller.if_module_switch_on(
+            channel.module, event.subject.id
     ):
         # 98%的概率从文件获取tips
         if random.randint(0, 99) > 1:
@@ -2515,7 +2515,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
                 f"当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)
-        return await app.send_group_message(event.group_id, MessageChain(At(event.supplicant), '\n', send))
+        return await app.send_group_message(event.subject.id, MessageChain(At(event.supplicant), '\n', send))
 
 
 # 战地一私服情况

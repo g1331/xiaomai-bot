@@ -28,6 +28,8 @@ from utils.bf1.default_account import BF1DA
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 
+config = create(GlobalConfig)
+
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
     """根据玩家名称获取玩家信息
@@ -189,7 +191,8 @@ async def bfeac_checkBan(player_name: str) -> dict:
     """
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
-        "Connection": "keep-alive"
+        "Connection": "keep-alive",
+        "apikey": config.functions.get("bf1", {}).get("apikey", "")
     }
     eac_stat_dict = {
         0: "未处理",

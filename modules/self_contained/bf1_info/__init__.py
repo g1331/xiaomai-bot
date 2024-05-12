@@ -2006,7 +2006,8 @@ async def report(
     # 2.查验是否已经有举报信息
     check_eacInfo_url = f"https://api.bfeac.com/case/EAID/{player_name}"
     header = {
-        "Connection": "Keep-Alive"
+        "Connection": "Keep-Alive",
+        "apikey": config.functions.get("bf1", {}).get("apikey", "")
     }
     # noinspection PyBroadException
     try:

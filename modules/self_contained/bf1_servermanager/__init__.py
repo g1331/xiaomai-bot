@@ -41,7 +41,7 @@ from core.models import saya_model, response_model
 from utils.UI import *
 from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM, \
     get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager, bfeac_checkBan, \
-    bfban_checkBan, gt_get_player_id_by_pid, EACUtils
+    bfban_checkBan, gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid
 from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
@@ -2589,7 +2589,29 @@ async def kick(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3147,7 +3169,29 @@ async def add_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3273,7 +3317,29 @@ async def del_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3416,7 +3482,29 @@ async def add_banall(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3573,7 +3661,29 @@ async def del_banall(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3718,7 +3828,29 @@ async def check_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3971,7 +4103,29 @@ async def add_cloudban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -4120,7 +4274,29 @@ async def del_cloudban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -4835,7 +5011,29 @@ async def move_player(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -5432,7 +5630,29 @@ async def add_vip(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -5670,7 +5890,29 @@ async def del_vip(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,

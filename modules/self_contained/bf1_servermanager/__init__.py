@@ -1491,7 +1491,7 @@ async def get_server_playerList_pic(
     logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     bot_message = await app.send_message(group, MessageChain([
         GraiaImage(data_bytes=pl_pic),
-        f"\n`回复`指令可执行操作(120秒内有效)\n{help_str}"
+        f"\n`回复`指令以进行操作(120秒内有效)"
     ]), quote=source)
 
     # TODO 待重构的回复踢出
@@ -1500,20 +1500,24 @@ async def get_server_playerList_pic(
                 event.quote and event.quote.id == bot_message.id):
             waiter_message = waiter_message.replace(At(app.account), "")
             saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "").strip()
-            return saying
+            if saying == "help":
+                await app.send_message(waiter_group, MessageChain(f"{help_str}"), quote=source)
+            else:
+                return saying
 
     try:
         result = await FunctionWaiter(waiter, [GroupMessage]).wait(120)
     except asyncio.exceptions.TimeoutError:
         return
     if not result:
+        logger.debug(f"等待PL回复失败,result:[{result}],发起人:{sender.name}[{sender.id}]")
         return
 
     action = result.split(' ')
     if len(action) == 1:
         return await app.send_message(group, MessageChain(f"参数不足!{help_str}"), quote=source)
     action = list(filter(lambda x: x != '', action))
-    logger.debug(f"玩家列表pic回复:{action}")
+    logger.debug(f"PL回复:{action}")
 
     # 执行踢出
     if action[0] in ["k", "-k", "-kick", "-踢", "-踢出"]:
@@ -3071,11 +3075,11 @@ async def kick_by_searched(
     if success_messages:
         if len(kick_result) >= 5:
             await app.send_message(group, MessageChain(
-                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}\n"  "\n".join(failure_messages)
+                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}" + (("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
         else:
             await app.send_message(group, MessageChain(
-                "\n".join(success_messages) + f"\n踢出原因:{reason}\n" + "\n".join(failure_messages)
+                "\n".join(success_messages) + f"\n踢出原因:{reason}" + (("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
     else:
         await app.send_message(group, MessageChain(

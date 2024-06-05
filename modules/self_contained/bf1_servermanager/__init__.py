@@ -1495,9 +1495,9 @@ async def get_server_playerList_pic(
     ]), quote=source)
 
     # TODO 待重构的回复踢出
-    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_app: Ariadne, event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (await perm_judge(bf_group_name, waiter_group, waiter_member)) and waiter_group.id == group.id and (
-                event.quote and event.quote.id == bot_message.id):
+                event.quote and event.quote.id == bot_message.id and waiter_app.account == app.account):
             waiter_message = waiter_message.replace(At(app.account), "")
             saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "").strip()
             if saying == "help":
@@ -3075,11 +3075,13 @@ async def kick_by_searched(
     if success_messages:
         if len(kick_result) >= 5:
             await app.send_message(group, MessageChain(
-                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}" + (("\n" + "\n".join(failure_messages)) if failure_messages else "")
+                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}" + (
+                    ("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
         else:
             await app.send_message(group, MessageChain(
-                "\n".join(success_messages) + f"\n踢出原因:{reason}" + (("\n" + "\n".join(failure_messages)) if failure_messages else "")
+                "\n".join(success_messages) + f"\n踢出原因:{reason}" + (
+                    ("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
     else:
         await app.send_message(group, MessageChain(
@@ -5707,6 +5709,13 @@ async def add_vip(
             else:
                 if not player_cache_info["expire_time"]:
                     player_cache_info["expire_time"] = datetime.now()
+                    if days < 0:
+                        return await app.send_message(group, MessageChain(
+                            "该玩家已经是永久VIP了,无法减少天数!"
+                        ), quote=source)
+                # 如果expire_time小于今天，则将expire_time设置为今天
+                if player_cache_info["expire_time"] < datetime.now():
+                    player_cache_info["expire_time"] = datetime.now()
                 target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
             # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
             date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
@@ -5768,9 +5777,18 @@ async def add_vip(
                     player_cache_info["expire_time"] = datetime.now()
                     if days < 0:
                         return await app.send_message(group, MessageChain(
-                            "该玩家已经是永久VIP了!"
+                            "该玩家已经是永久VIP了,无法减少天数!"
                         ), quote=source)
-                target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
+                # 行动模式要看是否是待生效的情况,如果是待生效，且过期日期小于今天，则计算其过期时间与添加时间的差值作为保留天数，并将expire time设置为今天，然后将要添加的天数与保留天数相加作为实际添加天数
+                if not player_cache_info["valid"] and player_cache_info["expire_time"] < datetime.now():
+                    days_temp = DateTimeUtils.diff_days(player_cache_info["expire_time"], player_cache_info["add_time"])
+                    player_cache_info["expire_time"] = datetime.now()
+                    target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days + days_temp)
+                else:
+                    # 如果expire_time小于今天，则将expire_time设置为今天
+                    if player_cache_info["expire_time"] < datetime.now():
+                        player_cache_info["expire_time"] = datetime.now()
+                    target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
             # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
             date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
             if date_diff < 0:
@@ -5788,7 +5806,7 @@ async def add_vip(
                 temp_str = "(已生效)"
             await app.send_message(group, MessageChain(
                 f"{'修改成功!'}到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'} {temp_str}" +
-                f"\n(当前服务器为行动模式,需checkvip生效)"
+                f"\n(此玩家VIP已生效)"
             ), quote=source)
             # 更新数据库中的VIP信息
             await BF1ServerVipManager.update_server_vip_by_pid(
@@ -5811,9 +5829,10 @@ async def add_vip(
                 today_date_temp = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 if date_temp >= today_date_temp:
                     vip_count += 1
-            if vip_count >= 50:
+            if vip_count >= 100:  # 行动服由于vip数量需求更高，现在设置缓存100个，checkvip时按添加到数据库的时间排序进行上v
+                # 如果没有缓存信息，仍然添加到
                 return await app.send_message(group, MessageChain(
-                    f"VIP缓存人数已达上限(50)，无法添加！"
+                    f"VIP缓存人数已达上限(100)，无法添加！"
                 ), quote=source)
             # 如果人数未超过上限，则添加新的VIP，并将valid设为False
             await app.send_message(group, MessageChain(
@@ -6150,8 +6169,20 @@ async def check_vip(
                 add_task.append(vip)
         if not add_task and not del_task:
             return await app.send_message(group, MessageChain("当前没有过期的VIP和待生效的VIP!"), quote=source)
-        await app.send_message(group, MessageChain(f"预计清理{len(del_task)}个VIP,添加{len(add_task)}个VIP~"),
-                               quote=source)
+        # add_task根据time字段重新进行排序，时间最早的排在前面
+        add_task = sorted(add_task, key=lambda x: x["time"])
+        # 服务器实际总量是50，所以要用当前数量-清理数量=已有数量，然后用50-已有数量=可添加的数量n，然后取出add_task的前n个作为实际的add_task
+        vip_already_cnt = len(vip_info) - len(del_task)
+        vip_can_add_cnt = 50 - vip_already_cnt
+        origin_len = len(add_task)
+        if origin_len > vip_can_add_cnt:
+            add_task = add_task[:vip_can_add_cnt]
+        rest_len = origin_len - vip_can_add_cnt if origin_len - vip_can_add_cnt > 0 else 0
+        await app.send_message(
+            group, MessageChain(
+                f"预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~"
+            ), quote=source)
+        logger.debug(f"{bf_group_name}服务器{server_rank}预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~")
         del_task_result = await asyncio.gather(
             *[account_instance.removeServerVip(task["personaId"], server_id) for task in del_task])
         for i in range(len(del_task)):

@@ -5731,7 +5731,8 @@ async def add_vip(
             await app.send_message(group, MessageChain(suc_str), quote=source)
             # 写入数据库
             await BF1ServerVipManager.update_server_vip_by_pid(
-                server_id=server_id, player_pid=pid, displayName=player_name, expire_time=target_date, valid=True
+                server_id=server_id, player_pid=pid, displayName=player_name,
+                expire_time=target_date, valid=True, should_update_time=False
             )
             await BF1Log.record(
                 operator_qq=sender.id,
@@ -5770,8 +5771,10 @@ async def add_vip(
     else:
         # 指定了天数的情况
         if days:
+            # 没有缓存的情况
             if not player_cache_info:
                 target_date = DateTimeUtils.add_days(datetime.now(), days)
+            # 有缓存的情况
             else:
                 if not player_cache_info["expire_time"]:
                     player_cache_info["expire_time"] = datetime.now()
@@ -5781,7 +5784,7 @@ async def add_vip(
                         ), quote=source)
                 # 行动模式要看是否是待生效的情况,如果是待生效，且过期日期小于今天，则计算其过期时间与添加时间的差值作为保留天数，并将expire time设置为今天，然后将要添加的天数与保留天数相加作为实际添加天数
                 if not player_cache_info["valid"] and player_cache_info["expire_time"] < datetime.now():
-                    days_temp = DateTimeUtils.diff_days(player_cache_info["expire_time"], player_cache_info["add_time"])
+                    days_temp = DateTimeUtils.diff_days(player_cache_info["expire_time"], player_cache_info["time"])
                     player_cache_info["expire_time"] = datetime.now()
                     target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days + days_temp)
                 else:
@@ -5805,13 +5808,12 @@ async def add_vip(
             else:
                 temp_str = "(已生效)"
             await app.send_message(group, MessageChain(
-                f"{'修改成功!'}到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'} {temp_str}" +
-                f"\n(此玩家VIP已生效)"
+                f"{'修改成功!'}到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'} {temp_str}"
             ), quote=source)
             # 更新数据库中的VIP信息
             await BF1ServerVipManager.update_server_vip_by_pid(
                 server_id=server_id, player_pid=pid, displayName=player_name, expire_time=target_date,
-                valid=player_cache_info["valid"]
+                valid=player_cache_info["valid"], should_update_time=False
             )
             return
         # 如果没有缓存信息，则获取viplist判断人数是否超过上限，且valid为False
@@ -6156,12 +6158,25 @@ async def check_vip(
         return await app.send_message(group, MessageChain(send), quote=source)
     else:
         for vip in vip_info:
+            logger.info(vip)
             expire_time = vip.get("expire_time")
+            # 永久v的情况
             if not expire_time and not vip["valid"]:
                 add_task.append(vip)
                 continue
+            # 已生效的永久v
             elif not expire_time:
                 continue
+            # 如果没生效，且有过期时间就判断是否需要更新过期时间
+            # 则计算添加日期和过期日期的差值作为保留天数
+            # 然后将过期日期改为今天，并在今天的基础上加上保留天数作为新的过期日期
+            # 如： 6号添加 9号过期
+            # check日期 8号
+            # 则保留天数为2，过期时间修改为8号，新的过期时间为10号
+            if not vip["valid"] and expire_time:
+                days_temp = DateTimeUtils.diff_days(vip["expire_time"], vip["time"])
+                vip["expire_time"] = datetime.now()
+                vip["expire_time"] = DateTimeUtils.add_days(vip["expire_time"], days_temp)
             days_diff = DateTimeUtils.diff_days(expire_time, datetime.now())
             if days_diff < 0:
                 del_task.append(vip)
@@ -6171,10 +6186,11 @@ async def check_vip(
             return await app.send_message(group, MessageChain("当前没有过期的VIP和待生效的VIP!"), quote=source)
         # add_task根据time字段重新进行排序，时间最早的排在前面
         add_task = sorted(add_task, key=lambda x: x["time"])
-        # 服务器实际总量是50，所以要用当前数量-清理数量=已有数量，然后用50-已有数量=可添加的数量n，然后取出add_task的前n个作为实际的add_task
-        vip_already_cnt = len(vip_info) - len(del_task)
+        # 服务器实际总量是50，所以要用当前有效VIP数量-清理数量=已有数量，然后用50-已有数量=可添加的数量n，然后取出add_task的前n个作为实际的add_task
+        vip_already_cnt = len([_ for _ in vip_info if _['valid']]) - len(del_task)
         vip_can_add_cnt = 50 - vip_already_cnt
         origin_len = len(add_task)
+        logger.debug(f"{bf_group_name}服务器{server_rank}VIP占位 {vip_already_cnt}/50,可添加{vip_can_add_cnt}, 当前task数量{origin_len}")
         if origin_len > vip_can_add_cnt:
             add_task = add_task[:vip_can_add_cnt]
         rest_len = origin_len - vip_can_add_cnt if origin_len - vip_can_add_cnt > 0 else 0
@@ -6474,7 +6490,7 @@ async def get_vipList(
         message=MessageChain(
             f"服务器: {server_fullInfo['serverInfo']['name']}\n"
             f"GameId:{server_fullInfo['serverInfo']['gameId']}\n"
-            f"VIP人数:{vip_len}"
+            f"VIP人数:{vip_len}, 待生效:{len([_ for _ in vip_info if not _['valid']])}"
         ),
     )]
     lists = vip_list

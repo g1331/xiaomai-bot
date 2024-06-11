@@ -1281,11 +1281,12 @@ class BF1ServerVipManager:
     # 更新一个玩家在指定服务器的VIP信息
     @staticmethod
     async def update_server_vip_by_pid(
-            server_id: int, player_pid: int, displayName: str, expire_time: datetime.datetime, valid: bool
+            server_id: int, player_pid: int, displayName: str, expire_time: datetime.datetime, valid: bool, should_update_time = True
     ) -> bool:
         """更新一个玩家在指定服务器的VIP信息"""
         return await BF1DB.server_manager.update_vip(
-            serverId=server_id, personaId=player_pid, displayName=displayName, expire_time=expire_time, valid=valid
+            serverId=server_id, personaId=player_pid, displayName=displayName,
+            expire_time=expire_time, valid=valid, should_update_time=should_update_time
         )
 
     # 获取指定服务器的VIP列表

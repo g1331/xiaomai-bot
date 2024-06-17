@@ -6177,6 +6177,7 @@ async def check_vip(
                 days_temp = DateTimeUtils.diff_days(vip["expire_time"], vip["time"])
                 vip["expire_time"] = datetime.now()
                 vip["expire_time"] = DateTimeUtils.add_days(vip["expire_time"], days_temp)
+                expire_time = vip["expire_time"]
             days_diff = DateTimeUtils.diff_days(expire_time, datetime.now())
             if days_diff < 0:
                 del_task.append(vip)

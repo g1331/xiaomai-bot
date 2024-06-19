@@ -6456,7 +6456,9 @@ async def get_vipList(
     vip_list = []
     for vip in vip_info:
         expire_time = vip.get("expire_time")
+        update_time = vip.get("time")
         days_diff = DateTimeUtils.diff_days(expire_time, datetime.now()) if expire_time else None
+        days_until_active = DateTimeUtils.diff_days(expire_time, update_time) if expire_time else None
         temp_str = expire_time.strftime('%Y-%m-%d') if expire_time else "永久"
 
         if not operation_mode:
@@ -6464,7 +6466,7 @@ async def get_vipList(
             vip_list.append(
                 f"名字: {vip['displayName']}\n"
                 f"PID: {vip['personaId']}\n"
-                f"到期时间: {temp_str} {expired_str}\n"
+                f"到期时间: {temp_str} {expired_str}"
             )
         else:
             valid = vip["valid"]
@@ -6476,11 +6478,18 @@ async def get_vipList(
                     expired_str = "(待生效)"
             elif not valid:
                 expired_str = "(待生效)"
-            vip_list.append(
-                f"名字: {vip['displayName']}\n"
-                f"PID: {vip['personaId']}\n"
-                f"到期时间: {temp_str} {expired_str}\n"
-            )
+            if days_until_active:
+                vip_list.append(
+                    f"名字: {vip['displayName']}\n"
+                    f"PID: {vip['personaId']}\n"
+                    f"待生效天数: {days_until_active}"
+                )
+            else:
+                vip_list.append(
+                    f"名字: {vip['displayName']}\n"
+                    f"PID: {vip['personaId']}\n"
+                    f"到期时间: {temp_str} {expired_str}"
+                )
 
     # 组合为转发消息
     vip_list = sorted(vip_list)

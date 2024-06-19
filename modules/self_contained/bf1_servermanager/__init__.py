@@ -6478,7 +6478,7 @@ async def get_vipList(
                     expired_str = "(待生效)"
             elif not valid:
                 expired_str = "(待生效)"
-            if days_until_active:
+            if days_until_active and not valid:
                 vip_list.append(
                     f"名字: {vip['displayName']}\n"
                     f"PID: {vip['personaId']}\n"

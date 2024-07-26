@@ -77,7 +77,7 @@ class bf1_db:
         @staticmethod
         async def update_bf1account(
                 pid: int,
-                display_name: str,
+                display_name: str = None,
                 uid: int = None,
                 name: str = None,
                 remid: str = None,
@@ -1214,7 +1214,8 @@ class bf1_db:
         @staticmethod
         async def update_vip(
                 serverId: int, personaId: int, displayName: str,
-                expire_time: Union[datetime.datetime, None] = None, valid: bool = True
+                expire_time: Union[datetime.datetime, None] = None, valid: bool = True,
+                should_update_time: bool = True
         ) -> bool:
             """
             修改vip信息
@@ -1223,18 +1224,23 @@ class bf1_db:
             :param displayName: [str] 玩家名
             :param expire_time: [datetime.datetime, None] 过期时间
             :param valid: [bool] 是否已经生效
+            :param should_update_time: [bool] 是否更新修改时间
             :return:
             """
+            data = {
+                "serverId": serverId,
+                "personaId": personaId,
+                "displayName": displayName,
+                "expire_time": expire_time,
+                "valid": valid,
+            }
+
+            if should_update_time:
+                data["time"] = datetime.datetime.now()
+
             await orm.insert_or_update(
                 table=Bf1ServerManagerVip,
-                data={
-                    "serverId": serverId,
-                    "personaId": personaId,
-                    "displayName": displayName,
-                    "expire_time": expire_time,
-                    "time": datetime.datetime.now(),
-                    "valid": valid,
-                },
+                data=data,
                 condition=(
                     Bf1ServerManagerVip.serverId == serverId,
                     Bf1ServerManagerVip.personaId == personaId,

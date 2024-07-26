@@ -41,7 +41,7 @@ from core.models import saya_model, response_model
 from utils.UI import *
 from utils.bf1.bf_utils import BF1GROUP, BF1ManagerAccount, get_playerList_byGameid, bf1_perm_check, BF1GROUPPERM, \
     get_personas_by_name, perm_judge, BF1Log, dummy_coroutine, BF1ServerVipManager, BF1BlazeManager, bfeac_checkBan, \
-    bfban_checkBan, gt_get_player_id_by_pid, EACUtils
+    bfban_checkBan, gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid
 from utils.bf1.data_handle import WeaponData, VehicleData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
@@ -1489,29 +1489,33 @@ async def get_server_playerList_pic(
     logger.info(f"玩家列表pic耗时:{(time.time() - time_start):.2f}秒")
     bot_message = await app.send_message(group, MessageChain([
         GraiaImage(data_bytes=pl_pic),
-        f"\n`回复`指令可执行操作(120秒内有效)\n{help_str}"
+        f"\n`回复`指令以进行操作(120秒内有效)"
     ]), quote=source)
 
     # TODO 待重构的回复踢出
-    async def waiter(event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_app: Ariadne, event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
         if (await perm_judge(bf_group_name, waiter_group, waiter_member)) and waiter_group.id == group.id and (
-                event.quote and event.quote.id == bot_message.id):
+                event.quote and event.quote.id == bot_message.id and waiter_app.account == app.account):
             waiter_message = waiter_message.replace(At(app.account), "")
             saying = waiter_message.display.replace(f"@{app.account} ", "").replace(f"@{app.account}", "").strip()
-            return saying
+            if saying == "help":
+                await app.send_message(waiter_group, MessageChain(f"{help_str}"), quote=source)
+            else:
+                return saying
 
     try:
         result = await FunctionWaiter(waiter, [GroupMessage]).wait(120)
     except asyncio.exceptions.TimeoutError:
         return
     if not result:
+        logger.debug(f"等待PL回复失败,result:[{result}],发起人:{sender.name}[{sender.id}]")
         return
 
     action = result.split(' ')
     if len(action) == 1:
         return await app.send_message(group, MessageChain(f"参数不足!{help_str}"), quote=source)
     action = list(filter(lambda x: x != '', action))
-    logger.debug(f"玩家列表pic回复:{action}")
+    logger.debug(f"PL回复:{action}")
 
     # 执行踢出
     if action[0] in ["k", "-k", "-kick", "-踢", "-踢出"]:
@@ -2091,7 +2095,7 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("登录", "login").space(SpacePolicy.FORCE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "player_name",
             FullMatch("remid=").space(SpacePolicy.NOSPACE),
@@ -2148,7 +2152,7 @@ async def managerAccount_login(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("删除", "del").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False).space(SpacePolicy.PRESERVE) @ "account_pid"
             # 示例: -bf服管账号 删除 123
@@ -2187,7 +2191,7 @@ async def managerAccount_del(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-bf服管账号", "-bfga").space(SpacePolicy.FORCE),
+            UnionMatch("-bf服管账号", "-bfa").space(SpacePolicy.FORCE),
             UnionMatch("信息", "info").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=False) @ "account_pid",
             # 示例: -bf服管账号 信息
@@ -2587,7 +2591,29 @@ async def kick(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3047,11 +3073,13 @@ async def kick_by_searched(
     if success_messages:
         if len(kick_result) >= 5:
             await app.send_message(group, MessageChain(
-                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}\n"  "\n".join(failure_messages)
+                f"成功踢出{successful_kicks}个\n" + f"\n踢出原因:{reason}" + (
+                    ("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
         else:
             await app.send_message(group, MessageChain(
-                "\n".join(success_messages) + f"\n踢出原因:{reason}\n" + "\n".join(failure_messages)
+                "\n".join(success_messages) + f"\n踢出原因:{reason}" + (
+                    ("\n" + "\n".join(failure_messages)) if failure_messages else "")
             ), quote=source)
     else:
         await app.send_message(group, MessageChain(
@@ -3145,7 +3173,29 @@ async def add_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3271,7 +3321,29 @@ async def del_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3414,7 +3486,29 @@ async def add_banall(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3571,7 +3665,29 @@ async def del_banall(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3716,7 +3832,29 @@ async def check_ban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -3969,7 +4107,29 @@ async def add_cloudban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -4118,7 +4278,29 @@ async def del_cloudban(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -4833,7 +5015,29 @@ async def move_player(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -5430,7 +5634,29 @@ async def add_vip(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -5481,6 +5707,13 @@ async def add_vip(
             else:
                 if not player_cache_info["expire_time"]:
                     player_cache_info["expire_time"] = datetime.now()
+                    if days < 0:
+                        return await app.send_message(group, MessageChain(
+                            "该玩家已经是永久VIP了,无法减少天数!"
+                        ), quote=source)
+                # 如果expire_time小于今天，则将expire_time设置为今天
+                if player_cache_info["expire_time"] < datetime.now():
+                    player_cache_info["expire_time"] = datetime.now()
                 target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
             # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
             date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
@@ -5496,7 +5729,8 @@ async def add_vip(
             await app.send_message(group, MessageChain(suc_str), quote=source)
             # 写入数据库
             await BF1ServerVipManager.update_server_vip_by_pid(
-                server_id=server_id, player_pid=pid, displayName=player_name, expire_time=target_date, valid=True
+                server_id=server_id, player_pid=pid, displayName=player_name,
+                expire_time=target_date, valid=True, should_update_time=False
             )
             await BF1Log.record(
                 operator_qq=sender.id,
@@ -5535,16 +5769,27 @@ async def add_vip(
     else:
         # 指定了天数的情况
         if days:
+            # 没有缓存的情况
             if not player_cache_info:
                 target_date = DateTimeUtils.add_days(datetime.now(), days)
+            # 有缓存的情况
             else:
                 if not player_cache_info["expire_time"]:
                     player_cache_info["expire_time"] = datetime.now()
                     if days < 0:
                         return await app.send_message(group, MessageChain(
-                            "该玩家已经是永久VIP了!"
+                            "该玩家已经是永久VIP了,无法减少天数!"
                         ), quote=source)
-                target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
+                # 行动模式要看是否是待生效的情况,如果是待生效，且过期日期小于今天，则计算其过期时间与添加时间的差值作为保留天数，并将expire time设置为今天，然后将要添加的天数与保留天数相加作为实际添加天数
+                if not player_cache_info["valid"] and player_cache_info["expire_time"] < datetime.now():
+                    days_temp = DateTimeUtils.diff_days(player_cache_info["expire_time"], player_cache_info["time"])
+                    player_cache_info["expire_time"] = datetime.now()
+                    target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days + days_temp)
+                else:
+                    # 如果expire_time小于今天，则将expire_time设置为今天
+                    if player_cache_info["expire_time"] < datetime.now():
+                        player_cache_info["expire_time"] = datetime.now()
+                    target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
             # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
             date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
             if date_diff < 0:
@@ -5561,13 +5806,12 @@ async def add_vip(
             else:
                 temp_str = "(已生效)"
             await app.send_message(group, MessageChain(
-                f"{'修改成功!'}到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'} {temp_str}" +
-                f"\n(当前服务器为行动模式,需checkvip生效)"
+                f"{'修改成功!'}到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'} {temp_str}"
             ), quote=source)
             # 更新数据库中的VIP信息
             await BF1ServerVipManager.update_server_vip_by_pid(
                 server_id=server_id, player_pid=pid, displayName=player_name, expire_time=target_date,
-                valid=player_cache_info["valid"]
+                valid=player_cache_info["valid"], should_update_time=False
             )
             return
         # 如果没有缓存信息，则获取viplist判断人数是否超过上限，且valid为False
@@ -5585,9 +5829,10 @@ async def add_vip(
                 today_date_temp = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 if date_temp >= today_date_temp:
                     vip_count += 1
-            if vip_count >= 50:
+            if vip_count >= 100:  # 行动服由于vip数量需求更高，现在设置缓存100个，checkvip时按添加到数据库的时间排序进行上v
+                # 如果没有缓存信息，仍然添加到
                 return await app.send_message(group, MessageChain(
-                    f"VIP缓存人数已达上限(50)，无法添加！"
+                    f"VIP缓存人数已达上限(100)，无法添加！"
                 ), quote=source)
             # 如果人数未超过上限，则添加新的VIP，并将valid设为False
             await app.send_message(group, MessageChain(
@@ -5668,7 +5913,29 @@ async def del_vip(
 
     # 查验玩家是否存在
     player_name = player_name.result.display
-    player_info = await get_personas_by_name(player_name)
+    if player_name.startswith("#"):
+        player_pid = player_name[1:]
+        if not player_pid.isdigit():
+            return await app.send_message(group, MessageChain("pid必须为数字"), quote=source)
+        player_pid = int(player_pid)
+        player_info = await get_personas_by_player_pid(player_pid)
+        if player_info is None:
+            return await app.send_message(
+                group,
+                MessageChain(f"玩家 {player_name} 不存在"),
+                quote=source
+            )
+        if not isinstance(player_info, dict):
+            return await app.send_message(group, MessageChain(f"查询出错!{player_info}"), quote=source)
+        player_info["result"][str(player_pid)]["pidId"] = player_info["result"][str(player_pid)]["nucleusId"]
+        dict_temp = {
+            "personas": {
+                "persona": [player_info["result"][str(player_pid)]]
+            }
+        }
+        player_info = dict_temp
+    else:
+        player_info = await get_personas_by_name(player_name)
     if isinstance(player_info, str):
         return await app.send_message(
             group,
@@ -5889,12 +6156,26 @@ async def check_vip(
         return await app.send_message(group, MessageChain(send), quote=source)
     else:
         for vip in vip_info:
+            logger.info(vip)
             expire_time = vip.get("expire_time")
+            # 永久v的情况
             if not expire_time and not vip["valid"]:
                 add_task.append(vip)
                 continue
+            # 已生效的永久v
             elif not expire_time:
                 continue
+            # 如果没生效，且有过期时间就判断是否需要更新过期时间
+            # 则计算添加日期和过期日期的差值作为保留天数
+            # 然后将过期日期改为今天，并在今天的基础上加上保留天数作为新的过期日期
+            # 如： 6号添加 9号过期
+            # check日期 8号
+            # 则保留天数为2，过期时间修改为8号，新的过期时间为10号
+            if not vip["valid"] and expire_time:
+                days_temp = DateTimeUtils.diff_days(vip["expire_time"], vip["time"])
+                vip["expire_time"] = datetime.now()
+                vip["expire_time"] = DateTimeUtils.add_days(vip["expire_time"], days_temp)
+                expire_time = vip["expire_time"]
             days_diff = DateTimeUtils.diff_days(expire_time, datetime.now())
             if days_diff < 0:
                 del_task.append(vip)
@@ -5902,8 +6183,21 @@ async def check_vip(
                 add_task.append(vip)
         if not add_task and not del_task:
             return await app.send_message(group, MessageChain("当前没有过期的VIP和待生效的VIP!"), quote=source)
-        await app.send_message(group, MessageChain(f"预计清理{len(del_task)}个VIP,添加{len(add_task)}个VIP~"),
-                               quote=source)
+        # add_task根据time字段重新进行排序，时间最早的排在前面
+        add_task = sorted(add_task, key=lambda x: x["time"])
+        # 服务器实际总量是50，所以要用当前有效VIP数量-清理数量=已有数量，然后用50-已有数量=可添加的数量n，然后取出add_task的前n个作为实际的add_task
+        vip_already_cnt = len([_ for _ in vip_info if _['valid']]) - len(del_task)
+        vip_can_add_cnt = 50 - vip_already_cnt
+        origin_len = len(add_task)
+        logger.debug(f"{bf_group_name}服务器{server_rank}VIP占位 {vip_already_cnt}/50,可添加{vip_can_add_cnt}, 当前task数量{origin_len}")
+        if origin_len > vip_can_add_cnt:
+            add_task = add_task[:vip_can_add_cnt]
+        rest_len = origin_len - vip_can_add_cnt if origin_len - vip_can_add_cnt > 0 else 0
+        await app.send_message(
+            group, MessageChain(
+                f"预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~"
+            ), quote=source)
+        logger.debug(f"{bf_group_name}服务器{server_rank}预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~")
         del_task_result = await asyncio.gather(
             *[account_instance.removeServerVip(task["personaId"], server_id) for task in del_task])
         for i in range(len(del_task)):
@@ -6160,7 +6454,9 @@ async def get_vipList(
     vip_list = []
     for vip in vip_info:
         expire_time = vip.get("expire_time")
+        update_time = vip.get("time")
         days_diff = DateTimeUtils.diff_days(expire_time, datetime.now()) if expire_time else None
+        days_until_active = DateTimeUtils.diff_days(expire_time, update_time) if expire_time else None
         temp_str = expire_time.strftime('%Y-%m-%d') if expire_time else "永久"
 
         if not operation_mode:
@@ -6168,7 +6464,7 @@ async def get_vipList(
             vip_list.append(
                 f"名字: {vip['displayName']}\n"
                 f"PID: {vip['personaId']}\n"
-                f"到期时间: {temp_str} {expired_str}\n"
+                f"到期时间: {temp_str} {expired_str}"
             )
         else:
             valid = vip["valid"]
@@ -6180,11 +6476,18 @@ async def get_vipList(
                     expired_str = "(待生效)"
             elif not valid:
                 expired_str = "(待生效)"
-            vip_list.append(
-                f"名字: {vip['displayName']}\n"
-                f"PID: {vip['personaId']}\n"
-                f"到期时间: {temp_str} {expired_str}\n"
-            )
+            if days_until_active and not valid:
+                vip_list.append(
+                    f"名字: {vip['displayName']}\n"
+                    f"PID: {vip['personaId']}\n"
+                    f"待生效天数: {days_until_active}"
+                )
+            else:
+                vip_list.append(
+                    f"名字: {vip['displayName']}\n"
+                    f"PID: {vip['personaId']}\n"
+                    f"到期时间: {temp_str} {expired_str}"
+                )
 
     # 组合为转发消息
     vip_list = sorted(vip_list)
@@ -6195,7 +6498,7 @@ async def get_vipList(
         message=MessageChain(
             f"服务器: {server_fullInfo['serverInfo']['name']}\n"
             f"GameId:{server_fullInfo['serverInfo']['gameId']}\n"
-            f"VIP人数:{vip_len}"
+            f"VIP人数:{vip_len}, 待生效:{len([_ for _ in vip_info if not _['valid']])}"
         ),
     )]
     lists = vip_list
@@ -6935,23 +7238,23 @@ async def bfgroup_help(app: Ariadne, group: Group, source: Source):
 如：-bfg sakula permlist
 ===================
 #服管帐号相关：
-指令前缀：-bf服管账号 = -bfga
+指令前缀：-bf服管账号 = -bfa
 
 查询服管帐号列表：
 -bf服管账号列表  = -bfal
 
 登录/新建帐号：
 -bf服管帐号 登录 玩家名 remid=xxx,sid=xxx
-如：-bfga login SHlSAN13 remid=xxx,sid=xxx
+如：-bfa login SHlSAN13 remid=xxx,sid=xxx
 
 删除：
 -bf服管帐号 删除 帐号pid
-如：-bfga del 123123      
+如：-bfa del 123123      
 (123123为获取到的帐号pid)
 
 信息：
 -bf服管帐号 信息 帐号pid
-如：-bfga info 123123
+如：-bfa info 123123
 ===================
 # 群组绑定/解绑服管：
 -bf群组 群组名#服务器序号 使用服管(use) 帐号pid

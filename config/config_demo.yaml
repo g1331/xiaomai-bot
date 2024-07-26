@@ -1,45 +1,47 @@
 ﻿# bot基本配置
-Master: 填写主人的qq号
-bot_accounts: [填写你bot的qq号]
-default_account: 默认bot的qq账号
+Master: Master # 填写bot主人的qq号
+bot_accounts: ["bot_accounts"] # 填写你bot的qq号,使用数组方式
+default_account: default_account # 默认使用bot的qq账号
 GroupMsg_log: true # 是否开启群消息日志
-test_group: 测试群的群号 # 用于接收bot反馈信息等
-proxy: proxy
-auto_upgrade: true
+test_group: test_group # 填写测试群的群号,用于接收bot反馈信息等
+proxy: proxy # 代理服务器的地址，目前暂时无效
+auto_upgrade: true # 是否自动升级
 
 # web管理相关
-web_manager_api: true
-web_manager_auto_boot: false
-api_port: 8080
-api_expose: false
+web_manager_api: false # 是否启用Web管理API
+web_manager_auto_boot: false # 是否自动启动Web管理
+api_port: 8080 # API端口
+api_expose: false # API是否暴露给所有来源
 
 # mah配置
-mirai_host: http://localhost:8080
-verify_key: verify_key
+mirai_host: http://localhost:8080 # Mirai HTTP 的监听地址
+verify_key: verify_key # Mirai HTTP 通信密钥
 
 # 数据库连接地址
 db_link: sqlite+aiosqlite:///data.db
 
 # 日志信息
 log_related:
-  common_retention: 7
-  error_retention: 14
+  common_retention: 7 # 一般日志的过期时间
+  error_retention: 14 # 错误日志的过期时间
 
 # 其他功能配置信息
 functions:
   # 战地一
   bf1:
-    default_account: default_account
-    apikey: apikey
+    default_account: default_account # bot的默认Player ID
+    image_api: image_api # 使用何种图床,可为“smms”或"eac"
+    image_apikey: image_apikey # 图床的API KEY
+    apikey: apikey # BFEAC举报用API KEY
 
   # 识图
   image_search:
-    saucenao_key: saucenao_key
+    saucenao_key: saucenao_key # SauceNAO的API KEY 可在saucenao.com获取
 
-  # steam游戏搜索 steamdb.info/app/app_id 的cookie
-  steamdb_cookie: steamdb_cookie
+  # Steam游戏搜索 steamdb.info/app/app_id 的cookie
+  steamdb_cookie: steamdb_cookie # SteamDB的cookie
 
-  #ChatGPT
+  # ChatGPT
   ChatGPT:
     session_token: session_token
      # 支持自订api地址，与api_key配套使用

@@ -19,9 +19,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.name("Random_Pic")
-channel.author("13")
-channel.description("发送随机图的插件")
+channel.meta["name"] = ("Random_Pic")
+channel.meta["author"] = ("13")
+channel.meta["description"] = ("发送随机图的插件")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 # 图库映射名

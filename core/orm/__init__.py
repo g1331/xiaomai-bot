@@ -2,12 +2,22 @@ from asyncio import Lock
 
 from creart import create
 from loguru import logger
-from sqlalchemy import MetaData, inspect, delete, update, select, insert, text
+from sqlalchemy import MetaData, inspect, delete, update, select, insert, text, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from core.config import GlobalConfig
 
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous = normal")
+    cursor.execute("PRAGMA temp_store = memory;")
+    cursor.execute("PRAGMA mmap_size = 4294967296")
+    cursor.close()
 
 class AsyncORM:
     """对象关系映射（Object Relational Mapping）"""

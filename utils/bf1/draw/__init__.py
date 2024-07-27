@@ -237,7 +237,10 @@ class PilImageUtils:
         crop_right = (resized_image.width + target_width) / 2
         crop_bottom = (resized_image.height + target_height) / 2
 
-        return resized_image.crop((crop_left, crop_top, crop_right, crop_bottom))
+        # 裁剪图片至指定尺寸
+        cropped_image = resized_image.crop((crop_left, crop_top, crop_right, crop_bottom))
+
+        return cropped_image
 
     # 适应最长边
     @staticmethod
@@ -276,7 +279,10 @@ class PilImageUtils:
         new_width = int(original_width * scale_ratio)
         new_height = int(original_height * scale_ratio)
 
-        return image.resize((new_width, new_height), Image.LANCZOS)
+        # 缩放图像
+        scaled_image = image.resize((new_width, new_height), Image.LANCZOS)
+
+        return scaled_image
 
     @staticmethod
     def paste_center(
@@ -330,9 +336,11 @@ class PilImageUtils:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status == 200:
-                        return await resp.read()
-                    logger.warning(f"读取图片失败，url: {url}")
-                    return None
+                        img = await resp.read()
+                        return img
+                    else:
+                        logger.warning(f"读取图片失败，url: {url}")
+                        return None
         except TimeoutError:
             logger.warning(f"读取图片失败，url: {url}")
             return None
@@ -470,14 +478,13 @@ class PlayerStatPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if (
-            not player_background_path
-            and background_path.exists()
-            or player_background_path
-        ):
-            background = player_background_path.open("rb").read()
+        if not player_background_path:
+            if background_path.exists():
+                background = random.choice(list(background_path.iterdir())).open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            background = player_background_path.open("rb").read()
         # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
         #     # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         #     background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
@@ -816,7 +823,7 @@ class PlayerStatPic:
         else:
             platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
             platoon_template_draw = ImageDraw.Draw(platoon_template)
-            file_path = "./data/battlefield/小标语/data.json"
+            file_path = f"./data/battlefield/小标语/data.json"
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
                 data.append({'name': "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
@@ -1408,12 +1415,13 @@ class PlayerWeaponPic:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
-        if player_background_path:
-            background = player_background_path.open("rb").read()
-        elif background_path.exists():
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+        if not player_background_path:
+            if background_path.exists():
+                background = random.choice(list(background_path.iterdir())).open("rb").read()
+            else:
+                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            background = player_background_path.open("rb").read()
         # 默认背景，直接放大填充
         if not player_background_path:
             background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
@@ -2491,11 +2499,11 @@ class PlayerListPic:
         team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
         team1_pic = PlayerListPic.get_team_pic(team1_name)
         team1_pic = Image.open(team1_pic).convert('RGBA')
-        team1_pic = team1_pic.resize((40, 40), Image.BILINEAR)
+        team1_pic = team1_pic.resize((40, 40), Image.ANTIALIAS)
         team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
         team2_pic = PlayerListPic.get_team_pic(team2_name)
         team2_pic = Image.open(team2_pic).convert('RGBA')
-        team2_pic = team2_pic.resize((40, 40), Image.BILINEAR)
+        team2_pic = team2_pic.resize((40, 40), Image.ANTIALIAS)
 
         # 地图路径
         server_map_pic = await PlayerListPic.get_server_map_pic(server_mapName)
@@ -2514,15 +2522,15 @@ class PlayerListPic:
 
         # 延迟 5:小于50 4:50< <100 3: 150< < 100 2: 150<  <200 1: 250< <300 0:300+
         Ping1 = Image.open(f"./data/battlefield/pic/ping/4.png").convert('RGBA')
-        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.BILINEAR)
+        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.ANTIALIAS)
         Ping2 = Image.open(f"./data/battlefield/pic/ping/3.png").convert('RGBA')
-        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.BILINEAR)
+        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.ANTIALIAS)
         Ping3 = Image.open(f"./data/battlefield/pic/ping/2.png").convert('RGBA')
-        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.BILINEAR)
+        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.ANTIALIAS)
         Ping4 = Image.open(f"./data/battlefield/pic/ping/1.png").convert('RGBA')
-        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.BILINEAR)
+        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.ANTIALIAS)
         Ping5 = Image.open(f"./data/battlefield/pic/ping/0.png").convert('RGBA')
-        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.BILINEAR)
+        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.ANTIALIAS)
 
         draw = ImageDraw.Draw(IMG)
         # 字体路径
@@ -2571,7 +2579,7 @@ class PlayerListPic:
             if player_item['rank'] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
+            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
             leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
             draw.text(leve_position_1, f"{player_item['rank']}",
                       fill="white",
@@ -2678,7 +2686,7 @@ class PlayerListPic:
             if player_item['rank'] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
+            ascent, descent = rank_font_temp.getsize(f"{player_item['rank']}")
             leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
             draw.text(
                 leve_position_2, f"{player_item['rank']}",
@@ -2779,7 +2787,7 @@ class PlayerListPic:
 
         if leve_position_1:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
+            ascent, descent = rank_font_temp.getsize(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
             leve_position_1 = 168 - ascent / 2, 156 + i_temp * 23
             draw.text((115, 156 + i_temp * 23), f"平均:",
                       fill="white",
@@ -2814,7 +2822,7 @@ class PlayerListPic:
 
         if leve_position_2:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
+            ascent, descent = rank_font_temp.getsize(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
             leve_position_2 = 1028 - ascent / 2, 156 + i_temp * 23
             draw.text((975, 156 + i_temp * 23), f"平均:",
                       fill="white",

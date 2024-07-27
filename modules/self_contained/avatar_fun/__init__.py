@@ -35,9 +35,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("AvatarFunPic")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
+channel.name("AvatarFunPic")
+channel.author("SAGIRI-kawaii")
+channel.description("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 frame_spec = [
     (27, 31, 86, 90),
@@ -407,8 +407,8 @@ async def petpet(image: Union[int, str], flip=False, squish=0, fps=20) -> Messag
         await make_frame(avatar, i, squish=squish, flip=flip) for i in range(5)
     ]
 
-    if not os.path.exists("./statics/temp/"):
-        os.mkdir("./statics/temp/")
+    if not os.path.exists(f"./statics/temp/"):
+        os.mkdir(f"./statics/temp/")
     image_bytes = save_gif(gif_frames, fps=fps)
 
     return MessageChain([Image(data_bytes=image_bytes)])
@@ -465,7 +465,7 @@ async def kiss(
 
 
 async def ripped(image: Union[int, str]) -> MessageChain:
-    ripped = IMG.open("./statics/ripped.png")
+    ripped = IMG.open(f"./statics/ripped.png")
     frame = IMG.new("RGBA", (1080, 804), (255, 255, 255, 0))
     avatar = await get_pil_avatar(image)
     left = avatar.resize((385, 385)).rotate(24, expand=True)
@@ -491,7 +491,7 @@ async def throw(image: Union[int, str]) -> MessageChain:
     avatar.putalpha(mask)
     avatar = avatar.rotate(random.randint(1, 360), IMG.BICUBIC)
     avatar = avatar.resize((143, 143), IMG.ANTIALIAS)
-    throw = IMG.open("./statics/throw.png")
+    throw = IMG.open(f"./statics/throw.png")
     throw.paste(avatar, (15, 178), mask=avatar)
     throw = throw.convert("RGB")
     output = BytesIO()
@@ -509,7 +509,7 @@ async def crawl(image: Union[int, str]) -> MessageChain:
     )
     mask = mask.filter(ImageFilter.GaussianBlur(0))
     avatar.putalpha(mask)
-    images = list(os.listdir("./statics/crawl"))
+    images = [i for i in os.listdir(f"./statics/crawl")]
     crawl = IMG.open(f"./statics/crawl/{random.choice(images)}").resize(
         (500, 500), IMG.ANTIALIAS
     )
@@ -573,7 +573,7 @@ async def rub(
 
 async def support(image: Union[int, str]) -> MessageChain:
     avatar = await get_pil_avatar(image)
-    support = IMG.open("./statics/support.png")
+    support = IMG.open(f"./statics/support.png")
     frame = IMG.new("RGBA", (1293, 1164), (255, 255, 255, 0))
     avatar = avatar.resize((815, 815), IMG.ANTIALIAS).rotate(23, expand=True)
     frame.paste(avatar, (-172, -17))
@@ -623,8 +623,8 @@ async def swallowed(image: Union[int, str]) -> MessageChain:
 
     frames = []
     for _ in range(2):
-        frames.extend(avatar_frames[:12])
-    frames.extend(avatar_frames[:8])
+        frames.extend(avatar_frames[0:12])
+    frames.extend(avatar_frames[0:8])
     frames.extend(avatar_frames[12:18])
     frames.extend(raw_frames[18:23])
 

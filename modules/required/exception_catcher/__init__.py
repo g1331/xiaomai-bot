@@ -15,10 +15,10 @@ from utils.text2img import md2img
 saya = create(Saya)
 channel = Channel.current()
 
-channel.meta["name"] = ("ExceptionCatcher")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["author"] = ("13")
-channel.meta["description"] = ("一个能够捕获错误并将其转为图片发给主人的插件")
+channel.name("ExceptionCatcher")
+channel.author("SAGIRI-kawaii")
+channel.author("13")
+channel.description("一个能够捕获错误并将其转为图片发给主人的插件")
 
 config = create(GlobalConfig)
 

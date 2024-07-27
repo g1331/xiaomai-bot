@@ -14,7 +14,7 @@ config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else ""
 _JSON_LINK = (
     "https://raw.githubusercontent.com/xsalazar/"
-    "emoji-kitchen/main/src/Components/metadata.json"
+    "emoji-kitchen/main/src/Components/emojiData.json"
 )
 _ASSETS = Path(__file__).parent / "assets"
 _FILE = _ASSETS / "emojiData.json"

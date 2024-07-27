@@ -22,9 +22,9 @@ from core.models import saya_model
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("Tarot")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("可以抽塔罗牌的插件，在群中发送 `-塔罗牌` 即可")
+channel.name("Tarot")
+channel.author("SAGIRI-kawaii")
+channel.description("可以抽塔罗牌的插件，在群中发送 `-塔罗牌` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -55,7 +55,7 @@ class Tarot(object):
         card_type = "正位" if card_dir == "normal" else "逆位"
         content = f"{card['name']} ({card['name-en']}) {card_type}\n牌意：{card['meaning'][card_dir]}"
         elements = []
-        img_path = f"{os.getcwd()}/statics/tarot/{card_dir}/{filename}.jpg"
+        img_path = f"{os.getcwd()}/statics/tarot/{card_dir}/{filename + '.jpg'}"
         if filename and os.path.exists(img_path):
             elements.append(Image(path=img_path))
         elements.append(Plain(text=content))
@@ -71,12 +71,9 @@ class Tarot(object):
         for kind in kinds:
             cards.extend(data[kind])
         card = random.choice(cards)
-        filename = next(
-            (
-                "{}{:02d}".format(kind, card["num"])
-                for kind in kinds
-                if card in data[kind]
-            ),
-            "",
-        )
+        filename = ""
+        for kind in kinds:
+            if card in data[kind]:
+                filename = "{}{:02d}".format(kind, card["num"])
+                break
         return card, filename

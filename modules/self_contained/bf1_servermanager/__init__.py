@@ -57,9 +57,9 @@ account_controller = response_model.get_acc_controller()
 global_config = create(GlobalConfig)
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("BF1服管")
-channel.meta["description"] = ("战地1服务器管理插件")
-channel.meta["author"] = ("13")
+channel.name("BF1服管")
+channel.description("战地1服务器管理插件")
+channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 inc = InterruptControl(saya.broadcast)
@@ -820,7 +820,7 @@ async def bfgroup_perm_list(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f")
+            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f", "-狐务器", "-负无穷")
             # 示例: -服务器
         ]
     )
@@ -861,7 +861,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
     except Exception as e:
         logger.error(f"查询{bfgroups_name}服务器失败{e}")
         await app.send_message(group, MessageChain(
-            GraiaImage(path='./statics/query_timeout.jpg')
+            GraiaImage(path='./data/bqb/狐务器无响应.jpg')
         ), quote=source)
         return False
     result = [f"所属群组:{bfgroups_name}\n" + "=" * 18]
@@ -957,7 +957,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
 @dispatch(
     Twilight(
         [
-            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f").space(SpacePolicy.PRESERVE),
+            UnionMatch("-服务器", "-fwq", "-FWQ", "-服", "-f", "-狐务器", "-负无穷").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             ParamMatch(optional=False) @ "server_index",
             # 示例: -服务器#1
@@ -1415,7 +1415,9 @@ async def get_server_playerList_pic(
     server_gameid = server_info_temp["gameId"]
     server_guid = server_info_temp["guid"]
 
-    await app.send_message(group, MessageChain("查询ing"), quote=source)
+    await app.send_message(group, MessageChain(
+        f"查询ing"
+    ), quote=source)
     time_start = time.time()
     try:
         server_info = await (await BF1DA.get_api_instance()).getFullServerDetails(server_gameid)
@@ -2073,10 +2075,10 @@ async def managerAccount_list(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(
             "查询数据库信息时出错!"
         ), quote=source)
-    result = [
-        f"⚪{manager_account.get('display_name')} ({len(tasks[i].result())})\n  {manager_account.get('pid')}"
-        for i, manager_account in enumerate(manager_account_list)
-    ]
+    result = []
+    for i, manager_account in enumerate(manager_account_list):
+        result.append(
+            f"⚪{manager_account.get('display_name')} ({len(tasks[i].result())})\n  {manager_account.get('pid')}")
     send = "\n".join(result)
     return await app.send_message(group, MessageChain(
         f"当前共有{len(manager_account_list)}个服管账号:\n{send}"
@@ -2525,7 +2527,7 @@ async def bfgroup_refresh(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-kick", "-踢出", "-踢", "-k").space(SpacePolicy.PRESERVE),
+            UnionMatch("-kick", "-踢", "-k", "-滚出").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -3273,7 +3275,7 @@ async def add_ban(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-ub", "-unban", "-uban", "-解封").space(SpacePolicy.PRESERVE),
+            UnionMatch("-unban", "-uban", "-解封").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -3787,7 +3789,7 @@ async def del_banall(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-cb", "-checkban").space(SpacePolicy.PRESERVE),
+            UnionMatch("-checkban").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.FORCE) @ "bf_group_name",
             ParamMatch(optional=True).space(SpacePolicy.PRESERVE) @ "player_name"
             # 示例: -checkban sakula xiaoxiao
@@ -5401,7 +5403,7 @@ async def change_map(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-图池", "-maplist", "-地图池", "-ml").space(SpacePolicy.PRESERVE),
+            UnionMatch("-图池", "-maplist", "-地图池").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",
@@ -5858,7 +5860,7 @@ async def add_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-unvip", "-uvip", "-uv", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
+            UnionMatch("-unvip", "-uvip", "-删v", "-下v", "-减v").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False).space(SpacePolicy.FORCE) @ "server_rank",
@@ -6032,7 +6034,7 @@ async def del_vip(
 @dispatch(
     Twilight(
         [
-            UnionMatch("-checkvip", "-cv").space(SpacePolicy.PRESERVE),
+            UnionMatch("-checkvip").space(SpacePolicy.PRESERVE),
             ParamMatch(optional=True).space(SpacePolicy.NOSPACE) @ "bf_group_name",
             FullMatch("#", optional=True).space(SpacePolicy.NOSPACE),
             ParamMatch(optional=False) @ "server_rank",

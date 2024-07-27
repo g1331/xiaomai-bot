@@ -45,9 +45,9 @@ account_controller = response_model.get_acc_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("PermissionManager")
-channel.meta["description"] = ("负责权限管理(必须插件)")
-channel.meta["author"] = ("13")
+channel.name("PermissionManager")
+channel.description("负责权限管理(必须插件)")
+channel.author("13")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -84,9 +84,9 @@ async def change_user_perm(
     try:
         perm = int(perm.result.display)
     except:
-        return await app.send_message(
-            group, MessageChain("请检查输入的权限(64/32/16/0)"), quote=source
-        )
+        return await app.send_message(group, MessageChain(
+            f"请检查输入的权限(64/32/16/0)"
+        ), quote=source)
     # 修改其他群组的权限判假
     if group_id != group.id:
         user_level = await Permission.get_user_perm(event)
@@ -110,7 +110,7 @@ async def change_user_perm(
         elif await target_app.get_member(target_group, target) is None:
             error_targets.append((target, f"没有在群{target_group}找到群成员"))
         elif await Permission.get_user_perm_byID(target_group.id, target) == Permission.BotAdmin:
-            error_targets.append((target, "无法直接通过该指令修改BOT管理权限"))
+            error_targets.append((target, f"无法直接通过该指令修改BOT管理权限"))
         else:
             await orm.insert_or_update(
                 table=MemberPerm,
@@ -160,9 +160,9 @@ async def change_group_perm(
     try:
         perm = int(perm.result.display)
     except:
-        return await app.send_message(
-            group, MessageChain("请检查输入的权限(3/2/1/0)"), quote=source
-        )
+        return await app.send_message(group, MessageChain(
+            f"请检查输入的权限(3/2/1/0)"
+        ), quote=source)
     target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
     if not (target_app and target_group):
         return await app.send_message(group, MessageChain(
@@ -288,7 +288,9 @@ async def get_vg_list(
                     if Group_item.id == item[0] and Group_item not in vip_group_list:
                         vip_group_list.append(Group_item)
     if not vip_group_list:
-        return await app.send_message(group, MessageChain("当前没有VIP群~"), quote=source)
+        return await app.send_message(group, MessageChain(
+            f"当前没有VIP群~"
+        ), quote=source)
     vg_group_list_column = [ColumnTitle(title="VIP群列表")]
     for Group_item in vip_group_list:
         vg_group_list_column.append(
@@ -334,7 +336,7 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
                 f"没有找到群{group_id}~"
             ), quote=source)
         target_app, target_group = await account_controller.get_app_from_total_groups(group_id)
-        if not target_app or not target_group:
+        if not (target_app and target_group):
             return await app.send_message(group, MessageChain(
                 f"没有找到目标群:{group_id}"
             ), quote=source)
@@ -346,12 +348,11 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
     [ (perm, qq) ]
     """
     perm_list = await Permission.get_users_perm_byID(group_id)
+    perm_dict = {}
     member_list = await target_app.get_member_list(group_id)
-    perm_dict = {
-        item[1]: item[0]
-        for item in perm_list
-        if item[1] in [member.id for member in member_list]
-    }
+    for item in perm_list:
+        if item[1] in [member.id for member in member_list]:
+            perm_dict[item[1]] = item[0]
     for member in member_list:
         if member.id not in perm_dict and Permission.member_permStr_dict[member.permission.name] != 16:
             perm_dict[member.id] = Permission.member_permStr_dict[member.permission.name]
@@ -370,8 +371,8 @@ async def get_perm_list(app: Ariadne, group: Group, group_id: RegexResult, sourc
         ),
         ColumnTitle(title="权限列表")
     ]
-    for member_id, value in perm_dict.items():
-        if value == 16:
+    for member_id in perm_dict:
+        if perm_dict[member_id] == 16:
             continue
         try:
             member_item = await target_app.get_member(target_group, member_id)
@@ -518,16 +519,17 @@ async def change_botAdmin(app: Ariadne, group: Group, action: RegexResult, membe
                 error_targets.append((target, f"{target}已经是BOT管理啦!"))
             else:
                 await core.update_admins_permission([target])
-        elif target in admin_list:
-            await orm.delete(
-                table=MemberPerm,
-                condition=[
-                    MemberPerm.qq == target,
-                ]
-            )
-            await core.update_admins_permission()
         else:
-            error_targets.append((target, f"{target}还不是BOT管理哦!"))
+            if target not in admin_list:
+                error_targets.append((target, f"{target}还不是BOT管理哦!"))
+            else:
+                await orm.delete(
+                    table=MemberPerm,
+                    condition=[
+                        MemberPerm.qq == target,
+                    ]
+                )
+                await core.update_admins_permission()
     response_text = f"共解析{len(targets)}个目标\n其中{len(targets) - len(error_targets)}个执行成功,{len(error_targets)}个失败"
     if error_targets:
         response_text += "\n\n失败目标:"

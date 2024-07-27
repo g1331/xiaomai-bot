@@ -27,10 +27,10 @@ from utils.type import parse_match_type
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.meta["name"] = ("SteamGameInfoSearch")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["author"] = ("13")
-channel.meta["description"] = ("一个可以搜索steam游戏信息的插件，在群中发送 `steam {游戏名}` 即可")
+channel.name("SteamGameInfoSearch")
+channel.author("SAGIRI-kawaii")
+channel.author("13")
+channel.description("一个可以搜索steam游戏信息的插件，在群中发送 `steam {游戏名}` 即可")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)
@@ -58,7 +58,9 @@ async def steam_game_info_searcher(
 ):
     max_num = parse_match_type(max_num, int, 1)
     keyword = keyword.result.display
-    await app.send_message(group, MessageChain("搜索ing"), quote=source)
+    await app.send_message(group, MessageChain(
+        f"搜索ing"
+    ), quote=source)
     message = await get_steam_game_search(keyword, max_num)
     if len(message) > 1:
         fwd_nodeList = [
@@ -78,9 +80,13 @@ async def steam_game_info_searcher(
         if bot_msg.id < 0:
             raise Exception("消息风控")
         if len(message) > 1:
-            return await app.send_message(group, MessageChain("请点击转发消息查看!"), quote=source)
+            return await app.send_message(group, MessageChain(
+                f"请点击转发消息查看!"
+            ), quote=source)
     except:
-        return await app.send_message(group, MessageChain("ERROR:消息风控~"), quote=source)
+        return await app.send_message(group, MessageChain(
+            f"ERROR:消息风控~"
+        ), quote=source)
 
 
 async def get_steam_game_info(game_id: int) -> tuple:

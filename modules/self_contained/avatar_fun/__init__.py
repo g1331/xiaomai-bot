@@ -373,7 +373,7 @@ async def make_frame(avatar, i, squish=0, flip=False):
         avatar = ImageOps.mirror(avatar)
     # 将头像放缩成所需大小
     avatar = avatar.resize(
-        (int((spec[2] - spec[0]) * 1.2), int((spec[3] - spec[1]) * 1.2)), IMG.ANTIALIAS
+        (int((spec[2] - spec[0]) * 1.2), int((spec[3] - spec[1]) * 1.2)), IMG.Resampling.LANCZOS
     )
     # 并贴到空图像上
     gif_frame = IMG.new("RGB", (112, 112), (255, 255, 255))
@@ -438,7 +438,7 @@ async def kiss(
     operator = await get_pil_avatar(operator_image)
     target = await get_pil_avatar(target_image)
 
-    operator = operator.resize((40, 40), IMG.ANTIALIAS)
+    operator = operator.resize((40, 40), IMG.Resampling.LANCZOS)
     size = operator.size
     r2 = min(size[0], size[1])
     circle = IMG.new("L", (r2, r2), 0)
@@ -448,7 +448,7 @@ async def kiss(
     alpha.paste(circle, (0, 0))
     operator.putalpha(alpha)
 
-    target = target.resize((50, 50), IMG.ANTIALIAS)
+    target = target.resize((50, 50), IMG.Resampling.LANCZOS)
     size = target.size
     r2 = min(size[0], size[1])
     circle = IMG.new("L", (r2, r2), 0)
@@ -489,8 +489,8 @@ async def throw(image: Union[int, str]) -> MessageChain:
     )
     mask = mask.filter(ImageFilter.GaussianBlur(0))
     avatar.putalpha(mask)
-    avatar = avatar.rotate(random.randint(1, 360), IMG.BICUBIC)
-    avatar = avatar.resize((143, 143), IMG.ANTIALIAS)
+    avatar = avatar.rotate(random.randint(1, 360), IMG.Resampling.BICUBIC)
+    avatar = avatar.resize((143, 143), IMG.Resampling.LANCZOS)
     throw = IMG.open("./statics/throw.png")
     throw.paste(avatar, (15, 178), mask=avatar)
     throw = throw.convert("RGB")
@@ -511,9 +511,9 @@ async def crawl(image: Union[int, str]) -> MessageChain:
     avatar.putalpha(mask)
     images = list(os.listdir("./statics/crawl"))
     crawl = IMG.open(f"./statics/crawl/{random.choice(images)}").resize(
-        (500, 500), IMG.ANTIALIAS
+        (500, 500), IMG.Resampling.LANCZOS
     )
-    avatar = avatar.resize((100, 100), IMG.ANTIALIAS)
+    avatar = avatar.resize((100, 100), IMG.Resampling.LANCZOS)
     crawl.paste(avatar, (0, 400), mask=avatar)
     crawl = crawl.convert("RGB")
     output = BytesIO()
@@ -527,9 +527,9 @@ async def resize_img(img, width, height, angle=0):
     draw.ellipse((0, 0, img.size[0], img.size[1]), fill=255)
     mask = mask.filter(ImageFilter.GaussianBlur(0))
     img.putalpha(mask)
-    img = img.resize((width, height), IMG.ANTIALIAS)
+    img = img.resize((width, height), IMG.Resampling.LANCZOS)
     if angle:
-        img = img.rotate(angle, IMG.BICUBIC, expand=True)
+        img = img.rotate(angle, IMG.Resampling.BICUBIC, expand=True)
     return img
 
 
@@ -575,7 +575,7 @@ async def support(image: Union[int, str]) -> MessageChain:
     avatar = await get_pil_avatar(image)
     support = IMG.open("./statics/support.png")
     frame = IMG.new("RGBA", (1293, 1164), (255, 255, 255, 0))
-    avatar = avatar.resize((815, 815), IMG.ANTIALIAS).rotate(23, expand=True)
+    avatar = avatar.resize((815, 815), IMG.Resampling.LANCZOS).rotate(23, expand=True)
     frame.paste(avatar, (-172, -17))
     frame.paste(support, mask=support)
     frame = frame.convert("RGB")
@@ -615,7 +615,7 @@ async def swallowed(image: Union[int, str]) -> MessageChain:
     for i, frame_loc in enumerate(frame_locs):
         frame = IMG.new("RGBA", (480, 400), (255, 255, 255, 0))
         x, y, l, w = frame_loc
-        avatar_resized = avatar.resize((l, w), IMG.ANTIALIAS)
+        avatar_resized = avatar.resize((l, w), IMG.Resampling.LANCZOS)
         frame.paste(avatar_resized, (x, y))
         img = raw_frames[i]
         frame.paste(img, mask=img)

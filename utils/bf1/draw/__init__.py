@@ -167,7 +167,7 @@ class PilImageUtils:
             raise TypeError("image_input must be a PIL.Image.Image object or bytes")
 
         # 将图片调整为2*radius大小
-        image_input = image_input.resize((2 * radius, 2 * radius), Image.LANCZOS)
+        image_input = image_input.resize((2 * radius, 2 * radius), Image.Resampling.LANCZOS)
 
         # 创建一个遮罩用于裁剪
         mask = Image.new('L', (2 * radius, 2 * radius), 0)
@@ -229,7 +229,7 @@ class PilImageUtils:
             int(original_width * resize_ratio),
             int(original_height * resize_ratio)
         )
-        resized_image = image.resize(new_dimensions, Image.LANCZOS)
+        resized_image = image.resize(new_dimensions, Image.Resampling.LANCZOS)
 
         # 计算裁剪区域
         crop_left = (resized_image.width - target_width) / 2
@@ -276,7 +276,7 @@ class PilImageUtils:
         new_width = int(original_width * scale_ratio)
         new_height = int(original_height * scale_ratio)
 
-        return image.resize((new_width, new_height), Image.LANCZOS)
+        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     @staticmethod
     def paste_center(
@@ -780,7 +780,7 @@ class PlayerStatPic:
                 if emblem_img:
                     emblem_img = Image.open(BytesIO(emblem_img)).convert("RGBA")
                     # 重置为170*170
-                    emblem_img = emblem_img.resize((170, 170), Image.LANCZOS)
+                    emblem_img = emblem_img.resize((170, 170), Image.Resampling.LANCZOS)
                     # 单独将图章做一个放大填充的高斯模糊背景
                     emblem_img_background = PilImageUtils.resize_and_crop_to_center(
                         emblem_img, platoon_template.width, platoon_template.height
@@ -897,7 +897,7 @@ class PlayerStatPic:
             weapon_img = await PilImageUtils.read_img_by_url(pic_url)
             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
         # 武器的长宽比1024/256 = 4,等比缩放为384*96
-        weapon_img = weapon_img.resize((384, 96), Image.LANCZOS)
+        weapon_img = weapon_img.resize((384, 96), Image.Resampling.LANCZOS)
         # 粘贴到144,20
         weapon_template.paste(weapon_img, (144, 20), weapon_img)
         # 武器星星数
@@ -1017,7 +1017,7 @@ class PlayerStatPic:
             vehicle_img = await PilImageUtils.read_img_by_url(pic_url)
             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
         # 载具的长宽比1024/256 = 4,等比缩放为384*96
-        vehicle_img = vehicle_img.resize((384, 96), Image.LANCZOS)
+        vehicle_img = vehicle_img.resize((384, 96), Image.Resampling.LANCZOS)
         # 粘贴到144,20
         vehicle_template.paste(vehicle_img, (144, 20), vehicle_img)
         # 载具星星数
@@ -1493,7 +1493,7 @@ class PlayerWeaponPic:
             weapon_img = await PilImageUtils.read_img_by_url(pic_url)
             weapon_img = Image.open(BytesIO(weapon_img)).convert("RGBA")
         # 武器的长宽比1024/256 = 4,等比缩放为384*96
-        weapon_img = weapon_img.resize((384, 96), Image.LANCZOS)
+        weapon_img = weapon_img.resize((384, 96), Image.Resampling.LANCZOS)
         # 粘贴到144,20
         weapon_template.paste(weapon_img, (144, 20), weapon_img)
         # 武器星星数
@@ -1947,7 +1947,7 @@ class PlayerVehiclePic:
             vehicle_img = await PilImageUtils.read_img_by_url(pic_url)
             vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
         # 载具的长宽比1024/256 = 4,等比缩放为384*96
-        vehicle_img = vehicle_img.resize((384, 96), Image.LANCZOS)
+        vehicle_img = vehicle_img.resize((384, 96), Image.Resampling.LANCZOS)
         # 粘贴到144,20
         vehicle_template.paste(vehicle_img, (144, 20), vehicle_img)
         # 载具星星数
@@ -2174,7 +2174,7 @@ class Exchange:
         output_img_draw = ImageDraw.Draw(output_img)
         item_img = Image.open(item_img_path).convert("RGBA")
         # 将其等比缩放到180*45
-        item_img = item_img.resize((180, 45), Image.LANCZOS)
+        item_img = item_img.resize((180, 45), Image.Resampling.LANCZOS)
         # 粘贴到20，115
         x = 20
         y = 70
@@ -2242,7 +2242,7 @@ class Exchange:
             )
             tx_png = Image.open('./data/battlefield/pic/tx/3.png').convert('RGBA')
         # 特效图片拉伸
-        tx_png = tx_png.resize((100, 153), Image.LANCZOS)
+        tx_png = tx_png.resize((100, 153), Image.Resampling.LANCZOS)
         # 特效图片拼接 55, 10
         output_img.paste(tx_png, (55, 10), tx_png)
         # 价格, 43, 70
@@ -2255,7 +2255,7 @@ class Exchange:
         # 价格的图片
         price_img = Image.open(ExchangePricePath).convert("RGBA")
         # 缩放为 20*20
-        price_img = price_img.resize((25, 25), Image.LANCZOS)
+        price_img = price_img.resize((25, 25), Image.Resampling.LANCZOS)
         # 粘贴
         output_img.paste(price_img, (17, 247), price_img)
         return output_img
@@ -2491,11 +2491,11 @@ class PlayerListPic:
         team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
         team1_pic = PlayerListPic.get_team_pic(team1_name)
         team1_pic = Image.open(team1_pic).convert('RGBA')
-        team1_pic = team1_pic.resize((40, 40), Image.BILINEAR)
+        team1_pic = team1_pic.resize((40, 40), Image.Resampling.BILINEAR)
         team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
         team2_pic = PlayerListPic.get_team_pic(team2_name)
         team2_pic = Image.open(team2_pic).convert('RGBA')
-        team2_pic = team2_pic.resize((40, 40), Image.BILINEAR)
+        team2_pic = team2_pic.resize((40, 40), Image.Resampling.BILINEAR)
 
         # 地图路径
         server_map_pic = await PlayerListPic.get_server_map_pic(server_mapName)
@@ -2514,15 +2514,15 @@ class PlayerListPic:
 
         # 延迟 5:小于50 4:50< <100 3: 150< < 100 2: 150<  <200 1: 250< <300 0:300+
         Ping1 = Image.open(f"./data/battlefield/pic/ping/4.png").convert('RGBA')
-        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.BILINEAR)
+        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.Resampling.BILINEAR)
         Ping2 = Image.open(f"./data/battlefield/pic/ping/3.png").convert('RGBA')
-        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.BILINEAR)
+        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.Resampling.BILINEAR)
         Ping3 = Image.open(f"./data/battlefield/pic/ping/2.png").convert('RGBA')
-        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.BILINEAR)
+        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.Resampling.BILINEAR)
         Ping4 = Image.open(f"./data/battlefield/pic/ping/1.png").convert('RGBA')
-        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.BILINEAR)
+        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.Resampling.BILINEAR)
         Ping5 = Image.open(f"./data/battlefield/pic/ping/0.png").convert('RGBA')
-        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.BILINEAR)
+        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.Resampling.BILINEAR)
 
         draw = ImageDraw.Draw(IMG)
         # 字体路径

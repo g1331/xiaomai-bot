@@ -27,9 +27,9 @@ from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.name("发病")
-channel.description("生成对特定对象的发病文\n在群中发送 `-[发病|发癫] [@target] 内容` 即可，target 未填时默认对自己发病")
-channel.author("nullqwertyuiop")
+channel.meta["name"] = ("发病")
+channel.meta["description"] = ("生成对特定对象的发病文\n在群中发送 `-[发病|发癫] [@target] 内容` 即可，target 未填时默认对自己发病")
+channel.meta["author"] = ("nullqwertyuiop")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 

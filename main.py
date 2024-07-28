@@ -101,9 +101,9 @@ async def nudged_listener(app: Ariadne, event: NudgeEvent):
     bot_member = await app.get_bot_profile()
     if event.target != app.account or event.supplicant == app.account:
         return
-    if event.group_id is None:
+    if event.subject.id is None:
         return
-    if not (member := await app.get_member(event.group_id, event.supplicant)):
+    if not (member := await app.get_member(event.subject.id, event.supplicant)):
         return
     logger.info(
         f"【{bot_member.nickname}({app.account})】被群【{member.group.name}】中"

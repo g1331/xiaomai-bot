@@ -16,5 +16,12 @@ fi
 
 echo "Installing dependencies..."
 poetry install --no-root
-echo "Dependencies installed. Running the program..."
-poetry run OPENSSL_CONF=${PWD}/openssl.conf python main.py
+echo "Dependencies installed."
+
+# 设置环境变量
+echo "Setting OPENSSL_CONF environment variable..."
+export OPENSSL_CONF="${PWD}"/openssl.conf
+
+# 运行程序
+echo "Running the program..."
+poetry run python main.py

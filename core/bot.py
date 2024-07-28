@@ -512,23 +512,24 @@ class Umaru(object):
         diff = compare_metadata(context, Base.metadata)
 
         if diff:
-            logger.debug("检测到模型和数据库之间存在差异，正在尝试自动更新数据库")
-            cfg = Config(file_="alembic.ini", ini_section="alembic")
-            try:
-                revision(cfg, message="update", autogenerate=True)
-                upgrade(cfg, "head")
-                # os.system("alembic revision --autogenerate -m 'update'")
-                # os.system("alembic upgrade head")
-                logger.success("数据库更新成功")
-            except (CommandError, ResolutionError):
-                logger.warning("数据库更新失败，正在重置数据库")
-                _ = await orm.reset_version()
-                shutil.rmtree(alembic_version_path)
-                alembic_version_path.mkdir()
-                revision(cfg, message="update", autogenerate=True)
-                upgrade(cfg, "head")
-            finally:
-                conn.close()
+            # logger.debug("检测到模型和数据库之间存在差异，正在尝试自动更新数据库")
+            # cfg = Config(file_="alembic.ini", ini_section="alembic")
+            # try:
+            #     revision(cfg, message="update", autogenerate=True)
+            #     upgrade(cfg, "head")
+            #     # os.system("alembic revision --autogenerate -m 'update'")
+            #     # os.system("alembic upgrade head")
+            #     logger.success("数据库更新成功")
+            # except (CommandError, ResolutionError):
+            #     logger.warning("数据库更新失败，正在重置数据库")
+            #     _ = await orm.reset_version()
+            #     shutil.rmtree(alembic_version_path)
+            #     alembic_version_path.mkdir()
+            #     revision(cfg, message="update", autogenerate=True)
+            #     upgrade(cfg, "head")
+            # finally:
+            #     conn.close()
+            logger.warning("检测到模型和数据库之间存在差异，请手动更新数据库!")
         else:
             logger.debug("您的数据库定义没有差异，无需更新")
 

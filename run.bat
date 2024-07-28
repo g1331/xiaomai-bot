@@ -1,4 +1,13 @@
 @echo off
+echo Checking if virtual environment exists...
+if not exist venv (
+    echo Virtual environment not found. Creating virtual environment...
+    python -m venv venv
+)
+
+echo Activating virtual environment...
+call venv\Scripts\activate
+
 echo Checking if Poetry is installed...
 where poetry >nul 2>nul
 if %errorlevel% neq 0 (
@@ -7,6 +16,6 @@ if %errorlevel% neq 0 (
 )
 
 echo Installing dependencies...
-poetry install
+poetry install --no-root
 echo Dependencies installed. Running the program...
 cmd /k "poetry run python main.py"

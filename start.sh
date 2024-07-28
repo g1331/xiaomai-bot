@@ -17,4 +17,4 @@ fi
 echo "Installing dependencies..."
 poetry install --no-root
 echo "Dependencies installed. Running the program..."
-poetry run python main.py
+poetry run OPENSSL_CONF=${PWD}/openssl.conf python main.py

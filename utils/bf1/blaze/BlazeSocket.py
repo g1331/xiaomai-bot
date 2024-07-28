@@ -8,7 +8,6 @@ from loguru import logger
 from utils.bf1.blaze.Blaze import Blaze, keepalive
 
 context = ssl.create_default_context()
-context.options |= ssl.OP_LEGACY_SERVER_CONNECT
 context.check_hostname = False
 context.verify_mode = ssl.CERT_NONE
 context.set_ciphers('ALL')

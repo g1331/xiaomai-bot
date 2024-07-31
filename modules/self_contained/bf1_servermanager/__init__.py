@@ -1080,7 +1080,7 @@ async def check_server_by_index(
 )
 async def who_are_playing(
         app: Ariadne, group: Group, source: Source, message: MessageChain,
-        server_rank: RegexResult, bf_group_name: RegexResult
+        server_rank: RegexResult, bf_group_name: RegexResult, sender: Member
 ):
     # 服务器序号检查
     server_rank = server_rank.result.display
@@ -1106,7 +1106,9 @@ async def who_are_playing(
     elif isinstance(server_info, str):
         return await app.send_message(group, MessageChain(server_info), quote=source)
 
-    server_gameid = server_info.get("gameId")
+    server_id = server_info["serverId"]
+    server_gameid = server_info["gameId"]
+    server_guid = server_info["guid"]
 
     await app.send_message(group, MessageChain(
         "查询ing"
@@ -1124,13 +1126,15 @@ async def who_are_playing(
             quote=source
         )
     server_fullInfo = server_fullInfo["result"]
-    admin_list = [
-        f"{item['displayName']}".upper()
-        for item in server_fullInfo["rspInfo"]["adminList"]
+    admin_list = server_fullInfo["rspInfo"]["adminList"]
+    vip_list = server_fullInfo["rspInfo"]["vipList"]
+    admin_pid_list = [
+        f"{item['personaId']}"
+        for item in admin_list
     ]
-    vip_list = [
-        f"{item['displayName']}".upper()
-        for item in server_fullInfo["rspInfo"]["vipList"]
+    vip_pid_list = [
+        f"{item['personaId']}"
+        for item in vip_list
     ]
     # # gt接口获取玩家列表
     # url = "https://api.gametools.network/bf1/players/?gameid=" + str(server_gameid)
@@ -1187,7 +1191,7 @@ async def who_are_playing(
         ), quote=source)
     elif isinstance(playerlist_data, str):
         return await app.send_message(group, MessageChain(f"查询出错!{playerlist_data}"), quote=source)
-    playerlist_data = playerlist_data[int(server_gameid)]
+    playerlist_data: dict = playerlist_data[int(server_gameid)]
     if not playerlist_data["players"]:
         return await app.send_message(group, MessageChain("服务器未开启!"), quote=source)
 
@@ -1196,55 +1200,228 @@ async def who_are_playing(
         1: [item for item in playerlist_data["players"] if item["team"] == 1]
     }
     update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"]))
-    team1_num = len(playerlist_data["teams"][0])
-    team2_num = len(playerlist_data["teams"][1])
 
     # 用来装服务器玩家
-    player_list1 = {}
-    player_list2 = {}
-    i = 0
-    while i < team1_num:
-        player_list1[
-            f'[{playerlist_data["teams"][0][i]["rank"]}]{playerlist_data["teams"][0][i]["display_name"]}'
-        ] = f'{playerlist_data["teams"][0][i]["join_time"]}'
-        i += 1
-    i = 0
-    while i < team2_num:
-        player_list2[
-            f'[{playerlist_data["teams"][1][i]["rank"]}]{playerlist_data["teams"][1][i]["display_name"]}'
-        ] = f'{playerlist_data["teams"][1][i]["join_time"]}'
-        i += 1
-    player_dict_all = player_list1 | player_list2
+    player_list: list[dict] = [
+        #     {
+        #     "name": "玩家名",
+        #     "rank": "等级",
+        #     "join_time": "加入时间"
+        #     "pid": "pid"
+        #     "result": "加v结果"
+        #     }
+    ]
+
+    for team in playerlist_data["teams"]:
+        for player in playerlist_data["teams"][team]:
+            player_list.append({
+                "display_name": player["display_name"],
+                "rank": player["rank"],
+                "join_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(player["join_time"])),
+                "pid": player["pid"],
+                "result": None
+            })
     # 按照加入时间排序
-    player_list_all = sorted(player_dict_all.items(), key=lambda kv: ([kv[1]], kv[0]))
-    player_list = [item[0] for item in player_list_all]
+    player_list = sorted(player_list, key=lambda x: x["join_time"], reverse=True)
     if not player_list:
         await app.send_message(group, MessageChain("获取到服务器内玩家数为0"), quote=source)
         return
     # 过滤人员
-    player_list_filter = []
-    for item in group_member_list:
-        for i in player_list:
-            if i[i.rfind("]") + 1:].upper() in item.upper():
-                player_list_filter.append(i + "\n")
-    player_list_filter = list(set(player_list_filter))
-    i = 0
-    for player in player_list_filter:
-        if player[player.rfind("]") + 1:].upper().replace("\n", '') in admin_list:
-            player_list_filter[i] = f"{player}".replace("\n", "(管理员)\n")
-            i += 1
-            continue
-        elif player[player.rfind("]") + 1:].upper().replace("\n", '') in vip_list:
-            player_list_filter[i] = f"{player}".replace("\n", "(vip)\n")
-        i += 1
-    player_num = len(player_list_filter)
+    filtered_list_of_players = []
+    for groupMemberName in group_member_list:
+        for item in player_list:
+            if item["display_name"].upper() == groupMemberName.upper():
+                filtered_list_of_players.append(item)
+    filtered_list_of_players = list(set(filtered_list_of_players))
+    # 去除管理员后的
+    non_admin_list_of_players = [item for item in filtered_list_of_players if item["pid"] not in admin_pid_list]
 
-    if player_num != 0:
-        player_list_filter[-1] = player_list_filter[-1].replace("\n", '')
-        await app.send_message(group, MessageChain(
+    player_list_send = [f"({item['rank']}){item['display_name']}{'(管理员)' if item['pid'] in admin_pid_list else '(vip)' if item['pid'] in vip_pid_list else ''}" for item in filtered_list_of_players]
+
+    player_num = len(player_list_send)
+
+    help_str = "回复`v days`将为非管理员群友添加`days`天的VIP.\n`days`请替换为实际天数且大于等于1!(2分钟内有效)\n"
+
+    if player_num > 0:
+        bot_message = await app.send_message(group, MessageChain(
             f"服内群友数:{player_num}\n" if "捞" not in message.display else f"服内捞b数:{player_num}\n",
-            player_list_filter,
-            f"\n{update_time}"
+            "\n".join(player_list_send),
+            f"\n{update_time}\n"
+            f"{help_str}"
+        ), quote=source)
+
+        # 回复 v days，自动给除管理员外的玩家加上days天的vip
+        async def waiter(
+                waiter_app: Ariadne, event: GroupMessage,
+                waiter_member: Member, waiter_group: Group,
+                waiter_message: MessageChain
+        ):
+            if (
+                    (await perm_judge(bf_group_name, waiter_group, waiter_member))
+                    and waiter_group.id == group.id
+                    and (event.quote and event.quote.id == bot_message.id and waiter_app.account == app.account)
+            ):
+                waiter_message = waiter_message.replace(At(app.account), "")
+                saying = (waiter_message.display.replace(f"@{app.account} ", "")
+                          .replace(f"@{app.account}", "").strip())
+                return saying
+
+        try:
+            result = await FunctionWaiter(waiter, [GroupMessage]).wait(120)
+        except asyncio.exceptions.TimeoutError:
+            return
+        if not result:
+            logger.debug(f"等待回复失败,result:[{result}],发起人:{sender.name}[{sender.id}]")
+            return
+
+        action = result.split(' ')
+
+        if not (len(action) == 2 and action[0].isdigit()):
+            return await app.send_message(group, MessageChain(help_str), quote=source)
+
+        days = int(action[0])
+        if days < 1:
+            return await app.send_message(group, MessageChain(help_str), quote=source)
+
+        # 获取服管帐号实例
+        if not server_info["account"]:
+            return await app.send_message(group, MessageChain(
+                f"群组{bf_group_name}服务器{server_rank}未绑定服管账号，请先绑定服管账号!"
+            ), quote=source)
+        account_instance = await BF1ManagerAccount.get_manager_account_instance(server_info["account"])
+
+        operation_mode = False
+        if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式":
+            operation_mode = True
+            
+        # 上V
+        success_list = []
+        failed_list = []
+        for player in non_admin_list_of_players:
+            # NOTE: 遍历玩家，如果玩家已经在vl中，直接修改缓存，否则判断服务器类型，如果非行动模式，直接添加，否则加入到缓存中
+
+            player_cache_info = await BF1ServerVipManager.get_server_vip(server_id, player["pid"])
+            if player_cache_info:
+                # 如果expire_time小于今天，则将expire_time设置为今天
+                if player_cache_info["expire_time"] < datetime.now():
+                    player_cache_info["expire_time"] = datetime.now()
+                target_date = DateTimeUtils.add_days(player_cache_info["expire_time"], days)
+                # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
+                date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
+                if date_diff < 0:
+                    player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                    failed_list.append(player)
+                else:
+                    # 写入数据库
+                    suc_str = f"修改成功!到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'}"
+                    player["result"] = suc_str
+                    await BF1ServerVipManager.update_server_vip_by_pid(
+                        server_id=server_id, player_pid=player["pid"], displayName=player["display_name"],
+                        expire_time=target_date, valid=True, should_update_time=False
+                    )
+                    await BF1Log.record(
+                        operator_qq=sender.id,
+                        serverId=server_id,
+                        persistedGameId=server_guid,
+                        gameId=server_gameid,
+                        pid=player["pid"],
+                        display_name=player["display_name"],
+                        action="vip",
+                        info=suc_str,
+                    )
+                    success_list.append(player)
+            else:
+                # 非行动模式，直接上v
+                if not operation_mode:
+                    # 没有缓存默认从今天开始
+                    target_date = DateTimeUtils.add_days(datetime.now(), days)
+                    # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
+                    date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
+                    if date_diff < 0:
+                        player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                        failed_list.append(player)
+                        continue
+                    result = await account_instance.addServerVip(personaId=player["pid"], serverId=server_id)
+                    if isinstance(result, dict):
+                        suc_str = f"添加成功!到期时间：{target_date.strftime('%Y-%m-%d') if target_date else '永久'}"
+                        player["result"] = suc_str
+                        # 写入数据库
+                        await BF1ServerVipManager.update_server_vip_by_pid(
+                            server_id=server_id,
+                            player_pid=player["pid"],
+                            displayName=player["display_name"],
+                            expire_time=target_date,
+                            valid=True
+                        )
+                        await BF1Log.record(
+                            operator_qq=sender.id,
+                            serverId=server_id,
+                            persistedGameId=server_guid,
+                            gameId=server_gameid,
+                            pid=player["pid"],
+                            display_name=player["display_name"],
+                            action="vip",
+                            info=suc_str,
+                        )
+                        success_list.append(player)
+                    else:
+                        player["result"] = f"添加失败!{result}"
+                        failed_list.append(player)
+                # 行动模式的话如果有cache信息则直接修改日期valid为True, 否则要获取viplist判断人数是否超过上限(50),且valid为False
+                else:
+                    # 没有缓存的情况
+                    target_date = DateTimeUtils.add_days(datetime.now(), days)
+                    # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
+                    date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
+                    if date_diff < 0:
+                        player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                        failed_list.append(player)
+                        continue
+
+                    # 没有缓存信息，获取viplist判断人数是否超过上限，且valid为False
+                    # 统计目标天数>=今天的人数
+                    vip_count = 0
+                    for item in vip_list:
+                        # 只精确到天
+                        date_temp: datetime = item["expire_time"]
+                        if not date_temp:
+                            vip_count += 1
+                            continue
+                        date_temp = date_temp.replace(hour=0, minute=0, second=0, microsecond=0)
+                        today_date_temp = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                        if date_temp >= today_date_temp:
+                            vip_count += 1
+                    if vip_count >= 100:  # 行动服由于vip数量需求更高，现在设置缓存100个，checkvip时按添加到数据库的时间排序进行上v
+                        player["result"] = f"VIP缓存人数已达上限(100)，无法添加！"
+                        failed_list.append(player)
+                        continue
+                    # 如果人数未超过上限，则添加新的VIP，并将valid设为False
+                    player["result"] = f"添加成功!待生效天数:{days}天"
+                    # 写入数据库
+                    await BF1ServerVipManager.update_server_vip_by_pid(
+                        server_id=server_id,
+                        player_pid=player["pid"],
+                        displayName=player["display_name"],
+                        expire_time=target_date,
+                        valid=False
+                    )
+                    success_list.append(player)
+                    continue
+        # 生成消息
+        if len(success_list) == 0:
+            success_str = ""
+        else:
+            success_str = f"\n成功添加{len(success_list)}个vip:\n" + "\n".join(
+                [f"{item['name']}:{item['result']}" for item in success_list]
+            )
+        if len(failed_list) == 0:
+            failed_str = ""
+        else:
+            failed_str = f"\n{len(failed_list)}个vip添加失败:\n" + "\n".join(
+                [f"{item['name']}:{item['result']}" for item in failed_list]
+            )
+        return await app.send_message(group, MessageChain(
+            f"执行完毕!{success_str}{failed_str}"
         ), quote=source)
     else:
         await app.send_message(
@@ -6189,7 +6366,8 @@ async def check_vip(
         vip_already_cnt = len([_ for _ in vip_info if _['valid']]) - len(del_task)
         vip_can_add_cnt = 50 - vip_already_cnt
         origin_len = len(add_task)
-        logger.debug(f"{bf_group_name}服务器{server_rank}VIP占位 {vip_already_cnt}/50,可添加{vip_can_add_cnt}, 当前task数量{origin_len}")
+        logger.debug(
+            f"{bf_group_name}服务器{server_rank}VIP占位 {vip_already_cnt}/50,可添加{vip_can_add_cnt}, 当前task数量{origin_len}")
         if origin_len > vip_can_add_cnt:
             add_task = add_task[:vip_can_add_cnt]
         rest_len = origin_len - vip_can_add_cnt if origin_len - vip_can_add_cnt > 0 else 0
@@ -6197,7 +6375,8 @@ async def check_vip(
             group, MessageChain(
                 f"预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~"
             ), quote=source)
-        logger.debug(f"{bf_group_name}服务器{server_rank}预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~")
+        logger.debug(
+            f"{bf_group_name}服务器{server_rank}预计清理VIP{len(del_task)}个,添加{len(add_task)}个,剩余缓存{rest_len}个~")
         del_task_result = await asyncio.gather(
             *[account_instance.removeServerVip(task["personaId"], server_id) for task in del_task])
         for i in range(len(del_task)):

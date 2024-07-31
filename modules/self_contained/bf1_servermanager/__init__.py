@@ -1232,7 +1232,11 @@ async def who_are_playing(
         for item in player_list:
             if item["display_name"].upper() == groupMemberName.upper():
                 filtered_list_of_players.append(item)
-    filtered_list_of_players = list(set(filtered_list_of_players))
+    # 将字典转换为排序后的元组，使其可哈希
+    filtered_list_of_players = list({tuple(sorted(player.items())) for player in filtered_list_of_players})
+    # 将元组转换回字典
+    filtered_list_of_players = [dict(player) for player in filtered_list_of_players]
+
     # 去除管理员后的
     non_admin_list_of_players = [item for item in filtered_list_of_players if item["pid"] not in admin_pid_list]
 

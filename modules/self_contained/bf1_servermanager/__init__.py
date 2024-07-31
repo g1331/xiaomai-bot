@@ -1218,7 +1218,7 @@ async def who_are_playing(
                 "display_name": player["display_name"],
                 "rank": player["rank"],
                 "join_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(player["join_time"])),
-                "pid": player["pid"],
+                "pid": str(player["pid"]),
                 "result": None
             })
     # 按照加入时间排序

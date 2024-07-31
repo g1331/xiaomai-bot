@@ -931,7 +931,7 @@ async def check_server(app: Ariadne, group: Group, source: Source):
             )
         )
     server_list_column = [Column(elements=server_list_column[i: i + 6]) for i in range(0, len(server_list_column), 6)]
-    if servers > 5:
+    if servers >= 10:
         return await app.send_message(
             group,
             MessageChain(

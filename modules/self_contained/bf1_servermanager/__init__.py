@@ -1244,13 +1244,13 @@ async def who_are_playing(
 
     player_num = len(player_list_send)
 
-    help_str = "回复`v days`将为非管理员群友添加`days`天的VIP.\n`days`请替换为实际天数且大于等于1!(2分钟内有效)\n"
+    help_str = "回复`v days`将为非管理员群友添加`days`天的VIP.\n`days`请替换为实际天数且大于等于1!(2分钟内有效)"
 
     if player_num > 0:
         bot_message = await app.send_message(group, MessageChain(
             f"服内群友数:{player_num}\n" if "捞" not in message.display else f"服内捞b数:{player_num}\n",
             "\n".join(player_list_send),
-            f"\n{update_time}\n"
+            f"\n更新时间:{update_time}\n\n"
             f"{help_str}"
         ), quote=source)
 

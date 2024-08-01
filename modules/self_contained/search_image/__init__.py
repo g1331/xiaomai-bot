@@ -64,7 +64,7 @@ async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, 
     # 使用方法搜索
     scrape_index_tasks = [
         asyncio.ensure_future(fun_saucenao(img_url)),
-        asyncio.ensure_future(fun_ascii2d(img_url)),
+        # asyncio.ensure_future(fun_ascii2d(img_url)),
         asyncio.ensure_future(fun_iqdb(img_url)),
         asyncio.ensure_future(fun_google(img_url)),
         asyncio.ensure_future(fun_ehentai(img_url)),

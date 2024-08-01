@@ -35,9 +35,9 @@ global_config = create(GlobalConfig)
 saya = Saya.current()
 # 获取属于这个模组的实例
 channel = Channel.current()
-channel.meta["name"] = ("识图")
-channel.meta["description"] = ("识图、搜番功能")
-channel.meta["author"] = ("13")
+channel.meta["name"] = "识图"
+channel.meta["description"] = "识图、搜番功能"
+channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -143,7 +143,8 @@ async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Sourc
         bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
         if bot_msg.id < 0:
             raise Exception("消息风控!")
-    except Exception:
+    except Exception as e:
+        logger.warning(e)
         return await app.send_message(group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source)
     return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
 
@@ -183,7 +184,8 @@ async def souFan(app: Ariadne, group: Group, sender: Member, img: ElementResult,
         bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
         if bot_msg.id < 0:
             raise Exception("消息风控!")
-    except:
+    except Exception as e:
+        logger.warning(e)
         return await app.send_message(group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source)
     return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
 
@@ -237,16 +239,17 @@ async def souFan_waiter(app: Ariadne, group: Group, sender: Member, source: Sour
     return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
 
 
-async def fun_saucenao(file_url: str) -> MessageChain:
+async def fun_saucenao(file_url: str) -> MessageChain | None:
     if not global_config.functions.get("image_search", {}).get("saucenao_key"):
         return MessageChain("未填写saucenao_apikey")
     async with Network() as client:
         # saucenao搜图
-        api_key = "ea688b033df640f2bb85075234510113b8a2e0dd"
+        api_key = global_config.functions.get("image_search", {}).get("saucenao_key")
         saucenao = SauceNAO(client=client, api_key=api_key)
         try:
             resp = await saucenao.search(url=file_url)
-        except:
+        except Exception as e:
+            logger.warning(e)
             return None
         if len(resp.raw) == 0:
             return None
@@ -262,14 +265,15 @@ async def fun_saucenao(file_url: str) -> MessageChain:
             )
 
 
-async def fun_tracemoe(file_url: str) -> MessageChain:
+async def fun_tracemoe(file_url: str) -> MessageChain | None:
     # tracemoe搜番
     async with Network() as client:
         tracemoe = TraceMoe(client=client, mute=False, size=None)
         try:
             resp = await tracemoe.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("tracemoe搜索出错!")
         if len(resp.raw) == 0:
             return None
         else:
@@ -295,15 +299,16 @@ async def fun_tracemoe(file_url: str) -> MessageChain:
             )
 
 
-async def fun_ascii2d(file_url: str) -> MessageChain:
+async def fun_ascii2d(file_url: str) -> MessageChain | None:
     # ascii2d搜图
     async with Network() as client:
         bovw = True  # 是否使用特征检索
         ascii2d = Ascii2D(client=client, bovw=bovw)
         try:
             resp = await ascii2d.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("ascii2d搜索出错!")
         if len(resp.raw) == 0:
             return None
         else:
@@ -318,14 +323,15 @@ async def fun_ascii2d(file_url: str) -> MessageChain:
             )
 
 
-async def fun_iqdb(file_url: str) -> MessageChain:
+async def fun_iqdb(file_url: str) -> MessageChain | None:
     # iqdb搜图
     async with Network() as client:
         iqdb = Iqdb(client=client)
         try:
             resp = await iqdb.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("iqdb搜索出错!")
         if len(resp.raw) == 0:
             return None
         try:
@@ -344,45 +350,37 @@ async def fun_iqdb(file_url: str) -> MessageChain:
                 f"相似度低的结果个数: {len(resp.more)}\n"
                 f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
             )
-        except:
+        except Exception as e:
+            logger.error(e)
             return None
 
 
-async def fun_google(file_url: str) -> MessageChain:
+async def fun_google(file_url: str) -> MessageChain | None:
     # google搜图
     async with Network() as client:
         google = Google(client=client)
         try:
             resp = await google.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("google搜索出错!")
         if len(resp.raw) == 0:
             return None
         try:
-            message = MessageChain(
+            return MessageChain(
                 f"google结果:\n"
-                f"当前页: {resp.index}\n"
-                f"标题: {resp.raw[2].title}\n"
-                f"地址: {resp.raw[2].url}\n"
-                f"总页数: {resp.page}\n"
-                f"缩略图:{resp.raw[1].thumbnail}",
+                f"当前页: {resp.page_number}\n"
+                f"标题: {resp.raw[0].title}\n"
+                f"地址: {resp.raw[0].url}\n"
+                f"总页数: {len(resp.pages)}\n"
+                f"缩略图:{resp.raw[0].thumbnail}",
             )
-        except:
-            try:
-                message = MessageChain(
-                    f"google结果:\n"
-                    f"当前页: {resp.index}\n"
-                    f"标题: {resp.raw[1].title}\n"
-                    f"地址: {resp.raw[1].url}\n"
-                    f"总页数: {resp.page}\n"
-                    f"缩略图:{resp.raw[1].thumbnail}"
-                )
-            except:
-                return None
-        return message
+        except Exception as e:
+            logger.error(e)
+            return None
 
 
-async def fun_ehentai(file_url: str) -> MessageChain:
+async def fun_ehentai(file_url: str) -> MessageChain | None:
     # ehentai搜图
     async with Network() as client:
         # cookies = None  # 注意：如果要使用 EXHentai 搜索，需要提供 cookies
@@ -390,55 +388,50 @@ async def fun_ehentai(file_url: str) -> MessageChain:
         ehentai = EHentai(client=client)
         try:
             resp = await ehentai.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("ehentai搜索出错!")
         if len(resp.raw) == 0:
             return MessageChain(
                 f"ehentai结果:\n"
                 f"未搜索到!"
             )
         try:
-            message = MessageChain(
+            return MessageChain(
                 f"ehentai结果:\n"
                 f"搜索结果链接: {resp.url}\n"
                 f"标题: {resp.raw[0].title}\n"
-                f"地址: {resp.raw[2].url}\n"
+                f"地址: {resp.raw[0].url}\n"
                 f"分类: {resp.raw[0].type}\n"
                 f"日期: {resp.raw[0].date}\n"
                 f"标签: {resp.raw[0].tags}\n"
                 f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
             )
-        except:
-            message = MessageChain(
-                f"ehentai结果:\n"
-                f"未搜索到!"
-            )
-        return message
+        except Exception as e:
+            logger.error(e)
+            return None
 
 
-async def fun_baidu(file_url: str) -> MessageChain:
+async def fun_baidu(file_url: str) -> MessageChain | None:
     # baidu搜图
     async with Network() as client:
         baidu = BaiDu(client=client)
         try:
             resp = await baidu.search(url=file_url)
-        except:
-            return None
+        except Exception as e:
+            logger.error(e)
+            return MessageChain("baidu搜索出错!")
         if len(resp.raw) == 0:
             return MessageChain(
                 f"baidu结果:\n"
                 f"未搜索到!"
             )
-        if resp:
-            message = MessageChain(
+        try:
+            return MessageChain(
                 f"baidu结果:\n"
-                f"标题: {resp.raw[0].title}\n"
                 f"图片所在网页地址: {resp.raw[0].url}\n"
                 f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
             )
-        else:
-            return MessageChain(
-                f"baidu结果:\n"
-                f"未搜索到!"
-            )
-        return message
+        except Exception as e:
+            logger.error(e)
+            return None

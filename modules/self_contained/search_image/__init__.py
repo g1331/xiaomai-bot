@@ -314,12 +314,12 @@ async def fun_ascii2d(file_url: str) -> MessageChain | None:
         else:
             return MessageChain(
                 f"ascii2d结果:\n"
-                f"标题: {resp.raw[1].title}\n"
-                f"作者: {resp.raw[1].author}\n"
-                f"作者地址: {resp.raw[1].author_url}\n"
-                f"作品地址: {resp.raw[1].url}\n"
-                f"原图长宽，类型，大小: {resp.raw[1].detail}\n"
-                f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
+                f"标题: {resp.raw[0].title}\n"
+                f"作者: {resp.raw[0].author}\n"
+                f"作者地址: {resp.raw[0].author_url}\n"
+                f"作品地址: {resp.raw[0].url}\n"
+                f"原图长宽，类型，大小: {resp.raw[0].detail}\n"
+                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
             )
 
 
@@ -348,7 +348,7 @@ async def fun_iqdb(file_url: str) -> MessageChain | None:
                 f"TinEye搜图链接: {resp.tineye_url}\n"
                 f"Google搜图链接: {resp.google_url}\n"
                 f"相似度低的结果个数: {len(resp.more)}\n"
-                f"缩略图:\n", Image(url=resp.raw[1].thumbnail)
+                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
             )
         except Exception as e:
             logger.error(e)

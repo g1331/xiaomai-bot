@@ -1280,10 +1280,10 @@ async def who_are_playing(
 
         action = result.split(' ')
 
-        if not (len(action) == 2 and action[0].isdigit()):
+        if not (len(action) == 2 and action[1].isdigit()):
             return await app.send_message(group, MessageChain(help_str), quote=source)
 
-        days = int(action[0])
+        days = int(action[1])
         if days < 1:
             return await app.send_message(group, MessageChain(help_str), quote=source)
 

@@ -1417,13 +1417,13 @@ async def who_are_playing(
             success_str = ""
         else:
             success_str = f"\n成功添加{len(success_list)}个vip:\n" + "\n".join(
-                [f"{item['name']}:{item['result']}" for item in success_list]
+                [f"{item['display_name']}:{item['result']}" for item in success_list]
             )
         if len(failed_list) == 0:
             failed_str = ""
         else:
             failed_str = f"\n{len(failed_list)}个vip添加失败:\n" + "\n".join(
-                [f"{item['name']}:{item['result']}" for item in failed_list]
+                [f"{item['display_name']}:{item['result']}" for item in failed_list]
             )
         return await app.send_message(group, MessageChain(
             f"执行完毕!{success_str}{failed_str}"

@@ -1297,6 +1297,8 @@ async def who_are_playing(
         operation_mode = False
         if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式":
             operation_mode = True
+
+        vip_cache_list = await BF1ServerVipManager.get_server_vip_list(server_id)
             
         # 上V
         success_list = []
@@ -1384,9 +1386,8 @@ async def who_are_playing(
 
                     # 没有缓存信息，获取viplist判断人数是否超过上限，且valid为False
                     # 统计目标天数>=今天的人数
-                    vip_list = await BF1ServerVipManager.get_server_vip_list(server_id)
                     vip_count = 0
-                    for item in vip_list:
+                    for item in vip_cache_list:
                         # 只精确到天
                         date_temp: datetime = item["expire_time"]
                         if not date_temp:

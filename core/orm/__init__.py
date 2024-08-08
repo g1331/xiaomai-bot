@@ -13,11 +13,12 @@ from core.config import GlobalConfig
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous = normal")
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA synchronous = normal;")
     cursor.execute("PRAGMA temp_store = memory;")
-    cursor.execute("PRAGMA mmap_size = 4294967296")
+    cursor.execute("PRAGMA cache_size = 10000;")
     cursor.close()
+
 
 class AsyncORM:
     """对象关系映射（Object Relational Mapping）"""
@@ -193,7 +194,8 @@ class AsyncORM:
         :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件
         """
         # 构造所有的update语句
-        update_stmts = [update(table).where(*condition).values(**data) for data, condition in zip(data_list, conditions_list)]
+        update_stmts = [update(table).where(*condition).values(**data) for data, condition in
+                        zip(data_list, conditions_list)]
         # 执行批量更新操作
         await self.execute_all(update_stmts)
 

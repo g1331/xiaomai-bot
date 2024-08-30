@@ -48,6 +48,7 @@ seaborn = "^0.13.2"
 pexpect = "^4.9.0"
 starlette = "^0.37.2"
 playwright = "1.41.2"
+curl-cffi = "^0.7.1"
 
 [tool.poetry.group.graia.dependencies]
 # Optional dependency to suppress warning on startup

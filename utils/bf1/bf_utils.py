@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import platform
 import time
 from functools import wraps
 from typing import Union
@@ -8,8 +9,10 @@ from typing import Union
 import aiohttp
 import httpx
 import tiktoken
+import urllib3
 from bs4 import BeautifulSoup
 from creart import create
+from curl_cffi.requests import AsyncSession
 from graia.ariadne import Ariadne
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
@@ -22,11 +25,15 @@ from core.config import GlobalConfig
 from core.control import Permission
 from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
 from utils.bf1.blaze.BlazeSocket import BlazeSocket
-from utils.bf1.data_handle import BTRMatchesData, BlazeData
+from utils.bf1.data_handle import BlazeData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
+
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+urllib3.disable_warnings()
 
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else ""
@@ -490,9 +497,9 @@ class BattlefieldTracker:
         route = "profile/origin/"
         url = f"{BattlefieldTracker.url_root}{route}{player_name}?forceCollect=true"
         try:
-            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url, proxy=proxy) as response:
-                    response = await response.json()
+            async with AsyncSession() as session:
+                response = await session.get(url, headers=BattlefieldTracker.header)
+                response = response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]
             return response
@@ -542,9 +549,9 @@ class BattlefieldTracker:
         route = "matches/origin/"
         url = f"{BattlefieldTracker.url_root}{route}{player_name}"
         try:
-            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url, proxy=proxy) as response:
-                    response = await response.json()
+            async with AsyncSession() as session:
+                response = await session.get(url, headers=BattlefieldTracker.header)
+                response = response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]
             return response
@@ -557,9 +564,9 @@ class BattlefieldTracker:
         route = "matches/"
         url = f"{BattlefieldTracker.url_root}{route}{match_id}"
         try:
-            async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url, proxy=proxy) as response:
-                    response = await response.json()
+            async with AsyncSession() as session:
+                response = await session.get(url, headers=BattlefieldTracker.header)
+                response = response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]
             return response

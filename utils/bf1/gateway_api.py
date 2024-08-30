@@ -5,8 +5,13 @@ import uuid
 from typing import Union
 
 import aiohttp
+from creart import create
 import httpx
 from loguru import logger
+from core.config import GlobalConfig
+
+config = create(GlobalConfig)
+proxy = config.proxy if config.proxy != "proxy" else ""
 
 
 async def get_a_uuid() -> str:
@@ -265,7 +270,8 @@ class bf1_api(object):
                     headers=await self.get_api_header(),
                     data=json.dumps(body),
                     timeout=10,
-                    ssl=False
+                    ssl=False,
+                    proxy=proxy
             ) as response:
                 return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
@@ -287,14 +293,15 @@ class bf1_api(object):
         url = 'https://accounts.ea.com/connect/auth?client_id=ORIGIN_JS_SDK&response_type=token&redirect_uri=nucleus%3Arest&prompt=none&release_type=prod'
         header = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36',
-            'ContentType': 'application/json',
+            'Content-Type': 'application/json',
             'Cookie': f'remid={self.remid}; sid={self.sid}'
         }
         response = await self.http_session.get(
             url=url,
             headers=header,
             timeout=10,
-            ssl=False
+            ssl=False,
+            proxy=proxy
         )
         try:
             res = eval(await response.text())
@@ -466,7 +473,8 @@ class bf1_api(object):
             url=url,
             headers=header,
             timeout=10,
-            allow_redirects=False
+            allow_redirects=False,
+            proxy=proxy
         )
         try:
             authcode = response.headers['location']
@@ -512,7 +520,8 @@ class bf1_api(object):
                 headers=header,
                 data=json.dumps(body),
                 timeout=10,
-                ssl=False
+                ssl=False,
+                proxy=proxy
             )
             return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
@@ -553,7 +562,7 @@ class bf1_api(object):
         """
         url = f"https://gateway.ea.com/proxy/identity/personas?namespaceName=cem_ea_id&displayName={player_name}"
         # 头部信息
-        head = {
+        header = {
             "Host": "gateway.ea.com",
             "Connection": "keep-alive",
             "Accept": "application/json",
@@ -564,9 +573,10 @@ class bf1_api(object):
         try:
             response = await self.http_session.get(
                 url=url,
-                headers=head,
+                headers=header,
                 timeout=10,
-                ssl=False
+                ssl=False,
+                proxy=proxy
             )
             return await response.json()
         except asyncio.exceptions.TimeoutError:

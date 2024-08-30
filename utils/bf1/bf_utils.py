@@ -29,6 +29,7 @@ from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 
 config = create(GlobalConfig)
+proxy = config.proxy if config.proxy != "proxy" else ""
 
 
 async def get_personas_by_name(player_name: str) -> Union[dict, None]:
@@ -128,7 +129,7 @@ async def BTR_get_recent_info(player_name: str) -> list[dict]:
         "Connection": "keep-alive",
         "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
     }
-    async with aiohttp.ClientSession(headers=header) as session:
+    async with aiohttp.ClientSession(headers=header, proxy=proxy) as session:
         async with session.get(url) as response:
             html = await response.text()
             # 处理网页获取失败的情况
@@ -208,7 +209,7 @@ async def bfeac_checkBan(player_name: str) -> dict:
     }
     try:
         async with aiohttp.ClientSession(headers=header) as session:
-            async with session.get(check_eacInfo_url) as response:
+            async with session.get(check_eacInfo_url, proxy=proxy) as response:
                 response = await response.json()
         if response.get("data"):
             data = response["data"][0]
@@ -270,12 +271,12 @@ async def bfban_checkBan(player_pid: str) -> dict:
 
 async def gt_checkVban(player_pid) -> int:
     url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
-    head = {
-        'accept': 'application/json',
+    header = {
+        'Accept': 'application/json',
     }
     try:
-        async with aiohttp.ClientSession(headers=head) as session:
-            async with session.get(url) as response:
+        async with aiohttp.ClientSession(headers=header) as session:
+            async with session.get(url, proxy=proxy) as response:
                 response = await response.json()
         return len(response["vban"])
     except:
@@ -284,13 +285,13 @@ async def gt_checkVban(player_pid) -> int:
 
 async def gt_bf1_stat() -> str:
     url = "https://api.gametools.network/bf1/status/?platform=pc"
-    head = {
+    header = {
         "Connection": "Keep-Alive"
     }
     # noinspection PyBroadException
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=head) as response:
+            async with session.get(url, headers=header, proxy=proxy) as response:
                 html = await response.json()
         if html.get("errors"):
             # {'errors': ['Error connecting to the database']}
@@ -329,7 +330,7 @@ async def gt_get_player_id_by_name(player_name: str) -> Union[dict, None]:
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
+            async with session.get(url, headers=headers, proxy=proxy) as response:
                 response = await response.json()
         if response.get("errors"):
             logger.error(f"{player_name}|gt_get_player_id: {response['errors']}")
@@ -347,7 +348,7 @@ async def gt_get_player_id_by_pid(player_pid: str) -> Union[dict, None]:
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
+            async with session.get(url, headers=headers, proxy=proxy) as response:
                 response = await response.json()
             if response.get("errors"):
                 logger.error(f"{player_pid}|gt_get_player_id: {response['errors']}")
@@ -365,13 +366,13 @@ async def check_vban(player_pid) -> dict or str:
     :return:
     """
     url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
-    head = {
-        'accept': 'application/json',
+    header = {
+        'Accept': 'application/json',
         "Connection": "Keep-Alive"
     }
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=head, timeout=5)
+            response = await client.get(url, headers=header, timeout=5, proxy=proxy)
         try:
             return eval(response.text)
         except:
@@ -387,7 +388,7 @@ async def record_api(player_pid) -> Union[dict, None]:
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(record_url, json=data) as response:
+            async with session.post(record_url, json=data, proxy=proxy) as response:
                 response = await response.json()
         return response
     except Exception as e:
@@ -410,7 +411,7 @@ async def download_skin(url):
             async with aiohttp.ClientSession() as session:
                 # noinspection PyBroadException
                 try:
-                    async with session.get(url, timeout=5, verify_ssl=False) as resp:
+                    async with session.get(url, timeout=5, verify_ssl=False, proxy=proxy) as resp:
                         pic = await resp.read()
                         with open(file_name, 'wb') as fp:
                             fp.write(pic)
@@ -429,13 +430,13 @@ async def get_playerList_byGameid(server_gameid: Union[str, int, list]) -> Union
     """
     header = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36',
-        'ContentType': 'json',
+        'Content-Type': 'json',
     }
     api_url = "https://delivery.easb.cc/games/get_server_status"
     data = {"gameIds": [server_gameid] if isinstance(server_gameid, (str, int)) else server_gameid}
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(api_url, headers=header, json=data, timeout=5) as response:
+            async with session.post(api_url, headers=header, json=data, timeout=5, proxy=proxy) as response:
                 response = await response.json()
     except TimeoutError as e:
         logger.error(f"get_playerList_byGameid: {e}")
@@ -490,7 +491,7 @@ class BattlefieldTracker:
         url = f"{BattlefieldTracker.url_root}{route}{player_name}?forceCollect=true"
         try:
             async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url) as response:
+                async with session.get(url, proxy=proxy) as response:
                     response = await response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]
@@ -542,7 +543,7 @@ class BattlefieldTracker:
         url = f"{BattlefieldTracker.url_root}{route}{player_name}"
         try:
             async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url) as response:
+                async with session.get(url, proxy=proxy) as response:
                     response = await response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]
@@ -557,7 +558,7 @@ class BattlefieldTracker:
         url = f"{BattlefieldTracker.url_root}{route}{match_id}"
         try:
             async with aiohttp.ClientSession(headers=BattlefieldTracker.header) as session:
-                async with session.get(url) as response:
+                async with session.get(url, proxy=proxy) as response:
                     response = await response.json()
             if response.get("errors"):
                 return response["errors"][0]["message"]

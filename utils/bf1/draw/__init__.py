@@ -2325,7 +2325,7 @@ class PlayerListPic:
                 async with aiohttp.ClientSession() as session:
                     # noinspection PyBroadException
                     try:
-                        async with session.get(url, timeout=5, verify_ssl=False) as resp:
+                        async with session.get(url, timeout=5, verify_ssl=False, proxy=proxy) as resp:
                             pic = await resp.read()
                             with open(file_name, 'wb') as fp:
                                 fp.write(pic)

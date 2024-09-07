@@ -5,6 +5,8 @@ import json
 import os
 import random
 import time
+
+from creart import create
 from io import BytesIO
 from pathlib import Path
 from typing import Union, Tuple
@@ -18,11 +20,15 @@ from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
 from loguru import logger
 from zhconv import zhconv
 
+from core.config import GlobalConfig
 from utils.bf1.bf_utils import download_skin
 from utils.bf1.data_handle import VehicleData, WeaponData
 from utils.bf1.default_account import BF1DA
 from utils.bf1.draw.choose_bg_pic import bg_pic
 from utils.bf1.map_team_info import MapData
+
+config = create(GlobalConfig)
+proxy = config.proxy if config.proxy != "proxy" else ""
 
 BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
 # 整图大小
@@ -328,7 +334,7 @@ class PilImageUtils:
     async def read_img_by_url(url: str) -> Union[bytes, None]:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
+                async with session.get(url, proxy=proxy) as resp:
                     if resp.status == 200:
                         return await resp.read()
                     logger.warning(f"读取图片失败，url: {url}")

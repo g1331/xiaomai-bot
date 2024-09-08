@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import io
 import json
 import os
@@ -7,6 +6,7 @@ import random
 import time
 
 from creart import create
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Union, Tuple
@@ -2110,7 +2110,7 @@ class Exchange:
         """
         self.data: dict = data
         self.img: bytes = bytes()
-        self.now_date = datetime.datetime.now()
+        self.now_date = f"{datetime.today().strftime('%Y-%m-%d')}"
         SE_data_list = self.data["result"]["items"]
         # 创建一个交换物件的列表列表，元素列表的元素有价格，皮肤名字，武器名字，品质，武器图片
         self.exchange_item_list = []
@@ -2304,10 +2304,8 @@ class Exchange:
 
         # 交换更新频率比较低，所以直接存png原图
         # output_img.save(file_path, format="JPEG", quality=95)
-        now_date = datetime.datetime.now()
-        # 文件名为xxxx年xx月xx日.png
-        file_name = f"{now_date.year}年{now_date.month}月{now_date.day}日"
-        save_path = f"./data/battlefield/exchange/{file_name}.png"
+        # 文件名为xxxx-xx-xx.png
+        save_path = f"./data/battlefield/exchange/{self.now_date}.png"
         output_img.save(save_path, format="PNG")
         output_buffer = BytesIO()
         output_img.save(output_buffer, format='PNG')
@@ -2519,15 +2517,15 @@ class PlayerListPic:
         IMG = IMG.crop(box)
 
         # 延迟 5:小于50 4:50< <100 3: 150< < 100 2: 150<  <200 1: 250< <300 0:300+
-        Ping1 = Image.open(f"./data/battlefield/pic/ping/4.png").convert('RGBA')
+        Ping1 = Image.open("./data/battlefield/pic/ping/4.png").convert('RGBA')
         Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping2 = Image.open(f"./data/battlefield/pic/ping/3.png").convert('RGBA')
+        Ping2 = Image.open("./data/battlefield/pic/ping/3.png").convert('RGBA')
         Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping3 = Image.open(f"./data/battlefield/pic/ping/2.png").convert('RGBA')
+        Ping3 = Image.open("./data/battlefield/pic/ping/2.png").convert('RGBA')
         Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping4 = Image.open(f"./data/battlefield/pic/ping/1.png").convert('RGBA')
+        Ping4 = Image.open("./data/battlefield/pic/ping/1.png").convert('RGBA')
         Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping5 = Image.open(f"./data/battlefield/pic/ping/0.png").convert('RGBA')
+        Ping5 = Image.open("./data/battlefield/pic/ping/0.png").convert('RGBA')
         Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.Resampling.BILINEAR)
 
         draw = ImageDraw.Draw(IMG)
@@ -2555,12 +2553,12 @@ class PlayerListPic:
         IMG.paste(team1_pic, (100, 101))
         # 队伍1名
         draw.text((152, 105), team1_name, fill='white', font=team_font)
-        draw.text((520, 113), f"胜率", fill='white', font=title_font_small)
-        draw.text((600, 113), f"K/D", fill='white', font=title_font_small)
-        draw.text((670, 113), f"KPM", fill='white', font=title_font_small)
-        draw.text((750, 113), f"时长(h)", fill='white', font=title_font_small)
-        draw.text((840, 113), f"延迟", fill='white', font=title_font_small)
-        draw.text((900, 113), f"语言", fill='white', font=title_font_small)
+        draw.text((520, 113), "胜率", fill='white', font=title_font_small)
+        draw.text((600, 113), "K/D", fill='white', font=title_font_small)
+        draw.text((670, 113), "KPM", fill='white', font=title_font_small)
+        draw.text((750, 113), "时长(h)", fill='white', font=title_font_small)
+        draw.text((840, 113), "延迟", fill='white', font=title_font_small)
+        draw.text((900, 113), "语言", fill='white', font=title_font_small)
         # 队伍1横线
         draw.line([100, 141, 950, 141], fill=(114, 114, 114), width=2, joint=None)
         # 队伍1竖线
@@ -2662,12 +2660,12 @@ class PlayerListPic:
         IMG.paste(team2_pic, (960, 101))
         # 队伍2名
         draw.text((1012, 105), team2_name, fill='white', font=team_font)
-        draw.text((1380, 113), f"胜率", fill='white', font=title_font_small)
-        draw.text((1460, 113), f"K/D", fill='white', font=title_font_small)
-        draw.text((1530, 113), f"KPM", fill='white', font=title_font_small)
-        draw.text((1610, 113), f"时长(h)", fill='white', font=title_font_small)
-        draw.text((1700, 113), f"延迟", fill='white', font=title_font_small)
-        draw.text((1760, 113), f"语言", fill='white', font=title_font_small)
+        draw.text((1380, 113), "胜率", fill='white', font=title_font_small)
+        draw.text((1460, 113), "K/D", fill='white', font=title_font_small)
+        draw.text((1530, 113), "KPM", fill='white', font=title_font_small)
+        draw.text((1610, 113), "时长(h)", fill='white', font=title_font_small)
+        draw.text((1700, 113), "延迟", fill='white', font=title_font_small)
+        draw.text((1760, 113), "语言", fill='white', font=title_font_small)
         # 队伍2横线
         draw.line([960, 141, 1810, 141], fill=(114, 114, 114), width=2, joint=None)
         # 队伍2竖线
@@ -2787,7 +2785,7 @@ class PlayerListPic:
             rank_font_temp = ImageFont.truetype(font_path, 15)
             left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
             leve_position_1 = 168 - ascent / 2, 156 + i_temp * 23
-            draw.text((115, 156 + i_temp * 23), f"平均:",
+            draw.text((115, 156 + i_temp * 23), "平均:",
                       fill="white",
                       font=player_font)
             if RANK_counter1 != 0:
@@ -2822,7 +2820,7 @@ class PlayerListPic:
             rank_font_temp = ImageFont.truetype(font_path, 15)
             left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
             leve_position_2 = 1028 - ascent / 2, 156 + i_temp * 23
-            draw.text((975, 156 + i_temp * 23), f"平均:",
+            draw.text((975, 156 + i_temp * 23), "平均:",
                       fill="white",
                       font=player_font)
             if RANK_counter2 != 0:
@@ -2888,7 +2886,7 @@ class PlayerListPic:
         draw.text((1580, 925), f"150数量:{max_level_counter}", fill="white", font=player_font)
 
         # 水印
-        draw.text((1860, 1060), f"by.13", fill=(114, 114, 114), font=player_font)
+        draw.text((1860, 1060), "by.13", fill=(114, 114, 114), font=player_font)
 
         # IMG.show()
         # SavePic = f"./data/battlefield/Temp/{round(time.time())}.jpg"

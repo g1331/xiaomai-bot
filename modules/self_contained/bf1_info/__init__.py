@@ -61,6 +61,23 @@ channel.meta["description"] = ("战地一战绩查询")
 channel.meta["author"] = ("十三")
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
+# On startup, check required directories, if not exist, then create it
+@listen(ApplicationLaunched)
+async def check_dirs():
+    exchange_dir_path = Path("./data/battlefield/exchange")
+    report_dir_path = Path("./data/battlefield/report_log")
+
+    for dir_path in [exchange_dir_path, report_dir_path]:
+        if not dir_path.exists():
+            try:
+                dir_path.mkdir(parents=True)
+            except Exception as e:
+                logger.error(f"Failed to create directory. {e}")
+
+    # If report data json file is empty. initialize it
+    if not (report_dir_path / "data.json").exists:
+        with open((report_dir_path / "data.json"), 'w', encoding="utf-8") as file:
+            json.dump({"data": []}, file, indent=4, ensure_ascii=False)
 
 # 当bot启动时自动检查默认账号信息
 @listen(ApplicationLaunched)
@@ -2261,11 +2278,6 @@ async def report(
                 if not isinstance(report_result, dict):
                     return await app.send_message(group, MessageChain(f"举报出错:{report_result}"), quote=source)
                 if isinstance(report_result["data"], int):
-                    file_path = Path("./data/battlefield/report_log/data.json")
-                    if not file_path.exists():
-                        file_path.parent.mkdir(parents=True, exist_ok=True)
-                        with open(file_path, "w", encoding="utf-8") as file_write:
-                            json.dump({"data": []}, file_write, indent=4, ensure_ascii=False)
                     try:
                         # 记录日志，包含举报人QQ，举报时间，案件ID，举报人所在群号，举报信息，被举报玩家的name、pid
                         with open(file_path, "r", encoding="utf-8") as file_read:

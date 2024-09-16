@@ -2133,6 +2133,7 @@ async def report(
             nonlocal if_confirm  # 内部函数修改外部函数的变量
             waiter_message = waiter_message.replace(At(app.account), '')
             if group.id == waiter_group.id and waiter_member.id == sender.id:
+                logger.debug(f"Origin: {waiter_message} , str: {waiter_message.display}")
                 say = waiter_message.display
                 if say == '[图片]' and waiter_message.has(Image):
                     return True, waiter_message

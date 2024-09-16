@@ -15,10 +15,10 @@ from utils.text2img import md2img
 saya = create(Saya)
 channel = Channel.current()
 
-channel.meta["name"] = ("ExceptionCatcher")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["author"] = ("13")
-channel.meta["description"] = ("一个能够捕获错误并将其转为图片发给主人的插件")
+channel.meta["name"] = "ExceptionCatcher"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["author"] = "13"
+channel.meta["description"] = "一个能够捕获错误并将其转为图片发给主人的插件"
 
 config = create(GlobalConfig)
 
@@ -77,8 +77,8 @@ def generate_reports_md(exception: BaseException) -> str:
         # 使用二级标题，并在标题中直接包含原因和索引，使其更具信息性
         report_md.append(f"\n---\n\n## step[{index + 1}]: {reason}\n")
         report_md.append(f"*异常描述*: `{description}`\n")
-        report_md.append(f"*出错位置*: `{report.info.file}` 第 `{report.info.line}` 行, 函数 `{report.info.name}`\n")
-        report_md.append(f"*出错代码*: \n\n```python\n{report.info.code}\n```\n")
+        report_md.append(f"*出错位置*: `{report.info.file}` 第 `{report.info.line_index}` 行, 函数 `{report.info.name}`\n")
+        report_md.append(f"*出错代码*: \n\n```python\n{report.info.codes}\n```\n")
         if report.flag == ReportFlag.ACTIVE:
             report_md.extend([
                 f"*错误类型*: `{report.type}`\n",
@@ -89,7 +89,7 @@ def generate_reports_md(exception: BaseException) -> str:
             if isinstance(locals_, dict):
                 # 生成局部变量的Markdown格式
                 locals_formatted = "\n".join(
-                    [f" - `{k}`: `{v}`" if str(k) in report.info.code else "" for k, v in
+                    [f" - `{k}`: `{v}`" if str(k) in report.info.locals else "" for k, v in
                      locals_.items()])
                 report_md.append(f"*局部变量*: \n{locals_formatted}\n")
             else:

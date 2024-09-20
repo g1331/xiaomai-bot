@@ -1,11 +1,11 @@
 import asyncio
-import datetime
 import html
 import json
 import math
 import os
 import random
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 
@@ -1317,7 +1317,7 @@ async def player_match_info(
             fwd_nodeList = [
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(
                         f"玩家: {display_name}\n"
                         f"PID: {player_pid}"
@@ -1611,11 +1611,11 @@ async def update_server_info():
 
         #   将其转换为datetime
         createdDate = rspInfo.get("server", {}).get("createdDate")
-        createdDate = datetime.datetime.fromtimestamp(int(createdDate) / 1000)
+        createdDate = datetime.fromtimestamp(int(createdDate) / 1000)
         expirationDate = rspInfo.get("server", {}).get("expirationDate")
-        expirationDate = datetime.datetime.fromtimestamp(int(expirationDate) / 1000)
+        expirationDate = datetime.fromtimestamp(int(expirationDate) / 1000)
         updatedDate = rspInfo.get("server", {}).get("updatedDate")
-        updatedDate = datetime.datetime.fromtimestamp(int(updatedDate) / 1000)
+        updatedDate = datetime.fromtimestamp(int(updatedDate) / 1000)
         server_info_list.append(
             (
                 server_name, server_server_id,
@@ -1780,7 +1780,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(adminServerList)}个服务器的admin权限:"),
             )
         ]
@@ -1788,7 +1788,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -1800,7 +1800,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(vipServerList)}个服务器的vip权限:"),
             )
         ]
@@ -1808,7 +1808,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -1820,7 +1820,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}被{len(banServerList)}个服务器封禁了:"),
             )
         ]
@@ -1829,7 +1829,7 @@ async def tyc(
                 fwd_nodeList.append(
                     ForwardNode(
                         target=sender,
-                        time=datetime.datetime.now(),
+                        time=datetime.now(),
                         message=MessageChain(f"{banServerList.index(serverName) + 1}.{serverName}"),
                     )
                 )
@@ -1844,7 +1844,7 @@ async def tyc(
                 fwd_nodeList.append(
                     ForwardNode(
                         target=sender,
-                        time=datetime.datetime.now(),
+                        time=datetime.now(),
                         message=MessageChain(banServerListStr),
                     )
                 )
@@ -1856,7 +1856,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(ownerServerList)}个服务器:"),
             )
         ]
@@ -1864,7 +1864,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -2767,7 +2767,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     mode_list = "\n".join(mode_list)
     send.append(f"游玩模式:\n{mode_list}\n{equals}\n")
     # 更新时间
-    send.append(f"更新时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    send.append(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     send = "".join(send)
     return await app.send_message(group, MessageChain(f"{send}"), quote=source)
 
@@ -2779,6 +2779,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
         [
             UnionMatch("-exchange", "-ex", "-交换").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
+            ArgumentMatch("-u", "-update", action="store_true", optional=True) @ "force_update",
         ]
     )
 )
@@ -2789,52 +2790,72 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     Permission.group_require(channel.metadata.level),
     Permission.user_require(Permission.User),
 )
-async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: ArgResult):
-    # 交换缓存图片的路径
-    file_path = Path("./data/battlefield/exchange/")
+async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: ArgResult, force_update: ArgResult):
+    # 交换缓存的路径
+    dir_path = Path("./data/battlefield/exchange/")
     # 获取今天的日期
-    file_date = datetime.datetime.now()
-    date_now = file_date
-    # 1.如果文件夹为空,则获取gw api的数据制图
-    # 2.如果不为空,直接发送最新的缓存图片
-    # 3.发送完毕后从gw api获取数据,如果和缓存的json文件内容一样,则不做任何操作,否则重新制图并保存为今天日期的文件
-    if not file_path.exists():
-        file_path.mkdir(parents=True)
-    if file_path.exists() and len(list(file_path.iterdir())) == 0:
-        # 获取gw api的数据
+    date = f"{datetime.today().strftime('%Y-%m-%d')}"
+    new_data_path = ( dir_path / f"{date}.json")
+    new_img_path = ( dir_path / f"{date}.png")
+
+    async def get_data():
+        # Get exchange data from API
+        # Return JSON object
         result = await (await BF1DA.get_api_instance()).getOffers()
         if not isinstance(result, dict):
-            return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
+            return await app.send_message(
+                group,
+                MessageChain(f"查询交换出错! {result}"),
+                quote=source
+            )
+        else:
+            return result
+
+    async def write_data(data, path):
         # 将数据写入json文件
-        with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w',
-                  encoding="utf-8") as file1:
-            json.dump(result, file1, ensure_ascii=False, indent=4)
+        # Accept JSON object, path to write, Return true
+        with open(path, 'w',
+                encoding="utf-8") as file1:
+            json.dump(data, file1, ensure_ascii=False, indent=4)
+        return
+
+    async def draw_img(data_path):
         # 将数据制图
-        img = await Exchange(result).draw()
+        # Accept data path, Return picture in bytes (already writen to path)
+        with open(data_path, 'r') as file:
+            data = json.load(file)
+        return await Exchange(data).draw()
+
+    async def send_exchange(img):
+        # Send exchange picture with date
+        # Accept bytes, Return WHAT?
         return await app.send_message(
             group,
             MessageChain(
                 Image(data_bytes=img),
-                f"更新时间:{date_now.year}年{date_now.month}月{date_now.day}日"
+                f"更新时间: {date}"
             ),
             quote=source
         )
+
+    # If command has flag -t, do searches
+    # TODO: Refactor this, I'm confused
     if search_time.matched:
         try:
-            strptime_temp = datetime.datetime.strptime(search_time.result, "%Y.%m.%d")
+            strptime_temp = datetime.strptime(search_time.result, "%Y.%m.%d")
         except ValueError:
             return await app.send_message(group, MessageChain("日期格式错误!示例:xxxx.x.x"), quote=source)
         # 转换成xx年x月xx日
-        strptime_temp = f"{strptime_temp.year}年{strptime_temp.month}月{strptime_temp.day}日"
+        strptime_temp = f"{strptime_temp.year}-{strptime_temp.month}-{strptime_temp.day}"
         # 发送缓存里指定日期的图片
         pic_file_name = f"{strptime_temp}.png"
         pic_list = []
-        for item in file_path.iterdir():
+        for item in dir_path.iterdir():
             if item.name.endswith(".png"):
                 pic_list.append(item.name.split(".")[0])
         if strptime_temp not in pic_list:
             # 发送最接近时间的5条数据
-            pic_list.sort(key=lambda x: abs((datetime.datetime.strptime(x, "%Y年%m月%d日") - datetime.datetime.strptime(
+            pic_list.sort(key=lambda x: abs((datetime.strptime(x, "%Y-%m-%d") - datetime.strptime(
                 search_time.result, "%Y.%m.%d")).days))
             pic_list = pic_list[:5]
             pic_list = "\n".join(pic_list)
@@ -2847,43 +2868,44 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
         return await app.send_message(group, MessageChain(
             Image(data_bytes=img), f"更新时间:{pic_file_name.split('.')[0]}"
         ), quote=source)
-    # 发送缓存里最新的图片
-    for day in range(int(len(list(file_path.iterdir()))) + 1):
-        file_date = date_now - datetime.timedelta(days=day)
-        pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
-        if (file_path / pic_file_name).exists():
-            img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
-            await app.send_message(
-                group,
-                MessageChain(
-                    Image(data_bytes=img),
-                    f"更新时间:{pic_file_name.split('.')[0]}"
-                ),
-                quote=source
-            )
-            break
-    # 获取gw api的数据,更新缓存
-    result = await (await BF1DA.get_api_instance()).getOffers()
-    if isinstance(result, str):
-        return logger.error(f"查询交换出错!{result}")
-    # 如果result和之前最新的json文件内容一样,则return
-    if (file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json").exists():
-        with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json",
-                  'r', encoding="utf-8") as file1:
+    # If command has flag -u, force update
+    if force_update.matched:
+        # 获取gw api的数据
+        result = await get_data()
+        # Compare API result and local data, if campaignId are same, don't update
+        with open(new_data_path,
+                'r', encoding="utf-8") as file1:
             data = json.load(file1)
-            if data.get("result") == result.get("result"):
-                return logger.info("交换未更新~")
+            if data['result']['items'] == result['result']['items']:
+                return await app.send_message(
+                    group,
+                    MessageChain("交换未更新."),
+                    quote=source
+                )
             else:
-                logger.debug("正在更新交换~")
-                # 将数据写入json文件
-                with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json",
-                          'w', encoding="utf-8") as file2:
-                    json.dump(result, file2, ensure_ascii=False, indent=4)
-                # 将数据制图
-                _ = await Exchange(result).draw()
-                return logger.success("成功更新交换缓存~")
+                logger.info("正在更新交换...")
+                # Write result to local
+                await write_data(data=result, path=new_data_path)
+                return await send_exchange(img=await draw_img(data_path=new_data_path))
+    # 1.如果数据为空,则获取gw api的数据制图
+    # 2.如果不为空,直接发送最新的缓存图片
+    # 3.发送完毕后从gw api获取数据,如果和缓存的json文件内容一样,则不做任何操作,否则重新制图并保存为今天日期的文件
+    if new_img_path.exists():
+        # Send existing picture, then do update
+        with open(new_img_path, 'rb') as file:
+            img_bytes = file.read()
+        await send_exchange(img=img_bytes)
+        await write_data(data=await get_data(), path=new_data_path)
+        await draw_img(data_path=new_data_path)
+        return
     else:
-        return logger.error(f"未找到交换数据文件{file_date.year}年{file_date.month}月{file_date.day}日.json")
+        logger.info("Exchange picture of today not found.")
+        if new_data_path.exists():
+            return await send_exchange(img=await draw_img(data_path=new_data_path))
+        else:
+            logger.info("Exchange data of today not found.")
+            await write_data(data=await get_data(), path=new_data_path)
+            return send_exchange(img=await draw_img(data_path=new_data_path))
 
 
 # 战役
@@ -2927,7 +2949,7 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     return_list.append(f"距每日重置还有:{rst_hour}小时{rst_minute}分钟")
     # 结束时间和剩余时间
     remain_time = datetime.timedelta(minutes=data["result"]["minutesRemaining"])
-    end_time = datetime.datetime.now() + remain_time
+    end_time = datetime.now() + remain_time
     return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
     res_month = remain_time.days // 30
     res_day = remain_time.days % 30

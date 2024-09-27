@@ -9,6 +9,10 @@
 </div>
 
 ----
+## 状态
+
+![Alt](https://repobeats.axiom.co/api/embed/eebef43ecb6c77ef043dcb65c4cda7e9dfd29af7.svg "Repobeats analytics image")
+
 ## 功能简览:
 ### 注意！当前BOT还有许多不完善的地方，处于持续开发更新的状态~
 

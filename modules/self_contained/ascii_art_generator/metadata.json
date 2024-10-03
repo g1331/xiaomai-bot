@@ -1,0 +1,20 @@
+{
+  "level": 1,
+  "name": "ASCIIArtGenerator",
+  "version": "0.1",
+  "display_name": "字符画生成器",
+  "authors": [
+    "13"
+  ],
+  "description": "",
+  "usage": [
+    "-ascii + 图片",
+    "字符画 + 图片"
+  ],
+  "example": [
+    \"-ascii + 图片",
+    "字符画 + 图片"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

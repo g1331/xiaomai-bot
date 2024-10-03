@@ -6,9 +6,11 @@ import os
 import random
 import time
 from datetime import datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 from typing import List, Tuple
 
+import aiohttp
 import httpx
 from creart import create
 from graia.ariadne.app import Ariadne
@@ -28,6 +30,7 @@ from graia.scheduler.saya.schema import SchedulerSchema
 from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
+from PIL import Image as PILImage, ImageDraw, ImageFont
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -46,7 +49,7 @@ from utils.bf1.bf_utils import (
 from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange
+from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange, PilImageUtils
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 
@@ -2930,3 +2933,170 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     res_minute = remain_time.seconds % 3600 // 60
     return_list.append(f"战役剩余时间:{res_month}月{res_day}天{res_hour}小时{res_minute}分")
     return await app.send_message(group, MessageChain("\n".join(return_list)), quote=source)
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+@dispatch(
+    Twilight(
+        [
+            "message" @ UnionMatch("-bf1百科").space(SpacePolicy.PRESERVE),
+            "item_index" @ ParamMatch(optional=True).space(SpacePolicy.PRESERVE)
+            # 示例:-bf1百科 12
+        ]
+    )
+)
+async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index: RegexResult, source: Source):
+    recv_message = message.display.replace(" ", '').replace("-bf1百科", "").replace("+", "")
+
+    if recv_message == "":
+        await app.send_message(group, MessageChain(
+            f"回复 -bf1百科+类型 可查看对应信息\n支持类型:武器、载具、战略、战争、全世界"
+        ), quote=source)
+        return True
+
+    # 预设的几种信息类型
+    if recv_message == "武器":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科武器.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "载具":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科载具.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "战略":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科战略.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "战争":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科战争.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "全世界":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科全世界.jpg")
+        ), quote=source)
+        return True
+
+    # 检查序号的有效性
+    try:
+        item_index = int(str(item_index.result)) - 1
+        if item_index > 309 or item_index < 0:
+            raise Exception
+    except Exception as e:
+        logger.error(e)
+        await app.send_message(group, MessageChain(
+            f"请检查序号范围:1~310"
+        ), quote=source)
+        return True
+
+    # 读取数据文件
+    file_path = f"./data/battlefield/百科/data.json"
+    with open(file_path, 'r', encoding="utf-8") as file1:
+        wiki_data = json.load(file1)["result"]
+
+    item_list = []
+    for item in wiki_data:
+        for item2 in item["awards"]:
+            item_list.append(item2)
+
+    wiki_item = eval(zhconv.convert(str(item_list[item_index]), 'zh-cn'))
+    item_path = f"./data/battlefield/pic/百科/{wiki_item['code']}.png"
+
+    # 如果已有缓存图像，直接发送
+    if os.path.exists(item_path):
+        await app.send_message(group, MessageChain(
+            Image(path=item_path)
+        ), quote=source)
+        return True
+
+    await app.send_message(group, MessageChain(
+        f"查询ing"
+    ), quote=source)
+
+    # 根据描述长度选择背景图
+    if len(wiki_item["codexEntry"]["description"]) < 500:
+        bg_img_path = f"./data/battlefield/pic/百科/百科短底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科短.png"
+        n_number = 704
+    elif 900 > len(wiki_item["codexEntry"]["description"]) > 500:
+        bg_img_path = f"./data/battlefield/pic/百科/百科中底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科中.png"
+        n_number = 1364
+    else:
+        bg_img_path = f"./data/battlefield/pic/百科/百科长底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科长.png"
+        n_number = 2002
+
+    # 打开背景图片
+    bg_img = PILImage.open(bg_img_path)
+    bg2_img = PILImage.open(bg2_img_path)
+    draw = ImageDraw.Draw(bg_img)
+
+    # 异步请求百科图片
+    url = wiki_item['codexEntry']['images']['Png640xANY'].replace("[BB_PREFIX]",
+                                                                  "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                wiki_pic_data = await response.read()
+            else:
+                await app.send_message(group, MessageChain(
+                    f"图片下载失败,请稍后再试!"
+                ), quote=source)
+                return True
+
+    wiki_pic = PILImage.open(BytesIO(wiki_pic_data))
+
+    # 拼接百科图片
+    bg_img.paste(wiki_pic, (37, 37), wiki_pic)
+
+    # 拼接第二层背景图
+    bg_img.paste(bg2_img, (0, 0), bg2_img)
+
+    # 设置字体路径
+    font_path = './statics/fonts/BFText-Regular-SC-19cf572c.ttf'
+    font1 = ImageFont.truetype(font_path, 30)
+    font2 = ImageFont.truetype(font_path, 38)
+    font3 = ImageFont.truetype(font_path, 30)
+    font4 = ImageFont.truetype(font_path, 20)
+    font5 = ImageFont.truetype(font_path, 22)
+
+    # 绘制文字信息
+    draw.text((60, 810), wiki_item['codexEntry']['category'], (164, 155, 108), font=font1)
+    draw.text((60, 850), wiki_item['name'], (164, 155, 108), font=font2)
+    draw.text((730, 40), wiki_item['codexEntry']['category'], font=font3)
+    draw.text((730, 75), wiki_item['name'], (255, 255, 255), font=font2)
+    draw.text((730, 133), wiki_item['criterias'][0]['name'], (195, 150, 60), font=font4)
+
+    # 处理描述文本换行
+    new_input = ""
+    i = 0
+    for letter in wiki_item['codexEntry']['description']:
+        if letter == "\n":
+            new_input += letter
+            i = 0
+        elif i * 11 % n_number == 0 or (i + 1) * 11 % n_number == 0:
+            new_input += '\n'
+            i = 0
+        i += PilImageUtils().get_width(ord(letter))
+        new_input += letter
+
+    draw.text((730, 160), new_input, font=font5)
+
+    # 保存图像
+    bg_img.save(item_path, 'png', quality=100)
+
+    await app.send_message(group, MessageChain(
+        Image(path=item_path)
+    ), quote=source)
+    return True

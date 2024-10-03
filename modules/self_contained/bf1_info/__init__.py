@@ -1,14 +1,16 @@
 import asyncio
-import datetime
 import html
 import json
 import math
 import os
 import random
 import time
+from datetime import datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 from typing import List, Tuple
 
+import aiohttp
 import httpx
 from creart import create
 from graia.ariadne.app import Ariadne
@@ -28,6 +30,7 @@ from graia.scheduler.saya.schema import SchedulerSchema
 from loguru import logger
 from rapidfuzz import fuzz
 from zhconv import zhconv
+from PIL import Image as PILImage, ImageDraw, ImageFont
 
 from core.bot import Umaru
 from core.config import GlobalConfig
@@ -39,14 +42,14 @@ from core.control import (
 )
 from core.models import saya_model
 from utils.bf1.bf_utils import (
-    get_personas_by_name, check_bind, BTR_get_recent_info,
+    get_personas_by_name, check_bind,
     bfeac_checkBan, bfban_checkBan, gt_checkVban, record_api,
     gt_get_player_id_by_pid, EACUtils, get_personas_by_player_pid, BattlefieldTracker
 )
 from utils.bf1.data_handle import WeaponData, VehicleData, ServerData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
-from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange
+from utils.bf1.draw import PlayerStatPic, PlayerVehiclePic, PlayerWeaponPic, Exchange, PilImageUtils
 from utils.bf1.gateway_api import api_instance
 from utils.bf1.map_team_info import MapData
 
@@ -56,11 +59,23 @@ module_controller = saya_model.get_module_controller()
 
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("Bf1Info")
-channel.meta["description"] = ("战地一战绩查询")
-channel.meta["author"] = ("十三")
+channel.meta["name"] = "Bf1Info"
+channel.meta["description"] = "战地一战绩查询"
+channel.meta["author"] = "十三"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
+# On startup, check required directories, if not exist, then create it
+@listen(ApplicationLaunched)
+async def check_dirs():
+    exchange_dir_path = Path("./data/battlefield/exchange")
+    report_dir_path = Path("./data/battlefield/report_log")
+
+    for dir_path in [exchange_dir_path, report_dir_path]:
+        if not dir_path.exists():
+            try:
+                dir_path.mkdir(parents=True)
+            except Exception as e:
+                logger.error(f"Failed to create directory. {e}")
 
 # 当bot启动时自动检查默认账号信息
 @listen(ApplicationLaunched)
@@ -1300,7 +1315,7 @@ async def player_match_info(
             fwd_nodeList = [
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(
                         f"玩家: {display_name}\n"
                         f"PID: {player_pid}"
@@ -1587,18 +1602,18 @@ async def update_server_info():
         playerMax = Info["slots"]["Soldier"]["max"]
         playerQueue = Info["slots"]["Queue"]["current"]
         playerSpectator = Info["slots"]["Spectator"]["current"]
-        mapName = Info["mapName"]
-        mapNamePretty = Info["mapNamePretty"]
-        mapMode = Info["mapMode"]
-        mapModePretty = Info["mapModePretty"]
+        #mapName = Info["mapName"]
+        #mapNamePretty = Info["mapNamePretty"]
+        #mapMode = Info["mapMode"]
+        #mapModePretty = Info["mapModePretty"]
 
         #   将其转换为datetime
         createdDate = rspInfo.get("server", {}).get("createdDate")
-        createdDate = datetime.datetime.fromtimestamp(int(createdDate) / 1000)
+        createdDate = datetime.fromtimestamp(int(createdDate) / 1000)
         expirationDate = rspInfo.get("server", {}).get("expirationDate")
-        expirationDate = datetime.datetime.fromtimestamp(int(expirationDate) / 1000)
+        expirationDate = datetime.fromtimestamp(int(expirationDate) / 1000)
         updatedDate = rspInfo.get("server", {}).get("updatedDate")
-        updatedDate = datetime.datetime.fromtimestamp(int(updatedDate) / 1000)
+        updatedDate = datetime.fromtimestamp(int(updatedDate) / 1000)
         server_info_list.append(
             (
                 server_name, server_server_id,
@@ -1710,7 +1725,7 @@ async def tyc(
         else:
             return await app.send_message(
                 group,
-                MessageChain(f"你还没有绑定!请使用'-绑定 玩家名'进行绑定!"),
+                MessageChain("你还没有绑定! 请使用'-绑定 ID'进行绑定!"),
                 quote=source
             )
     else:
@@ -1753,7 +1768,7 @@ async def tyc(
         player_pid = player_info["personas"]["persona"][0]["personaId"]
         display_name = player_info["personas"]["persona"][0]["displayName"]
 
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
 
     # 如果admin/vip/ban/owner有一个匹配,就查询对应信息
     if admin.matched:
@@ -1763,7 +1778,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(adminServerList)}个服务器的admin权限:"),
             )
         ]
@@ -1771,7 +1786,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -1783,7 +1798,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(vipServerList)}个服务器的vip权限:"),
             )
         ]
@@ -1791,7 +1806,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -1803,7 +1818,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}被{len(banServerList)}个服务器封禁了:"),
             )
         ]
@@ -1812,7 +1827,7 @@ async def tyc(
                 fwd_nodeList.append(
                     ForwardNode(
                         target=sender,
-                        time=datetime.datetime.now(),
+                        time=datetime.now(),
                         message=MessageChain(f"{banServerList.index(serverName) + 1}.{serverName}"),
                     )
                 )
@@ -1827,7 +1842,7 @@ async def tyc(
                 fwd_nodeList.append(
                     ForwardNode(
                         target=sender,
-                        time=datetime.datetime.now(),
+                        time=datetime.now(),
                         message=MessageChain(banServerListStr),
                     )
                 )
@@ -1839,7 +1854,7 @@ async def tyc(
         fwd_nodeList = [
             ForwardNode(
                 target=sender,
-                time=datetime.datetime.now(),
+                time=datetime.now(),
                 message=MessageChain(f"玩家{display_name}拥有{len(ownerServerList)}个服务器:"),
             )
         ]
@@ -1847,7 +1862,7 @@ async def tyc(
             fwd_nodeList.append(
                 ForwardNode(
                     target=sender,
-                    time=datetime.datetime.now(),
+                    time=datetime.now(),
                     message=MessageChain(f"{serverName}"),
                 )
             )
@@ -2014,7 +2029,7 @@ async def report(
     except Exception as e:
         logger.error(e)
         await app.send_message(group, MessageChain(
-            f"网络出错，请稍后再试"
+            "网络出错，请稍后再试"
         ), quote=source)
         return False
     if response["data"]:
@@ -2022,7 +2037,7 @@ async def report(
         case_id = data["case_id"]
         case_url = f"https://bfeac.com/#/case/{case_id}"
         await app.send_message(group, MessageChain(
-            f"查询到已有案件信息如下:\n",
+            "查询到已有案件信息如下:\n",
             case_url
         ), quote=source)
         return
@@ -2063,7 +2078,7 @@ async def report(
     # 4.发送举报的理由
     # report_reason = None
     await app.send_message(group, MessageChain(
-        f"注意:请勿随意、乱举报,否则将会撤销BOT的使用权!请在1分钟内发送举报的理由(请不要附带图片,发送`exit`取消举报)"
+        "注意:请勿随意、乱举报,否则将会撤销BOT的使用权!请在1分钟内发送举报的理由(请不要附带图片,发送`exit`取消举报)"
     ), quote=source)
     saying = None
 
@@ -2085,15 +2100,15 @@ async def report(
         report_reason = f"<p>{report_reason}</p>"
 
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(group, MessageChain(f'操作超时,请重新举报!'), quote=source)
+        return await app.send_message(group, MessageChain('操作超时, 请重新举报!'), quote=source)
     except Exception as e:
         logger.error(f"获取举报理由出错:{e}")
-        return await app.send_message(group, MessageChain(f'获取举报理由出错,请重新举报!'), quote=source)
+        return await app.send_message(group, MessageChain('获取举报理由出错, 请重新举报!'), quote=source)
 
     saying: MessageChain = saying
     if saying.has(Image):
         return await app.send_message(group, MessageChain(
-            f"举报理由请不要附带图片,已退出举报!"
+            "举报理由请不要附带图片,已退出举报!"
         ), quote=source)
 
     # 进行预审核
@@ -2148,10 +2163,10 @@ async def report(
                 waiter_report_pic, [GroupMessage], block_propagation=True
             ).wait(timeout=60)
         except asyncio.exceptions.TimeoutError:
-            return await app.send_message(group, MessageChain(f'操作超时,已自动退出!'), quote=source)
+            return await app.send_message(group, MessageChain('操作超时,已自动退出!'), quote=source)
         except Exception as e:
             logger.error(f"获取举报图片出错:{e}")
-            return await app.send_message(group, MessageChain(f'获取举报图片出错,请重新举报!'), quote=source)
+            return await app.send_message(group, MessageChain('获取举报图片出错,请重新举报!'), quote=source)
 
         if result:
             # 如果是图片则下载
@@ -2172,7 +2187,7 @@ async def report(
                     except Exception as e:
                         logger.error(e)
                         await app.send_message(group, MessageChain(
-                            f'获取图片出错,请重新举报!'
+                            '获取图片出错,请重新举报!'
                         ), quote=source)
                         return False
                     # wb 以二进制打开文件并写入，文件名不存在会创
@@ -2199,7 +2214,7 @@ async def report(
                         except Exception as e:
                             logger.error(e)
                             await app.send_message(group, MessageChain(
-                                f'获取图片图床失败,请重新举报!'
+                                '获取图片图床失败,请重新举报!'
                             ), quote=source)
                             return False
                         json_temp = response.json()
@@ -2226,7 +2241,7 @@ async def report(
                         except Exception as e:
                             logger.error(e)
                             await app.send_message(group, MessageChain(
-                                f'获取图片图床失败,请重新举报!'
+                                '获取图片图床失败,请重新举报!'
                             ), quote=source)
                             return False
                         json_temp = response.json()
@@ -2245,7 +2260,7 @@ async def report(
                     logger.error(response)
                     logger.error(e)
                     await app.send_message(group, MessageChain(
-                        f'获取图片图床失败,请重新举报!'
+                        '获取图片图床失败,请重新举报!'
                     ), quote=source)
                     return False
             # 是确认则提交
@@ -2253,7 +2268,7 @@ async def report(
                 # 添加水印图片: https://s2.loli.net/2023/11/25/MpHD5Wbv9IqeVTa.png
                 report_reason += '<img class="img-fluid" src="https://s2.loli.net/2023/11/25/MpHD5Wbv9IqeVTa.png">'
                 await app.send_message(group, MessageChain(
-                    f"提交举报ing"
+                    "提交举报ing"
                 ), quote=source)
                 # 调用接口
                 report_result = await EACUtils.report_interface(
@@ -2262,11 +2277,6 @@ async def report(
                 if not isinstance(report_result, dict):
                     return await app.send_message(group, MessageChain(f"举报出错:{report_result}"), quote=source)
                 if isinstance(report_result["data"], int):
-                    file_path = Path(f"./data/battlefield/report_log/data.json")
-                    if not file_path.exists():
-                        file_path.parent.mkdir(parents=True, exist_ok=True)
-                        with open(file_path, "w", encoding="utf-8") as file_write:
-                            json.dump({"data": []}, file_write, indent=4, ensure_ascii=False)
                     try:
                         # 记录日志，包含举报人QQ，举报时间，案件ID，举报人所在群号，举报信息，被举报玩家的name、pid
                         with open(file_path, "r", encoding="utf-8") as file_read:
@@ -2297,7 +2307,7 @@ async def report(
                     return
         else:
             await app.send_message(group, MessageChain(
-                f'未识成功别到图片,请重新举报!'
+                '未识成功别到图片,请重新举报!'
             ), quote=source)
             return
 
@@ -2329,12 +2339,12 @@ async def BF1Rank(
 ):
     rank_type = rank_type.result.display
     page = page.result
-    await app.send_message(group, MessageChain(f"查询ing"), quote=source)
+    await app.send_message(group, MessageChain("查询ing"), quote=source)
     if not name.matched:
         if rank_type in ["收藏", "bookmark"]:
             bookmark_list = await BF1DB.server.get_server_bookmark()
             if not bookmark_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器收藏信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
             if page > math.ceil(len(bookmark_list) / 15):
                 return await app.send_message(
@@ -2354,7 +2364,7 @@ async def BF1Rank(
         elif rank_type in ["vip"]:
             vip_list = await BF1DB.server.get_allServerPlayerVipList()
             if not vip_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器VIP信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
             # data = [
             #     {
@@ -2381,7 +2391,7 @@ async def BF1Rank(
         elif rank_type in ["ban", "封禁"]:
             ban_list = await BF1DB.server.get_allServerPlayerBanList()
             if not ban_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器封禁信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
             if page > math.ceil(len(ban_list) / 15):
                 return await app.send_message(
@@ -2399,7 +2409,7 @@ async def BF1Rank(
         elif rank_type in ["admin", "管理"]:
             admin_list = await BF1DB.server.get_allServerPlayerAdminList()
             if not admin_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器管理信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
             if page > math.ceil(len(admin_list) / 15):
                 return await app.send_message(
@@ -2419,7 +2429,7 @@ async def BF1Rank(
         elif rank_type in ["owner", "服主"]:
             owner_list = await BF1DB.server.get_allServerPlayerOwnerList()
             if not owner_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器服主信息!"), quote=source)
             # 将得到的数据15个一页分组，如果page超出范围则返回错误,否则返回对应页的数据
             if page > math.ceil(len(owner_list) / 15):
                 return await app.send_message(
@@ -2442,7 +2452,7 @@ async def BF1Rank(
         if rank_type in ["收藏", "bookmark"]:
             bookmark_list = await BF1DB.server.get_server_bookmark()
             if not bookmark_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器收藏信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器收藏信息!"), quote=source)
             result = []
             for item in bookmark_list:
                 if (fuzz.ratio(name.upper(), item['serverName'].upper()) > 80) or \
@@ -2450,9 +2460,9 @@ async def BF1Rank(
                         item['serverName'].upper() in name.upper():
                     result.append(item)
             if not result:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该服务器的收藏信息!"),
+                return await app.send_message(group, MessageChain("没有在数据库中找到该服务器的收藏信息!"),
                                               quote=source)
-            send = [f"搜索到{len(result)}个结果:" if len(result) <= 15 else f"搜索到超过15个结果,只显示前15个结果!"]
+            send = [f"搜索到{len(result)}个结果:" if len(result) <= 15 else "搜索到超过15个结果,只显示前15个结果!"]
             result = result[:15]
             for data in result:
                 # 获取服务器排名,组合为: index. serverName[:20] bookmark
@@ -2463,37 +2473,37 @@ async def BF1Rank(
         elif rank_type in ["vip"]:
             vip_list = await BF1DB.server.get_allServerPlayerVipList()
             if not vip_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器VIP信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器VIP信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in vip_list]
             if name.upper() not in display_name:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的VIP信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到该玩家的VIP信息!"), quote=source)
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的VIP排名为{index}"), quote=source)
         elif rank_type in ["ban", "封禁"]:
             ban_list = await BF1DB.server.get_allServerPlayerBanList()
             if not ban_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器封禁信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器封禁信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in ban_list]
             if name.upper() not in display_name:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的封禁信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到该玩家的封禁信息!"), quote=source)
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的封禁排名为{index}"), quote=source)
         elif rank_type in ["admin", "管理"]:
             admin_list = await BF1DB.server.get_allServerPlayerAdminList()
             if not admin_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器管理信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器管理信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in admin_list]
             if name.upper() not in display_name:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的管理信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到该玩家的管理信息!"), quote=source)
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的管理排名为{index}"), quote=source)
         elif rank_type in ["owner", "服主"]:
             owner_list = await BF1DB.server.get_allServerPlayerOwnerList()
             if not owner_list:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到服务器服主信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到服务器服主信息!"), quote=source)
             display_name = [item['displayName'].upper() for item in owner_list]
             if name.upper() not in display_name:
-                return await app.send_message(group, MessageChain(f"没有在数据库中找到该玩家的服主信息!"), quote=source)
+                return await app.send_message(group, MessageChain("没有在数据库中找到该玩家的服主信息!"), quote=source)
             index = display_name.index(name.upper()) + 1
             return await app.send_message(group, MessageChain(f"{name}的服主排名为{index}"), quote=source)
 
@@ -2506,7 +2516,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     ):
         # 98%的概率从文件获取tips
         if random.randint(0, 99) > 1:
-            file_path = f"./data/battlefield/小标语/data.json"
+            file_path = "./data/battlefield/小标语/data.json"
             with open(file_path, 'r', encoding="utf-8") as file1:
                 data = json.load(file1)['result']
                 a = random.choice(data)['name']
@@ -2514,7 +2524,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
         else:
             bf_dic = [
                 "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神",
-                f"当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
+                "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~",
             ]
             send = random.choice(bf_dic)
         return await app.send_group_message(event.subject.id, MessageChain(At(event.supplicant), '\n', send))
@@ -2580,7 +2590,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
                 server_total_list.append(server)
     if not server_total_list:
         logger.error("获取服务器列表失败!")
-        return await app.send_message(group, MessageChain(f"获取服务器信息失败!"), quote=source)
+        return await app.send_message(group, MessageChain("获取服务器信息失败!"), quote=source)
     logger.success(f"共获取{len(server_total_list)}个服务器,耗时{round(time.time() - time_start, 2)}秒")
     # 人数、排队数、观众、模式、地图、地区、国家
     server_list = []
@@ -2613,25 +2623,25 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
         #     private_server_list.append(temp)
         # else:
         #     official_server_list.append(temp)
-    region_dict = {
-        "OC": "大洋洲",
-        "Asia": "亚洲",
-        "EU": "欧洲",
-        "Afr": "非洲",
-        "AC": "南极洲",
-        "SAm": "南美洲",
-        "NAm": "北美洲"
-    }
-    country_dict = {
-        "JP": "日本",
-        "US": "美国",
-        "DE": "德国",
-        "AU": "澳大利亚",
-        "BR": "巴西",
-        "HK": "中国香港",
-        "AE": "阿联酋",
-        "ZA": "南非",
-    }
+    #region_dict = {
+    #    "OC": "大洋洲",
+    #    "Asia": "亚洲",
+    #    "EU": "欧洲",
+    #    "Afr": "非洲",
+    #    "AC": "南极洲",
+    #    "SAm": "南美洲",
+    #    "NAm": "北美洲"
+    #}
+    #country_dict = {
+    #    "JP": "日本",
+    #    "US": "美国",
+    #    "DE": "德国",
+    #    "AU": "澳大利亚",
+    #    "BR": "巴西",
+    #    "HK": "中国香港",
+    #    "AE": "阿联酋",
+    #    "ZA": "南非",
+    #}
 
     # 文字版本：
     # 服务器总数(官/私): xxx (xxx/xxx)                 服务器数量 = 官服数量 + 私服数量
@@ -2755,7 +2765,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     mode_list = "\n".join(mode_list)
     send.append(f"游玩模式:\n{mode_list}\n{equals}\n")
     # 更新时间
-    send.append(f"更新时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    send.append(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     send = "".join(send)
     return await app.send_message(group, MessageChain(f"{send}"), quote=source)
 
@@ -2766,7 +2776,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     Twilight(
         [
             UnionMatch("-exchange", "-ex", "-交换").space(SpacePolicy.PRESERVE),
-            ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time",
+            ArgumentMatch("-t", "-time", optional=True, type=str) @ "search_time"
         ]
     )
 )
@@ -2781,7 +2791,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
     # 交换缓存图片的路径
     file_path = Path("./data/battlefield/exchange/")
     # 获取今天的日期
-    file_date = datetime.datetime.now()
+    file_date = datetime.now()
     date_now = file_date
     # 1.如果文件夹为空,则获取gw api的数据制图
     # 2.如果不为空,直接发送最新的缓存图片
@@ -2809,9 +2819,9 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
         )
     if search_time.matched:
         try:
-            strptime_temp = datetime.datetime.strptime(search_time.result, "%Y.%m.%d")
+            strptime_temp = datetime.strptime(search_time.result, "%Y.%m.%d")
         except ValueError:
-            return await app.send_message(group, MessageChain(f"日期格式错误!示例:xxxx.x.x"), quote=source)
+            return await app.send_message(group, MessageChain("日期格式错误!示例:xxxx.x.x"), quote=source)
         # 转换成xx年x月xx日
         strptime_temp = f"{strptime_temp.year}年{strptime_temp.month}月{strptime_temp.day}日"
         # 发送缓存里指定日期的图片
@@ -2822,7 +2832,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
                 pic_list.append(item.name.split(".")[0])
         if strptime_temp not in pic_list:
             # 发送最接近时间的5条数据
-            pic_list.sort(key=lambda x: abs((datetime.datetime.strptime(x, "%Y年%m月%d日") - datetime.datetime.strptime(
+            pic_list.sort(key=lambda x: abs((datetime.strptime(x, "%Y年%m月%d日") - datetime.strptime(
                 search_time.result, "%Y.%m.%d")).days))
             pic_list = pic_list[:5]
             pic_list = "\n".join(pic_list)
@@ -2837,7 +2847,7 @@ async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: 
         ), quote=source)
     # 发送缓存里最新的图片
     for day in range(int(len(list(file_path.iterdir()))) + 1):
-        file_date = date_now - datetime.timedelta(days=day)
+        file_date = date_now - timedelta(days=day)
         pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
         if (file_path / pic_file_name).exists():
             img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
@@ -2896,10 +2906,9 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
         return await app.send_message(group, MessageChain(f"查询出错!{data}"), quote=source)
     if not data.get("result"):
         return await app.send_message(group, MessageChain(
-            f"当前无进行战役信息!"
+            "当前无进行战役信息!"
         ), quote=source)
     return_list = []
-    from time import strftime, gmtime
     return_list.append(zhconv.convert(f"战役名称:{data['result']['name']}", "zh-cn"))
     return_list.append(zhconv.convert(f'战役描述:{data["result"]["shortDesc"]}', "zh-cn"))
     return_list.append('战役地点:')
@@ -2910,13 +2919,13 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     place_list = ','.join(place_list)
     return_list.append(place_list)
     # 每日重置minutesToDailyReset,eg:1205,表示距离下次重置还有1205分钟
-    reset_time = datetime.timedelta(minutes=data["result"]["minutesToDailyReset"])
+    reset_time = timedelta(minutes=data["result"]["minutesToDailyReset"])
     rst_hour = reset_time.seconds // 3600
     rst_minute = reset_time.seconds % 3600 // 60
     return_list.append(f"距每日重置还有:{rst_hour}小时{rst_minute}分钟")
     # 结束时间和剩余时间
-    remain_time = datetime.timedelta(minutes=data["result"]["minutesRemaining"])
-    end_time = datetime.datetime.now() + remain_time
+    remain_time = timedelta(minutes=data["result"]["minutesRemaining"])
+    end_time = datetime.now() + remain_time
     return_list.append(end_time.strftime("战役结束时间:%Y年%m月%d日 %H时%M分"))
     res_month = remain_time.days // 30
     res_day = remain_time.days % 30
@@ -2924,3 +2933,170 @@ async def get_CampaignOperations(app: Ariadne, group: Group, source: Source):
     res_minute = remain_time.seconds % 3600 // 60
     return_list.append(f"战役剩余时间:{res_month}月{res_day}天{res_hour}小时{res_minute}分")
     return await app.send_message(group, MessageChain("\n".join(return_list)), quote=source)
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User),
+)
+@dispatch(
+    Twilight(
+        [
+            "message" @ UnionMatch("-bf1百科").space(SpacePolicy.PRESERVE),
+            "item_index" @ ParamMatch(optional=True).space(SpacePolicy.PRESERVE)
+            # 示例:-bf1百科 12
+        ]
+    )
+)
+async def bf1_wiki(app: Ariadne, group: Group, message: MessageChain, item_index: RegexResult, source: Source):
+    recv_message = message.display.replace(" ", '').replace("-bf1百科", "").replace("+", "")
+
+    if recv_message == "":
+        await app.send_message(group, MessageChain(
+            f"回复 -bf1百科+类型 可查看对应信息\n支持类型:武器、载具、战略、战争、全世界"
+        ), quote=source)
+        return True
+
+    # 预设的几种信息类型
+    if recv_message == "武器":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科武器.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "载具":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科载具.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "战略":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科战略.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "战争":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科战争.jpg")
+        ), quote=source)
+        return True
+    if recv_message == "全世界":
+        await app.send_message(group, MessageChain(
+            Image(path="./data/battlefield/pic/百科/百科全世界.jpg")
+        ), quote=source)
+        return True
+
+    # 检查序号的有效性
+    try:
+        item_index = int(str(item_index.result)) - 1
+        if item_index > 309 or item_index < 0:
+            raise Exception
+    except Exception as e:
+        logger.error(e)
+        await app.send_message(group, MessageChain(
+            f"请检查序号范围:1~310"
+        ), quote=source)
+        return True
+
+    # 读取数据文件
+    file_path = f"./data/battlefield/百科/data.json"
+    with open(file_path, 'r', encoding="utf-8") as file1:
+        wiki_data = json.load(file1)["result"]
+
+    item_list = []
+    for item in wiki_data:
+        for item2 in item["awards"]:
+            item_list.append(item2)
+
+    wiki_item = eval(zhconv.convert(str(item_list[item_index]), 'zh-cn'))
+    item_path = f"./data/battlefield/pic/百科/{wiki_item['code']}.png"
+
+    # 如果已有缓存图像，直接发送
+    if os.path.exists(item_path):
+        await app.send_message(group, MessageChain(
+            Image(path=item_path)
+        ), quote=source)
+        return True
+
+    await app.send_message(group, MessageChain(
+        f"查询ing"
+    ), quote=source)
+
+    # 根据描述长度选择背景图
+    if len(wiki_item["codexEntry"]["description"]) < 500:
+        bg_img_path = f"./data/battlefield/pic/百科/百科短底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科短.png"
+        n_number = 704
+    elif 900 > len(wiki_item["codexEntry"]["description"]) > 500:
+        bg_img_path = f"./data/battlefield/pic/百科/百科中底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科中.png"
+        n_number = 1364
+    else:
+        bg_img_path = f"./data/battlefield/pic/百科/百科长底.png"
+        bg2_img_path = f"./data/battlefield/pic/百科/百科长.png"
+        n_number = 2002
+
+    # 打开背景图片
+    bg_img = PILImage.open(bg_img_path)
+    bg2_img = PILImage.open(bg2_img_path)
+    draw = ImageDraw.Draw(bg_img)
+
+    # 异步请求百科图片
+    url = wiki_item['codexEntry']['images']['Png640xANY'].replace("[BB_PREFIX]",
+                                                                  "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                wiki_pic_data = await response.read()
+            else:
+                await app.send_message(group, MessageChain(
+                    f"图片下载失败,请稍后再试!"
+                ), quote=source)
+                return True
+
+    wiki_pic = PILImage.open(BytesIO(wiki_pic_data))
+
+    # 拼接百科图片
+    bg_img.paste(wiki_pic, (37, 37), wiki_pic)
+
+    # 拼接第二层背景图
+    bg_img.paste(bg2_img, (0, 0), bg2_img)
+
+    # 设置字体路径
+    font_path = './statics/fonts/BFText-Regular-SC-19cf572c.ttf'
+    font1 = ImageFont.truetype(font_path, 30)
+    font2 = ImageFont.truetype(font_path, 38)
+    font3 = ImageFont.truetype(font_path, 30)
+    font4 = ImageFont.truetype(font_path, 20)
+    font5 = ImageFont.truetype(font_path, 22)
+
+    # 绘制文字信息
+    draw.text((60, 810), wiki_item['codexEntry']['category'], (164, 155, 108), font=font1)
+    draw.text((60, 850), wiki_item['name'], (164, 155, 108), font=font2)
+    draw.text((730, 40), wiki_item['codexEntry']['category'], font=font3)
+    draw.text((730, 75), wiki_item['name'], (255, 255, 255), font=font2)
+    draw.text((730, 133), wiki_item['criterias'][0]['name'], (195, 150, 60), font=font4)
+
+    # 处理描述文本换行
+    new_input = ""
+    i = 0
+    for letter in wiki_item['codexEntry']['description']:
+        if letter == "\n":
+            new_input += letter
+            i = 0
+        elif i * 11 % n_number == 0 or (i + 1) * 11 % n_number == 0:
+            new_input += '\n'
+            i = 0
+        i += PilImageUtils().get_width(ord(letter))
+        new_input += letter
+
+    draw.text((730, 160), new_input, font=font5)
+
+    # 保存图像
+    bg_img.save(item_path, 'png', quality=100)
+
+    await app.send_message(group, MessageChain(
+        Image(path=item_path)
+    ), quote=source)
+    return True

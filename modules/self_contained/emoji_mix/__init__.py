@@ -32,11 +32,11 @@ module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
 
 channel = Channel.current()
-channel.meta["name"] = ("EmojiMix")
-channel.meta["author"] = ("nullqwertyuiop")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["author"] = ("from: MeetWq")
-channel.meta["description"] = ("一个生成emoji融合图的插件，发送 '{emoji1}{emoji2}' 即可")
+channel.meta["name"] = "EmojiMix"
+channel.meta["author"] = "nullqwertyuiop"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["author"] = "from: MeetWq"
+channel.meta["description"] = "一个生成emoji融合图的插件，发送 '{emoji1}{emoji2}' 即可"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)

@@ -6,7 +6,7 @@ import random
 import time
 
 from creart import create
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Union, Tuple
@@ -507,8 +507,8 @@ class PlayerStatPic:
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
         if local_avatar_path.is_file() and \
-                (datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < datetime.timedelta(days=1):
+                (datetime.now() - datetime.fromtimestamp(
+                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -1333,8 +1333,8 @@ class PlayerWeaponPic:
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
         if local_avatar_path.is_file() and \
-                (datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < datetime.timedelta(days=1):
+                (datetime.now() - datetime.fromtimestamp(
+                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -1799,8 +1799,8 @@ class PlayerVehiclePic:
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
         if local_avatar_path.is_file() and \
-                (datetime.datetime.now() - datetime.datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < datetime.timedelta(days=1):
+                (datetime.now() - datetime.fromtimestamp(
+                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -2972,7 +2972,7 @@ class Bf1Status:
             colors=sns.color_palette("coolwarm"), textprops={'fontproperties': font_prop}
         )
         plt.title(
-            f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}",
+            f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}",
             fontproperties=font_prop
         )
         plt.axis('equal')

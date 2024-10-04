@@ -27,7 +27,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
-from generator import ASCIIArtGenerator
+from modules.self_contained.ascii_art_generator.generator import ASCIIArtGenerator
 
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)

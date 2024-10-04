@@ -10,7 +10,7 @@ class ASCIIArtGenerator:
     CHAR_SETS = {
         "low": "@%#*+=-:. ",
         "medium": "@#W$9876543210?!abc;:+=-,._ ",
-        "high": "@$%B&WM#*haokbdpqwmZO0QCLJUYXzcvunxrjft/\|)(1}{][?_-+~i!lI;:,\"^`'. ",
+        "high": "@$%B&WM#*haokbdpqwmZO0QCLJUYXzcvunxrjft/\\|)(1}{][?_-+~i!lI;:,\"^`'. ",
     }
 
     # 线程池执行器，用于处理同步的PIL操作
@@ -109,26 +109,17 @@ class ASCIIArtGenerator:
             contrast_factor = 1.3
             brightness_factor = 1.0  # 正常亮度
 
-        # 根据图像分辨率自动选择字符密度
+        # 如果没有指定density, 根据边缘强度调整密度
         if self.density is None:
-            # 简单示例：根据图像宽度选择
-            if width < 800:
-                density: str = "low"
-            elif 800 <= width < 1600:
+            if edge_intensity > 120:
+                density = "high"
+            elif edge_intensity > 80:
                 density = "medium"
             else:
-                density = "high"
+                density = "low"
         else:
-            # 如果用户指定了density，则使用指定的密度
+            # 如果指定了，使用指定的密度
             density = self.density
-
-        # 也可以结合边缘强度进行调整
-        if edge_intensity > 120:
-            density = "high"
-        elif edge_intensity > 80:
-            density = "medium"
-        else:
-            density = "low"
 
         return contrast_factor, brightness_factor, density
 

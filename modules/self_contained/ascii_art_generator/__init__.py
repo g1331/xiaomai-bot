@@ -8,12 +8,8 @@ from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
 from graia.ariadne.message.parser.twilight import (
-    Twilight, FullMatch,
-    ElementMatch, ElementResult,
-    SpacePolicy, UnionMatch, WildcardMatch, RegexResult, ArgResult
-)
-from graia.ariadne.message.parser.twilight import (
-    ArgumentMatch
+    Twilight, ElementMatch, ElementResult,
+    SpacePolicy, UnionMatch, ArgumentMatch, ArgResult
 )
 from graia.ariadne.model import Group
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -27,7 +23,7 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model
-from modules.self_contained.ascii_art_generator.generator import ASCIIArtGenerator
+from .generator import ASCIIArtGenerator
 
 module_controller = saya_model.get_module_controller()
 global_config = create(GlobalConfig)
@@ -38,6 +34,7 @@ channel.meta["name"] = "字符画生成器"
 channel.meta["description"] = "使用图片生成字符画"
 channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
+
 
 @listen(GroupMessage)
 @decorate(
@@ -58,14 +55,15 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
         ElementMatch(Image, optional=False) @ "img",
     ])
 )
-async def asciiArt(app: Ariadne, group: Group, source: Source,
-                   density: ArgResult,
-                   brightness: ArgResult,
-                   contrast: ArgResult,
-                   invert: ArgResult,
-                   width: ArgResult,
-                   img: ElementResult):
-
+async def ascii_art(
+        app: Ariadne, group: Group, source: Source,
+        density: ArgResult,
+        brightness: ArgResult,
+        contrast: ArgResult,
+        invert: ArgResult,
+        width: ArgResult,
+        img: ElementResult
+):
     # 设置默认参数
     density_value = density.result or None
     brightness_value = brightness.result if brightness.matched else 1.0

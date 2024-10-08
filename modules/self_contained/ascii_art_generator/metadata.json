@@ -1,0 +1,27 @@
+{
+  "level": 1,
+  "name": "ASCIIArtGenerator",
+  "version": "0.1",
+  "display_name": "字符画生成器",
+  "authors": [
+    "13"
+  ],
+  "description": "将图片转换为字符画",
+  "usage": [
+    "指令:",
+    "-ascii / 字符画, 在同一条讯息中附上图片",
+    "参数:",
+    "-density, -d: 设定字符的密度, [low mid high], default: None - 内部自动识别并调整",
+    "-brightness, -b: 设定亮度, 数值越大图像越亮, float, default: 1.0",
+    "-contrast, -c: 设定对比度增强, 数值越大对比度越高, float, default: 1.5",
+    "-invert, -i: 设定是否反转字符集, boolean, default: false",
+    "-width, -w: 设定生成图像的宽度 (字符数), int, default: 160"
+  ],
+  "example": [
+    "-ascii [图片]",
+    "-ascii -d low -b 0.9 [图片]",
+    "字符画 -contrast 1.14 -width 514 -invert [图片]"
+  ],
+  "default_switch": true,
+  "default_notice": false
+}

@@ -1,0 +1,5 @@
+# 设置 shell 脚本使用 LF 结尾
+*.sh text eol=lf
+
+# 设置批处理脚本使用 CRLF 结尾
+*.bat text eol=crlf

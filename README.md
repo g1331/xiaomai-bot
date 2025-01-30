@@ -129,7 +129,7 @@ uv run main.py
 
 ### 3. 打开config_demo.yaml文件填写配置信息,填写好后请改名为config.yaml再启动
 
-### 4. 启动bot在bot根目录下使用poetry run python main.py
+### 4. 启动bot在bot根目录下使用`uv run main.py`启动bot
 
 ### 5. ~~根据报错缺啥弄啥吧(~~
 
@@ -263,7 +263,7 @@ XiaoMaiBot
 
 ├─── pyproject.toml     项目依赖关系和打包信息
 
-├─── poetry.lock        项目依赖
+├─── uv.lock            依赖锁文件
 
 ├─── README.md          项目说明文件
 

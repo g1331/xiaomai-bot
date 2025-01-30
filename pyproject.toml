@@ -1,90 +1,57 @@
-[tool.poetry]
+[project]
 name = "bot-xiaomai-open"
 version = "0.3.0"
-description = "基于Graia-Ariadne开的qqbot-小埋，v3重构版本"
-authors = ["13"]
-license = "GNU GENERAL PUBLIC LICENSE"
+description = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
-packages = [{include = "bot_xiaomai_open"}]
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-httpx = "^0.27.0"
-h11 = "^0.14.0"
-creart = "^0.3.0"
-sqlalchemy = "^2.0.30"
-pyyaml = "^6.0.1"
-aiosqlite = "^0.20.0"
-psutil = "^5.9.8"
-arclet-alconna-graia = "^0.18.2"
-jinja2 = "^3.1.4"
-markdown-it-py = "^3.0.0"
-mdit-py-plugins = "^0.4.0"
-unwind = "0.4.0"
-aiofiles = "^23.2.1"
-zhconv = "^1.4.0"
-bs4 = "^0.0.2"
-requests = "^2.31.0"
-jieba = "^0.42.1"
-picimagesearch = "^3.10.2"
-imageio = "^2.34.1"
-bilireq = "^0.2.13"
-qrcode = "^7.4.2"
-grpcio = "^1.63.0"
-grpcio-status = "1.63.0"
-edgegpt = "^0.13.2"
-pypinyin = "^0.51.0"
-gitpython = "^3.1.43"
-revchatgpt = "^6.8.6"
-rapidfuzz = "^3.9.0"
-noneprompt = "^0.1.9"
-alembic = "^1.13.1"
-uvicorn = "^0.29.0"
-pillow = "^10.3.0"
-slack-sdk = "3.23.0"
-matplotlib = "^3.8.4"
-pandas = "^2.2.2"
-seaborn = "^0.13.2"
-pexpect = "^4.9.0"
-starlette = "^0.37.2"
-playwright = "1.41.2"
-curl-cffi = "^0.7.1"
-
-[tool.poetry.group.graia.dependencies]
-# Optional dependency to suppress warning on startup
-# arclet-alconna-graia = "^0.18.2"
-graia-ariadne = {extras = ["standard"], version = "^0.11.7"}
-graia-amnesia = "^0.7.1"
-#graia-amnesia = "^0.8.2"
-graia-saya = "^0.0.19"
-graia-scheduler = "^0.2.0"
-#graia-scheduler = "^0.3.0"
-graiax-fastapi = "^0.3.1"
-graiax-playwright = "^0.2.7"
-#graiax-playwright = "^0.3.1"
-graiax-text2img-playwright = "^0.4.2"
-launart = "0.6.4"
-#launart = "^0.8.1"
-
-
-
-[tool.poetry.group.modules_self-contained_minicraft_info.dependencies]
-mcstatus = "^11.1.1"
-
-[tool.poetry.group.dev.dependencies]
-memory-profiler = "^0.61.0"
-ipykernel = "^6.23.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[[tool.poetry.source]]
-name = "tuna-tsinghua"
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-priority = "primary"
-
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "primary"
-
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "graia-ariadne[standard]>=0.11.7",
+    "graia-amnesia>=0.7.1",
+    "graia-saya>=0.0.19",
+    "graia-scheduler>=0.2.0",
+    "graiax-fastapi>=0.3.1",
+    "graiax-playwright>=0.2.7",
+    "graiax-text2img-playwright>=0.4.2",
+    "launart==0.6.4",
+    "httpx>=0.27.0",
+    "httpx>=0.27.0",
+    "h11>=0.14.0",
+    "creart>=0.3.0",
+    "sqlalchemy>=2.0.30",
+    "pyyaml>=6.0.1",
+    "aiosqlite>=0.20.0",
+    "psutil>=5.9.8",
+    "arclet-alconna-graia>=0.18.2",
+    "jinja2>=3.1.4",
+    "markdown-it-py>=3.0.0",
+    "mdit-py-plugins>=0.4.0",
+    "unwind==0.4.0",
+    "aiofiles>=23.2.1",
+    "zhconv>=1.4.0",
+    "bs4>=0.0.2",
+    "requests>=2.31.0",
+    "jieba>=0.42.1",
+    "picimagesearch>=3.10.2",
+    "imageio>=2.34.1",
+    "bilireq>=0.2.13",
+    "qrcode>=7.4.2",
+    "grpcio>=1.63.0",
+    "grpcio-status==1.63.0",
+    "edgegpt>=0.13.2",
+    "pypinyin>=0.51.0",
+    "gitpython>=3.1.43",
+    "revchatgpt>=6.8.6",
+    "rapidfuzz>=3.9.0",
+    "noneprompt>=0.1.9",
+    "alembic>=1.13.1",
+    "uvicorn>=0.29.0",
+    "pillow>=10.3.0",
+    "slack-sdk==3.23.0",
+    "matplotlib>=3.8.4",
+    "pandas>=2.2.2",
+    "seaborn>=0.13.2",
+    "pexpect>=4.9.0",
+    "starlette>=0.37.2",
+    "playwright==1.41.2",
+    "curl-cffi>=0.7.1",
+]

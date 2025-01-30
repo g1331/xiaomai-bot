@@ -2790,99 +2790,117 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
 async def get_exchange(app: Ariadne, group: Group, source: Source, search_time: ArgResult):
     # 交换缓存图片的路径
     file_path = Path("./data/battlefield/exchange/")
-    # 获取今天的日期
-    file_date = datetime.now()
-    date_now = file_date
-    # 1.如果文件夹为空,则获取gw api的数据制图
-    # 2.如果不为空,直接发送最新的缓存图片
-    # 3.发送完毕后从gw api获取数据,如果和缓存的json文件内容一样,则不做任何操作,否则重新制图并保存为今天日期的文件
-    if not file_path.exists():
-        file_path.mkdir(parents=True)
-    if file_path.exists() and len(list(file_path.iterdir())) == 0:
-        # 获取gw api的数据
-        result = await (await BF1DA.get_api_instance()).getOffers()
-        if not isinstance(result, dict):
-            return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
-        # 将数据写入json文件
-        with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json", 'w',
-                  encoding="utf-8") as file1:
-            json.dump(result, file1, ensure_ascii=False, indent=4)
-        # 将数据制图
-        img = await Exchange(result).draw()
-        return await app.send_message(
-            group,
-            MessageChain(
-                Image(data_bytes=img),
-                f"更新时间:{date_now.year}年{date_now.month}月{date_now.day}日"
-            ),
-            quote=source
-        )
+    file_path.mkdir(parents=True, exist_ok=True)  # 简化目录创建逻辑
+
+    # 处理带时间参数的查询
     if search_time.matched:
         try:
-            strptime_temp = datetime.strptime(search_time.result, "%Y.%m.%d")
+            query_date = datetime.strptime(search_time.result, "%Y.%m.%d")
+            date_str = query_date.strftime("%Y年%m月%d日")
         except ValueError:
-            return await app.send_message(group, MessageChain("日期格式错误!示例:xxxx.x.x"), quote=source)
-        # 转换成xx年x月xx日
-        strptime_temp = f"{strptime_temp.year}年{strptime_temp.month}月{strptime_temp.day}日"
-        # 发送缓存里指定日期的图片
-        pic_file_name = f"{strptime_temp}.png"
-        pic_list = []
-        for item in file_path.iterdir():
-            if item.name.endswith(".png"):
-                pic_list.append(item.name.split(".")[0])
-        if strptime_temp not in pic_list:
-            # 发送最接近时间的5条数据
-            pic_list.sort(key=lambda x: abs((datetime.strptime(x, "%Y年%m月%d日") - datetime.strptime(
-                search_time.result, "%Y.%m.%d")).days))
-            pic_list = pic_list[:5]
-            pic_list = "\n".join(pic_list)
+            return await app.send_message(group, MessageChain("日期格式错误! 示例:2023.01.01"), quote=source)
+
+        # 查找精确匹配的图片
+        pic_file = file_path / f"{date_str}.png"
+        if pic_file.exists():
+            img = pic_file.read_bytes()
             return await app.send_message(
                 group,
-                MessageChain(f"没有找到{strptime_temp}的数据,以下是最接近的5条数据:\n{pic_list}"),
+                MessageChain(Image(data_bytes=img), f"更新时间:{date_str}"),
                 quote=source
             )
-        img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
-        return await app.send_message(group, MessageChain(
-            Image(data_bytes=img), f"更新时间:{pic_file_name.split('.')[0]}"
-        ), quote=source)
-    # 发送缓存里最新的图片
-    for day in range(int(len(list(file_path.iterdir()))) + 1):
-        file_date = date_now - timedelta(days=day)
-        pic_file_name = f"{file_date.year}年{file_date.month}月{file_date.day}日.png"
-        if (file_path / pic_file_name).exists():
-            img = Path(f"./data/battlefield/exchange/{pic_file_name}").read_bytes()
-            await app.send_message(
-                group,
-                MessageChain(
-                    Image(data_bytes=img),
-                    f"更新时间:{pic_file_name.split('.')[0]}"
-                ),
-                quote=source
-            )
-            break
-    # 获取gw api的数据,更新缓存
+
+        # 没有找到时查找最近5个文件
+        pic_files = []
+        for file in file_path.glob("*.png"):
+            try:
+                file_date = datetime.strptime(file.stem, "%Y年%m月%d日")
+                pic_files.append((file_date, file))
+            except ValueError:
+                continue
+
+        if not pic_files:
+            return await app.send_message(group, MessageChain("暂无任何缓存数据"), quote=source)
+
+        # 按日期差值排序
+        pic_files.sort(key=lambda x: abs((x[0] - query_date).days))
+        nearest = [f.stem for d, f in pic_files[:5]]
+        nearest_str = "\n".join(nearest)
+        return await app.send_message(
+            group,
+            MessageChain(f"未找到{date_str}的数据，最接近的5个记录:\n{nearest_str}"),
+            quote=source
+        )
+
+    # 处理最新数据查询
+    # 查找最新图片
+    latest_file = None
+    pic_files = []
+    for file in file_path.glob("*.png"):
+        try:
+            file_date = datetime.strptime(file.stem, "%Y年%m月%d日")
+            pic_files.append((file_date, file))
+        except ValueError:
+            continue
+
+    if pic_files:
+        pic_files.sort(reverse=True)
+        latest_date, latest_file = pic_files[0]
+        img = latest_file.read_bytes()
+        await app.send_message(
+            group,
+            MessageChain(Image(data_bytes=img), f"更新时间:{latest_date.strftime('%Y年%m月%d日')}"),
+            quote=source
+        )
+    else:
+        # 初始化获取数据
+        result = await (await BF1DA.get_api_instance()).getOffers()
+        if not isinstance(result, dict):
+            return await app.send_message(group, MessageChain(f"查询出错! {result}"), quote=source)
+
+        date_str = datetime.now().strftime("%Y年%m月%d日")
+        try:
+            img = await Exchange(result).draw()
+        except Exception as e:
+            logger.error(f"生成图片失败: {e}")
+            return await app.send_message(group, MessageChain("生成交换信息图片失败，请查看日志"), quote=source)
+
+        # 保存新数据
+        (file_path / f"{date_str}.json").write_text(json.dumps(result, ensure_ascii=False, indent=4))
+        (file_path / f"{date_str}.png").write_bytes(img)
+        await app.send_message(
+            group,
+            MessageChain(Image(data_bytes=img), f"更新时间:{date_str}"),
+            quote=source
+        )
+        return
+
+    # 数据更新检查
+    now = datetime.now()
     result = await (await BF1DA.get_api_instance()).getOffers()
     if isinstance(result, str):
-        return logger.error(f"查询交换出错!{result}")
-    # 如果result和之前最新的json文件内容一样,则return
-    if (file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json").exists():
-        with open(file_path / f"{file_date.year}年{file_date.month}月{file_date.day}日.json",
-                  'r', encoding="utf-8") as file1:
-            data = json.load(file1)
-            if data.get("result") == result.get("result"):
-                return logger.info("交换未更新~")
-            else:
-                logger.debug("正在更新交换~")
-                # 将数据写入json文件
-                with open(file_path / f"{date_now.year}年{date_now.month}月{date_now.day}日.json",
-                          'w', encoding="utf-8") as file2:
-                    json.dump(result, file2, ensure_ascii=False, indent=4)
-                # 将数据制图
-                _ = await Exchange(result).draw()
-                return logger.success("成功更新交换缓存~")
-    else:
-        return logger.error(f"未找到交换数据文件{file_date.year}年{file_date.month}月{file_date.day}日.json")
+        return logger.error(f"API请求失败: {result}")
 
+    # 对比最新缓存数据
+    cache_date = latest_date.strftime("%Y年%m月%d日")
+    cache_file = file_path / f"{cache_date}.json"
+    if cache_file.exists():
+        cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
+        if cached_data.get("result") == result.get("result"):
+            logger.info("交换数据未更新")
+            return
+
+    # 数据有更新时保存新文件
+    date_str = now.strftime("%Y年%m月%d日")
+    try:
+        new_img = await Exchange(result).draw()
+    except Exception as e:
+        logger.error(f"生成新图片失败: {e}")
+        return
+
+    (file_path / f"{date_str}.json").write_text(json.dumps(result, ensure_ascii=False, indent=4))
+    (file_path / f"{date_str}.png").write_bytes(new_img)
+    logger.success(f"成功更新交换数据至{date_str}")
 
 # 战役
 @listen(GroupMessage)

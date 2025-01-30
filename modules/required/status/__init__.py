@@ -125,7 +125,7 @@ async def message_counter():
 @dispatch(Twilight([
     FullMatch("-bot").space(SpacePolicy.PRESERVE)
 ]))
-async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
+async def status(app: Ariadne, src_place: Union[Group, Friend], source: Source):
     # 运行时长
     time_start = int(time.mktime(core.launch_time.timetuple()))
     m, s = divmod(int(time.time()) - time_start, 60)
@@ -161,7 +161,6 @@ async def bot(app: Ariadne, src_place: Union[Group, Friend], source: Source):
             f"在线bot数量：{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}/"
             f"{len(core.apps)}\n",
             f"活动群组数量：{len(account_controller.total_groups.keys())}\n",
-            f"爱发电地址：https://afdian.net/a/ss1333\n",
             "项目地址：https://github.com/g1331/xiaomai-bot",
         ),
         quote=source,

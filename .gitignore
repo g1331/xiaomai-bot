@@ -12,6 +12,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
 
 # 配置文件、日志
 /config/config.yaml

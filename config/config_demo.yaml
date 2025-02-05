@@ -41,13 +41,6 @@ functions:
   # Steam游戏搜索 steamdb.info/app/app_id 的cookie
   steamdb_cookie: steamdb_cookie # SteamDB的cookie
 
-  # ChatGPT
-  ChatGPT:
-    session_token: session_token
-     # 支持自订api地址，与api_key配套使用
-    api_url: api_url
-    api_key: api_key
-
   #龙图检测API
   dragon_detect:
     api_url: api_url

@@ -62,6 +62,7 @@ class OpenAIProvider(BaseAIProvider):
         return getattr(self, "usage", {})
 
     def reset(self, system_prompt=""):
+        # 保留 reset 方法以重置 AI 内部状态，仅为满足接口要求
         if hasattr(self.client, "reset"):
             self.client.reset(system_prompt)
         else:

@@ -12,6 +12,7 @@ class BaseAIProvider(ABC):
             self,
             prompt: str,
             history: list[dict] = None,
+            json_mode: bool = False,
             **kwargs
     ) -> AsyncGenerator[str, None]:
         """异步生成器，流式返回响应"""
@@ -19,7 +20,7 @@ class BaseAIProvider(ABC):
 
     @abstractmethod
     def reset(self, system_prompt: str = ""):
-        """重置对话上下文"""
+        """重置提供商内部状态，对话历史由 manager 管理"""
         pass
 
     @abstractmethod

@@ -17,12 +17,17 @@ class ConfigLoader:
                     "session_token": "",
                     "model": "gpt-3.5-turbo",
                     "max_tokens": 2000
+                },
+                "deepseek": {
+                    "api_key": "",
+                    "model": "deepseek-chat",
+                    "base_url": "https://api.deepseek.ai/v1/",
+                    "max_tokens": 2000
                 }
             },
             "plugins": {
                 "web_search": {
                     "enabled": True,
-                    "api_url": "https://ddg-webapp-aagd.vercel.app/search",
                     "max_results": 3
                 }
             }

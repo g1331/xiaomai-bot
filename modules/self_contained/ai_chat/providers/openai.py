@@ -1,9 +1,8 @@
-# src/ai_chat/providers/openai.py
-"""
-OpenAI 实现（兼容ChatGPT和API）
-"""
+from typing import List, Dict, Any, AsyncGenerator
+
 import tiktoken
-from revChatGPT.V3 import Chatbot
+from loguru import logger
+from openai import AsyncOpenAI
 
 from ..core.provider import BaseAIProvider, ProviderConfig
 
@@ -14,40 +13,46 @@ class OpenAIConfig(ProviderConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model = kwargs.get("model", "gpt-3.5-turbo")
+        # 保留 session_token 字段兼容配置，但不再使用
         self.session_token = kwargs.get("session_token", "")
+        if not self.base_url:
+            self.base_url = "https://api.openai.com"
 
 
 class OpenAIProvider(BaseAIProvider):
     def __init__(self, config: OpenAIConfig):
         self.config = config
         self.encoder = tiktoken.encoding_for_model(config.model)
-        self._init_client()
+        # 修改：使用 AsyncOpenAI 实例化客户端
+        self.client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)
 
-    def _init_client(self):
-        # 实现初始化逻辑（兼容官方库和第三方库）
-        if self.config.session_token:
-            from revChatGPT.V1 import AsyncChatbot
-            self.client = AsyncChatbot(config={
-                "access_token": self.config.session_token,
-                "proxy": self.config.proxy
-            })
-        else:
-            self.client = Chatbot(
-                api_key=self.config.api_key,
-                proxy=self.config.proxy,
-                max_tokens=self.config.max_tokens
+    async def ask(
+            self,
+            messages: List[Dict[str, Any]],
+            tools: List[Dict[str, Any]] = None,
+            **kwargs
+    ) -> AsyncGenerator[Any, None]:
+        """纯粹的 API 调用封装，直接返回原始响应"""
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.config.model,
+                messages=messages,
+                tools=tools if tools else None,
+                max_tokens=self.config.max_tokens,
+                temperature=0.7,
+                stream=True if tools else False
             )
 
-    async def ask(self, prompt: str, history=None, **kwargs):
-        if isinstance(self.client, Chatbot):  # API模式
-            full_response = ""
-            for resp in self.client.ask_stream(prompt):
-                full_response += resp
-                yield resp
-            self._update_usage(prompt, full_response)
-        else:  # 非官方API模式
-            async for resp in self.client.ask(prompt):
-                yield resp["message"]
+            if tools:
+                async for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta
+            else:
+                yield response.choices[0].message
+
+        except Exception as e:
+            logger.error(f"DeepSeek API error: {e}")
+            raise
 
     def _update_usage(self, prompt, response):
         prompt_tokens = len(self.encoder.encode(prompt))
@@ -60,10 +65,3 @@ class OpenAIProvider(BaseAIProvider):
 
     def get_usage(self):
         return getattr(self, "usage", {})
-
-    def reset(self, system_prompt=""):
-        # 保留 reset 方法以重置 AI 内部状态，仅为满足接口要求
-        if hasattr(self.client, "reset"):
-            self.client.reset(system_prompt)
-        else:
-            self.client.reset_chat()

@@ -1,12 +1,15 @@
 """
-修改后的对话管理逻辑
+对话管理逻辑
 """
-import json
-from typing import AsyncGenerator
-from enum import Enum
-from ..core.provider import BaseAIProvider
-from ..core.plugin import BasePlugin, PluginDescription
 import asyncio
+import json
+from enum import Enum
+from typing import AsyncGenerator
+
+from loguru import logger
+
+from ..core.plugin import BasePlugin
+from ..core.provider import BaseAIProvider
 
 
 class Conversation:
@@ -17,90 +20,106 @@ class Conversation:
         self.mode = "default"  # "default" or "custom"
 
     def switch_provider(self, new_provider: BaseAIProvider):
-        """
-        默认模式下，允许切换到新的provider，保留history。
-        """
+
         if self.mode == "default":
             self.provider = new_provider
 
     def set_custom_mode(self, custom_provider: BaseAIProvider):
-        """
-        切换到自定义模式，使用用户自己的provider
-        """
+
         self.mode = "custom"
         self.provider = custom_provider
 
-    async def _build_system_prompt(self) -> str:
-        """构建包含插件信息的系统提示"""
-        base_prompt = "你是一个智能助手，可以使用以下工具：\n"
-        plugin_descs = []
-
+    async def process_message(self, user_input: str) -> AsyncGenerator[str, None]:
+        """处理用户消息,包括历史记录管理和工具调用"""
+        # 1. 准备工具配置
+        tools = []
+        plugin_map = {}  # 用于快速查找插件
         for plugin in self.plugins:
             desc = plugin.description
-            plugin_descs.append(
-                f"工具名称：{desc.name}\n"
-                f"功能描述：{desc.description}\n"
-                f"参数说明：{json.dumps(desc.parameters, ensure_ascii=False)}\n"
-                f"使用示例：{desc.example}\n"
-            )
+            tool = {
+                "type": "function",
+                "function": {
+                    "name": desc.name,
+                    "description": desc.description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            key: {"type": "string", "description": value}
+                            for key, value in desc.parameters.items()
+                        },
+                        "required": list(desc.parameters.keys())
+                    }
+                }
+            }
+            tools.append(tool)
+            plugin_map[desc.name] = plugin
 
-        tool_prompt = "\n".join(plugin_descs)
-        decision_prompt = (
-            "\n请根据对话内容决定是否需要使用工具，如果需要，请严格按以下JSON格式响应：\n"
-            '{"reason": "使用原因", "tool": "工具名称", "parameters": {参数键值对}}\n'
-            "如果不需要使用工具，直接回复普通内容"
-        )
-        return base_prompt + tool_prompt + decision_prompt
+        # 2. 构建完整消息
+        messages = self.history + [{"role": "user", "content": user_input}]
+        response_content = []  # 用于收集非工具调用的响应内容
 
-    async def process_message(self, user_input: str) -> AsyncGenerator[str, None]:
-        # 先记录用户消息
-        self.history.append({"role": "user", "content": user_input})
-
-        # 构建系统提示并重置对话
-        system_prompt = await self._build_system_prompt()
-        self.provider.reset(system_prompt)
-
-        # 步骤1：获取初始决策响应
-        decision_response = ""
-        async for chunk in self.provider.ask(user_input, json_mode=True):
-            decision_response += chunk
-            yield chunk  # 流式输出
-        # 记录初始响应
-        self.history.append({"role": "assistant", "content": decision_response})
-
-        # 步骤2：尝试解析工具调用
+        # 3. 调用 Provider 并处理响应
         try:
-            tool_call = json.loads(decision_response.strip().split('\n')[-1])
-            if isinstance(tool_call, dict) and "tool" in tool_call:
-                # 执行插件
-                selected_plugin = next(
-                    p for p in self.plugins if p.description.name == tool_call["tool"]
-                )
-                result = await selected_plugin.execute(tool_call["parameters"])
-                # 记录工具调用结果
-                self.history.append({"role": "tool", "content": result})
+            async for response in self.provider.ask(messages=messages, tools=tools):
+                if tools:  # 工具调用模式
+                    # 添加 assistant 消息
+                    self.history.append({
+                        "role": "assistant",
+                        "content": response.content,
+                        "tool_calls": response.tool_calls
+                    })
 
-                # 步骤3：生成最终响应
-                final_prompt = (
-                    f"用户问题：{user_input}\n"
-                    f"工具执行结果：{result}\n"
-                    "请根据以上信息生成最终回复"
-                )
-                final_response = ""
-                async for chunk in self.provider.ask(final_prompt, self.history):
-                    final_response += chunk
-                    yield chunk
-                # 记录最终回复
-                self.history.append({"role": "assistant", "content": final_response})
-                return
-        except (json.JSONDecodeError, StopIteration):
-            pass  # 无有效工具调用
+                    # 处理工具调用
+                    for tool_call in response.tool_calls:
+                        if plugin := plugin_map.get(tool_call.function.name):
+                            try:
+                                arguments = json.loads(tool_call.function.arguments)
+                            except json.JSONDecodeError:
+                                arguments = {"raw": tool_call.function.arguments}
 
-        # 直接返回原始响应
-        yield decision_response
+                            # 调用插件
+                            try:
+                                logger.debug(f"Plugin {plugin.description.name} arguments: {arguments}")
+                                result = await plugin.execute(arguments)
+                                # 添加插件响应
+                                self.history.append({
+                                    "role": "tool",
+                                    "content": str(result),
+                                    "tool_call_id": tool_call.id
+                                })
+                            except Exception as e:
+                                # 记录插件执行异常
+                                logger.error(f"Plugin {plugin.description.name} execute error: {e}")
+                                # self.history.append({
+                                #     "role": "tool",
+                                #     "content": f"插件 {plugin.description.name} 执行异常",
+                                #     "tool_call_id": tool_call.id
+                                # })
+
+                    # 获取最终响应
+                    async for final_chunk in self.provider.ask(messages=self.history):
+                        content = final_chunk.content if hasattr(final_chunk, 'content') else ''
+                        if content:
+                            yield content
+                    return
+                else:  # 普通对话模式
+                    content = response.content if hasattr(response, 'content') else ''
+                    if content:
+                        yield content
+                        response_content.append(content)
+
+            # 更新历史记录
+            if response_content:
+                self.history.append({
+                    "role": "assistant",
+                    "content": "".join(response_content)
+                })
+
+        except Exception as e:
+            logger.error(f"Error in process_message: {e}")
+            yield f"Error: {str(e)}"
 
 
-# 用于管理多个用户对话的会话管理器，配置由配置文件加载与更新存储
 class RunMode(Enum):
     GLOBAL = "global"  # 跨群共享，仅按用户标识生成 key
     GROUP = "group"  # 每个群内用户独立会话
@@ -111,28 +130,25 @@ class ConversationManager:
     CONFIG_FILE = "chat_run_mode_config.json"  # 配置文件路径
 
     def __init__(self, provider_factory, plugins_factory):
-        """
-        provider_factory: 根据 key 返回独立的 BaseAIProvider 实例
-        plugins_factory: 根据 key 返回相应的插件列表
-        """
+
         self.conversations = {}
         self.provider_factory = provider_factory
         self.plugins_factory = plugins_factory
-        # 内存中保存各群的配置（key: group_id, value: RunMode.value）
         self._configs = self._load_configs()
-        # 针对 GROUP_SHARED 模式下增加锁
         self.locks = {}
         self._config_dirty = False
 
     def _load_configs(self) -> dict:
+
         try:
             with open(self.CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
             return data
         except Exception:
-            return {}  # 默认空配置
+            return {}
 
     async def _delayed_save_configs(self, delay: float = 5.0):
+
         await asyncio.sleep(delay)
         try:
             with open(self.CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -142,28 +158,24 @@ class ConversationManager:
             pass
 
     def update_run_mode(self, group_id: str, new_mode: RunMode):
-        """
-        更新指定群的运行模式配置，会延迟写入到配置文件。
-        """
+
         self._configs[group_id] = new_mode.value
         self._config_dirty = True
         asyncio.create_task(self._delayed_save_configs())
 
     def get_run_mode(self, group_id: str) -> RunMode:
-        """
-        根据 group_id 获取运行模式，未配置时默认返回 GLOBAL 模式。
-        """
+
         mode_val = self._configs.get(group_id, RunMode.GLOBAL.value)
         return RunMode(mode_val)
 
     def _get_conv_key(self, group_id: str, member_id: str) -> str:
-        # 根据当前群的 run_mode 决定 key 生成逻辑
+
         mode = self.get_run_mode(group_id)
         if mode == RunMode.GLOBAL:
-            return member_id  # 跨群共享
+            return member_id
         elif mode == RunMode.GROUP_SHARED:
-            return group_id  # 同一群共享
-        else:  # RunMode.GROUP：每个群中每个用户独立会话
+            return group_id
+        else:
             return f"{group_id}-{member_id}"
 
     def get_conversation(self, key: str) -> Conversation:
@@ -174,6 +186,7 @@ class ConversationManager:
         return self.conversations[key]
 
     def remove_conversation(self, key: str):
+
         if key in self.conversations:
             del self.conversations[key]
 
@@ -187,37 +200,30 @@ class ConversationManager:
         conv = self.get_conversation(key)
         conv.switch_provider(new_provider)
 
-    # 重置会话，创建新对话实例
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
+
         key = self._get_conv_key(group_id, member_id)
         if key in self.conversations:
             self.remove_conversation(key)
         provider = self.provider_factory(key)
         plugins = self.plugins_factory(key)
         conversation = Conversation(provider, plugins)
-        # 如有 preset，可在此处设定初始上下文
         self.conversations[key] = conversation
         return conversation
 
-    # 发送消息，聚合返回完整响应
     async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str:
-        """
-        发送消息，并聚合返回完整响应：
-        在 GROUP_SHARED 模式下，构造输入格式为 "member_name (member_id) say: message"
-        并确保同一群共享 client 不会并发响应
-        """
+
         key = self._get_conv_key(group_id, member_id)
         conversation = self.get_conversation(key)
-        formatted_message = f"{member_name} ({member_id}) say: {message}"
         if self.get_run_mode(group_id) == RunMode.GROUP_SHARED:
             lock = self.locks.setdefault(group_id, asyncio.Lock())
             async with lock:
                 response_chunks = []
-                async for chunk in conversation.process_message(formatted_message):
+                async for chunk in conversation.process_message(f"{member_name} ({member_id}) say: {message}"):
                     response_chunks.append(chunk)
                 return "".join(response_chunks)
         else:
             response_chunks = []
-            async for chunk in conversation.process_message(formatted_message):
+            async for chunk in conversation.process_message(message):
                 response_chunks.append(chunk)
             return "".join(response_chunks)

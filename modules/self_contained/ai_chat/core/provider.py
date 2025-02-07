@@ -3,24 +3,23 @@ AI提供商抽象层
 定义统一的接口规范，方便扩展不同AI平台
 """
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator, List, Dict, Any
 
 
 class BaseAIProvider(ABC):
     @abstractmethod
     async def ask(
             self,
-            prompt: str,
-            history: list[dict] = None,
-            json_mode: bool = False,
+            messages: List[Dict[str, Any]],
+            tools: List[Dict[str, Any]] = None,
             **kwargs
     ) -> AsyncGenerator[str, None]:
-        """异步生成器，流式返回响应"""
-        pass
-
-    @abstractmethod
-    def reset(self, system_prompt: str = ""):
-        """重置提供商内部状态，对话历史由 manager 管理"""
+        """
+        纯粹的消息接口封装,接收完整的消息列表和工具配置
+        Args:
+            messages: 完整的消息列表
+            tools: 工具配置列表
+        """
         pass
 
     @abstractmethod
@@ -35,6 +34,6 @@ class ProviderConfig:
     def __init__(self, **kwargs):
         self.api_key: str = kwargs.get("api_key", "")
         self.base_url: str = kwargs.get("base_url", "")
-        self.max_tokens: int = kwargs.get("max_tokens", 2000)
+        self.max_tokens: int = kwargs.get("max_tokens", 8192)
         self.proxy: str = kwargs.get("proxy", "")
-        self.timeout: int = kwargs.get("timeout", 30)
+        self.timeout: int = kwargs.get("timeout", 360)

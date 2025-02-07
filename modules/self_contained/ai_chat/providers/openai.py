@@ -51,7 +51,7 @@ class OpenAIProvider(BaseAIProvider):
                 yield response.choices[0].message
 
         except Exception as e:
-            logger.error(f"DeepSeek API error: {e}")
+            logger.error(f"OpenAI API error: {e}")
             raise
 
     def _update_usage(self, prompt, response):

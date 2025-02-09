@@ -29,6 +29,7 @@ from graia.scheduler import timers
 from graia.scheduler.saya.schema import SchedulerSchema
 from loguru import logger
 from rapidfuzz import fuzz
+from wcwidth import wcswidth
 from zhconv import zhconv
 from PIL import Image as PILImage, ImageDraw, ImageFont
 
@@ -2537,7 +2538,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
         [
             UnionMatch("-bf1", "-bfstat").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-i", "-img", action="store_true", optional=True) @ "img",
-        ]
+            ]
     )
 )
 @decorate(
@@ -2548,28 +2549,27 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
     Permission.user_require(Permission.User),
 )
 async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img: ArgResult):
-    # 弃用的gt_bf1_stat
-    # result = await gt_bf1_stat()
-    # if not isinstance(result, str):
-    #     return await app.send_message(group, MessageChain(f"查询出错!{result}"), quote=source)
-    # return await app.send_message(group, MessageChain(f"{result}"), quote=source)
+    # 基本设置：总宽度设为30（大约15个汉字），边框占2，内宽为28
+    max_width = 30
+    inner_width = max_width - 2
+
+    # 获取 BF1 API 实例及数据
     bf1_account = await BF1DA.get_api_instance()
-    time_start = time.time()
-    #   搜索获取私服game_id
+    t0 = time.time()
     filter_dict = {
-        "name": "",  # 服务器名
-        "serverType": {  # 服务器类型
-            "OFFICIAL": "on",  # 官服
-            "RANKED": "on",  # 私服
-            "UNRANKED": "on",  # 私服(不计战绩)
-            "PRIVATE": "on"  # 密码服
+        "name": "",
+        "serverType": {
+            "OFFICIAL": "on",   # 官服
+            "RANKED": "on",     # 私服
+            "UNRANKED": "on",   # 私服（不计战绩）
+            "PRIVATE": "on"     # 密码服
         },
-        "slots": {  # 空位
-            "oneToFive": "on",  # 1-5
-            "sixToTen": "on",  # 6-10
-            "none": "on",  # 无
-            "tenPlus": "on",  # 10+
-            "spectator": "on"  # 观战
+        "slots": {
+            "oneToFive": "on",
+            "sixToTen": "on",
+            "none": "on",
+            "tenPlus": "on",
+            "spectator": "on"
         },
     }
     guid_list = []
@@ -2581,193 +2581,218 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     for result in results:
         if isinstance(result, str):
             continue
-        result: dict = result["result"]
+        result = result["result"]
         for server in result.get("gameservers", []):
             if server["guid"] not in guid_list:
                 guid_list.append(server["guid"])
+                # 转换为简体中文
                 server["mapModePretty"] = zhconv.convert(server["mapModePretty"], 'zh-hans')
                 server["mapNamePretty"] = zhconv.convert(server["mapNamePretty"], 'zh-hans')
                 server_total_list.append(server)
     if not server_total_list:
         logger.error("获取服务器列表失败!")
         return await app.send_message(group, MessageChain("获取服务器信息失败!"), quote=source)
-    logger.success(f"共获取{len(server_total_list)}个服务器,耗时{round(time.time() - time_start, 2)}秒")
-    # 人数、排队数、观众、模式、地图、地区、国家
-    server_list = []
-    # official_server_list = []
-    # private_server_list = []
-    for server in server_total_list:
-        players = server["slots"]["Soldier"]["current"]
-        queues = server["slots"]["Queue"]["current"]
-        spectators = server["slots"]["Spectator"]["current"]
-        mapName = server["mapName"]
-        mapNamePretty = server["mapNamePretty"]
-        mapMode = server["mapMode"]
-        mapModePretty = server["mapModePretty"]
-        region = server["region"]
-        country = server["country"]
-        temp = {
-            "players": players,
-            "queues": queues,
-            "spectators": spectators,
-            "mapName": mapName,
-            "mapNamePretty": mapNamePretty,
-            "mapMode": mapMode,
-            "mapModePretty": mapModePretty,
-            "region": region,
-            "country": country,
-            "official": True if server["serverType"] == "OFFICIAL" else False,
-        }
-        server_list.append(temp)
-        # if server["serverType"] != "OFFICIAL":
-        #     private_server_list.append(temp)
-        # else:
-        #     official_server_list.append(temp)
-    #region_dict = {
-    #    "OC": "大洋洲",
-    #    "Asia": "亚洲",
-    #    "EU": "欧洲",
-    #    "Afr": "非洲",
-    #    "AC": "南极洲",
-    #    "SAm": "南美洲",
-    #    "NAm": "北美洲"
-    #}
-    #country_dict = {
-    #    "JP": "日本",
-    #    "US": "美国",
-    #    "DE": "德国",
-    #    "AU": "澳大利亚",
-    #    "BR": "巴西",
-    #    "HK": "中国香港",
-    #    "AE": "阿联酋",
-    #    "ZA": "南非",
-    #}
+    logger.success(f"共获取 {len(server_total_list)} 个服务器, 耗时 {round(time.time() - t0, 2)} 秒")
 
-    # 文字版本：
-    # 服务器总数(官/私): xxx (xxx/xxx)                 服务器数量 = 官服数量 + 私服数量
-    # 总人数(官/私): xxx (xxx/xxx)                 总人数 = 游玩人数 + 排队人数 + 观众人数
-    # 游玩人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
-    # 排队人数(官/私|亚/欧): xxx (xxx/xxx/xxx/xxx)
-    # 观众人数(官/私): xxx (xxx/xxx)
-    # 热门地图: xxx,xxx,xxx      (只显示前三个，地图名：数量)
-    # 征服: xx   ,行动: xx       (所有模式的人数)
-    # 时间: xx.xx.xx xx:xx:xx
-    # 示例:
-    # 服务器总数(官/私):
-    # 总:100 (50/50)
-    # 总人数(官/私):
-    # 总:1000 (500/500)
-    # 游玩人数(官/私|亚/欧):
-    # 总:900, 100/800, 400/200
-    # 排队人数(官/私|亚/欧):
-    # 总:60, 10/50, 15,23
-    # 观众人数(官/私):
-    # 总:40, 10/30
-    # ==========================
-    # 热门地图:
-    # xxx:100, xxx:90, xxx:80
-    # ==========================
-    # 游玩模式:
-    # 征服: 100, 行动: 90
-    # ==========================
-    # 更新时间: 2021-08-04 12:00:00
-
-    # 总人数
-    total_players = 0
-    total_queues = 0
-    total_spectators = 0
-    # 官服人数
-    official_players = 0
-    official_queues = 0
-    official_spectators = 0
-    # 私服人数
-    private_players = 0
-    private_queues = 0
-    private_spectators = 0
-    # 亚服人数
-    asia_players = 0
-    asia_queues = 0
-    asia_spectators = 0
-    # 欧服人数
-    eu_players = 0
-    eu_queues = 0
-    eu_spectators = 0
     # 整理数据
-    for server in server_list:
-        total_players += server["players"]
-        total_queues += server["queues"]
-        total_spectators += server["spectators"]
-        if server["official"]:
-            official_players += server["players"]
-            official_queues += server["queues"]
-            official_spectators += server["spectators"]
-        else:
-            private_players += server["players"]
-            private_queues += server["queues"]
-            private_spectators += server["spectators"]
-        if server["region"] == "Asia":
-            asia_players += server["players"]
-            asia_queues += server["queues"]
-            asia_spectators += server["spectators"]
-        elif server["region"] == "EU":
-            eu_players += server["players"]
-            eu_queues += server["queues"]
-            eu_spectators += server["spectators"]
-    # TODO: 可视化
-    # if img.matched:
-    #     img_bytes = Bf1Status(private_server_data, official_server_data).generate_comparison_charts()
-    #     return await app.send_message(group, MessageChain(Image(data_bytes=img_bytes)), quote=source)
-    # 用一个变量存 =*15 用于发送
-    equals = "=" * 15
-    send = [
-        f"总人数(官/私):\n"
-        f"{total_players + total_queues + total_spectators} "
-        f"({official_players + official_queues + official_spectators}/"
-        f"{private_players + private_queues + private_spectators})\n"
-        f"游玩人数(官/私|亚/欧):\n"
-        f"{total_players} ({official_players}/{private_players}|{asia_players}/{eu_players})\n"
-        f"排队人数(官/私|亚/欧):\n"
-        f"{total_queues} ({official_queues}/{private_queues}|{asia_queues}/{eu_queues})\n"
-        f"观众人数(官/私):\n"
-        f"{total_spectators} ({official_spectators}/{private_spectators})\n"
-        f"{equals}\n"
-        f"服务器总数(官/私):\n"
-        f"{len(server_list)} ({len([server for server in server_list if server['official']])}/"
-        f"{len([server for server in server_list if not server['official']])})\n"
-        f"{equals}\n"
-    ]
-    # 热门地图
-    map_list = {}
-    for server in server_list:
-        # if server["mapNamePretty"] not in map_list:
-        #     map_list[server["mapNamePretty"]] = 0
-        # map_list[server["mapNamePretty"]] += 1
-        # 组成 模式-地图
-        temp = f"{server['mapModePretty']}-{server['mapNamePretty']}"
-        if temp not in map_list:
-            map_list[temp] = 0
-        map_list[temp] += 1
-    map_list = sorted(map_list.items(), key=lambda x: x[1], reverse=True)
-    map_list = [f"{item[0]}:{item[1]}" for item in map_list]
-    map_list = map_list[:3]
-    map_list = "\n".join(map_list)
-    send.append(f"前三热门地图:\n{map_list}\n{equals}\n")
-    # 模式 每两个换一行
-    mode_list = {}
-    for server in server_list:
-        if server["mapModePretty"] not in mode_list:
-            mode_list[server["mapModePretty"]] = 0
-        mode_list[server["mapModePretty"]] += 1
-    mode_list = sorted(mode_list.items(), key=lambda x: x[1], reverse=True)
-    mode_list = [f"{item[0]}:{item[1]}" for item in mode_list]
-    mode_list = [mode_list[i:i + 2] for i in range(0, len(mode_list), 2)]
-    mode_list = [" ".join(item) for item in mode_list]
-    mode_list = "\n".join(mode_list)
-    send.append(f"游玩模式:\n{mode_list}\n{equals}\n")
-    # 更新时间
-    send.append(f"更新时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    send = "".join(send)
-    return await app.send_message(group, MessageChain(f"{send}"), quote=source)
+    server_list = []
+    for server in server_total_list:
+        server_list.append({
+            "players": server["slots"]["Soldier"]["current"],
+            "queues": server["slots"]["Queue"]["current"],
+            "spectators": server["slots"]["Spectator"]["current"],
+            "mapNamePretty": server["mapNamePretty"],
+            "mapModePretty": server["mapModePretty"],
+            "region": server["region"],
+            "official": True if server["serverType"] == "OFFICIAL" else False,
+        })
+
+    # 统计数据（包括亚服、欧服）
+    total_servers = len(server_list)
+    official_servers = len([s for s in server_list if s["official"]])
+    private_servers = total_servers - official_servers
+
+    total_players = sum(s["players"] for s in server_list)
+    official_players = sum(s["players"] for s in server_list if s["official"])
+    private_players = total_players - official_players
+    asia_players = sum(s["players"] for s in server_list if s["region"] == "Asia")
+    eu_players = sum(s["players"] for s in server_list if s["region"] == "EU")
+
+    total_queues = sum(s["queues"] for s in server_list)
+    official_queues = sum(s["queues"] for s in server_list if s["official"])
+    private_queues = total_queues - official_queues
+    asia_queues = sum(s["queues"] for s in server_list if s["region"] == "Asia")
+    eu_queues = sum(s["queues"] for s in server_list if s["region"] == "EU")
+
+    total_spectators = sum(s["spectators"] for s in server_list)
+    official_spectators = sum(s["spectators"] for s in server_list if s["official"])
+    private_spectators = total_spectators - official_spectators
+    asia_spectators = sum(s["spectators"] for s in server_list if s["region"] == "Asia")
+    eu_spectators = sum(s["spectators"] for s in server_list if s["region"] == "EU")
+
+    # 构造统计信息文字（每行不超过内宽28）
+    stats_lines = []
+    stats_lines.append("🖥服:总{} 官{} 私{}".format(total_servers, official_servers, private_servers))
+    stats_lines.append("👤游:总{}".format(total_players))
+    stats_lines.append("   官{} 私{}".format(official_players, private_players))
+    stats_lines.append("   亚{} 欧{}".format(asia_players, eu_players))
+    stats_lines.append("⏳排:总{}".format(total_queues))
+    stats_lines.append("   官{} 私{}".format(official_queues, private_queues))
+    stats_lines.append("   亚{} 欧{}".format(asia_queues, eu_queues))
+    stats_lines.append("👀观:总{}".format(total_spectators))
+    stats_lines.append("   官{} 私{}".format(official_spectators, private_spectators))
+    stats_lines.append("   亚{} 欧{}".format(asia_spectators, eu_spectators))
+
+    # 构造统计信息盒子（采用边框字符，内宽为28）
+    stats_box_lines = []
+    stats_box_lines.append("╭" + "─" * inner_width + "╮")
+    # 标题：完整显示“战地一服务器状态”
+    title = "战地一服务器状态"
+    curr, t_trunc = 0, ""
+    for ch in title:
+        w = wcswidth(ch)
+        if curr + w > inner_width:
+            break
+        t_trunc += ch
+        curr += w
+    left_pad = (inner_width - curr) // 2
+    right_pad = inner_width - curr - left_pad
+    stats_box_lines.append("│" + " " * left_pad + t_trunc + " " * right_pad + "│")
+    stats_box_lines.append("├" + "─" * inner_width + "┤")
+    for line in stats_lines:
+        curr, s_trunc = 0, ""
+        for ch in line:
+            w = wcswidth(ch)
+            if curr + w > inner_width:
+                break
+            s_trunc += ch
+            curr += w
+        stats_box_lines.append("│" + s_trunc + " " * (inner_width - curr) + "│")
+    stats_box_lines.append("╰" + "─" * inner_width + "╯")
+    stats_box = "\n".join(stats_box_lines)
+
+    # 构造热门地图表格（列1宽15，列2宽8，总宽30）
+    col1_width = 15
+    col2_width = 8
+    table_total = col1_width + col2_width + 6 + 1  # 15+8+7=30
+    map_table_lines = []
+    map_table_lines.append("╭" + "─" * (table_total - 2) + "╮")
+    # 表头： "图-模" 和 "局"
+    header1 = "图-模"
+    header2 = "局"
+    # 对 header1 居中
+    curr, cell1 = 0, ""
+    for ch in header1:
+        w = wcswidth(ch)
+        if curr + w > col1_width:
+            break
+        cell1 += ch
+        curr += w
+    left = (col1_width - curr) // 2
+    right = col1_width - curr - left
+    cell1 = " " * left + cell1 + " " * right
+    curr, cell2 = 0, ""
+    for ch in header2:
+        w = wcswidth(ch)
+        if curr + w > col2_width:
+            break
+        cell2 += ch
+        curr += w
+    left = (col2_width - curr) // 2
+    right = col2_width - curr - left
+    cell2 = " " * left + cell2 + " " * right
+    map_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
+    map_table_lines.append("├" + "─" * (col1_width + 2) + "┬" + "─" * (col2_width + 2) + "┤")
+    # 构造热门地图统计：键为“模式-地图”
+    map_stats = {}
+    for s in server_list:
+        key = "{}-{}".format(s["mapModePretty"], s["mapNamePretty"])
+        map_stats[key] = map_stats.get(key, 0) + 1
+    sorted_maps = sorted(map_stats.items(), key=lambda x: x[1], reverse=True)[:3]
+    for k, v in sorted_maps:
+        curr, cell1 = 0, ""
+        for ch in k:
+            w = wcswidth(ch)
+            if curr + w > col1_width:
+                break
+            cell1 += ch
+            curr += w
+        cell1 = cell1 + " " * (col1_width - curr)
+        text2 = "{}局".format(v)
+        curr, cell2 = 0, ""
+        for ch in text2:
+            w = wcswidth(ch)
+            if curr + w > col2_width:
+                break
+            cell2 += ch
+            curr += w
+        cell2 = cell2 + " " * (col2_width - curr)
+        map_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
+    map_table_lines.append("╰" + "─" * (table_total - 2) + "╯")
+    map_table = "\n".join(map_table_lines)
+
+    # 构造游玩模式表格（列1宽15，列2宽8，总宽30），统计“模式”的数量
+    col1_width_mode = 15
+    col2_width_mode = 8
+    table_total_mode = col1_width_mode + col2_width_mode + 6 + 1
+    mode_table_lines = []
+    mode_table_lines.append("╭" + "─" * (table_total_mode - 2) + "╮")
+    header1 = "模"
+    header2 = "数"
+    curr, cell1 = 0, ""
+    for ch in header1:
+        w = wcswidth(ch)
+        if curr + w > col1_width_mode:
+            break
+        cell1 += ch
+        curr += w
+    left = (col1_width_mode - curr) // 2
+    right = col1_width_mode - curr - left
+    cell1 = " " * left + cell1 + " " * right
+    curr, cell2 = 0, ""
+    for ch in header2:
+        w = wcswidth(ch)
+        if curr + w > col2_width_mode:
+            break
+        cell2 += ch
+        curr += w
+    left = (col2_width_mode - curr) // 2
+    right = col2_width_mode - curr - left
+    cell2 = " " * left + cell2 + " " * right
+    mode_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
+    mode_table_lines.append("├" + "─" * (col1_width_mode + 2) + "┬" + "─" * (col2_width_mode + 2) + "┤")
+    mode_stats = {}
+    for s in server_list:
+        key = s["mapModePretty"]
+        mode_stats[key] = mode_stats.get(key, 0) + 1
+    sorted_modes = sorted(mode_stats.items(), key=lambda x: x[1], reverse=True)
+    for mode, cnt in sorted_modes:
+        curr, cell1 = 0, ""
+        for ch in mode:
+            w = wcswidth(ch)
+            if curr + w > col1_width_mode:
+                break
+            cell1 += ch
+            curr += w
+        cell1 = cell1 + " " * (col1_width_mode - curr)
+        text2 = str(cnt)
+        curr, cell2 = 0, ""
+        for ch in text2:
+            w = wcswidth(ch)
+            if curr + w > col2_width_mode:
+                break
+            cell2 += ch
+            curr += w
+        cell2 = cell2 + " " * (col2_width_mode - curr)
+        mode_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
+    mode_table_lines.append("╰" + "─" * (table_total_mode - 2) + "╯")
+    mode_table = "\n".join(mode_table_lines)
+
+    # 最终消息：统计盒子、热门地图表格、游玩模式表格及更新时间
+    update_line = "更新: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    final_message = stats_box + "\n\n" + map_table + "\n\n" + mode_table + "\n\n" + update_line
+
+    return await app.send_message(group, MessageChain(final_message.strip()), quote=source)
 
 
 # 交换

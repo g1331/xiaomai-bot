@@ -326,7 +326,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.8.4" },
     { name = "mdit-py-plugins", specifier = ">=0.4.0" },
     { name = "noneprompt", specifier = ">=0.1.9" },
-    { name = "openai", specifier = ">=1.60" },
+    { name = "openai", specifier = "==1.61.1" },
     { name = "pandas", specifier = ">=2.2.2" },
     { name = "pexpect", specifier = ">=4.9.0" },
     { name = "picimagesearch", specifier = ">=3.10.2" },

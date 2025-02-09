@@ -12,7 +12,6 @@ from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
 from .plugins_registry import ALL_PLUGINS
 
 module_controller = saya_model.get_module_controller()
-# 初始化通道
 channel = Channel.current()
 channel.meta["name"] = "AI对话"
 channel.meta["description"] = "AI对话模块"
@@ -56,7 +55,7 @@ def plugins_factory(key: str):
     """为ConversationManager提供的插件工厂函数，
     从插件注册表中获取所有插件，根据配置判断是否启用"""
     enabled_plugins = []
-    plugins_cfg = g_config_loader._config.get("plugins", {})
+    plugins_cfg = g_config_loader.config.get("plugins", {})
     for plugin_name, plugin_info in ALL_PLUGINS.items():
         cfg = plugins_cfg.get(plugin_name, {})
         if cfg.get("enabled", False):

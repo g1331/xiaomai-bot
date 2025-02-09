@@ -58,6 +58,6 @@ dependencies = [
     "pygments>=2.19.1",
     "python-markdown-math>=0.8",
     "pymdown-extensions>=10.14.2",
-    "openai>=1.60",
+    "openai==1.61.1",
     "duckduckgo-search>=7.3.1",
 ]

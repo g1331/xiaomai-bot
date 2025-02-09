@@ -5,6 +5,7 @@ import asyncio
 import json
 from enum import Enum
 from typing import AsyncGenerator
+from datetime import datetime
 
 from loguru import logger
 
@@ -13,7 +14,6 @@ from ..core.provider import BaseAIProvider
 
 
 class Conversation:
-    # 新增枚举，避免硬编码
     class Mode(Enum):
         DEFAULT = "default"
         CUSTOM = "custom"
@@ -22,18 +22,73 @@ class Conversation:
         self.provider = provider
         self.plugins = plugins
         self.history = []
-        # 修改：使用枚举而非硬编码字符串
         self.mode = Conversation.Mode.DEFAULT
+        self.preset = None  # 新增: preset 设定
 
     def switch_provider(self, new_provider: BaseAIProvider):
-        # 修改：使用枚举判断
         if self.mode == Conversation.Mode.DEFAULT:
             self.provider = new_provider
 
     def set_custom_mode(self, custom_provider: BaseAIProvider):
-        # 修改：使用枚举赋值
         self.mode = Conversation.Mode.CUSTOM
         self.provider = custom_provider
+
+    def set_preset(self, preset: str):
+        """设置对话的预设提示词,只修改/添加第一条消息"""
+        if not preset:
+            return
+
+        preset_message = {
+            "role": "system",
+            "content": preset
+        }
+
+        if self.history and self.history[0]["role"] == "system":
+            # 如果第一条是系统消息,直接更新内容
+            self.history[0] = preset_message
+        else:
+            # 否则在最前面插入预设消息
+            self.history.insert(0, preset_message)
+
+        self.preset = preset
+
+    def clear_preset(self):
+        """清除预设提示词,只移除第一条系统消息"""
+        if self.history and self.history[0]["role"] == "system":
+            self.history.pop(0)
+        self.preset = None
+
+    def clear_memory(self):
+        """清除所有对话历史"""
+        preset = self.preset  # 暂存当前预设
+        self.history = []
+        if preset:  # 如果有预设,重新添加
+            self.set_preset(preset)
+
+    def _get_time_message(self) -> dict:
+        """获取当前时间信息的消息"""
+        current_time = datetime.now()
+        weekday_map = {
+            0: "星期一",
+            1: "星期二",
+            2: "星期三",
+            3: "星期四",
+            4: "星期五",
+            5: "星期六",
+            6: "星期日"
+        }
+        weekday = weekday_map[current_time.weekday()]
+        time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H:%M:%S")
+        return {
+            "role": "system",
+            "content": f"你知道现在的时间是北京时间: {time_str}"
+        }
+
+    def _get_base_messages(self) -> list:
+        """获取基础消息列表，仅包含当前时间信息
+           （preset 消息已通过 set_preset 插入到 history 中，不再重复添加）
+        """
+        return [self._get_time_message()]
 
     async def process_message(self, user_input: str) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
@@ -60,8 +115,9 @@ class Conversation:
             tools.append(tool)
             plugin_map[desc.name] = plugin
 
-        # 2. 构建完整消息
-        messages = self.history + [{"role": "user", "content": user_input}]
+        # 2. 更新history
+        self.history.append({"role": "user", "content": user_input})
+        messages = self._get_base_messages() + self.history
         response_content = []  # 用于收集非工具调用的响应内容
 
         # 3. 调用 Provider 并处理响应
@@ -230,8 +286,35 @@ class ConversationManager:
         provider = self.provider_factory(key)
         plugins = self.plugins_factory(key)
         conversation = Conversation(provider, plugins)
+        if preset:  # 如果提供了 preset，设置它
+            conversation.set_preset(preset)
         self.conversations[key] = conversation
         return conversation
+
+    def set_preset(self, group_id: str, member_id: str, preset: str):
+        """为指定用户设置 preset"""
+        key = self._get_conv_key(group_id, member_id)
+        conv = self.get_conversation(key)
+        conv.set_preset(preset)
+
+    def clear_preset(self, group_id: str, member_id: str):
+        """清除指定用户的 preset"""
+        key = self._get_conv_key(group_id, member_id)
+        if key in self.conversations:
+            self.conversations[key].clear_preset()
+
+    def get_preset(self, group_id: str, member_id: str) -> str:
+        """获取指定用户的 preset"""
+        key = self._get_conv_key(group_id, member_id)
+        if key in self.conversations:
+            return self.conversations[key].preset or ""
+        return ""
+
+    def clear_memory(self, group_id: str, member_id: str):
+        """清除指定用户的所有对话历史"""
+        key = self._get_conv_key(group_id, member_id)
+        if key in self.conversations:
+            self.conversations[key].clear_memory()
 
     async def __process_conversation(
             self, conversation: Conversation,
@@ -240,7 +323,7 @@ class ConversationManager:
     ) -> str:
         response_chunks = []
         if shared:
-            async for chunk in conversation.process_message(f"{member_name} ({member_id}) say: {message}"):
+            async for chunk in conversation.process_message(f"{member_name}(QQ:{member_id})说:{message}"):
                 response_chunks.append(chunk)
         else:
             async for chunk in conversation.process_message(message):

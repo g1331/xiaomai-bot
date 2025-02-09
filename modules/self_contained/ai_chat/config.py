@@ -83,3 +83,7 @@ class ConfigLoader:
         if provider_name not in self._config["providers"]:
             raise ValueError(f"Unknown provider: {provider_name}")
         return self._config["providers"][provider_name]
+
+    @property
+    def config(self):
+        return self._config

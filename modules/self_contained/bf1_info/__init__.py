@@ -2538,7 +2538,7 @@ async def NudgeReply(app: Ariadne, event: NudgeEvent):
         [
             UnionMatch("-bf1", "-bfstat").space(SpacePolicy.PRESERVE),
             ArgumentMatch("-i", "-img", action="store_true", optional=True) @ "img",
-            ]
+        ]
     )
 )
 @decorate(
@@ -2559,10 +2559,10 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     filter_dict = {
         "name": "",
         "serverType": {
-            "OFFICIAL": "on",   # 官服
-            "RANKED": "on",     # 私服
-            "UNRANKED": "on",   # 私服（不计战绩）
-            "PRIVATE": "on"     # 密码服
+            "OFFICIAL": "on",  # 官服
+            "RANKED": "on",  # 私服
+            "UNRANKED": "on",  # 私服（不计战绩）
+            "PRIVATE": "on"  # 密码服
         },
         "slots": {
             "oneToFive": "on",
@@ -2607,7 +2607,7 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
             "official": True if server["serverType"] == "OFFICIAL" else False,
         })
 
-    # 统计数据（包括亚服、欧服）
+    # 统计数据（包括亚服、欧服、其他）
     total_servers = len(server_list)
     official_servers = len([s for s in server_list if s["official"]])
     private_servers = total_servers - official_servers
@@ -2617,180 +2617,69 @@ async def bf1_server_info_check(app: Ariadne, group: Group, source: Source, img:
     private_players = total_players - official_players
     asia_players = sum(s["players"] for s in server_list if s["region"] == "Asia")
     eu_players = sum(s["players"] for s in server_list if s["region"] == "EU")
+    other_players = total_players - asia_players - eu_players
 
     total_queues = sum(s["queues"] for s in server_list)
     official_queues = sum(s["queues"] for s in server_list if s["official"])
     private_queues = total_queues - official_queues
     asia_queues = sum(s["queues"] for s in server_list if s["region"] == "Asia")
     eu_queues = sum(s["queues"] for s in server_list if s["region"] == "EU")
+    other_queues = total_queues - asia_queues - eu_queues
 
     total_spectators = sum(s["spectators"] for s in server_list)
     official_spectators = sum(s["spectators"] for s in server_list if s["official"])
     private_spectators = total_spectators - official_spectators
     asia_spectators = sum(s["spectators"] for s in server_list if s["region"] == "Asia")
     eu_spectators = sum(s["spectators"] for s in server_list if s["region"] == "EU")
+    other_spectators = total_spectators - asia_spectators - eu_spectators
 
     # 构造统计信息文字（每行不超过内宽28）
     stats_lines = []
-    stats_lines.append("🖥服:总{} 官{} 私{}".format(total_servers, official_servers, private_servers))
-    stats_lines.append("👤游:总{}".format(total_players))
-    stats_lines.append("   官{} 私{}".format(official_players, private_players))
-    stats_lines.append("   亚{} 欧{}".format(asia_players, eu_players))
-    stats_lines.append("⏳排:总{}".format(total_queues))
-    stats_lines.append("   官{} 私{}".format(official_queues, private_queues))
-    stats_lines.append("   亚{} 欧{}".format(asia_queues, eu_queues))
-    stats_lines.append("👀观:总{}".format(total_spectators))
-    stats_lines.append("   官{} 私{}".format(official_spectators, private_spectators))
-    stats_lines.append("   亚{} 欧{}".format(asia_spectators, eu_spectators))
+    stats_lines.append(
+        "🖥️ 服务器总数: {} (官服: {} | 私服: {})".format(total_servers, official_servers, private_servers))
+    stats_lines.append("👤 游玩人数: {} (官服: {} | 私服: {})".format(total_players, official_players, private_players))
+    stats_lines.append("   亚洲: {} | 欧洲: {} | 其他: {}".format(asia_players, eu_players, other_players))
+    stats_lines.append("⏳ 排队人数: {} (官服: {} | 私服: {})".format(total_queues, official_queues, private_queues))
+    stats_lines.append("   亚洲: {} | 欧洲: {} | 其他: {}".format(asia_queues, eu_queues, other_queues))
+    stats_lines.append(
+        "👀 观众人数: {} (官服: {} | 私服: {})".format(total_spectators, official_spectators, private_spectators))
+    stats_lines.append("   亚洲: {} | 欧洲: {} | 其他: {}".format(asia_spectators, eu_spectators, other_spectators))
 
-    # 构造统计信息盒子（采用边框字符，内宽为28）
-    stats_box_lines = []
-    stats_box_lines.append("╭" + "─" * inner_width + "╮")
-    # 标题：完整显示“战地一服务器状态”
-    title = "战地一服务器状态"
-    curr, t_trunc = 0, ""
-    for ch in title:
-        w = wcswidth(ch)
-        if curr + w > inner_width:
-            break
-        t_trunc += ch
-        curr += w
-    left_pad = (inner_width - curr) // 2
-    right_pad = inner_width - curr - left_pad
-    stats_box_lines.append("│" + " " * left_pad + t_trunc + " " * right_pad + "│")
-    stats_box_lines.append("├" + "─" * inner_width + "┤")
-    for line in stats_lines:
-        curr, s_trunc = 0, ""
-        for ch in line:
-            w = wcswidth(ch)
-            if curr + w > inner_width:
-                break
-            s_trunc += ch
-            curr += w
-        stats_box_lines.append("│" + s_trunc + " " * (inner_width - curr) + "│")
-    stats_box_lines.append("╰" + "─" * inner_width + "╯")
-    stats_box = "\n".join(stats_box_lines)
+    # 构造统计信息标题和内容（没有多余的表格，简化为纯文字）
+    stats_section = "🌍 战地一服务器状态 🌍\n" + "\n".join(stats_lines)
 
-    # 构造热门地图表格（列1宽15，列2宽8，总宽30）
-    col1_width = 15
-    col2_width = 8
-    table_total = col1_width + col2_width + 6 + 1  # 15+8+7=30
-    map_table_lines = []
-    map_table_lines.append("╭" + "─" * (table_total - 2) + "╮")
-    # 表头： "图-模" 和 "局"
-    header1 = "图-模"
-    header2 = "局"
-    # 对 header1 居中
-    curr, cell1 = 0, ""
-    for ch in header1:
-        w = wcswidth(ch)
-        if curr + w > col1_width:
-            break
-        cell1 += ch
-        curr += w
-    left = (col1_width - curr) // 2
-    right = col1_width - curr - left
-    cell1 = " " * left + cell1 + " " * right
-    curr, cell2 = 0, ""
-    for ch in header2:
-        w = wcswidth(ch)
-        if curr + w > col2_width:
-            break
-        cell2 += ch
-        curr += w
-    left = (col2_width - curr) // 2
-    right = col2_width - curr - left
-    cell2 = " " * left + cell2 + " " * right
-    map_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
-    map_table_lines.append("├" + "─" * (col1_width + 2) + "┬" + "─" * (col2_width + 2) + "┤")
-    # 构造热门地图统计：键为“模式-地图”
+    # 构造热门地图数据
     map_stats = {}
     for s in server_list:
         key = "{}-{}".format(s["mapModePretty"], s["mapNamePretty"])
         map_stats[key] = map_stats.get(key, 0) + 1
     sorted_maps = sorted(map_stats.items(), key=lambda x: x[1], reverse=True)[:3]
-    for k, v in sorted_maps:
-        curr, cell1 = 0, ""
-        for ch in k:
-            w = wcswidth(ch)
-            if curr + w > col1_width:
-                break
-            cell1 += ch
-            curr += w
-        cell1 = cell1 + " " * (col1_width - curr)
-        text2 = "{}局".format(v)
-        curr, cell2 = 0, ""
-        for ch in text2:
-            w = wcswidth(ch)
-            if curr + w > col2_width:
-                break
-            cell2 += ch
-            curr += w
-        cell2 = cell2 + " " * (col2_width - curr)
-        map_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
-    map_table_lines.append("╰" + "─" * (table_total - 2) + "╯")
-    map_table = "\n".join(map_table_lines)
 
-    # 构造游玩模式表格（列1宽15，列2宽8，总宽30），统计“模式”的数量
-    col1_width_mode = 15
-    col2_width_mode = 8
-    table_total_mode = col1_width_mode + col2_width_mode + 6 + 1
-    mode_table_lines = []
-    mode_table_lines.append("╭" + "─" * (table_total_mode - 2) + "╮")
-    header1 = "模"
-    header2 = "数"
-    curr, cell1 = 0, ""
-    for ch in header1:
-        w = wcswidth(ch)
-        if curr + w > col1_width_mode:
-            break
-        cell1 += ch
-        curr += w
-    left = (col1_width_mode - curr) // 2
-    right = col1_width_mode - curr - left
-    cell1 = " " * left + cell1 + " " * right
-    curr, cell2 = 0, ""
-    for ch in header2:
-        w = wcswidth(ch)
-        if curr + w > col2_width_mode:
-            break
-        cell2 += ch
-        curr += w
-    left = (col2_width_mode - curr) // 2
-    right = col2_width_mode - curr - left
-    cell2 = " " * left + cell2 + " " * right
-    mode_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
-    mode_table_lines.append("├" + "─" * (col1_width_mode + 2) + "┬" + "─" * (col2_width_mode + 2) + "┤")
+    map_section = "🗺️ 热门地图 🗺️\n"
+    for map_item, count in sorted_maps:
+        map_section += "{}: {} 服\n".format(map_item, count)
+
+    # 构造游玩模式数据
     mode_stats = {}
     for s in server_list:
-        key = s["mapModePretty"]
-        mode_stats[key] = mode_stats.get(key, 0) + 1
+        mode = s["mapModePretty"]
+        mode_stats[mode] = mode_stats.get(mode, 0) + 1
     sorted_modes = sorted(mode_stats.items(), key=lambda x: x[1], reverse=True)
-    for mode, cnt in sorted_modes:
-        curr, cell1 = 0, ""
-        for ch in mode:
-            w = wcswidth(ch)
-            if curr + w > col1_width_mode:
-                break
-            cell1 += ch
-            curr += w
-        cell1 = cell1 + " " * (col1_width_mode - curr)
-        text2 = str(cnt)
-        curr, cell2 = 0, ""
-        for ch in text2:
-            w = wcswidth(ch)
-            if curr + w > col2_width_mode:
-                break
-            cell2 += ch
-            curr += w
-        cell2 = cell2 + " " * (col2_width_mode - curr)
-        mode_table_lines.append("│ " + cell1 + " │ " + cell2 + " │")
-    mode_table_lines.append("╰" + "─" * (table_total_mode - 2) + "╯")
-    mode_table = "\n".join(mode_table_lines)
 
-    # 最终消息：统计盒子、热门地图表格、游玩模式表格及更新时间
-    update_line = "更新: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    final_message = stats_box + "\n\n" + map_table + "\n\n" + mode_table + "\n\n" + update_line
+    mode_section = "🎮 游玩模式 🎮\n"
+    for mode, count in sorted_modes:
+        mode_section += "{}: {} 服\n".format(mode, count)
+
+    # 更新时间
+    update_line = "🕒 更新时间: " + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    # 合成最终消息，分段显示
+    final_message = (
+            stats_section + "\n\n" +
+            map_section + "\n\n" +
+            mode_section + "\n\n" +
+            update_line
+    )
 
     return await app.send_message(group, MessageChain(final_message.strip()), quote=source)
 

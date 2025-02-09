@@ -1,7 +1,9 @@
-from typing import List, Dict, Any, AsyncGenerator
+from typing import List, Dict, Any, AsyncGenerator, Union
 
 from loguru import logger
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessage
+from openai.types.chat.chat_completion_chunk import ChoiceDelta
 
 from ..core.provider import BaseAIProvider, ProviderConfig
 
@@ -24,7 +26,7 @@ class DeepSeekProvider(BaseAIProvider):
             messages: List[Dict[str, Any]],
             tools: List[Dict[str, Any]] = None,
             **kwargs
-    ) -> AsyncGenerator[Any, None]:
+    ) -> AsyncGenerator[Union[ChoiceDelta, ChatCompletionMessage], None]:
         """纯粹的 API 调用封装，直接返回原始响应"""
         try:
             response = await self.client.chat.completions.create(

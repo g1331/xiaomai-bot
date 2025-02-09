@@ -13,14 +13,14 @@ class BaseAIProvider(ABC):
             messages: List[Dict[str, Any]],
             tools: List[Dict[str, Any]] = None,
             **kwargs
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[Any, None]:
         """
         纯粹的消息接口封装,接收完整的消息列表和工具配置
         Args:
             messages: 完整的消息列表
             tools: 工具配置列表
         """
-        pass
+        yield
 
     @abstractmethod
     def get_usage(self) -> dict:

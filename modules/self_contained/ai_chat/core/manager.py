@@ -13,20 +13,26 @@ from ..core.provider import BaseAIProvider
 
 
 class Conversation:
+    # 新增枚举，避免硬编码
+    class Mode(Enum):
+        DEFAULT = "default"
+        CUSTOM = "custom"
+
     def __init__(self, provider: BaseAIProvider, plugins: list[BasePlugin]):
         self.provider = provider
         self.plugins = plugins
         self.history = []
-        self.mode = "default"  # "default" or "custom"
+        # 修改：使用枚举而非硬编码字符串
+        self.mode = Conversation.Mode.DEFAULT
 
     def switch_provider(self, new_provider: BaseAIProvider):
-
-        if self.mode == "default":
+        # 修改：使用枚举判断
+        if self.mode == Conversation.Mode.DEFAULT:
             self.provider = new_provider
 
     def set_custom_mode(self, custom_provider: BaseAIProvider):
-
-        self.mode = "custom"
+        # 修改：使用枚举赋值
+        self.mode = Conversation.Mode.CUSTOM
         self.provider = custom_provider
 
     async def process_message(self, user_input: str) -> AsyncGenerator[str, None]:
@@ -120,26 +126,27 @@ class Conversation:
             yield f"Error: {str(e)}"
 
 
-class RunMode(Enum):
-    GLOBAL = "global"  # 跨群共享，仅按用户标识生成 key
-    GROUP = "group"  # 每个群内用户独立会话
-    GROUP_SHARED = "group_shared"  # 同一群所有用户共享对话
-
-
 class ConversationManager:
     CONFIG_FILE = "chat_run_mode_config.json"  # 配置文件路径
 
-    def __init__(self, provider_factory, plugins_factory):
+    # 新增嵌套枚举
+    class GroupMode(Enum):
+        DEFAULT = "default"  # 默认：进入用户模式判断
+        SHARED = "shared"  # 共享：群内所有用户共用同一对话
 
+    class UserMode(Enum):
+        GLOBAL = "global"  # 全局：用户唯一对话
+        INDEPENDENT = "independent"  # 群内独立：每个群中彼此独立
+
+    def __init__(self, provider_factory, plugins_factory):
         self.conversations = {}
         self.provider_factory = provider_factory
         self.plugins_factory = plugins_factory
         self._configs = self._load_configs()
-        self.locks = {}
+        self.locks = {}  # 合并了用户级和群级锁的字典
         self._config_dirty = False
 
     def _load_configs(self) -> dict:
-
         try:
             with open(self.CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -148,7 +155,6 @@ class ConversationManager:
             return {}
 
     async def _delayed_save_configs(self, delay: float = 5.0):
-
         await asyncio.sleep(delay)
         try:
             with open(self.CONFIG_FILE, "w", encoding="utf-8") as f:
@@ -157,26 +163,44 @@ class ConversationManager:
         except Exception:
             pass
 
-    def update_run_mode(self, group_id: str, new_mode: RunMode):
-
-        self._configs[group_id] = new_mode.value
+    # 删除旧的 update_run_mode 方法
+    # 新增更新群模式
+    def update_group_mode(self, group_id: str, new_mode: "ConversationManager.GroupMode"):
+        group_config = self._configs.setdefault(group_id, {})
+        group_config["group_mode"] = new_mode.value
         self._config_dirty = True
         asyncio.create_task(self._delayed_save_configs())
 
-    def get_run_mode(self, group_id: str) -> RunMode:
+    # 新增更新用户模式
+    def update_user_mode(self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"):
+        group_config = self._configs.setdefault(group_id, {})
+        user_modes = group_config.setdefault("user_modes", {})
+        user_modes[member_id] = new_mode.value
+        self._config_dirty = True
+        asyncio.create_task(self._delayed_save_configs())
 
-        mode_val = self._configs.get(group_id, RunMode.GLOBAL.value)
-        return RunMode(mode_val)
+    # 获取群模式，默认返回 DEFAULT
+    def get_group_mode(self, group_id: str) -> "ConversationManager.GroupMode":
+        group_config = self._configs.get(group_id, {})
+        mode = group_config.get("group_mode", "default")
+        return ConversationManager.GroupMode(mode)
 
+    # 获取用户模式，默认返回 GLOBAL
+    def get_user_mode(self, group_id: str, member_id: str) -> "ConversationManager.UserMode":
+        group_config = self._configs.get(group_id, {})
+        user_modes = group_config.get("user_modes", {})
+        mode = user_modes.get(member_id, "global")
+        return ConversationManager.UserMode(mode)
+
+    # 修改 _get_conv_key，按层级模式构造 key
     def _get_conv_key(self, group_id: str, member_id: str) -> str:
-
-        mode = self.get_run_mode(group_id)
-        if mode == RunMode.GLOBAL:
-            return member_id
-        elif mode == RunMode.GROUP_SHARED:
+        if self.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
             return group_id
         else:
-            return f"{group_id}-{member_id}"
+            if self.get_user_mode(group_id, member_id) == ConversationManager.UserMode.GLOBAL:
+                return member_id
+            else:
+                return f"{group_id}-{member_id}"
 
     def get_conversation(self, key: str) -> Conversation:
         if key not in self.conversations:
@@ -186,7 +210,6 @@ class ConversationManager:
         return self.conversations[key]
 
     def remove_conversation(self, key: str):
-
         if key in self.conversations:
             del self.conversations[key]
 
@@ -201,7 +224,6 @@ class ConversationManager:
         conv.switch_provider(new_provider)
 
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
-
         key = self._get_conv_key(group_id, member_id)
         if key in self.conversations:
             self.remove_conversation(key)
@@ -211,19 +233,47 @@ class ConversationManager:
         self.conversations[key] = conversation
         return conversation
 
-    async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str:
-
-        key = self._get_conv_key(group_id, member_id)
-        conversation = self.get_conversation(key)
-        if self.get_run_mode(group_id) == RunMode.GROUP_SHARED:
-            lock = self.locks.setdefault(group_id, asyncio.Lock())
-            async with lock:
-                response_chunks = []
-                async for chunk in conversation.process_message(f"{member_name} ({member_id}) say: {message}"):
-                    response_chunks.append(chunk)
-                return "".join(response_chunks)
+    async def __process_conversation(
+            self, conversation: Conversation,
+            member_name: str, member_id: str, message: str,
+            shared: bool
+    ) -> str:
+        response_chunks = []
+        if shared:
+            async for chunk in conversation.process_message(f"{member_name} ({member_id}) say: {message}"):
+                response_chunks.append(chunk)
         else:
-            response_chunks = []
             async for chunk in conversation.process_message(message):
                 response_chunks.append(chunk)
-            return "".join(response_chunks)
+        return "".join(response_chunks)
+
+    async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str | None:
+        # 用户级锁：使用统一的 self.locks 字典，键加前缀 "user:"
+        user_lock_key = f"user:global-{member_id}"
+        conv_lock = self.locks.setdefault(user_lock_key, asyncio.Lock())
+        try:
+            await asyncio.wait_for(conv_lock.acquire(), timeout=300)
+        except asyncio.TimeoutError:
+            return "错误：上一次对话尚未结束，请稍后再试。"
+        try:
+            # 根据群模式决定会话 key和共享方式
+            if self.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
+                conversation_key = group_id
+                shared = True
+            else:
+                conversation_key = f"global-{member_id}"
+                shared = False
+            if conversation_key not in self.conversations:
+                provider = self.provider_factory(conversation_key)
+                plugins = self.plugins_factory(conversation_key)
+                self.conversations[conversation_key] = Conversation(provider, plugins)
+            conversation = self.conversations[conversation_key]
+            if shared:
+                # 群共享模式：使用统一的 self.locks 字典，键前缀 "group:"
+                group_lock = self.locks.setdefault(f"group:{group_id}", asyncio.Lock())
+                async with group_lock:
+                    return await self.__process_conversation(conversation, member_name, member_id, message, shared=True)
+            else:
+                return await self.__process_conversation(conversation, member_name, member_id, message, shared=False)
+        finally:
+            conv_lock.release()

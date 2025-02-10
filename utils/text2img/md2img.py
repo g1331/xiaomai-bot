@@ -216,10 +216,10 @@ class MarkdownToImageConverter:
         # 转换本地资源路径为 file:// URI
         md_theme_uri = cls._local_path_to_uri(cls.MARKDOWN_THEMES[theme])
         hl_theme_uri = cls._local_path_to_uri(cls.HIGHLIGHT_THEMES[highlight_theme])
-        highlight_js = cls._local_path_to_uri("static/js/highlight.min.js")
-        katex_css = cls._local_path_to_uri("static/css/katex.min.css")
-        katex_js = cls._local_path_to_uri("static/js/katex.min.js")
-        katex_auto = cls._local_path_to_uri("static/js/auto-render.min.js")
+        highlight_js = cls._local_path_to_uri("../text2img/static/js/highlight.min.js")
+        katex_css = cls._local_path_to_uri("../text2img/static/css/katex.min.css")
+        katex_js = cls._local_path_to_uri("../text2img/static/js/katex.min.js")
+        katex_auto = cls._local_path_to_uri("../text2img/static/js/auto-render.min.js")
 
         render_script = textwrap.dedent(r"""
         <script>

@@ -16,7 +16,7 @@ from graia.ariadne.message.element import Image as GraiaImage
 from core.control import Distribute, Function, FrequencyLimitation, Permission
 from core.models import saya_model
 from utils.text2img import html2img
-from utils.md2img import MarkdownToImageConverter, Theme
+from utils.text2img.md2img import MarkdownToImageConverter, Theme
 from .config import ConfigLoader
 from .core.manager import ConversationManager
 from .core.provider import BaseAIProvider
@@ -191,7 +191,7 @@ async def chat_gpt(
         response += f"\n\n> 消耗：{usage_total_tokens} tokens"
         return await app.send_group_message(
             group,
-            MessageChain(GraiaImage(bytes=await html2img(
+            MessageChain(GraiaImage(data_bytes=await html2img(
                 MarkdownToImageConverter.generate_html(response, theme=Theme.DARK)
             ))),
             quote=source

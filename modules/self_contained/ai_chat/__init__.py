@@ -4,7 +4,8 @@ from pathlib import Path
 from graia.ariadne import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
-from graia.ariadne.message import Source, MessageChain
+from graia.ariadne.message import Source
+from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ArgumentMatch, WildcardMatch, ArgResult, \
     RegexResult
 from graia.ariadne.model import Group, Member
@@ -15,7 +16,7 @@ from graia.ariadne.message.element import Image as GraiaImage
 from core.control import Distribute, Function, FrequencyLimitation, Permission
 from core.models import saya_model
 from utils.text2img import html2img
-from utils.text2img.md2img import MarkdownToImageConverter, Theme
+from utils.md2img import MarkdownToImageConverter, Theme
 from .config import ConfigLoader
 from .core.manager import ConversationManager
 from .core.provider import BaseAIProvider

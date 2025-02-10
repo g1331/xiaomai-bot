@@ -110,7 +110,7 @@ async def helper(app: Ariadne, group: Group, source: Source):
             rows=[
                 ColumnListItem(
                     # 副标题
-                    subtitle=f"{i + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta.get('name', "None") or channel_temp.split('.')[-1]}",
+                    subtitle=f"{i + 1 + len(required_module_list)}.{module_controller.get_metadata_from_module_name(channel_temp).display_name or saya.channels[channel_temp].meta.get('name', 'None') or channel_temp.split('.')[-1]}",
                     # 开关指示
                     right_element=ColumnListItemSwitch(
                         switch=module_controller.if_module_switch_on(

@@ -121,20 +121,13 @@ class Conversation:
 
         max_token = self.provider.config.max_tokens  # 从 provider 的配置中获取 max_token
 
-        def calculate_tokens() -> int:
-            base_tokens = sum(len(_msg["content"]) for _msg in self._get_base_messages())
-            history_tokens = sum(len(_msg["content"]) for _msg in self.history)
-            return base_tokens + history_tokens
-
-        while calculate_tokens() > max_token:
+        if self.provider.get_usage().get("total_tokens", 0) > max_token:
             # 查找第一个非 system 的消息并移除
             for i, msg in enumerate(self.history):
                 if msg["role"] != "system":
                     self.history.pop(i)
                     break
-            else:
-                break
-        
+
         messages = self._get_base_messages() + self.history
         response_content = []  # 用于收集非工具调用的响应内容
 

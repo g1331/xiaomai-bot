@@ -6,7 +6,23 @@ from abc import ABC, abstractmethod
 from typing import AsyncGenerator, List, Dict, Any
 
 
+class ProviderConfig:
+    """提供商配置基类"""
+
+    def __init__(self, **kwargs):
+        self.api_key: str = kwargs.get("api_key", "")
+        self.base_url: str = kwargs.get("base_url", "")
+        self.max_tokens: int = kwargs.get("max_tokens", 8192)
+        self.proxy: str = kwargs.get("proxy", "")
+        self.timeout: int = kwargs.get("timeout", 360)
+        self.model: str = kwargs.get("model", "")
+
+
 class BaseAIProvider(ABC):
+
+    def __init__(self, config: ProviderConfig):
+        self.config = config
+
     @abstractmethod
     async def ask(
             self,
@@ -26,15 +42,3 @@ class BaseAIProvider(ABC):
     def get_usage(self) -> dict:
         """获取当前资源使用情况"""
         pass
-
-
-class ProviderConfig:
-    """提供商配置基类"""
-
-    def __init__(self, **kwargs):
-        self.api_key: str = kwargs.get("api_key", "")
-        self.base_url: str = kwargs.get("base_url", "")
-        self.max_tokens: int = kwargs.get("max_tokens", 8192)
-        self.proxy: str = kwargs.get("proxy", "")
-        self.timeout: int = kwargs.get("timeout", 360)
-        self.model: str = kwargs.get("model", "")

@@ -118,6 +118,16 @@ class Conversation:
 
         # 2. 更新history
         self.history.append({"role": "user", "content": user_input})
+
+        max_token = self.provider.config.max_tokens  # 从 provider 的配置中获取 max_token
+
+        if self.provider.get_usage().get("total_tokens", 0) > max_token:
+            # 查找第一个非 system 的消息并移除
+            for i, msg in enumerate(self.history):
+                if msg["role"] != "system":
+                    self.history.pop(i)
+                    break
+
         messages = self._get_base_messages() + self.history
         response_content = []  # 用于收集非工具调用的响应内容
 
@@ -197,6 +207,7 @@ class ConversationManager:
 
     class ConversationKey:
         """会话密钥管理"""
+
         def __init__(self, manager: 'ConversationManager', group_id: str, member_id: str):
             self.key = self._generate_key(manager, group_id, member_id)
             self.is_shared = manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
@@ -345,12 +356,12 @@ class ConversationManager:
     async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str | None:
         conv_key = self._get_conversation_key(group_id, member_id)
         conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
-        
+
         try:
             await asyncio.wait_for(conv_lock.acquire(), timeout=300)
         except asyncio.TimeoutError:
             return "错误：上一次对话尚未结束，请稍后再试。"
-            
+
         try:
             conversation = self.get_conversation(group_id, member_id)
             if conv_key.is_shared:

@@ -19,7 +19,7 @@ class OpenAICompatibleConfig(ProviderConfig):
 class OpenAICompatibleProvider(BaseAIProvider):
     """OpenAI 接口兼容的提供者基类"""
     def __init__(self, config: OpenAICompatibleConfig):
-        self.config = config
+        super().__init__(config)
         self.client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)
         self.usage: CompletionUsage = CompletionUsage(**{
             "completion_tokens": 0,

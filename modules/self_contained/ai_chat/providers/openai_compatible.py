@@ -38,7 +38,7 @@ class OpenAICompatibleProvider(BaseAIProvider):
             response: ChatCompletion | AsyncStream[ChatCompletionChunk] = await self.client.chat.completions.create(
                 model=self.config.model,
                 messages=messages,
-                tools=tools if tools else None,
+                tools=tools or None,
                 max_tokens=self.config.max_tokens,
                 temperature=0.7,
                 stream=False if tools else stream

@@ -6,6 +6,7 @@ GroupMsg_log: true # 是否开启群消息日志
 test_group: test_group # 填写测试群的群号,用于接收bot反馈信息等
 proxy: proxy # 代理服务器的地址，目前暂时无效
 auto_upgrade: true # 是否自动升级
+debug_mode: false # 是否开启调试模式，调试模式下bot只响应Master的消息
 
 # web管理相关
 web_manager_api: false # 是否启用Web管理API
@@ -40,13 +41,6 @@ functions:
 
   # Steam游戏搜索 steamdb.info/app/app_id 的cookie
   steamdb_cookie: steamdb_cookie # SteamDB的cookie
-
-  # ChatGPT
-  ChatGPT:
-    session_token: session_token
-     # 支持自订api地址，与api_key配套使用
-    api_url: api_url
-    api_key: api_key
 
   #龙图检测API
   dragon_detect:

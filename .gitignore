@@ -22,7 +22,7 @@ venv.bak/
 /modules/test_modules/
 auto_get_server.py
 test.py
-/tests/
+drafts/
 
 # 数据库
 data.db

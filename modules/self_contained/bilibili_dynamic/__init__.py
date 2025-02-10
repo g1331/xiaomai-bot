@@ -44,6 +44,9 @@ account_controller = response_model.get_acc_controller()
 global_config = create(GlobalConfig)
 channel = Channel.current()
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
+channel.meta["name"] = "Bilibili推送"
+channel.meta["description"] = "Bilibili直播、动态推送"
+channel.meta["author"] = "十三"
 
 HOME = Path(__file__).parent
 DYNAMIC_OFFSET = {}

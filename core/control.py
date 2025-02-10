@@ -335,6 +335,9 @@ class Distribute(object):
         ):
             if not cls.initialization_completed:
                 raise ExecutionStop
+            # 如果是调试模式，则只响应Master
+            if global_config.debug_mode and event.sender.id != global_config.Master:
+                raise ExecutionStop
             if isinstance(event, FriendMessage):
                 return Depend(wrapper)
             if event.sender.id in global_config.bot_accounts:

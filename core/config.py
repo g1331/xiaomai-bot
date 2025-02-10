@@ -34,6 +34,7 @@ class GlobalConfig(BaseModel):
         "steamdb_cookie": str,
     }
     GroupMsg_log: bool
+    debug_mode: bool
 
 
 @singleton

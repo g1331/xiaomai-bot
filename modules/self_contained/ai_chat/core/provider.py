@@ -37,3 +37,4 @@ class ProviderConfig:
         self.max_tokens: int = kwargs.get("max_tokens", 8192)
         self.proxy: str = kwargs.get("proxy", "")
         self.timeout: int = kwargs.get("timeout", 360)
+        self.model: str = kwargs.get("model", "")

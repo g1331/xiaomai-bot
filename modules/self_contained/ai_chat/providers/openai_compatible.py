@@ -60,8 +60,8 @@ class OpenAICompatibleProvider(BaseAIProvider):
             logger.error(f"{self.__class__.__name__} API error: {e}")
             raise
 
-    def get_usage(self) -> CompletionUsage:
-        return self.usage
+    def get_usage(self) -> dict[str, int]:
+        return self.usage.dict()
 
     def update_usage(self, usage: CompletionUsage):
         if not self.usage:

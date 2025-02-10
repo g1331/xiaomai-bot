@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
+CONFIG_PATH = Path("data/ai_chat")
+
 
 class ConfigLoader:
-    def __init__(self, config_path: Path = Path("config/ai_chat.json")):
+    def __init__(self, config_path: Path = CONFIG_PATH / "ai_chat.json"):
         self.config_path = config_path
         self.default_config = {
             "providers": {

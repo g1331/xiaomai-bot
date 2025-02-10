@@ -9,6 +9,7 @@ from datetime import datetime
 
 from loguru import logger
 
+from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
 from ..core.provider import BaseAIProvider
 
@@ -123,7 +124,7 @@ class Conversation:
         # 3. 调用 Provider 并处理响应
         try:
             async for response in self.provider.ask(messages=messages, tools=tools):
-                if tools:  # 工具调用模式
+                if tools and response.tool_calls:  # 工具调用模式
                     # 添加 assistant 消息
                     self.history.append({
                         "role": "assistant",
@@ -152,11 +153,11 @@ class Conversation:
                             except Exception as e:
                                 # 记录插件执行异常
                                 logger.error(f"Plugin {plugin.description.name} execute error: {e}")
-                                # self.history.append({
-                                #     "role": "tool",
-                                #     "content": f"插件 {plugin.description.name} 执行异常",
-                                #     "tool_call_id": tool_call.id
-                                # })
+                                self.history.append({
+                                    "role": "tool",
+                                    "content": f"插件 {plugin.description.name} 执行异常",
+                                    "tool_call_id": tool_call.id
+                                })
 
                     # 获取最终响应
                     async for final_chunk in self.provider.ask(messages=self.history):
@@ -183,7 +184,7 @@ class Conversation:
 
 
 class ConversationManager:
-    CONFIG_FILE = "chat_run_mode_config.json"  # 配置文件路径
+    CONFIG_FILE = CONFIG_PATH / "chat_run_mode_config.json"  # 配置文件路径
 
     # 新增嵌套枚举
     class GroupMode(Enum):
@@ -193,6 +194,24 @@ class ConversationManager:
     class UserMode(Enum):
         GLOBAL = "global"  # 全局：用户唯一对话
         INDEPENDENT = "independent"  # 群内独立：每个群中彼此独立
+
+    class ConversationKey:
+        """会话密钥管理"""
+        def __init__(self, manager: 'ConversationManager', group_id: str, member_id: str):
+            self.key = self._generate_key(manager, group_id, member_id)
+            self.is_shared = manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
+            self.lock_key = f"group:{self.key}" if self.is_shared else f"user:{self.key}"
+
+        @staticmethod
+        def _generate_key(manager: 'ConversationManager', group_id: str, member_id: str) -> str:
+            """生成会话密钥"""
+            if manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
+                return group_id
+            else:
+                if manager.get_user_mode(group_id, member_id) == ConversationManager.UserMode.GLOBAL:
+                    return f"global-{member_id}"
+                else:
+                    return f"{group_id}-{member_id}"
 
     def __init__(self, provider_factory, plugins_factory):
         self.conversations = {}
@@ -219,15 +238,12 @@ class ConversationManager:
         except Exception:
             pass
 
-    # 删除旧的 update_run_mode 方法
-    # 新增更新群模式
     def update_group_mode(self, group_id: str, new_mode: "ConversationManager.GroupMode"):
         group_config = self._configs.setdefault(group_id, {})
         group_config["group_mode"] = new_mode.value
         self._config_dirty = True
         asyncio.create_task(self._delayed_save_configs())
 
-    # 新增更新用户模式
     def update_user_mode(self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"):
         group_config = self._configs.setdefault(group_id, {})
         user_modes = group_config.setdefault("user_modes", {})
@@ -248,73 +264,69 @@ class ConversationManager:
         mode = user_modes.get(member_id, "global")
         return ConversationManager.UserMode(mode)
 
-    # 修改 _get_conv_key，按层级模式构造 key
-    def _get_conv_key(self, group_id: str, member_id: str) -> str:
-        if self.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
-            return group_id
-        else:
-            if self.get_user_mode(group_id, member_id) == ConversationManager.UserMode.GLOBAL:
-                return member_id
-            else:
-                return f"{group_id}-{member_id}"
+    def _get_conversation_key(self, group_id: str, member_id: str) -> ConversationKey:
+        """获取会话密钥对象"""
+        return self.ConversationKey(self, group_id, member_id)
 
-    def get_conversation(self, key: str) -> Conversation:
-        if key not in self.conversations:
-            provider = self.provider_factory(key)
-            plugins = self.plugins_factory(key)
-            self.conversations[key] = Conversation(provider, plugins)
-        return self.conversations[key]
+    def get_conversation(self, group_id: str, member_id: str) -> Conversation:
+        """获取会话实例"""
+        conv_key = self._get_conversation_key(group_id, member_id)
+        if conv_key.key not in self.conversations:
+            provider = self.provider_factory(conv_key.key)
+            plugins = self.plugins_factory(conv_key.key)
+            self.conversations[conv_key.key] = Conversation(provider, plugins)
+        return self.conversations[conv_key.key]
 
-    def remove_conversation(self, key: str):
-        if key in self.conversations:
-            del self.conversations[key]
-
-    def set_user_custom_mode(self, group_id: str, member_id: str, custom_provider: BaseAIProvider):
-        key = self._get_conv_key(group_id, member_id)
-        conv = self.get_conversation(key)
-        conv.set_custom_mode(custom_provider)
-
-    def switch_user_provider(self, group_id: str, member_id: str, new_provider: BaseAIProvider):
-        key = self._get_conv_key(group_id, member_id)
-        conv = self.get_conversation(key)
-        conv.switch_provider(new_provider)
+    def remove_conversation(self, group_id: str, member_id: str):
+        """移除会话实例"""
+        conv_key = self._get_conversation_key(group_id, member_id)
+        if conv_key.key in self.conversations:
+            del self.conversations[conv_key.key]
 
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
-        key = self._get_conv_key(group_id, member_id)
-        if key in self.conversations:
-            self.remove_conversation(key)
-        provider = self.provider_factory(key)
-        plugins = self.plugins_factory(key)
+        """创建新会话"""
+        conv_key = self._get_conversation_key(group_id, member_id)
+        if conv_key.key in self.conversations:
+            self.remove_conversation(group_id, member_id)
+        provider = self.provider_factory(conv_key.key)
+        plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
-        if preset:  # 如果提供了 preset，设置它
+        if preset:
             conversation.set_preset(preset)
-        self.conversations[key] = conversation
+        self.conversations[conv_key.key] = conversation
+        self.clear_memory(group_id, member_id)
         return conversation
 
+    def set_user_custom_mode(self, group_id: str, member_id: str, custom_provider: BaseAIProvider):
+        conversation = self.get_conversation(group_id, member_id)
+        conversation.set_custom_mode(custom_provider)
+
+    def switch_user_provider(self, group_id: str, member_id: str, new_provider: BaseAIProvider):
+        conversation = self.get_conversation(group_id, member_id)
+        conversation.switch_provider(new_provider)
+
     def set_preset(self, group_id: str, member_id: str, preset: str):
-        """为指定用户设置 preset"""
-        key = self._get_conv_key(group_id, member_id)
-        conv = self.get_conversation(key)
-        conv.set_preset(preset)
+        conversation = self.get_conversation(group_id, member_id)
+        conversation.set_preset(preset)
 
     def clear_preset(self, group_id: str, member_id: str):
-        """清除指定用户的 preset"""
-        key = self._get_conv_key(group_id, member_id)
-        if key in self.conversations:
-            self.conversations[key].clear_preset()
+        conversation = self.get_conversation(group_id, member_id)
+        conversation.clear_preset()
 
     def get_preset(self, group_id: str, member_id: str) -> str:
-        """获取指定用户的 preset"""
-        key = self._get_conv_key(group_id, member_id)
-        if key in self.conversations:
-            return self.conversations[key].preset or ""
-        return ""
+        conversation = self.get_conversation(group_id, member_id)
+        return conversation.preset or ""
 
     def clear_memory(self, group_id: str, member_id: str):
-        """清除指定用户的所有对话历史"""
-        key = self._get_conv_key(group_id, member_id)
-        if key in self.conversations:
-            self.conversations[key].clear_memory()
+        conversation = self.get_conversation(group_id, member_id)
+        conversation.clear_memory()
+
+    # 获取当前对话消耗的总usage
+    def get_total_usage(self, group_id: str, member_id: str) -> int:
+        conv_key = self._get_conversation_key(group_id, member_id)
+        if conv_key.key in self.conversations:
+            return self.conversations[conv_key.key].provider.get_usage().get("total_tokens", 0)
+        return 0
 
     async def __process_conversation(
             self, conversation: Conversation,
@@ -331,28 +343,17 @@ class ConversationManager:
         return "".join(response_chunks)
 
     async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str | None:
-        # 用户级锁：使用统一的 self.locks 字典，键加前缀 "user:"
-        user_lock_key = f"user:global-{member_id}"
-        conv_lock = self.locks.setdefault(user_lock_key, asyncio.Lock())
+        conv_key = self._get_conversation_key(group_id, member_id)
+        conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
+        
         try:
             await asyncio.wait_for(conv_lock.acquire(), timeout=300)
         except asyncio.TimeoutError:
             return "错误：上一次对话尚未结束，请稍后再试。"
+            
         try:
-            # 根据群模式决定会话 key和共享方式
-            if self.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
-                conversation_key = group_id
-                shared = True
-            else:
-                conversation_key = f"global-{member_id}"
-                shared = False
-            if conversation_key not in self.conversations:
-                provider = self.provider_factory(conversation_key)
-                plugins = self.plugins_factory(conversation_key)
-                self.conversations[conversation_key] = Conversation(provider, plugins)
-            conversation = self.conversations[conversation_key]
-            if shared:
-                # 群共享模式：使用统一的 self.locks 字典，键前缀 "group:"
+            conversation = self.get_conversation(group_id, member_id)
+            if conv_key.is_shared:
                 group_lock = self.locks.setdefault(f"group:{group_id}", asyncio.Lock())
                 async with group_lock:
                     return await self.__process_conversation(conversation, member_name, member_id, message, shared=True)

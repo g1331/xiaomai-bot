@@ -1,0 +1,23 @@
+{
+  "level": 1,
+  "name": "AIChat",
+  "version": "0.1",
+  "display_name": "AI Chat",
+  "authors": [
+    "13"
+  ],
+  "description": "AI Chat",
+  "usage": [
+    "指令:",
+    "-chat [文字]",
+    "支持参数:",
+    "-n / -new - 开启新对话",
+    "-t / -text - 以文本模式回复(默认图片回复)",
+    "-"
+  ],
+  "example": [
+    "-chat 你好"
+  ],
+  "default_switch": false,
+  "default_notice": true
+}

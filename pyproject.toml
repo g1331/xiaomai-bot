@@ -60,4 +60,5 @@ dependencies = [
     "pymdown-extensions>=10.14.2",
     "openai==1.61.1",
     "duckduckgo-search>=7.3.1",
+    "mcstatus>=11.1.1",
 ]

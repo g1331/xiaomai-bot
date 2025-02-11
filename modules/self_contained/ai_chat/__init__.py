@@ -171,7 +171,7 @@ async def chat_gpt(
             group_id_str,
             member_id_str,
             preset_dict[preset_str]["content"] if preset_str in preset_dict \
-                else (preset_str if preset_str else preset_dict["umaru"]["content"])
+                else (preset_str or preset_dict["umaru"]["content"])
         )
         await app.send_group_message(
             group,

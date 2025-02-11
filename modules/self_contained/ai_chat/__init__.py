@@ -6,22 +6,23 @@ from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ArgumentMatch, WildcardMatch, ArgResult, \
     RegexResult
 from graia.ariadne.model import Group, Member
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
-from graia.ariadne.message.element import Image as GraiaImage
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission
 from core.models import saya_model
-from utils.text2img import html2img
+from utils.text2img import html2img, md2img
 from utils.text2img.md2img import MarkdownToImageConverter, Theme
 from .config import ConfigLoader
 from .core.manager import ConversationManager
+from .core.preset import preset_dict
 from .core.provider import BaseAIProvider
-from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
 from .plugins_registry import ALL_PLUGINS
+from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
 
 module_controller = saya_model.get_module_controller()
 # 初始化通道
@@ -95,6 +96,7 @@ async def init():
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
+                ArgumentMatch("--tool", action="store_true", optional=True) @ "tool",
                 ArgumentMatch("--show-preset", action="store_true", optional=True) @ "show_preset",
                 ArgumentMatch("--reload-cfg", action="store_true", optional=True) @ "reload_cfg",
                 WildcardMatch().flags(re.DOTALL) @ "content",
@@ -116,6 +118,7 @@ async def chat_gpt(
         source: Source,
         new_thread: ArgResult,
         text: ArgResult,
+        tool: ArgResult,
         preset: ArgResult,
         content: RegexResult,
         show_preset: ArgResult,
@@ -135,7 +138,8 @@ async def chat_gpt(
                 MessageChain("你没有权限执行此操作"),
                 quote=source
             )
-        g_config_loader.load_config()
+        g_config_loader = ConfigLoader()
+        g_manager = ConversationManager(provider_factory, plugins_factory)
         return await app.send_group_message(
             group,
             MessageChain("已重新加载AI对话模块配置"),
@@ -145,21 +149,48 @@ async def chat_gpt(
     if show_preset.matched:
         await app.send_group_message(
             group,
-            MessageChain(f"当前预设：{g_manager.get_preset(group_id_str, member_id_str)}"),
+            MessageChain(GraiaImage(data_bytes=await html2img(
+                MarkdownToImageConverter.generate_html(
+                    "# 预设列表\n\n" +
+                    "## 当前预设\n\n" +
+                    f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n" +
+                    "## 内置预设：\n\n" +
+                    "\n\n".join(
+                        [f"### {i} **{v['name']}**\n>{v['description']}" for i, v
+                         in preset_dict.items()])
+                )
+            ))),
             quote=source
         )
+        return
 
     if preset.matched:
+        # 群聊预设暂不鉴权
         preset_str = preset.result.display.strip()
-        g_manager.set_preset(group_id_str, member_id_str, preset_str)
+        g_manager.set_preset(
+            group_id_str,
+            member_id_str,
+            preset_dict[preset_str]["content"] if preset_str in preset_dict \
+                else (preset_str or preset_dict["umaru"]["content"])
+        )
         await app.send_group_message(
             group,
-            MessageChain(f"已设置预设：{preset_str}"),
+            MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
             quote=source
         )
         return
 
     if new_thread.matched:
+        # 先获取群聊模式，如果是shared就鉴权，只能是群管理员以上才能清除上下文并开始新对话
+        cur_group_mode = g_manager.get_group_mode(group_id_str)
+        if cur_group_mode == ConversationManager.GroupMode.SHARED:
+            group_perm = await Permission.get_user_perm_byID(group.id, member.id)
+            if group_perm < Permission.GroupAdmin:
+                return await app.send_group_message(
+                    group,
+                    MessageChain("当前对话为群共享模式，只有群管理员才能执行这个操作"),
+                    quote=source
+                )
         g_manager.new(group_id=group_id_str, member_id=member_id_str)
         return await app.send_group_message(
             group,
@@ -178,17 +209,18 @@ async def chat_gpt(
         MessageChain("(｡･∀･)ﾉﾞ响应ing"),
         quote=source
     )
-    response = await g_manager.send_message(group_id_str, member_id_str, member.name, content)
+    response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
     usage_total_tokens = g_manager.get_total_usage(group_id_str, member_id_str)
+    cur_round = g_manager.get_round(group_id_str, member_id_str)
     if text.matched:
-        response += f"\n\n（消耗 {usage_total_tokens} tokens）"
+        response += f"\n\n（消耗 {usage_total_tokens} tokens，第 {cur_round} 轮）"
         return await app.send_group_message(
             group,
             MessageChain(response),
             quote=source
         )
     else:
-        response += f"\n\n> 消耗：{usage_total_tokens} tokens"
+        response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
         return await app.send_group_message(
             group,
             MessageChain(GraiaImage(data_bytes=await html2img(

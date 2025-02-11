@@ -13,7 +13,10 @@
     "支持参数:",
     "-n / -new - 开启新对话",
     "-t / -text - 以文本模式回复(默认图片回复)",
-    "-"
+    "--tool - 自动使用Function Calling(工具调用)",
+    "-p / -preset - 设定预设",
+    "--show-preset - 显示预设",
+    "--reload-cfg - 重载配置(限BOT管理员)"
   ],
   "example": [
     "-chat 你好"

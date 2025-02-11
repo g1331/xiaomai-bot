@@ -9,6 +9,7 @@ from datetime import datetime
 
 from loguru import logger
 
+from .preset import preset_dict
 from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
 from ..core.provider import BaseAIProvider
@@ -25,6 +26,7 @@ class Conversation:
         self.history = []
         self.mode = Conversation.Mode.DEFAULT
         self.preset = None  # 新增: preset 设定
+        self.interrupted = False  # 新增: 中断标记
 
     def switch_provider(self, new_provider: BaseAIProvider):
         if self.mode == Conversation.Mode.DEFAULT:
@@ -35,36 +37,22 @@ class Conversation:
         self.provider = custom_provider
 
     def set_preset(self, preset: str):
-        """设置对话的预设提示词,只修改/添加第一条消息"""
+        """设置对话的预设提示词，独立管理，不直接修改历史"""
         if not preset:
             return
-
-        preset_message = {
-            "role": "system",
-            "content": preset
-        }
-
-        if self.history and self.history[0]["role"] == "system":
-            # 如果第一条是系统消息,直接更新内容
-            self.history[0] = preset_message
-        else:
-            # 否则在最前面插入预设消息
-            self.history.insert(0, preset_message)
-
         self.preset = preset
 
     def clear_preset(self):
-        """清除预设提示词,只移除第一条系统消息"""
-        if self.history and self.history[0]["role"] == "system":
-            self.history.pop(0)
+        """清除预设提示词"""
         self.preset = None
 
     def clear_memory(self):
-        """清除所有对话历史"""
-        preset = self.preset  # 暂存当前预设
+        """清除所有对话历史，preset单独管理"""
         self.history = []
-        if preset:  # 如果有预设,重新添加
-            self.set_preset(preset)
+
+    def interrupt(self):
+        """中断当前对话"""
+        self.interrupted = True
 
     def _get_time_message(self) -> dict:
         """获取当前时间信息的消息"""
@@ -82,7 +70,7 @@ class Conversation:
         time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H:%M:%S")
         return {
             "role": "system",
-            "content": f"你知道现在的时间是北京时间: {time_str}"
+            "content": f"现在的时间是北京时间: {time_str}"
         }
 
     def _get_base_messages(self) -> list:
@@ -91,102 +79,123 @@ class Conversation:
         """
         return [self._get_time_message()]
 
-    async def process_message(self, user_input: str) -> AsyncGenerator[str, None]:
+    def get_round(self) -> int:
+        # 要排除 system 和 tool 的消息，然后计算 user 和 assistant 的消息数量，然后除以 2
+        return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
+
+    async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
-        # 1. 准备工具配置
-        tools = []
-        plugin_map = {}  # 用于快速查找插件
-        for plugin in self.plugins:
-            desc = plugin.description
-            tool = {
-                "type": "function",
-                "function": {
-                    "name": desc.name,
-                    "description": desc.description,
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            key: {"type": "string", "description": value}
-                            for key, value in desc.parameters.items()
-                        },
-                        "required": list(desc.parameters.keys())
-                    }
-                }
-            }
-            tools.append(tool)
-            plugin_map[desc.name] = plugin
+        try:
+            # 重置中断标记
+            self.interrupted = False
 
-        # 2. 更新history
-        self.history.append({"role": "user", "content": user_input})
+            # 1. 准备工具配置
+            tools = []
+            plugin_map = {}
 
-        max_token = self.provider.config.max_tokens  # 从 provider 的配置中获取 max_token
-
-        if self.provider.get_usage().get("total_tokens", 0) > max_token:
-            # 查找第一个非 system 的消息并移除
-            for i, msg in enumerate(self.history):
-                if msg["role"] != "system":
+            # 检查并清理过多的历史记录
+            max_token = self.provider.config.max_total_tokens
+            if self.provider.get_usage().get("total_tokens", 0) > max_token:
+                for i, msg in enumerate(self.history):
                     self.history.pop(i)
                     break
 
-        messages = self._get_base_messages() + self.history
-        response_content = []  # 用于收集非工具调用的响应内容
+            # 构造传入 AI 模型的消息列表，按照 [系统固定消息] + [preset] + [user/model 交互历史] + [当前用户消息]
+            base_messages = self._get_base_messages()
+            preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
+            user_input_messages = [{"role": "user", "content": user_input}]
+            ask_messages = base_messages + preset_messages + self.history + user_input_messages
+            tool_response_messages = []
 
-        # 3. 调用 Provider 并处理响应
-        try:
-            async for response in self.provider.ask(messages=messages, tools=tools):
-                if tools and response.tool_calls:  # 工具调用模式
-                    # 添加 assistant 消息
-                    self.history.append({
+            if use_tool:  # 只有在启用工具时才准备工具配置
+                for plugin in self.plugins:
+                    desc = plugin.description
+                    tool = {
+                        "type": "function",
+                        "function": {
+                            "name": desc.name,
+                            "description": desc.description,
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    key: {"type": "string", "description": value}
+                                    for key, value in desc.parameters.items()
+                                },
+                                "required": list(desc.parameters.keys())
+                            }
+                        }
+                    }
+                    tools.append(tool)
+                    plugin_map[desc.name] = plugin
+
+            response_contents = []
+            response_messages = []
+
+            async for response in self.provider.ask(messages=ask_messages, tools=tools if use_tool else None):
+                # 检查是否被中断
+                if self.interrupted:
+                    logger.info("对话被中断")
+                    return
+
+                if use_tool and tools and response.tool_calls:
+                    # 工具调用模式
+                    tool_response_messages.append({
                         "role": "assistant",
                         "content": response.content,
                         "tool_calls": response.tool_calls
                     })
 
-                    # 处理工具调用
-                    for tool_call in response.tool_calls:
-                        if plugin := plugin_map.get(tool_call.function.name):
-                            try:
-                                arguments = json.loads(tool_call.function.arguments)
-                            except json.JSONDecodeError:
-                                arguments = {"raw": tool_call.function.arguments}
+                    async def execute_tool_call(tool_call):
+                        _plugin = plugin_map.get(tool_call.function.name)
+                        if not _plugin:
+                            return None
+                        try:
+                            arguments = json.loads(tool_call.function.arguments)
+                        except json.JSONDecodeError:
+                            arguments = {"raw": tool_call.function.arguments}
+                        try:
+                            logger.debug(f"Plugin {_plugin.description.name} execute with arguments: {arguments}")
+                            result = await _plugin.execute(arguments)
+                            return {
+                                "role": "tool",
+                                "content": str(result),
+                                "tool_call_id": tool_call.id
+                            }
+                        except Exception as e:
+                            logger.error(f"Plugin {_plugin.description.name} execute error: {e}")
+                            return {
+                                "role": "tool",
+                                "content": f"插件 {_plugin.description.name} 执行异常",
+                                "tool_call_id": tool_call.id
+                            }
 
-                            # 调用插件
-                            try:
-                                logger.debug(f"Plugin {plugin.description.name} arguments: {arguments}")
-                                result = await plugin.execute(arguments)
-                                # 添加插件响应
-                                self.history.append({
-                                    "role": "tool",
-                                    "content": str(result),
-                                    "tool_call_id": tool_call.id
-                                })
-                            except Exception as e:
-                                # 记录插件执行异常
-                                logger.error(f"Plugin {plugin.description.name} execute error: {e}")
-                                self.history.append({
-                                    "role": "tool",
-                                    "content": f"插件 {plugin.description.name} 执行异常",
-                                    "tool_call_id": tool_call.id
-                                })
+                    tasks = [execute_tool_call(tc) for tc in response.tool_calls if plugin_map.get(tc.function.name)]
+                    results = await asyncio.gather(*tasks, return_exceptions=False)
+                    tool_response_messages.extend([r for r in results if r is not None])
 
                     # 获取最终响应
-                    async for final_chunk in self.provider.ask(messages=self.history):
+                    ask_messages.extend(tool_response_messages)
+                    async for final_chunk in self.provider.ask(messages=ask_messages):
                         content = final_chunk.content if hasattr(final_chunk, 'content') else ''
                         if content:
                             yield content
-                    return
+                            response_contents.append(content)
                 else:  # 普通对话模式
                     content = response.content if hasattr(response, 'content') else ''
                     if content:
                         yield content
-                        response_content.append(content)
+                        response_contents.append(content)
+
+            # 组装结果
+            if response_contents:
+                response_messages = [{"role": "assistant", "content": "".join(response_contents)}]
 
             # 更新历史记录
-            if response_content:
-                self.history.append({
-                    "role": "assistant",
-                    "content": "".join(response_content)
-                })
+            if response_contents:
+                self.history.extend(user_input_messages)
+                if tool_response_messages:
+                    self.history.extend(tool_response_messages)
+                self.history.extend(response_messages)
 
         except Exception as e:
             logger.error(f"Error in process_message: {e}")
@@ -196,7 +205,6 @@ class Conversation:
 class ConversationManager:
     CONFIG_FILE = CONFIG_PATH / "chat_run_mode_config.json"  # 配置文件路径
 
-    # 新增嵌套枚举
     class GroupMode(Enum):
         DEFAULT = "default"  # 默认：进入用户模式判断
         SHARED = "shared"  # 共享：群内所有用户共用同一对话
@@ -295,15 +303,41 @@ class ConversationManager:
             del self.conversations[conv_key.key]
 
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
-        """创建新会话"""
         conv_key = self._get_conversation_key(group_id, member_id)
-        if conv_key.key in self.conversations:
-            self.remove_conversation(group_id, member_id)
+
+        # 如果发现用户锁处于占用状态，则打断旧对话
+        if conv_key.lock_key in self.locks and self.locks[conv_key.lock_key].locked():
+            logger.info("检测到当前会话未结束，打断并覆盖旧会话。")
+            # 中断旧的对话
+            if conv_key.key in self.conversations:
+                old_conversation = self.conversations[conv_key.key]
+                old_conversation.interrupt()  # 新增：中断旧对话
+                self.remove_conversation(group_id, member_id)
+            del self.locks[conv_key.lock_key]
+
+        # 如果是共享模式，检查群锁是否处于占用状态，若占用则打断当前群对话
+        if conv_key.is_shared and f"group:{group_id}" in self.locks and self.locks[f"group:{group_id}"].locked():
+            logger.info("检测到群聊对话未结束，打断并覆盖旧群对话。")
+            # 中断旧的群对话
+            if conv_key.key in self.conversations:
+                old_conversation = self.conversations[conv_key.key]
+                old_conversation.interrupt()  # 新增：中断旧群对话
+                self.remove_conversation(group_id, member_id)
+            del self.locks[f"group:{group_id}"]
+
+        # 释放已存在的锁（此时若仍有旧锁则删除）
+        if conv_key.lock_key in self.locks:
+            del self.locks[conv_key.lock_key]
+        if conv_key.is_shared and f"group:{group_id}" in self.locks:
+            del self.locks[f"group:{group_id}"]
+
+        # 创建新的会话
         provider = self.provider_factory(conv_key.key)
         plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
-        if preset:
-            conversation.set_preset(preset)
+        preset = preset_dict[preset]["content"] if preset in preset_dict \
+            else (preset or preset_dict["umaru"]["content"])
+        conversation.set_preset(preset)
         self.conversations[conv_key.key] = conversation
         self.clear_memory(group_id, member_id)
         return conversation
@@ -342,33 +376,52 @@ class ConversationManager:
     async def __process_conversation(
             self, conversation: Conversation,
             member_name: str, member_id: str, message: str,
-            shared: bool
+            shared: bool, use_tool: bool = False
     ) -> str:
         response_chunks = []
         if shared:
-            async for chunk in conversation.process_message(f"{member_name}(QQ:{member_id})说:{message}"):
+            async for chunk in conversation.process_message(f"{member_name}(QQ:{member_id})说:{message}",
+                                                            use_tool=use_tool):
                 response_chunks.append(chunk)
         else:
-            async for chunk in conversation.process_message(message):
+            async for chunk in conversation.process_message(message, use_tool=use_tool):
                 response_chunks.append(chunk)
         return "".join(response_chunks)
 
-    async def send_message(self, group_id: str, member_id: str, member_name: str, message: str) -> str | None:
+    # 获取对话回合数
+    def get_round(self, group_id: str, member_id: str) -> int:
+        conversation = self.get_conversation(group_id, member_id)
+        return conversation.get_round()
+
+    async def send_message(
+            self, group_id: str, member_id: str, member_name: str,
+            message: str, use_tool: bool
+    ) -> str | None:
         conv_key = self._get_conversation_key(group_id, member_id)
         conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
 
-        try:
-            await asyncio.wait_for(conv_lock.acquire(), timeout=300)
-        except asyncio.TimeoutError:
-            return "错误：上一次对话尚未结束，请稍后再试。"
+        if conv_lock.locked():
+            return "错误：正在处理上一条消息，请稍后再试。"
 
         try:
+            if not await conv_lock.acquire():
+                return "错误：正在处理上一条消息，请稍后再试。"
+
             conversation = self.get_conversation(group_id, member_id)
             if conv_key.is_shared:
                 group_lock = self.locks.setdefault(f"group:{group_id}", asyncio.Lock())
+                if group_lock.locked():
+                    return "错误：正在处理群内其他消息，请稍后再试。"
                 async with group_lock:
-                    return await self.__process_conversation(conversation, member_name, member_id, message, shared=True)
+                    return await self.__process_conversation(
+                        conversation, member_name, member_id, message,
+                        shared=True, use_tool=use_tool
+                    )
             else:
-                return await self.__process_conversation(conversation, member_name, member_id, message, shared=False)
+                return await self.__process_conversation(
+                    conversation, member_name, member_id, message,
+                    shared=False, use_tool=use_tool
+                )
         finally:
-            conv_lock.release()
+            if conv_lock.locked():
+                conv_lock.release()

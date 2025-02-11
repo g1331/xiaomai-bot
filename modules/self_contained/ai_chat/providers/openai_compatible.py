@@ -11,6 +11,7 @@ from ..core.provider import BaseAIProvider, ProviderConfig
 
 class OpenAICompatibleConfig(ProviderConfig):
     """OpenAI 接口兼容的配置基类"""
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model = kwargs.get("model", "")  # 子类需要设置默认值
@@ -18,6 +19,7 @@ class OpenAICompatibleConfig(ProviderConfig):
 
 class OpenAICompatibleProvider(BaseAIProvider):
     """OpenAI 接口兼容的提供者基类"""
+
     def __init__(self, config: OpenAICompatibleConfig):
         super().__init__(config)
         self.client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)

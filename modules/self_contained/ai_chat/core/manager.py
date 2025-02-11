@@ -336,7 +336,7 @@ class ConversationManager:
         plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
         preset = preset_dict[preset]["content"] if preset in preset_dict \
-            else (preset if preset else preset_dict["umaru"]["content"])
+            else (preset or preset_dict["umaru"]["content"])
         conversation.set_preset(preset)
         self.conversations[conv_key.key] = conversation
         self.clear_memory(group_id, member_id)

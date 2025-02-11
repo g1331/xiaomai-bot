@@ -17,7 +17,7 @@ class WebSearchConfig(PluginConfig):
         max_results: 最大返回结果数，默认3条
     """
     region: str = "cn-zh"
-    max_results: int = 3
+    max_results: int = 10
 
 
 class WebSearchPlugin(BasePlugin):
@@ -44,7 +44,7 @@ class WebSearchPlugin(BasePlugin):
             parameters={
                 "query": "搜索关键词",
                 "region": "搜索区域代码如`cn-zh for China`",
-                "max_results": "最大返回结果数"
+                "max_results": f"最大返回结果数，不能超过{self.config.max_results}条",
             },
             example="搜索`Python`相关信息",
         )
@@ -76,8 +76,8 @@ class WebSearchPlugin(BasePlugin):
         if not query:
             return "错误：缺少搜索关键词，请提供参数 'query'。"
         max_results = int(params.get("max_results", self.config.max_results))
-        if max_results > 10:
-            return "错误：最大返回结果数不能超过10条。"
+        if max_results > self.config.max_results:
+            return f"错误：最大返回结果数不能超过{self.config.max_results}条。"
         region = params.get("region", self.config.region)
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(

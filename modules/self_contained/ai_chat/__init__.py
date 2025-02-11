@@ -149,7 +149,7 @@ async def chat_gpt(
         )
 
     if show_preset.matched:
-        await app.send_group_message(
+        return await app.send_group_message(
             group,
             MessageChain(GraiaImage(data_bytes=await html2img(
                 MarkdownToImageConverter.generate_html(
@@ -164,7 +164,6 @@ async def chat_gpt(
             ))),
             quote=source
         )
-        return
 
     if preset.matched:
         # 群聊预设暂不鉴权
@@ -193,7 +192,7 @@ async def chat_gpt(
                     quote=source
                 )
         g_manager.new(group_id=group_id_str, member_id=member_id_str)
-        return await app.send_group_message(
+        await app.send_group_message(
             group,
             MessageChain("已清除上下文并开始新对话"),
             quote=source

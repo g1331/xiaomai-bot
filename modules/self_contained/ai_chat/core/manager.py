@@ -287,13 +287,22 @@ class ConversationManager:
         """获取会话密钥对象"""
         return self.ConversationKey(self, group_id, member_id)
 
+    def _create_conversation(self, conv_key: ConversationKey, preset: str = "") -> Conversation:
+        """创建新的对话实例"""
+        provider = self.provider_factory(conv_key.key)
+        plugins = self.plugins_factory(conv_key.key)
+        conversation = Conversation(provider, plugins)
+        if preset:
+            preset_content = preset_dict[preset]["content"] if preset in preset_dict \
+                else (preset or preset_dict["umaru"]["content"])
+            conversation.set_preset(preset_content)
+        return conversation
+
     def get_conversation(self, group_id: str, member_id: str) -> Conversation:
         """获取会话实例"""
         conv_key = self._get_conversation_key(group_id, member_id)
         if conv_key.key not in self.conversations:
-            provider = self.provider_factory(conv_key.key)
-            plugins = self.plugins_factory(conv_key.key)
-            self.conversations[conv_key.key] = Conversation(provider, plugins)
+            self.conversations[conv_key.key] = self._create_conversation(conv_key)
         return self.conversations[conv_key.key]
 
     def remove_conversation(self, group_id: str, member_id: str):
@@ -304,40 +313,36 @@ class ConversationManager:
 
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
         conv_key = self._get_conversation_key(group_id, member_id)
+        # 若对话不存在，则直接创建新对话
+        if conv_key.key not in self.conversations:
+            conversation = self._create_conversation(conv_key, preset)
+            self.conversations[conv_key.key] = conversation
+            self.clear_memory(group_id, member_id)
+            return conversation
 
-        # 如果发现用户锁处于占用状态，则打断旧对话
+        # 仅在对话存在时进行锁检查和中断逻辑
         if conv_key.lock_key in self.locks and self.locks[conv_key.lock_key].locked():
             logger.info("检测到当前会话未结束，打断并覆盖旧会话。")
-            # 中断旧的对话
             if conv_key.key in self.conversations:
                 old_conversation = self.conversations[conv_key.key]
-                old_conversation.interrupt()  # 新增：中断旧对话
+                old_conversation.interrupt()  # 中断旧对话
                 self.remove_conversation(group_id, member_id)
             del self.locks[conv_key.lock_key]
 
-        # 如果是共享模式，检查群锁是否处于占用状态，若占用则打断当前群对话
         if conv_key.is_shared and f"group:{group_id}" in self.locks and self.locks[f"group:{group_id}"].locked():
             logger.info("检测到群聊对话未结束，打断并覆盖旧群对话。")
-            # 中断旧的群对话
             if conv_key.key in self.conversations:
                 old_conversation = self.conversations[conv_key.key]
-                old_conversation.interrupt()  # 新增：中断旧群对话
+                old_conversation.interrupt()  # 中断旧群对话
                 self.remove_conversation(group_id, member_id)
             del self.locks[f"group:{group_id}"]
 
-        # 释放已存在的锁（此时若仍有旧锁则删除）
         if conv_key.lock_key in self.locks:
             del self.locks[conv_key.lock_key]
         if conv_key.is_shared and f"group:{group_id}" in self.locks:
             del self.locks[f"group:{group_id}"]
 
-        # 创建新的会话
-        provider = self.provider_factory(conv_key.key)
-        plugins = self.plugins_factory(conv_key.key)
-        conversation = Conversation(provider, plugins)
-        preset = preset_dict[preset]["content"] if preset in preset_dict \
-            else (preset or preset_dict["umaru"]["content"])
-        conversation.set_preset(preset)
+        conversation = self._create_conversation(conv_key, preset)
         self.conversations[conv_key.key] = conversation
         self.clear_memory(group_id, member_id)
         return conversation
@@ -406,8 +411,11 @@ class ConversationManager:
         try:
             if not await conv_lock.acquire():
                 return "错误：正在处理上一条消息，请稍后再试。"
-
-            conversation = self.get_conversation(group_id, member_id)
+            # 新增: 若首次对话（会话不存在），则通过 new() 创建新会话
+            if conv_key.key not in self.conversations:
+                conversation = self.new(group_id, member_id)
+            else:
+                conversation = self.conversations[conv_key.key]
             if conv_key.is_shared:
                 group_lock = self.locks.setdefault(f"group:{group_id}", asyncio.Lock())
                 if group_lock.locked():

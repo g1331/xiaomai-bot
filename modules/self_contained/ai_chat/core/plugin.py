@@ -8,19 +8,19 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 
 
 class PluginDescription(BaseModel):
     """插件功能描述数据模型。
 
     Attributes:
-        name: 插件名称
+        name: 插件名称，只能为英文字符串，正则验证：`^[a-zA-Z0-9_-]+$`
         description: 插件功能描述
         parameters: 插件参数说明字典，key为参数名，value为参数说明
         example: 插件使用示例
     """
-    name: str
+    name: constr(regex=r'^[a-zA-Z0-9_-]+$')
     description: str
     parameters: Dict[str, str]
     example: str

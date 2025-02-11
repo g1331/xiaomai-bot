@@ -39,10 +39,13 @@ class WebSearchPlugin(BasePlugin):
             PluginDescription: 包含插件功能描述的对象
         """
         return PluginDescription(
-            name="WebSearch",
-            description="使用DDG进行文本搜索",
-            parameters={"query": "搜索关键词", "region": "搜索区域代码如`cn-zh for China`",
-                        "max_results": "最大返回结果数"},
+            name="DuckDuckGoSearch",
+            description="搜索需要实时获取的信息，只提供参考与引用链接。",
+            parameters={
+                "query": "搜索关键词",
+                "region": "搜索区域代码如`cn-zh for China`",
+                "max_results": "最大返回结果数"
+            },
             example="搜索`Python`相关信息",
         )
 

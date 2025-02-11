@@ -12,11 +12,13 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ArgumentM
 from graia.ariadne.model import Group, Member
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from graiax.playwright import PlaywrightBrowser
+from loguru import logger
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission
 from core.models import saya_model
-from utils.text2img import html2img, md2img
-from utils.text2img.md2img import MarkdownToImageConverter, Theme
+from utils.text2img import html2img
+from utils.text2img.md2img import MarkdownToImageConverter, Theme, OutputMode, HighlightTheme
 from .config import ConfigLoader
 from .core.manager import ConversationManager
 from .core.preset import preset_dict
@@ -69,7 +71,7 @@ def plugins_factory(key: str):
     """为ConversationManager提供的插件工厂函数，
     从插件注册表中获取所有插件，根据配置判断是否启用"""
     enabled_plugins = []
-    plugins_cfg = g_config_loader._config.get("plugins", {})
+    plugins_cfg = g_config_loader.config.get("plugins", {})
     for plugin_name, plugin_info in ALL_PLUGINS.items():
         cfg = plugins_cfg.get(plugin_name, {})
         if cfg.get("enabled", False):
@@ -178,7 +180,6 @@ async def chat_gpt(
             MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
             quote=source
         )
-        return
 
     if new_thread.matched:
         # 先获取群聊模式，如果是shared就鉴权，只能是群管理员以上才能清除上下文并开始新对话
@@ -221,10 +222,18 @@ async def chat_gpt(
         )
     else:
         response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
+        converter = MarkdownToImageConverter(browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
+        img_bytes = await converter.convert_markdown(
+            response, 
+            theme=Theme.DARK, 
+            output_mode=OutputMode.BINARY, 
+            highlight_theme=HighlightTheme.ATOM_ONE_DARK
+        )
         return await app.send_group_message(
             group,
-            MessageChain(GraiaImage(data_bytes=await html2img(
-                MarkdownToImageConverter.generate_html(response, theme=Theme.DARK)
-            ))),
+            # MessageChain(GraiaImage(data_bytes=await html2img(
+            #     MarkdownToImageConverter.generate_html(response, theme=Theme.DARK)
+            # ))),
+            MessageChain(GraiaImage(data_bytes=img_bytes)),
             quote=source
         )

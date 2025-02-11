@@ -38,10 +38,11 @@ class LaunchTimeService(Launchable):
             module_sum = sum(_time for _time, _ in _launch_time.values())
             time_length = max(len(str(_time)) for _time, _ in _launch_time.values())
             top = (
-                f"\n\n<red>本次启动耗时 </red><yellow>{delta.total_seconds()}"
-                f"</yellow> <red>秒，模块加载耗时</red> <yellow>{module_sum:.6f}"
-                f"</yellow> <red>秒</red>\n\n<red>{'模块':<{name_length}}</red> |"
-                f" <yellow>{'耗时':<{time_length + 2}}</yellow> | <yellow>状态</yellow>\n"
+                f"\n\n<red>本次启动耗时 </red>"
+                f"<yellow>{delta.total_seconds()}</yellow> <red>秒，"
+                f"模块加载耗时</red> <yellow>{module_sum:.6f}</yellow> <red>秒</red>\n\n"
+                f"<red>{'Module':<{name_length}}</red> |   <yellow>{'Cost':<{time_length}}</yellow> | "
+                f"<yellow>Status</yellow>\n"
             )
 
             for module, (_time, code) in sorted(

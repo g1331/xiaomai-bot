@@ -15,10 +15,11 @@ from graia.saya.builtins.broadcast.schema import ListenerSchema
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission
 from core.models import saya_model
-from utils.text2img import html2img
+from utils.text2img import html2img, md2img
 from utils.text2img.md2img import MarkdownToImageConverter, Theme
 from .config import ConfigLoader
 from .core.manager import ConversationManager
+from .core.preset import preset_dict
 from .core.provider import BaseAIProvider
 from .plugins_registry import ALL_PLUGINS
 from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
@@ -148,16 +149,33 @@ async def chat_gpt(
     if show_preset.matched:
         await app.send_group_message(
             group,
-            MessageChain(f"当前预设：{g_manager.get_preset(group_id_str, member_id_str)}"),
+            MessageChain(GraiaImage(data_bytes=await html2img(
+                MarkdownToImageConverter.generate_html(
+                    "# 预设列表\n\n" +
+                    "## 当前预设\n\n" +
+                    f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n" +
+                    "## 内置预设：\n\n" +
+                    "\n\n".join(
+                        [f"### {i} **{v['name']}**\n>{v['description']}" for i, v
+                         in preset_dict.items()])
+                )
+            ))),
             quote=source
         )
+        return
 
     if preset.matched:
+        # 群聊预设暂不鉴权
         preset_str = preset.result.display.strip()
-        g_manager.set_preset(group_id_str, member_id_str, preset_str)
+        g_manager.set_preset(
+            group_id_str,
+            member_id_str,
+            preset_dict[preset_str]["content"] if preset_str in preset_dict \
+                else (preset_str if preset_str else preset_dict["umaru"]["content"])
+        )
         await app.send_group_message(
             group,
-            MessageChain(f"已设置预设：{preset_str}"),
+            MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
             quote=source
         )
         return

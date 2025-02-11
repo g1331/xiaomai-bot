@@ -9,6 +9,7 @@ from datetime import datetime
 
 from loguru import logger
 
+from .preset import preset_dict
 from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
 from ..core.provider import BaseAIProvider
@@ -334,8 +335,9 @@ class ConversationManager:
         provider = self.provider_factory(conv_key.key)
         plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
-        if preset:
-            conversation.set_preset(preset)
+        preset = preset_dict[preset]["content"] if preset in preset_dict \
+            else (preset if preset else preset_dict["umaru"]["content"])
+        conversation.set_preset(preset)
         self.conversations[conv_key.key] = conversation
         self.clear_memory(group_id, member_id)
         return conversation

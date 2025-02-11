@@ -292,10 +292,9 @@ class ConversationManager:
         provider = self.provider_factory(conv_key.key)
         plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
-        if preset:
-            preset_content = preset_dict[preset]["content"] if preset in preset_dict \
-                else (preset or preset_dict["umaru"]["content"])
-            conversation.set_preset(preset_content)
+        preset_content = preset_dict[preset]["content"] if preset in preset_dict \
+            else (preset or preset_dict["umaru"]["content"])
+        conversation.set_preset(preset_content)
         return conversation
 
     def get_conversation(self, group_id: str, member_id: str) -> Conversation:

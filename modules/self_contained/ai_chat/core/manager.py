@@ -287,13 +287,22 @@ class ConversationManager:
         """获取会话密钥对象"""
         return self.ConversationKey(self, group_id, member_id)
 
+    def _create_conversation(self, conv_key: ConversationKey, preset: str = "") -> Conversation:
+        """创建新的对话实例"""
+        provider = self.provider_factory(conv_key.key)
+        plugins = self.plugins_factory(conv_key.key)
+        conversation = Conversation(provider, plugins)
+        if preset:
+            preset_content = preset_dict[preset]["content"] if preset in preset_dict \
+                else (preset or preset_dict["umaru"]["content"])
+            conversation.set_preset(preset_content)
+        return conversation
+
     def get_conversation(self, group_id: str, member_id: str) -> Conversation:
         """获取会话实例"""
         conv_key = self._get_conversation_key(group_id, member_id)
         if conv_key.key not in self.conversations:
-            provider = self.provider_factory(conv_key.key)
-            plugins = self.plugins_factory(conv_key.key)
-            self.conversations[conv_key.key] = Conversation(provider, plugins)
+            self.conversations[conv_key.key] = self._create_conversation(conv_key)
         return self.conversations[conv_key.key]
 
     def remove_conversation(self, group_id: str, member_id: str):
@@ -306,12 +315,7 @@ class ConversationManager:
         conv_key = self._get_conversation_key(group_id, member_id)
         # 若对话不存在，则直接创建新对话
         if conv_key.key not in self.conversations:
-            provider = self.provider_factory(conv_key.key)
-            plugins = self.plugins_factory(conv_key.key)
-            conversation = Conversation(provider, plugins)
-            preset = preset_dict[preset]["content"] if preset in preset_dict \
-                else (preset or preset_dict["umaru"]["content"])
-            conversation.set_preset(preset)
+            conversation = self._create_conversation(conv_key, preset)
             self.conversations[conv_key.key] = conversation
             self.clear_memory(group_id, member_id)
             return conversation
@@ -338,12 +342,7 @@ class ConversationManager:
         if conv_key.is_shared and f"group:{group_id}" in self.locks:
             del self.locks[f"group:{group_id}"]
 
-        provider = self.provider_factory(conv_key.key)
-        plugins = self.plugins_factory(conv_key.key)
-        conversation = Conversation(provider, plugins)
-        preset = preset_dict[preset]["content"] if preset in preset_dict \
-            else (preset or preset_dict["umaru"]["content"])
-        conversation.set_preset(preset)
+        conversation = self._create_conversation(conv_key, preset)
         self.conversations[conv_key.key] = conversation
         self.clear_memory(group_id, member_id)
         return conversation

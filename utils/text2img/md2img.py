@@ -306,7 +306,7 @@ class MarkdownToImageConverter:
             table_header_bg = "#f6f8fa"
             table_even_bg = "#f9f9f9"
 
-        blur_style = textwrap.dedent(f"""
+        blur_style = textwrap.dedent("""
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             background-color: rgba(255, 255, 255, 0.08);

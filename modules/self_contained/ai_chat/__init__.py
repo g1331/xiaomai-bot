@@ -166,11 +166,12 @@ async def chat_gpt(
             MessageChain(GraiaImage(data_bytes=await html2img(
                 MarkdownToImageConverter.generate_html(
                     "# 预设列表\n\n" +
+                    "> 请使用标题括号前的文本进行设置\n"
                     "## 当前预设\n\n" +
                     f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n" +
                     "## 内置预设：\n\n" +
                     "\n\n".join(
-                        [f"### {i} **{v['name']}**\n>{v['description']}" for i, v
+                        [f"### {i} ({v['name']})\n>{v['description']}" for i, v
                          in preset_dict.items()])
                 )
             ))),

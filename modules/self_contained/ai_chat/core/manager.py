@@ -52,7 +52,7 @@ class Conversation:
         self.history = []
 
     def interrupt(self):
-        """中断当前,话"""
+        """中断当前对话"""
         self.interrupted = True
 
     def _get_time_message(self) -> dict:

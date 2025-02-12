@@ -47,14 +47,10 @@ def create_provider(provider_name: str, user_id: str = None) -> BaseAIProvider:
     provider_config = g_config_loader.get_provider_config(provider_name)
 
     if provider_name == "deepseek":
-        config = DeepSeekConfig(
-            api_key=provider_config["api_key"],  # 直接从配置文件中获取
-            model=provider_config["model"],
-            base_url=provider_config["base_url"],
-            max_tokens=provider_config["max_tokens"],
-            max_total_tokens=provider_config["max_total_tokens"],
+        _config = DeepSeekConfig(
+            **provider_config,
         )
-        return DeepSeekProvider(config)
+        return DeepSeekProvider(_config)
     raise ValueError(f"Unknown provider: {provider_name}")
 
 

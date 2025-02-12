@@ -170,15 +170,18 @@ class Conversation:
             origin_tokens_num = self.provider.calculate_tokens(self.history)
             # 这里仍然添加preset是为了命中缓存
             preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
-            ask_messages = preset_messages + self.history + [{
-                "role": "system", "content": f"""
-请按照以下规则总结历史对话：
-1️⃣ **背景信息**：概述对话的起点和核心话题。
-2️⃣ **用户主要问题**：列出用户的关键提问。
-3️⃣ **模型主要回答**：总结你给出的重要回复。
-4️⃣ **未解决问题**（如有）：如果对话中仍有未解答的问题，列出它们。
-请按照规则生成结构化总结。
-"""}]
+            summary_instruction = {
+                "role": "system",
+                "content": (
+                    "请按照以下规则总结历史对话：\n"
+                    "1.背景信息：概述对话的起点和核心话题。\n"
+                    "2.用户主要问题：列出用户的关键提问。\n"
+                    "3.模型主要回答：总结你给出的重要回复。\n"
+                    "4.未解决问题（如有）：如果对话中仍有未解答的问题，列出它们。\n"
+                    "请按照规则生成结构化总结。"
+                )
+            }
+            ask_messages = preset_messages + self.history + [summary_instruction]
             async for response in self.provider.ask(messages=ask_messages):
                 content = response.content if hasattr(response, 'content') else ''
                 if content:

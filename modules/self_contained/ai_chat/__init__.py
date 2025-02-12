@@ -96,7 +96,7 @@ async def init():
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
-                ArgumentMatch("--tool", action="store_true", optional=True) @ "tool",
+                ArgumentMatch("-T", "--tool", action="store_true", optional=True) @ "tool",
                 ArgumentMatch("--show-preset", action="store_true", optional=True) @ "show_preset",
                 ArgumentMatch("--reload-cfg", action="store_true", optional=True) @ "reload_cfg",
                 WildcardMatch().flags(re.DOTALL) @ "content",
@@ -242,9 +242,6 @@ async def ai_chat(
         )
         return await app.send_group_message(
             group,
-            # MessageChain(GraiaImage(data_bytes=await html2img(
-            #     MarkdownToImageConverter.generate_html(response, theme=Theme.DARK)
-            # ))),
             MessageChain(GraiaImage(data_bytes=img_bytes)),
             quote=source
         )

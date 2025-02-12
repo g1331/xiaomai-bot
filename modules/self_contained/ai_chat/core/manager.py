@@ -23,10 +23,11 @@ class Conversation:
     def __init__(self, provider: BaseAIProvider, plugins: list[BasePlugin]):
         self.provider = provider
         self.plugins = plugins
+        self._last_time = None  # 记录上次添加时间信息的时间
         self.history = [self._get_time_message()]  # 初始化时添加时间信息
         self.mode = Conversation.Mode.DEFAULT
-        self.preset = None  # 新增: preset 设定
-        self.interrupted = False  # 新增: 中断标记
+        self.preset = None  # preset 设定
+        self.interrupted = False  # 中断标记
 
     def switch_provider(self, new_provider: BaseAIProvider):
         if self.mode == Conversation.Mode.DEFAULT:
@@ -67,10 +68,10 @@ class Conversation:
             6: "星期日"
         }
         weekday = weekday_map[current_time.weekday()]
-        time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H:%M:%S")
+        time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H时")
         return {
             "role": "system",
-            "content": f"现在的时间是北京时间: {time_str}"
+            "content": f"现在是北京时间: {time_str}"
         }
 
     def get_round(self) -> int:
@@ -78,10 +79,11 @@ class Conversation:
         return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
 
     def _maybe_add_time_message(self):
-        """根据对话轮次决定是否添加时间信息"""
-        current_round = self.get_round()
-        if current_round > 0 and current_round % 10 == 0:
+        """根据时间间隔决定是否添加时间信息"""
+        current_time = datetime.now()
+        if self._last_time is None or (current_time - self._last_time).total_seconds() >= 3600:  # 超过1小时
             self.history.append(self._get_time_message())
+            self._last_time = current_time  # 更新最后添加时间
 
     async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
@@ -99,7 +101,7 @@ class Conversation:
                 for i, msg in enumerate(self.history):
                     self.history.pop(i)
                     break
-            
+
             # 添加时间信息(如果需要)
             self._maybe_add_time_message()
 

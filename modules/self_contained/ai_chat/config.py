@@ -4,7 +4,7 @@
 """
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Type
 
 from loguru import logger
 
@@ -29,19 +29,14 @@ class ConfigLoader:
                     "max_tokens": 4096
                 }
             },
-            "plugins": {
-                "web_search": {
-                    "enabled": True,
-                    "max_results": 3
-                }
-            },
-            # 新增用户 provider 配置部分
+            "plugins": {},  # 将由自动生成填充
             "user_providers": {
                 "default": "deepseek",
                 "users": {}
             }
         }
         self._config = self.load_config()
+        self._update_plugins_config()
 
     def load_config(self) -> Dict[str, Any]:
         if not self.config_path.exists():
@@ -62,6 +57,28 @@ class ConfigLoader:
     def save_config(self):
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(self._config, f, indent=4, ensure_ascii=False)
+
+    def _update_plugins_config(self):
+        """根据已注册的插件更新配置"""
+        from .plugins_registry import ALL_PLUGINS
+        
+        plugins_cfg = self._config.setdefault("plugins", {})
+        config_modified = False
+        
+        # 遍历所有已注册的插件
+        for plugin_name, plugin_info in ALL_PLUGINS.items():
+            if plugin_name not in plugins_cfg:
+                # 为新插件创建默认配置，无需传入参数
+                default_config = plugin_info["default_config"]()
+                plugins_cfg[plugin_name] = {
+                    "enabled": False,  # 默认禁用
+                    **default_config.dict(exclude_none=True)  # 将配置模型转换为字典
+                }
+                config_modified = True
+                logger.info(f"[AIChat]Added default config for plugin: {plugin_name}")
+
+        if config_modified:
+            self.save_config()
 
     # 新增用户 provider 管理方法
     def get_user_provider(self, user_id: str) -> str:

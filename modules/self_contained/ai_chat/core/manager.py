@@ -268,6 +268,9 @@ class Conversation:
                         "tool_calls": response.tool_calls
                     })
 
+                    # 日志输出本次要执行的工具调用，以及本身拥有的插件
+                    logger.info(f"Tool calls: {';'.join([tc.function.name for tc in response.tool_calls])}")
+
                     async def execute_tool_call(tool_call):
                         _plugin = plugin_map.get(tool_call.function.name)
                         if not _plugin:
@@ -279,6 +282,7 @@ class Conversation:
                         try:
                             logger.debug(f"Plugin {_plugin.description.name} execute with arguments: {arguments}")
                             result = await _plugin.execute(arguments)
+                            logger.debug(f"Plugin {_plugin.description.name} execute result: {result}")
                             return {
                                 "role": "tool",
                                 "content": str(result),

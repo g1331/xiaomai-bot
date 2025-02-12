@@ -1,14 +1,17 @@
 import ast
-import math
 import asyncio
-from io import StringIO
+import math
 import sys
-from typing import Dict, Any, Set
-from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
+from io import StringIO
+from typing import Dict, Any, Set, List, FrozenSet
+from pydantic import validator
+
 from RestrictedPython import compile_restricted
+from RestrictedPython.Eval import default_guarded_getitem
 from RestrictedPython.Guards import safe_builtins, guarded_iter_unpack_sequence, guarded_unpack_sequence, safer_getattr
 from RestrictedPython.Utilities import utility_builtins
-from RestrictedPython.Eval import default_guarded_getitem
+
+from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
 
 # 尝试导入resource模块，Windows平台通常不支持
 try:
@@ -23,20 +26,40 @@ class CodeRunnerConfig(PluginConfig):
     """代码执行插件配置。"""
     timeout: int = 5  # 执行超时时间(秒)
     max_code_length: int = 1000  # 最大代码长度
-    allowed_modules: Set[str] = {
+    allowed_modules: FrozenSet[str] = frozenset({
         "math", "random", "statistics", "decimal"
-    }
-    # 如果需要还可以指定允许的内置函数列表
-    allowed_builtins: Set[str] = {
+    })
+    allowed_builtins: FrozenSet[str] = frozenset({
         'abs', 'min', 'max', 'sum', 'len'
-    }
+    })
+
+    @property
+    def required_fields(self) -> Set[str]:
+        return set()
+
+    def dict(self, *args, **kwargs):
+        """重写dict方法，确保Set被序列化为list"""
+        d = super().dict(*args, **kwargs)
+        # 将Set转换为list以便JSON序列化
+        d['allowed_modules'] = list(self.allowed_modules)
+        d['allowed_builtins'] = list(self.allowed_builtins)
+        return d
+
+    @validator('allowed_modules', 'allowed_builtins', pre=True)
+    def ensure_set(cls, v):
+        """确保值总是被转换为Set"""
+        if isinstance(v, list):
+            return set(v)
+        if isinstance(v, set):
+            return v
+        raise ValueError('Must be a list or set')
 
 
 class CodeRunner(BasePlugin):
     """Python代码执行插件实现类。"""
 
     def __init__(self, config: CodeRunnerConfig):
-        self.config = config
+        super().__init__(config)
         # 基于RestrictedPython配置安全环境
         self.safe_globals = {
             "__builtins__": safe_builtins,
@@ -51,8 +74,8 @@ class CodeRunner(BasePlugin):
     @property
     def description(self) -> PluginDescription:
         return PluginDescription(
-            name="CodeRunner",
-            description="安全执行Python代码，主要用于数学计算",
+            name="code_runner",
+            description="安全执行Python代码，用于计算数学表达式或者简单的代码执行，不能执行有害的代码。",
             parameters={
                 "code": "要执行的Python代码",
                 "timeout": f"可选，执行超时时间(秒)，默认{self.config.timeout}秒"
@@ -100,12 +123,12 @@ class CodeRunner(BasePlugin):
                     if node.func.attr in dangerous_functions:
                         raise ValueError(f"禁止调用危险函数: {node.func.attr}")
 
-    async def execute(self, parameters: Dict[str, Any]) -> str:
+    async def execute(self, parameters: Dict[str, Any]) -> str | None:
         """执行Python代码。"""
         code = parameters.get("code", "").strip()
         if not code:
             return "错误：请提供要执行的代码"
-        
+
         timeout = float(parameters.get("timeout", self.config.timeout))
 
         try:

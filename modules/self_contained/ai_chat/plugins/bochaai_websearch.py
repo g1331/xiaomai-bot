@@ -79,7 +79,7 @@ class BochaaiWebSearchPlugin(BasePlugin):
     @property
     def description(self) -> PluginDescription:
         return PluginDescription(
-            name="BochaaiWebSearch",
+            name="bochaai_websearch",
             description="博查AI高级搜索插件，通过博查AI开放平台 API 实现网页搜索，支持时间范围、摘要显示、结果条数及页码设置。",
             parameters={
                 "query": "搜索关键词",

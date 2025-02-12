@@ -5,7 +5,7 @@
 - PluginConfig: 插件配置基类
 - BasePlugin: 插件抽象基类
 """
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Dict, Any, Set
 
 from pydantic import BaseModel, constr, ValidationError
@@ -20,13 +20,13 @@ class PluginDescription(BaseModel):
         parameters: 插件参数说明字典，key为参数名，value为参数说明
         example: 插件使用示例
     """
-    name: constr(regex=r'^[a-zA-Z0-9_-]+$')
+    name: constr(regex=r'^[a-zA-Z0-9_-]+$')  # 需要与plugins_registry中的名字保持一致
     description: str
     parameters: Dict[str, str]
     example: str
 
 
-class PluginConfig(BaseModel, ABC):
+class PluginConfig(BaseModel):
     """插件配置基类。
 
     Attributes:
@@ -61,7 +61,7 @@ class PluginConfig(BaseModel, ABC):
             value = getattr(self, field, None)
             if value is None or (isinstance(value, str) and not value.strip()):
                 missing.append(field)
-        
+
         if missing:
             raise ValidationError(
                 f"Missing required configuration fields: {', '.join(missing)}",
@@ -74,6 +74,7 @@ class BasePlugin(ABC):
 
     所有具体插件类都必须继承此类并实现其抽象方法。
     """
+
     def __init__(self, config: PluginConfig):
         self.config = config
         # 初始化时验证必需的配置项

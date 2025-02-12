@@ -67,29 +67,33 @@ def provider_factory(key: str):
 
 
 def plugins_factory(key: str):
-    """为ConversationManager提供的插件工厂函数，
-    从插件注册表中获取所有插件，根据配置判断是否启用"""
+    """为ConversationManager提供的插件工厂函数"""
     enabled_plugins = []
     plugins_cfg = g_config_loader.config.get("plugins", {})
+    
     for plugin_name, plugin_info in ALL_PLUGINS.items():
         cfg = plugins_cfg.get(plugin_name, {})
         if cfg.get("enabled", False):
             try:
                 plugin_instance = plugin_info["class"](plugin_info["default_config"](cfg))
                 enabled_plugins.append(plugin_instance)
+                logger.info(f"AiChat plugin {plugin_name} enabled")
             except ValidationError as e:
                 logger.warning(f"Plugin {plugin_name} configuration error: {e}")
                 continue
+    
     return enabled_plugins
 
 
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
 async def init():
     global g_manager, g_config_loader
+    logger.info("AI Chat模块初始化中...")
     # 初始化配置加载器
     g_config_loader = ConfigLoader()
     # 初始化对话管理器
     g_manager = ConversationManager(provider_factory, plugins_factory)
+    logger.success("AI Chat模块初始化完成")
 
 
 @channel.use(

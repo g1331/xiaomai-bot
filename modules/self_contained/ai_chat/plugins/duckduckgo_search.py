@@ -44,7 +44,7 @@ class DuckDuckGoPlugin(BasePlugin):
             PluginDescription: 包含插件功能描述的对象
         """
         return PluginDescription(
-            name="DuckDuckGoSearch",
+            name="duckduckgo",
             description="提供简易的搜索功能。",
             parameters={
                 "query": "搜索关键词",

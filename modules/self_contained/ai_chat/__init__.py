@@ -6,17 +6,16 @@ from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as GraiaImage
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, ArgumentMatch, WildcardMatch, ArgResult, \
-    RegexResult
+from graia.ariadne.message.element import Image as GraiaImage, At
+from graia.ariadne.message.parser.twilight import Twilight, ArgumentMatch, WildcardMatch, ArgResult, \
+    RegexResult, ElementMatch, ElementResult, SpacePolicy
 from graia.ariadne.model import Group, Member
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
-from loguru import logger
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission
-from core.models import saya_model
+from core.models import saya_model, response_model
 from utils.text2img import html2img
 from utils.text2img.md2img import MarkdownToImageConverter, Theme, OutputMode, HighlightTheme
 from .config import ConfigLoader
@@ -27,6 +26,7 @@ from .plugins_registry import ALL_PLUGINS
 from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
 
 module_controller = saya_model.get_module_controller()
+account_controller = response_model.get_acc_controller()
 # 初始化通道
 channel = Channel.current()
 channel.meta["name"] = "AI对话"
@@ -94,7 +94,8 @@ async def init():
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight([
-                FullMatch("-chat"),
+                # FullMatch("-chat"),
+                ElementMatch(At, optional=False).space(SpacePolicy.PRESERVE) @ "at",
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
@@ -118,6 +119,7 @@ async def chat_gpt(
         group: Group,
         member: Member,
         source: Source,
+        AtResult: ElementResult,
         new_thread: ArgResult,
         text: ArgResult,
         tool: ArgResult,
@@ -127,6 +129,15 @@ async def chat_gpt(
         reload_cfg: ArgResult
 ):
     global g_config_loader, g_manager
+
+    if not AtResult.matched:
+        return
+
+    at_result: At = AtResult.result  # type: ignore
+    at_qq_num = at_result.target
+    if at_qq_num not in account_controller.initialized_bot_list:
+        return
+    
     group_id_str = str(group.id)
     member_id_str = str(member.id)
     content = content.result.display.strip() if content.matched else ""
@@ -221,11 +232,12 @@ async def chat_gpt(
         )
     else:
         response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
-        converter = MarkdownToImageConverter(browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
+        converter = MarkdownToImageConverter(
+            browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
         img_bytes = await converter.convert_markdown(
-            response, 
-            theme=Theme.DARK, 
-            output_mode=OutputMode.BINARY, 
+            response,
+            theme=Theme.DARK,
+            output_mode=OutputMode.BINARY,
             highlight_theme=HighlightTheme.ATOM_ONE_DARK
         )
         return await app.send_group_message(

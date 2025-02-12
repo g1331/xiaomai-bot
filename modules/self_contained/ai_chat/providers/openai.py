@@ -1,3 +1,7 @@
+from typing import List, Dict, Any
+
+import tiktoken
+
 from .openai_compatible import OpenAICompatibleConfig, OpenAICompatibleProvider
 
 
@@ -18,3 +22,7 @@ class OpenAIProvider(OpenAICompatibleProvider):
 
     def __init__(self, config: OpenAIConfig):
         super().__init__(config)
+        self.encoder = tiktoken.encoding_for_model(config.model)
+
+    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+        return sum(self.encoder.encode(message["content"]) for message in messages)

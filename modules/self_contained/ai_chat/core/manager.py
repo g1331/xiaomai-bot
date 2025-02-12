@@ -23,10 +23,11 @@ class Conversation:
     def __init__(self, provider: BaseAIProvider, plugins: list[BasePlugin]):
         self.provider = provider
         self.plugins = plugins
+        self._last_time = None  # 记录上次添加时间信息的时间
         self.history = [self._get_time_message()]  # 初始化时添加时间信息
         self.mode = Conversation.Mode.DEFAULT
-        self.preset = None  # 新增: preset 设定
-        self.interrupted = False  # 新增: 中断标记
+        self.preset = None  # preset 设定
+        self.interrupted = False  # 中断标记
 
     def switch_provider(self, new_provider: BaseAIProvider):
         if self.mode == Conversation.Mode.DEFAULT:
@@ -67,10 +68,10 @@ class Conversation:
             6: "星期日"
         }
         weekday = weekday_map[current_time.weekday()]
-        time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H:%M:%S")
+        time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H时")
         return {
             "role": "system",
-            "content": f"现在的时间是北京时间: {time_str}"
+            "content": f"现在是北京时间: {time_str}"
         }
 
     def get_round(self) -> int:
@@ -78,10 +79,75 @@ class Conversation:
         return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
 
     def _maybe_add_time_message(self):
-        """根据对话轮次决定是否添加时间信息"""
-        current_round = self.get_round()
-        if current_round > 0 and current_round % 10 == 0:
+        """根据时间间隔决定是否添加时间信息"""
+        current_time = datetime.now()
+        if self._last_time is None or (current_time - self._last_time).total_seconds() >= 3600:  # 超过1小时
             self.history.append(self._get_time_message())
+            self._last_time = current_time  # 更新最后添加时间
+
+    def _clean_history_if_needed(self) -> int:
+        """
+        检查并清理过多的历史记录
+        :return: 清理掉的消息数量
+        """
+        cleaned_count = 0
+        max_token = self.provider.config.max_total_tokens
+        current_tokens = self.provider.get_usage().get("total_tokens", 0)
+
+        if current_tokens <= max_token:
+            return cleaned_count
+
+        # 按顺序找出可以删除的消息索引
+        to_remove_indices = []
+        i = 0
+        max_iterations = 5  # 设置最大循环次数
+        iteration_count = 0
+
+        while i < len(self.history) and iteration_count < max_iterations:
+            # 如果是工具调用，则遍历一直到下一个非工具调用消息
+            if (
+                    self.history[i]["role"] == "assistant"
+                    and self.history[i]["tool_calls"] is not None
+                    and i + 1 < len(self.history)
+            ):
+                # 如果是assistant消息，检查后面是否有相关的tool消息
+                next_index = i + 1
+                tool_indices = []
+                while (
+                        next_index < len(self.history) and
+                        self.history[next_index]["role"] == "tool"
+                ):
+                    tool_indices.append(next_index)
+                    next_index += 1
+                # 添加assistant消息和相关的所有tool消息的索引
+                to_remove_indices.extend([i] + tool_indices)
+                i = next_index
+            elif self.history[i]["role"] in ["user", "assistant"]:
+                to_remove_indices.append(i)
+                i += 1
+            else:
+                i += 1
+
+            # 检查清理后是否足够
+            if to_remove_indices:
+                cleaned_count = len(to_remove_indices)
+                # 从后向前删除，避免索引变化
+                for idx in sorted(to_remove_indices, reverse=True):
+                    self.history.pop(idx)
+
+                current_tokens = self.provider.calculate_tokens(self.history)
+                if current_tokens <= max_token:
+                    break
+
+            iteration_count += 1  # 增加循环计数器
+
+        if cleaned_count > 0:
+            logger.info(f"已清理 {cleaned_count} 条历史消息以控制token使用量")
+
+        if iteration_count >= max_iterations:
+            logger.warning("达到最大清理迭代次数，可能存在无法完全清理历史记录的问题。")
+
+        return cleaned_count
 
     async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
@@ -94,12 +160,8 @@ class Conversation:
             plugin_map = {}
 
             # 检查并清理过多的历史记录
-            max_token = self.provider.config.max_total_tokens
-            if self.provider.get_usage().get("total_tokens", 0) > max_token:
-                for i, msg in enumerate(self.history):
-                    self.history.pop(i)
-                    break
-            
+            self._clean_history_if_needed()
+
             # 添加时间信息(如果需要)
             self._maybe_add_time_message()
 

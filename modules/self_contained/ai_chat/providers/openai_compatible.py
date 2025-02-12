@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Dict, Any, AsyncGenerator, Union
 
 from loguru import logger
@@ -28,6 +29,10 @@ class OpenAICompatibleProvider(BaseAIProvider):
             "prompt_tokens": 0,
             "total_tokens": 0
         })
+
+    @abstractmethod
+    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+        pass
 
     async def ask(
             self,

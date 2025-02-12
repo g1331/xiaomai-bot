@@ -14,7 +14,7 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
 
-from core.control import Distribute, Function, FrequencyLimitation, Permission
+from core.control import Distribute, Function, FrequencyLimitation, Permission, AtBotReply
 from core.models import saya_model, response_model
 from utils.text2img import html2img
 from utils.text2img.md2img import MarkdownToImageConverter, Theme, OutputMode, HighlightTheme
@@ -104,6 +104,7 @@ async def init():
         ],
         decorators=[
             Distribute.require(),
+            AtBotReply.require(),
             Function.require(channel.module, False),  # 因为@触发条件比较广泛，这里关闭功能未开启时的通知，防止刷屏
             FrequencyLimitation.require(channel.module, 5),
             Permission.group_require(channel.metadata.level, if_noticed=True),

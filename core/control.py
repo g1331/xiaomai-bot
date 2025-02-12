@@ -7,6 +7,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.message import Source
+from graia.ariadne.message.element import At
 from graia.ariadne.model import Group, Friend
 from graia.broadcast import ExecutionStop
 from graia.broadcast.builtin.decorators import Depend
@@ -485,6 +486,22 @@ class QuoteReply(object):
     def require_not(cls):
         async def wrapper(event: GroupMessage):
             if event.quote:
+                raise ExecutionStop
+
+        return Depend(wrapper)
+
+
+class AtBotReply(object):
+    @classmethod
+    def require(cls):
+        async def wrapper(event: GroupMessage):
+            # 获取message_chain的第一个元素，如果不是At就停止
+            if not isinstance(event.message_chain[0], At):
+                raise ExecutionStop
+            account_controller = response_model.get_acc_controller()
+            at_element: At = event.message_chain[0]  # type: ignore
+            # 如果at的对象不在bot列表里面就停止
+            if at_element.target not in account_controller.initialized_bot_list:
                 raise ExecutionStop
 
         return Depend(wrapper)

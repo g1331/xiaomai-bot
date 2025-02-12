@@ -23,7 +23,7 @@ class Conversation:
     def __init__(self, provider: BaseAIProvider, plugins: list[BasePlugin]):
         self.provider = provider
         self.plugins = plugins
-        self.history = []
+        self.history = [self._get_time_message()]  # 初始化时添加时间信息
         self.mode = Conversation.Mode.DEFAULT
         self.preset = None  # 新增: preset 设定
         self.interrupted = False  # 新增: 中断标记
@@ -73,12 +73,6 @@ class Conversation:
             "content": f"现在的时间是北京时间: {time_str}"
         }
 
-    def _get_base_messages(self) -> list:
-        """获取基础消息列表，仅包含当前时间信息
-           （preset 消息已通过 set_preset 插入到 history 中，不再重复添加）
-        """
-        return [self._get_time_message()]
-
     def get_round(self) -> int:
         # 要排除 system 和 tool 的消息，然后计算 user 和 assistant 的消息数量，然后除以 2
         return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
@@ -99,12 +93,16 @@ class Conversation:
                 for i, msg in enumerate(self.history):
                     self.history.pop(i)
                     break
+            
+            # 每10轮对话添加一次时间信息
+            current_round = self.get_round()
+            if current_round > 0 and current_round % 10 == 0:
+                self.history.append(self._get_time_message())
 
-            # 构造传入 AI 模型的消息列表，按照 [系统固定消息] + [preset] + [user/model 交互历史] + [当前用户消息]
-            base_messages = self._get_base_messages()
+            # 构造传入 AI 模型的消息列表
             preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
             user_input_messages = [{"role": "user", "content": user_input}]
-            ask_messages = base_messages + preset_messages + self.history + user_input_messages
+            ask_messages = preset_messages + self.history + user_input_messages
             tool_response_messages = []
 
             if use_tool:  # 只有在启用工具时才准备工具配置

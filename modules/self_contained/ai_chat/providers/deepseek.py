@@ -28,7 +28,7 @@ class DeepSeekProvider(OpenAICompatibleProvider):
         total_tokens = 0
         for message in messages:
             content = message["content"]
-            english_chars = sum(bool(char.isascii())
+            english_chars = sum(bool(char.isascii()) for char in content)
             chinese_chars = len(content) - english_chars
             total_tokens += english_chars * 0.3 + chinese_chars * 0.6
         return int(total_tokens)

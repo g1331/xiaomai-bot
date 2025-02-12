@@ -43,3 +43,8 @@ class BaseAIProvider(ABC):
     def get_usage(self) -> dict:
         """获取当前资源使用情况"""
         pass
+
+    @abstractmethod
+    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+        """计算消息的token数"""
+        pass

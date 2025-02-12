@@ -31,7 +31,7 @@ EndPoint：https://api.bochaai.com/v1/web-search
 本插件将返回格式化后的搜索结果文本，主要展示网页标题、描述和链接。
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Set
 
 import aiohttp
 
@@ -59,6 +59,10 @@ class BochaaiWebSearchConfig(PluginConfig):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+    @property
+    def required_fields(self) -> Set[str]:
+        return {"api_key"}
+
 
 class BochaaiWebSearchPlugin(BasePlugin):
     """
@@ -70,7 +74,7 @@ class BochaaiWebSearchPlugin(BasePlugin):
     """
 
     def __init__(self, config: BochaaiWebSearchConfig) -> None:
-        self.config = config
+        super().__init__(config)
 
     @property
     def description(self) -> PluginDescription:

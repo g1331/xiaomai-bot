@@ -296,6 +296,7 @@ dependencies = [
     { name = "qrcode" },
     { name = "rapidfuzz" },
     { name = "requests" },
+    { name = "restrictedpython" },
     { name = "revchatgpt" },
     { name = "seaborn" },
     { name = "selenium" },
@@ -355,6 +356,7 @@ requires-dist = [
     { name = "qrcode", specifier = ">=7.4.2" },
     { name = "rapidfuzz", specifier = ">=3.9.0" },
     { name = "requests", specifier = ">=2.31.0" },
+    { name = "restrictedpython", specifier = ">=8.0" },
     { name = "revchatgpt", specifier = ">=6.8.6" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "selenium", specifier = ">=4.28.1" },
@@ -2288,6 +2290,15 @@ wheels = [
 [package.optional-dependencies]
 socks = [
     { name = "pysocks" },
+]
+
+[[package]]
+name = "restrictedpython"
+version = "8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/f3/3cfd684abf456f536a842e4fabe1ca360a8e94d1fc329f261c34c1d98825/restrictedpython-8.0.tar.gz", hash = "sha256:3af2312bc67e5fced887fb85b006c89861da72488128b155beea81eb6a0a9b24", size = 448747 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/31/b33804f873742ab20c8ed82a75652bf60a6205116dfec8bb092a6ebef084/RestrictedPython-8.0-py3-none-any.whl", hash = "sha256:ed3d894efd7d6cac0a5f13f75583b8458378d400d7dd4c083b59233eba85fe69", size = 27238 },
 ]
 
 [[package]]

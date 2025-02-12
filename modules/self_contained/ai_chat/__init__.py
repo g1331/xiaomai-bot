@@ -13,6 +13,7 @@ from graia.ariadne.model import Group, Member
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
+from loguru import logger
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission, AtBotReply
 from core.models import saya_model, response_model
@@ -24,6 +25,7 @@ from .core.preset import preset_dict
 from .core.provider import BaseAIProvider
 from .plugins_registry import ALL_PLUGINS
 from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
+from pydantic import ValidationError
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
@@ -72,8 +74,12 @@ def plugins_factory(key: str):
     for plugin_name, plugin_info in ALL_PLUGINS.items():
         cfg = plugins_cfg.get(plugin_name, {})
         if cfg.get("enabled", False):
-            plugin_instance = plugin_info["class"](plugin_info["default_config"](cfg))
-            enabled_plugins.append(plugin_instance)
+            try:
+                plugin_instance = plugin_info["class"](plugin_info["default_config"](cfg))
+                enabled_plugins.append(plugin_instance)
+            except ValidationError as e:
+                logger.warning(f"Plugin {plugin_name} configuration error: {e}")
+                continue
     return enabled_plugins
 
 

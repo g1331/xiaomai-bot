@@ -4,7 +4,7 @@
 支持文本搜索与新闻搜索，均可实时获取信息并返回参考链接。
 使用duckduckgo_search库的text()和news()方法执行搜索。
 """
-from typing import Dict, Any
+from typing import Dict, Any, Set
 import asyncio
 from duckduckgo_search import DDGS
 from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
@@ -20,6 +20,10 @@ class DuckDuckGoConfig(PluginConfig):
     region: str = "cn-zh"
     max_results: int = 10
 
+    @property
+    def required_fields(self) -> Set[str]:
+        return set()
+
 
 class DuckDuckGoPlugin(BasePlugin):
     """DuckDuckGo搜索插件实现类。"""
@@ -30,7 +34,7 @@ class DuckDuckGoPlugin(BasePlugin):
         Args:
             config: 插件配置对象
         """
-        self.config = config
+        super().__init__(config)
 
     @property
     def description(self) -> PluginDescription:

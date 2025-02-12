@@ -5,10 +5,10 @@
 - PluginConfig: 插件配置基类
 - BasePlugin: 插件抽象基类
 """
-from abc import ABC, abstractmethod
-from typing import Dict, Any
+from abc import ABC, abstractmethod, abstractproperty
+from typing import Dict, Any, Set
 
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, constr, ValidationError
 
 
 class PluginDescription(BaseModel):
@@ -26,7 +26,7 @@ class PluginDescription(BaseModel):
     example: str
 
 
-class PluginConfig(BaseModel):
+class PluginConfig(BaseModel, ABC):
     """插件配置基类。
 
     Attributes:
@@ -40,12 +40,44 @@ class PluginConfig(BaseModel):
     max_results: int = 3
     timeout: int = 30
 
+    @property
+    @abstractmethod
+    def required_fields(self) -> Set[str]:
+        """获取必需的配置字段集合。
+        
+        Returns:
+            Set[str]: 必需字段名称集合
+        """
+        pass
+
+    def validate_required(self):
+        """验证必需的配置项是否都已设置。
+        
+        Raises:
+            ValidationError: 当必需的配置项未设置时抛出
+        """
+        missing = []
+        for field in self.required_fields:
+            value = getattr(self, field, None)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                missing.append(field)
+        
+        if missing:
+            raise ValidationError(
+                f"Missing required configuration fields: {', '.join(missing)}",
+                model=self.__class__
+            )
+
 
 class BasePlugin(ABC):
     """插件抽象基类。
 
     所有具体插件类都必须继承此类并实现其抽象方法。
     """
+    def __init__(self, config: PluginConfig):
+        self.config = config
+        # 初始化时验证必需的配置项
+        self.config.validate_required()
 
     @property
     @abstractmethod

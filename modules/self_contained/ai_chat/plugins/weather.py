@@ -3,7 +3,7 @@
 本模块实现了基于心知天气API的天气查询功能。
 支持实时天气和天气预报。
 """
-from typing import Dict, Any
+from typing import Dict, Any, Set
 import aiohttp
 from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
 
@@ -17,11 +17,16 @@ class WeatherConfig(PluginConfig):
         language: 返回结果的语言，默认zh-Hans
         unit: 温度单位，默认摄氏度c
     """
+
     api_key: str = ""
     base_url: str = "https://api.seniverse.com/v3/weather/now.json"
     language: str = "zh-Hans"
     unit: str = "c"
     daily_url: str = "https://api.seniverse.com/v3/weather/daily.json"
+
+    @property
+    def required_fields(self) -> Set[str]:
+        return {"api_key"}
 
 
 class WeatherPlugin(BasePlugin):
@@ -33,7 +38,7 @@ class WeatherPlugin(BasePlugin):
         Args:
             config: 插件配置对象
         """
-        self.config = config
+        super().__init__(config)
 
     @property
     def description(self) -> PluginDescription:

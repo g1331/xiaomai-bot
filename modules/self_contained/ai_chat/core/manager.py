@@ -3,6 +3,7 @@
 """
 import asyncio
 import json
+import warnings
 from enum import Enum
 from typing import AsyncGenerator
 from datetime import datetime
@@ -90,6 +91,12 @@ class Conversation:
         检查并清理过多的历史记录
         :return: 清理掉的消息数量
         """
+        warnings.warn(
+            "Conversation._clean_history_if_needed() is deprecated and will be removed in the future.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         cleaned_count = 0
         max_token = self.provider.config.max_total_tokens
         current_tokens = self.provider.get_usage().get("total_tokens", 0)
@@ -149,6 +156,52 @@ class Conversation:
 
         return cleaned_count
 
+    # 让模型总结历史记录
+    async def summarize_history(self) -> str | None:
+        max_token = self.provider.config.max_total_tokens
+        current_tokens = self.provider.get_usage().get("prompt_tokens", 0)
+        # 预留0.5k token给总结历史记录
+        if current_tokens + 512 <= max_token:
+            return None
+        logger.info(f"历史记录token数超过限制，当前token数: {current_tokens}, 最大token数: {max_token}，开始总结历史记录")
+        try:
+            response_contents = []
+            response_messages = []
+            origin_tokens_num = self.provider.calculate_tokens(self.history)
+            # 这里仍然添加preset是为了命中缓存
+            preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
+            ask_messages = preset_messages + self.history + [{
+                "role": "system", "content": f"""
+请按照以下规则总结历史对话：
+1️⃣ **背景信息**：概述对话的起点和核心话题。
+2️⃣ **用户主要问题**：列出用户的关键提问。
+3️⃣ **模型主要回答**：总结你给出的重要回复。
+4️⃣ **未解决问题**（如有）：如果对话中仍有未解答的问题，列出它们。
+请按照规则生成结构化总结。
+"""}]
+            async for response in self.provider.ask(messages=ask_messages):
+                content = response.content if hasattr(response, 'content') else ''
+                if content:
+                    response_contents.append(content)
+            if response_contents:
+                response_messages = [
+                    {"role": "assistant", "content": "".join(response_contents)}
+                ]
+            if response_messages:
+                self.history = response_messages
+                current_tokens_num = self.provider.calculate_tokens(self.history)
+                logger.success(
+                    f"历史记录已被总结，原始token数: {origin_tokens_num}, 当前token数: {current_tokens_num}, "
+                    f"总结内容: {''.join(response_contents)}"
+                )
+                self.provider.reset_usage()
+                self.provider.set_total_tokens(current_tokens_num)
+                return None
+            return None
+        except Exception as e:
+            logger.error(f"Error in summarize_history: {e}")
+            return f"Error: {str(e)}"
+
     async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
         try:
@@ -159,8 +212,11 @@ class Conversation:
             tools = []
             plugin_map = {}
 
-            # 检查并清理过多的历史记录
-            self._clean_history_if_needed()
+            # 清理历史记录
+            # self._clean_history_if_needed()
+            if await self.summarize_history():
+                yield "服务器忙不过来了哦，稍后再试吧~"
+                return
 
             # 添加时间信息(如果需要)
             self._maybe_add_time_message()

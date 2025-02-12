@@ -34,6 +34,29 @@ class OpenAICompatibleProvider(BaseAIProvider):
     def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
         pass
 
+    def set_total_tokens(self, total_tokens: int):
+        self.usage.total_tokens = total_tokens
+
+    def get_usage(self) -> dict[str, int]:
+        return self.usage.dict()
+
+    def reset_usage(self):
+        self.usage.completion_tokens = 0
+        self.usage.prompt_tokens = 0
+        self.usage.total_tokens = 0
+
+    def update_usage(self, usage: CompletionUsage):
+        if not self.usage:
+            self.usage = usage
+            return
+        if not usage:
+            return
+        self.usage.total_tokens += usage.total_tokens
+        self.usage.completion_tokens += usage.completion_tokens
+        self.usage.prompt_tokens += usage.prompt_tokens
+        self.usage.completion_tokens_details = usage.completion_tokens_details
+        self.usage.prompt_tokens_details = usage.prompt_tokens_details
+
     async def ask(
             self,
             messages: List[Dict[str, Any]],
@@ -66,18 +89,3 @@ class OpenAICompatibleProvider(BaseAIProvider):
         except Exception as e:
             logger.error(f"{self.__class__.__name__} API error: {e}")
             raise
-
-    def get_usage(self) -> dict[str, int]:
-        return self.usage.dict()
-
-    def update_usage(self, usage: CompletionUsage):
-        if not self.usage:
-            self.usage = usage
-            return
-        if not usage:
-            return
-        self.usage.total_tokens += usage.total_tokens
-        self.usage.completion_tokens += usage.completion_tokens
-        self.usage.prompt_tokens += usage.prompt_tokens
-        self.usage.completion_tokens_details = usage.completion_tokens_details
-        self.usage.prompt_tokens_details = usage.prompt_tokens_details

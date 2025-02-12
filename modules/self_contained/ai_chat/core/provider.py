@@ -23,6 +23,11 @@ class BaseAIProvider(ABC):
 
     def __init__(self, config: ProviderConfig):
         self.config = config
+        self.usage = {
+            "completion_tokens": 0,
+            "prompt_tokens": 0,
+            "total_tokens": 0
+        }
 
     @abstractmethod
     async def ask(
@@ -42,6 +47,15 @@ class BaseAIProvider(ABC):
     @abstractmethod
     def get_usage(self) -> dict:
         """获取当前资源使用情况"""
+        pass
+    
+    @abstractmethod
+    def reset_usage(self):
+        """重置资源使用情况"""
+        pass
+
+    @abstractmethod
+    def set_total_tokens(self, total_tokens: int):
         pass
 
     @abstractmethod

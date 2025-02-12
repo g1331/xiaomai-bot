@@ -51,7 +51,8 @@ def create_provider(provider_name: str, user_id: str = None) -> BaseAIProvider:
             api_key=provider_config["api_key"],  # 直接从配置文件中获取
             model=provider_config["model"],
             base_url=provider_config["base_url"],
-            max_tokens=provider_config["max_tokens"]
+            max_tokens=provider_config["max_tokens"],
+            max_total_tokens=provider_config["max_total_tokens"],
         )
         return DeepSeekProvider(config)
     raise ValueError(f"Unknown provider: {provider_name}")
@@ -114,7 +115,7 @@ async def init():
         ],
     )
 )
-async def chat_gpt(
+async def ai_chat(
         app: Ariadne,
         group: Group,
         member: Member,

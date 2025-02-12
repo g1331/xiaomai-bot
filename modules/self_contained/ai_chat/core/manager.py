@@ -129,7 +129,7 @@ class Conversation:
                 i += 1
 
             # 检查清理后是否足够
-            if len(to_remove_indices) > 0:
+            if to_remove_indices:
                 cleaned_count = len(to_remove_indices)
                 # 从后向前删除，避免索引变化
                 for idx in sorted(to_remove_indices, reverse=True):

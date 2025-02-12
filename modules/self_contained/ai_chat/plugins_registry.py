@@ -1,17 +1,23 @@
-from .plugins.web_search import WebSearchPlugin, WebSearchConfig
+from .plugins.duckduckgo_search import DuckDuckGoPlugin, DuckDuckGoConfig
+from .plugins.bochaai_websearch import BochaaiWebSearchPlugin, BochaaiWebSearchConfig
 from .plugins.weather import WeatherPlugin, WeatherConfig
+from .plugins.code_runner import CodeRunner, CodeRunnerConfig
 
 ALL_PLUGINS = {
-    "web_search": {
-        "class": WebSearchPlugin,
-        "default_config": lambda cfg: WebSearchConfig(max_results=cfg.get("max_results", 10))
+    "duckduckgo": {
+        "class": DuckDuckGoPlugin,
+        "default_config": lambda cfg=None: DuckDuckGoConfig(**(cfg or {}))
     },
     "SeniverseWeather": {
         "class": WeatherPlugin,
-        "default_config": lambda cfg: WeatherConfig(
-            api_key=cfg.get("api_key", ""),
-            language=cfg.get("language", "zh-Hans"),
-            unit=cfg.get("unit", "c")
-        )
-    }
+        "default_config": lambda cfg=None: WeatherConfig(**(cfg or {}))
+    },
+    "code_runner": {
+        "class": CodeRunner,
+        "default_config": lambda cfg=None: CodeRunnerConfig(**(cfg or {}))
+    },
+    "bochaai_websearch": {
+        "class": BochaaiWebSearchPlugin,
+        "default_config": lambda cfg=None: BochaaiWebSearchConfig(**(cfg or {}))
+    },
 }

@@ -107,7 +107,7 @@ async def init():
         ],
         decorators=[
             Distribute.require(),
-            Function.require(channel.module),
+            Function.require(channel.module, False),  # 因为@触发条件比较广泛，这里关闭功能未开启时的通知，防止刷屏
             FrequencyLimitation.require(channel.module, 5),
             Permission.group_require(channel.metadata.level, if_noticed=True),
             Permission.user_require(Permission.User),
@@ -138,7 +138,7 @@ async def chat_gpt(
     # 防止At任意对象都能触发，这里At对象只能为已经初始化的bot
     if at_qq_num not in account_controller.initialized_bot_list:
         return
-    
+
     group_id_str = str(group.id)
     member_id_str = str(member.id)
     content = content.result.display.strip() if content.matched else ""

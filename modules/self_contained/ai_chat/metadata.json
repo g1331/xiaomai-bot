@@ -9,7 +9,7 @@
   "description": "AI Chat",
   "usage": [
     "指令:",
-    "-chat [文字]",
+    "@bot 消息内容",
     "支持参数:",
     "-n / -new - 开启新对话",
     "-t / -text - 以文本模式回复(默认图片回复)",
@@ -19,7 +19,11 @@
     "--reload-cfg - 重载配置(限BOT管理员)"
   ],
   "example": [
-    "-chat 你好"
+    "@bot 你好",
+    "@bot -n -p cat_girl 你好",
+    "@bot -n 你好",
+    "@bot --tool 讲讲关于CloseAI的消息",
+    "@bot --show-preset"
   ],
   "default_switch": false,
   "default_notice": true

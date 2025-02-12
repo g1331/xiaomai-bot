@@ -77,6 +77,12 @@ class Conversation:
         # 要排除 system 和 tool 的消息，然后计算 user 和 assistant 的消息数量，然后除以 2
         return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
 
+    def _maybe_add_time_message(self):
+        """根据对话轮次决定是否添加时间信息"""
+        current_round = self.get_round()
+        if current_round > 0 and current_round % 10 == 0:
+            self.history.append(self._get_time_message())
+
     async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
         try:
@@ -94,10 +100,8 @@ class Conversation:
                     self.history.pop(i)
                     break
             
-            # 每10轮对话添加一次时间信息
-            current_round = self.get_round()
-            if current_round > 0 and current_round % 10 == 0:
-                self.history.append(self._get_time_message())
+            # 添加时间信息(如果需要)
+            self._maybe_add_time_message()
 
             # 构造传入 AI 模型的消息列表
             preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []

@@ -135,6 +135,7 @@ async def chat_gpt(
 
     at_result: At = AtResult.result  # type: ignore
     at_qq_num = at_result.target
+    # 防止At任意对象都能触发，这里At对象只能为已经初始化的bot
     if at_qq_num not in account_controller.initialized_bot_list:
         return
     

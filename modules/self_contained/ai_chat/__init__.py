@@ -102,10 +102,10 @@ async def init():
         inline_dispatchers=[
             Twilight([
                 ElementMatch(At, optional=False).space(SpacePolicy.PRESERVE) @ "AtResult",
-                ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
-                ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
-                ArgumentMatch("-T", "--tool", action="store_true", optional=True) @ "tool",
+                ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
+                ArgumentMatch("-P", "--pic", action="store_true", optional=True) @ "pic",
+                ArgumentMatch("-t", "--tool", action="store_true", optional=True) @ "tool",
                 ArgumentMatch("--show-preset", action="store_true", optional=True) @ "show_preset",
                 ArgumentMatch(
                     "--show-tokens",
@@ -133,7 +133,7 @@ async def ai_chat(
         source: Source,
         AtResult: ElementResult,
         new_thread: ArgResult,
-        text: ArgResult,
+        pic: ArgResult,
         tool: ArgResult,
         preset: ArgResult,
         content: RegexResult,
@@ -141,6 +141,26 @@ async def ai_chat(
         show_tokens: ArgResult,
         reload_cfg: ArgResult
 ):
+    """
+    修改默认为文字响应，主要考量：
+    
+    1.性能考虑
+      - 文字响应更快，不需要额外的图片渲染时间
+      - 减少服务器资源消耗（CPU、内存）
+      - 节省网络带宽
+    2.实用性
+      - 大多数对话场景下，纯文本足以满足需求
+      - 文字更容易复制、转发和二次使用
+      - 文字消息在移动端加载更快，更省流量
+    3.特殊场景使用图片 当确实需要图片格式时，用户可以通过 -P 或 --pic 参数主动选择，比如：
+      - 需要展示代码且保持格式的场景
+      - 内容包含复杂格式或表格
+      - 需要更好的视觉效果时
+    4.用户体验
+      - 让用户自主选择输出格式更灵活
+      - 避免在简单对话时产生不必要的图片负担
+      - 图片加载失败的风险更低
+    """
     global g_config_loader, g_manager
 
     if not AtResult.matched:
@@ -191,6 +211,15 @@ async def ai_chat(
             quote=source
         )
 
+    if show_tokens.result:
+        usage_total_tokens = g_manager.get_total_usage(group_id_str, member_id_str)
+        cur_round = g_manager.get_round(group_id_str, member_id_str)
+        return await app.send_group_message(
+            group,
+            MessageChain(f"当前是第 {cur_round} 轮对话，已消耗 {usage_total_tokens} tokens。"),
+            quote=source
+        )
+
     if preset.matched:
         # 群聊预设暂不鉴权
         preset_str = preset.result.display.strip()
@@ -236,19 +265,13 @@ async def ai_chat(
         quote=source
     )
     response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
-    usage_total_tokens = g_manager.get_total_usage(group_id_str, member_id_str)
-    cur_round = g_manager.get_round(group_id_str, member_id_str)
-    if text.matched:
-        if show_tokens:
-            response += f"\n\n（消耗 {usage_total_tokens} tokens，第 {cur_round} 轮）"
+    if not pic.matched:
         return await app.send_group_message(
             group,
             MessageChain(response),
             quote=source
         )
     else:
-        if show_tokens:
-            response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
         converter = MarkdownToImageConverter(
             browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
         img_bytes = await converter.convert_markdown(

@@ -12,18 +12,21 @@
     "@bot 消息内容",
     "支持参数:",
     "-n / -new - 开启新对话",
-    "-t / -text - 以文本模式回复(默认图片回复)",
-    "-T / --tool - 自动使用工具(如网络搜索/天气等)",
+    "-P / --pic - 以图片模式回复(默认文本回复)",
+    "-t / --tool - 自动使用工具(如网络搜索/天气等)",
     "-p / -preset - 设定预设",
     "--show-preset - 显示预设",
+    "--show-tokens - 输出当前花费的Token数量",
     "--reload-cfg - 重载配置(限BOT管理员)"
   ],
   "example": [
     "@bot 你好",
     "@bot -n -p cat_girl 你好",
-    "@bot -n 你好",
+    "@bot -n -P 生成一段Python代码",
     "@bot --tool 讲讲关于CloseAI的消息",
-    "@bot --show-preset"
+    "@bot --show-preset",
+    "@bot --show-tokens",
+    "@bot --reload-cfg"
   ],
   "default_switch": false,
   "default_notice": true

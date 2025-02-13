@@ -70,7 +70,7 @@ def plugins_factory(key: str):
     """为ConversationManager提供的插件工厂函数"""
     enabled_plugins = []
     plugins_cfg = g_config_loader.config.get("plugins", {})
-    
+
     for plugin_name, plugin_info in ALL_PLUGINS.items():
         cfg = plugins_cfg.get(plugin_name, {})
         if cfg.get("enabled", False):
@@ -81,7 +81,7 @@ def plugins_factory(key: str):
             except ValidationError as e:
                 logger.warning(f"Plugin {plugin_name} configuration error: {e}")
                 continue
-    
+
     return enabled_plugins
 
 
@@ -108,6 +108,11 @@ async def init():
                 ArgumentMatch("-p", "-preset", optional=True) @ "preset",
                 ArgumentMatch("-T", "--tool", action="store_true", optional=True) @ "tool",
                 ArgumentMatch("--show-preset", action="store_true", optional=True) @ "show_preset",
+                ArgumentMatch(
+                    "--show-tokens",
+                    action="store_true",
+                    optional=True, type=bool, default=False
+                ) @ "show_tokens",
                 ArgumentMatch("--reload-cfg", action="store_true", optional=True) @ "reload_cfg",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])
@@ -134,6 +139,7 @@ async def ai_chat(
         preset: ArgResult,
         content: RegexResult,
         show_preset: ArgResult,
+        show_tokens: ArgResult,
         reload_cfg: ArgResult
 ):
     global g_config_loader, g_manager
@@ -234,14 +240,16 @@ async def ai_chat(
     usage_total_tokens = g_manager.get_total_usage(group_id_str, member_id_str)
     cur_round = g_manager.get_round(group_id_str, member_id_str)
     if text.matched:
-        response += f"\n\n（消耗 {usage_total_tokens} tokens，第 {cur_round} 轮）"
+        if show_tokens:
+            response += f"\n\n（消耗 {usage_total_tokens} tokens，第 {cur_round} 轮）"
         return await app.send_group_message(
             group,
             MessageChain(response),
             quote=source
         )
     else:
-        response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
+        if show_tokens:
+            response += f"\n\n> 消耗：{usage_total_tokens} tokens，第 {cur_round} 轮"
         converter = MarkdownToImageConverter(
             browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
         img_bytes = await converter.convert_markdown(

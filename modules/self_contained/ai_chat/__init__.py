@@ -101,7 +101,6 @@ async def init():
         listening_events=[GroupMessage],
         inline_dispatchers=[
             Twilight([
-                # FullMatch("-chat"),
                 ElementMatch(At, optional=False).space(SpacePolicy.PRESERVE) @ "AtResult",
                 ArgumentMatch("-n", "-new", action="store_true", optional=True) @ "new_thread",
                 ArgumentMatch("-t", "-text", action="store_true", optional=True) @ "text",

@@ -1,17 +1,24 @@
 import ast
 import asyncio
 import math
-import sys
-from io import StringIO
 from typing import Dict, Any, Set, FrozenSet
 
 from RestrictedPython import compile_restricted
 from RestrictedPython.Eval import default_guarded_getitem
-from RestrictedPython.Guards import safe_builtins, guarded_iter_unpack_sequence, guarded_unpack_sequence, safer_getattr, full_write_guard
+from RestrictedPython.Guards import (
+    safe_builtins,
+    guarded_iter_unpack_sequence,
+    guarded_unpack_sequence,
+    safer_getattr,
+    full_write_guard,
+)
+# PrintCollector 用于收集用户代码中 print 的输出
+from RestrictedPython.PrintCollector import PrintCollector
 from RestrictedPython.Utilities import utility_builtins
 from loguru import logger
 from pydantic import validator
 
+# 你的基础插件类和配置基类，如果不需要可删除/自行调整
 from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
 
 # 尝试导入resource模块，Windows平台通常不支持
@@ -36,7 +43,7 @@ class CodeRunnerConfig(PluginConfig):
 
     # 基本执行限制
     timeout: int = 5  # 执行超时时间(秒)
-    max_code_length: int = 1000  # 最大代码长度(字符)
+    max_code_length: int = 5000  # 最大代码长度(字符)
 
     # 允许导入的模块白名单
     allowed_modules: FrozenSet[str] = frozenset({
@@ -70,7 +77,7 @@ class CodeRunnerConfig(PluginConfig):
         "string",  # 字符串常量和模板
         "re",  # 正则表达式
 
-        # 时间日期处理
+        # 时间日期处理（有重复，可以自行去重）
         "datetime",  # 日期和时间处理
         "calendar",  # 日历相关功能
 
@@ -130,7 +137,7 @@ class CodeRunnerConfig(PluginConfig):
 
     # 禁止的AST节点类型
     forbidden_nodes: FrozenSet[str] = frozenset({
-        # 系统安全（用户自定义）
+        # 系统安全（用户自定义） - 根据需要添加
     })
 
     # 异步操作限制
@@ -143,14 +150,16 @@ class CodeRunnerConfig(PluginConfig):
 
     @property
     def required_fields(self) -> Set[str]:
+        """检查并移除无法导入的模块。"""
         temp_allowed_modules = list(self.allowed_modules)
+        valid_modules = []
         for module_name in temp_allowed_modules:
             try:
                 __import__(module_name)
+                valid_modules.append(module_name)
             except ImportError:
                 logger.warning(f"模块 '{module_name}' 无法导入，将从允许列表中移除")
-                temp_allowed_modules.remove(module_name)
-        self.allowed_modules = frozenset(temp_allowed_modules)
+        self.allowed_modules = frozenset(valid_modules)
         return set()
 
     def dict(self, *args, **kwargs):
@@ -193,6 +202,18 @@ class CodeRunner(BasePlugin):
         safe_builtins_with_import = dict(safe_builtins)
         safe_builtins_with_import['__import__'] = safe_import
 
+        collected_output = []
+
+        class MyPrintCollector(PrintCollector):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.printed = collected_output
+
+            def _call_print(self, *values):
+                self.printed.append(' '.join(map(str, values)))
+
+        safe_builtins_with_import['_print_'] = MyPrintCollector
+
         # 配置安全环境
         def _inplacevar_(op, x, y):
             """处理就地运算符，如 +=, -=, *=, /= 等"""
@@ -222,6 +243,7 @@ class CodeRunner(BasePlugin):
                 return x | y
             raise NotImplementedError(f'不支持的就地运算符: {op}')
 
+        # 在 globals 中启用 PrintCollector，用于捕获 print 输出
         self.safe_globals = {
             "__builtins__": safe_builtins_with_import,  # 使用包含 __import__ 的内置函数
             "_getattr_": safer_getattr,
@@ -232,9 +254,10 @@ class CodeRunner(BasePlugin):
             "_write_": full_write_guard,  # 写入操作控制
             "_inplacevar_": _inplacevar_,  # 就地运算符支持
             "math": math,
+            "_print_": PrintCollector,  # 关键：允许 print 收集
             **utility_builtins
         }
-        
+
         # 预加载允许的模块到安全环境
         temp_allowed_modules = list(self.config.allowed_modules)
         for mod_name in temp_allowed_modules[:]:
@@ -248,7 +271,7 @@ class CodeRunner(BasePlugin):
             except ImportError:
                 logger.warning(f"模块 '{mod_name}' 无法导入，将从允许列表中移除")
                 temp_allowed_modules.remove(mod_name)
-        
+
         self.config.allowed_modules = frozenset(temp_allowed_modules)
 
     @property
@@ -258,11 +281,14 @@ class CodeRunner(BasePlugin):
 
         return PluginDescription(
             name="code_runner",
-            description="Python代码安全沙箱执行环境\n"
-                        "- 支持数学/科学计算\n"
-                        "- 内置安全限制\n"
-                        f"- 代码上限:{self.config.max_code_length}字符\n"
-                        f"- 超时限制:{self.config.timeout}秒",
+            description=(
+                "Python代码安全沙箱执行环境\n"
+                "- 支持数学/科学计算\n"
+                "- 内置安全限制\n"
+                f"- 代码上限:{self.config.max_code_length}字符\n"
+                f"- 超时限制:{self.config.timeout}秒\n"
+                "工具运行完毕后会返回完整的代码及其执行输出结果。"
+            ),
             parameters={
                 "code": f"Python代码\n可用模块:{allowed_mods}\n可用函数:{allowed_funcs}",
                 "timeout": f"执行超时(秒),默认{self.config.timeout}"
@@ -283,99 +309,126 @@ class CodeRunner(BasePlugin):
         if len(code) > self.config.max_code_length:
             raise ValueError(f"代码长度超过限制({self.config.max_code_length}字符)")
 
+        # 解析代码并添加父节点信息
         try:
             tree = ast.parse(code)
         except SyntaxError as se:
             raise ValueError(f"语法错误: {se}")
 
+        # 为每个节点添加 .parent，用于检测函数嵌套深度等
+        def add_parent_info(node, parent=None):
+            node.parent = parent
+            for child in ast.iter_child_nodes(node):
+                add_parent_info(child, node)
+
+        add_parent_info(tree)
+
         # 构建函数调用图
         function_deps = {}
         defined_functions = set()
-        
+    
         class FunctionCallVisitor(ast.NodeVisitor):
             def visit_FunctionDef(self, node):
                 defined_functions.add(node.name)
                 function_deps[node.name] = set()
-                # 访问函数体
                 self.generic_visit(node)
-            
+    
             def visit_Call(self, node):
+                # 只考虑 f() 形式
                 if isinstance(node.func, ast.Name):
-                    # 获取当前所在的函数上下文
-                    for parent in ast.walk(tree):
-                        if isinstance(parent, ast.FunctionDef) and any(node in ast.walk(parent) for node in ast.walk(node)):
-                            function_deps[parent.name].add(node.func.id)
+                    # 找到上层函数
+                    p = node.parent
+                    while p:
+                        if isinstance(p, ast.FunctionDef):
+                            function_deps[p.name].add(node.func.id)
                             break
+                        p = getattr(p, 'parent', None)
                 self.generic_visit(node)
-
-        # 遍历AST构建调用图
+    
         FunctionCallVisitor().visit(tree)
-
-        # 检查函数调用链深度
+    
         def get_call_depth(func_name, visited=None):
             if visited is None:
                 visited = set()
+    
+            # 如果再次遇到func_name，说明出现递归或环路
             if func_name in visited:
-                return 0  # 避免循环调用
+                # 方案A：返回一个超过 max_depth 的值，让后续判断报错
+                return self.config.max_function_depth + 1
+                # 或者：raise ValueError(f"检测到函数 {func_name} 存在递归，已超限")
+    
             if func_name not in function_deps:
+                # 该函数未在function_deps里登记，表示不调用其他用户函数
                 return 0
+    
             visited.add(func_name)
             if not function_deps[func_name]:
                 return 0
-            return 1 + max((get_call_depth(f, visited.copy()) for f in function_deps[func_name]), default=0)
-
-        # 检查每个函数的调用链深度
+    
+            # 继续向下递归调用
+            return 1 + max(
+                get_call_depth(fn, visited.copy()) for fn in function_deps[func_name]
+            )
+    
+        # 检查每个函数定义的调用链深度
         for func in defined_functions:
             depth = get_call_depth(func)
             if depth > self.config.max_function_depth:
-                raise ValueError(f"函数调用链深度超过限制({self.config.max_function_depth})：{func}")
+                raise ValueError(
+                    f"函数调用链深度超过限制({self.config.max_function_depth})：{func}"
+                )
 
-        async_funcs = []
+        # 遍历 AST，检查导入、危险函数调用、异步嵌套等
         for node in ast.walk(tree):
-            # 检查所有的导入语句，同时处理别名
+            # 检查导入语句
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 for alias in node.names:
                     module = alias.name.split('.')[0]
                     if module not in self.config.allowed_modules:
                         raise ValueError(f"禁止导入模块: {module}")
-                    # 如果是numpy的别名导入，确保允许
                     if module == 'numpy' and alias.asname == 'np':
-                        continue
+                        # numpy -> np 的别名可允许
+                        pass
 
-            # 检查禁止使用的语句
-            elif node.__class__.__name__ in self.config.forbidden_nodes:
+            # 检查自定义禁止的 AST 节点
+            if node.__class__.__name__ in self.config.forbidden_nodes:
                 raise ValueError(f"禁止使用语句: {node.__class__.__name__}")
 
-            # 检查函数调用中是否涉及危险函数
-            elif isinstance(node, ast.Call):
+            # 检查危险函数调用
+            if isinstance(node, ast.Call):
+                # 1. 直接调用 name(...)
                 if isinstance(node.func, ast.Name) and node.func.id in self.config.dangerous_functions:
                     raise ValueError(f"禁止调用危险函数: {node.func.id}")
+                # 2. 模块或对象属性 .func()
                 elif isinstance(node.func, ast.Attribute):
                     if node.func.attr in self.config.dangerous_functions:
                         raise ValueError(f"禁止调用危险函数: {node.func.attr}")
 
+            # 检查异步函数嵌套深度
             if isinstance(node, ast.AsyncFunctionDef):
-                async_funcs.append(node.name)
-                # 检查异步函数的嵌套深度
                 depth = 0
-                parent = node
-                while parent:
-                    if isinstance(parent, ast.AsyncFunctionDef):
+                p = node
+                while p:
+                    if isinstance(p, ast.AsyncFunctionDef):
                         depth += 1
-                    parent = getattr(parent, 'parent', None)
+                    p = getattr(p, 'parent', None)
                 if depth > self.config.max_async_depth:
-                    raise ValueError(f"异步函数嵌套深度超过限制({self.config.max_async_depth})")
+                    raise ValueError(
+                        f"异步函数嵌套深度超过限制({self.config.max_async_depth})"
+                    )
 
-            # 新增：对普通函数的嵌套深度检测
+            # 检查普通函数嵌套深度
             if isinstance(node, ast.FunctionDef):
                 depth = 0
-                parent = node
-                while parent:
-                    if isinstance(parent, ast.FunctionDef):
+                p = node
+                while p:
+                    if isinstance(p, ast.FunctionDef):
                         depth += 1
-                    parent = getattr(parent, 'parent', None)
+                    p = getattr(p, 'parent', None)
                 if depth > self.config.max_function_depth:
-                    raise ValueError(f"普通函数嵌套深度超过限制({self.config.max_function_depth})")
+                    raise ValueError(
+                        f"普通函数嵌套深度超过限制({self.config.max_function_depth})"
+                    )
 
     async def _run_with_async_limits(self, coro):
         """运行异步代码并实施限制。"""
@@ -398,66 +451,66 @@ class CodeRunner(BasePlugin):
 
         try:
             self._validate_code(code)
-            # 创建局部命名空间
-            local_ns = {}
-            stdout = StringIO()
-            original_stdout = sys.stdout
 
-            try:
-                sys.stdout = stdout
-                # 将用户代码编译为RestrictedPython受限字节码
-                compiled_code = compile_restricted(
-                    code,
-                    filename="<user_code>",
-                    mode="exec"
-                )
+            # 创建执行环境（注意：要 copy 一份，避免多次调用间互相影响）
+            env = self.safe_globals.copy()
 
-                # 设置资源限制（仅在支持的平台上生效）
-                if RESOURCE_AVAILABLE:
-                    try:
-                        # 限制CPU时间
-                        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
-                        # 限制内存使用，例如限制为100MB
-                        resource.setrlimit(resource.RLIMIT_AS, (100 * 1024 * 1024, 100 * 1024 * 1024))
-                    except Exception:
-                        pass
-                else:
-                    # 对于不支持resource的系统（如Windows），可以考虑记录日志或使用其他方式进行监控
+            # 编译受限字节码
+            compiled_code = compile_restricted(code, filename="<user_code>", mode="exec")
+
+            # 设置资源限制（仅在支持的平台上生效）
+            if RESOURCE_AVAILABLE:
+                try:
+                    # 限制CPU时间
+                    resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout))
+                    # 限制内存使用，例如限制为100MB
+                    resource.setrlimit(resource.RLIMIT_AS, (100 * 1024 * 1024, 100 * 1024 * 1024))
+                except Exception:
                     pass
+            else:
+                # 对于不支持resource的系统（如Windows），可酌情处理
+                pass
 
-                # 异步支持相关的安全函数到环境中
-                self.safe_globals.update({
-                    "asyncio": asyncio,
-                    "_run_with_async_limits": self._run_with_async_limits,
-                })
+            # 添加异步运行需要的安全函数
+            env.update({
+                "asyncio": asyncio,
+                "_run_with_async_limits": self._run_with_async_limits,
+            })
 
-                # 异步执行代码
-                await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        None,
-                        lambda: exec(compiled_code, self.safe_globals, local_ns)
-                    ),
-                    timeout=timeout
-                )
+            # 通过线程池方式执行受限字节码
+            await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: exec(compiled_code, env)
+                ),
+                timeout=timeout
+            )
 
-                output = stdout.getvalue().rstrip()
-                # 获取最后一个有效变量的值
-                last_value = None
-                if local_ns:
-                    # 尝试获取最后一个变量的值
-                    last_var = list(local_ns.keys())[-1]
-                    last_value = local_ns[last_var]
+            # 获取 MyPrintCollector 输出
+            collector = env.get("_print_")
+            captured_output = "\n".join(collector.printed) if collector and hasattr(collector, "printed") else ""
 
-                if output and last_value is not None:
-                    return f"{output}\n计算结果: {last_value}"
-                elif output:
-                    return output
-                elif last_value is not None:
-                    return f"计算结果: {last_value}"
-                return "代码执行完成"
+            # 获取最后一个有效变量的值
+            last_value = None
+            # env.keys() 至少包含我们注入的安全环境键
+            # 如果用户代码中有新变量，可以尝试获取
+            if len(env) > 0:
+                last_var = list(env.keys())[-1]
+                last_value = env[last_var]
 
-            finally:
-                sys.stdout = original_stdout
+            # 根据是否有输出、是否有最后值组合返回
+            if captured_output and last_value is not None:
+                return f"{captured_output}\n计算结果: {last_value}"
+            elif captured_output:
+                return captured_output
+            elif last_value is not None:
+                if isinstance(last_value, str):
+                    return f"计算结果: '{last_value}'"
+                elif isinstance(last_value, PrintCollector) and hasattr(last_value, "txt"):
+                    return f"输出结果: {''.join(last_value.txt)}"
+                return f"变量结果: {last_value}"
+            else:
+                return "无输出结果"
 
         except asyncio.TimeoutError:
             return f"错误：代码执行超时(>{timeout}秒)"

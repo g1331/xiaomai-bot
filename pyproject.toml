@@ -62,4 +62,5 @@ dependencies = [
     "duckduckgo-search>=7.3.1",
     "mcstatus>=11.1.1",
     "restrictedpython>=8.0",
+    "scipy>=1.15.1",
 ]

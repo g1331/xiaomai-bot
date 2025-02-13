@@ -63,10 +63,12 @@ class PluginConfig(BaseModel):
                 missing.append(field)
 
         if missing:
-            raise ValidationError(
-                f"Missing required configuration fields: {', '.join(missing)}",
-                model=self.__class__
-            )
+            # 使用pydantic的标准错误格式
+            raise ValidationError([{
+                'loc': (field,),
+                'msg': f'Field "{field}" is required',
+                'type': 'value_error.missing'
+            } for field in missing], self.__class__)
 
 
 class BasePlugin(ABC):

@@ -259,11 +259,6 @@ async def ai_chat(
             MessageChain("你好像什么也没说哦(｡･∀･)ﾉﾞ"),
             quote=source
         )
-    await app.send_group_message(
-        group,
-        MessageChain("(｡･∀･)ﾉﾞ响应ing"),
-        quote=source
-    )
     response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
     if not pic.matched:
         return await app.send_group_message(

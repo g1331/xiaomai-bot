@@ -78,8 +78,20 @@ def plugins_factory(key: str):
                 plugin_instance = plugin_info["class"](plugin_info["default_config"](cfg))
                 enabled_plugins.append(plugin_instance)
                 logger.info(f"AiChat plugin {plugin_name} enabled")
-            except ValidationError as e:
-                logger.warning(f"Plugin {plugin_name} configuration error: {e}")
+            except ValidationError as ve:
+                # 更详细的错误日志
+                error_msgs = []
+                try:
+                    for error in ve.errors():
+                        loc = " -> ".join(str(x) for x in error.get('loc', []))
+                        msg = error.get('msg', 'Unknown error')
+                        error_msgs.append(f"{loc}: {msg}")
+                    logger.warning(f"Plugin {plugin_name} 配置验证错误:\n" + "\n".join(error_msgs))
+                except Exception as e:
+                    logger.error(f"Plugin {plugin_name} 处理验证错误时出错: {str(e)}")
+                continue
+            except Exception as e:
+                logger.warning(f"Plugin {plugin_name} 初始化错误: {str(e)}")
                 continue
 
     return enabled_plugins

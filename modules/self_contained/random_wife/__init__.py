@@ -26,6 +26,9 @@ from core.control import (
     Distribute
 )
 from core.models import saya_model, response_model
+from .models import Session, Wife, DrawRecord
+from sqlalchemy import func
+from datetime import datetime, timedelta
 
 account_controller = response_model.get_acc_controller()
 module_controller = saya_model.get_module_controller()
@@ -33,17 +36,20 @@ global_config = create(GlobalConfig)
 
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("RandomWife")
-channel.meta["author"] = ("13")
-channel.meta["description"] = ("生成随机老婆图片的插件，在群中发送 -随机<老婆/wife> ")
+channel.meta["name"] = "RandomWife"
+channel.meta["author"] = "13"
+channel.meta["description"] = "生成随机老婆图片的插件，在群中发送 -随机<老婆/wife> "
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 async def get_wife() -> str:
-    wife_list = os.listdir(str(Path(__file__).parent / "wife"))
-    wife_list.remove("__init__.py")
-    wife = random.choice(wife_list)
-    return str(Path(__file__).parent / "wife") + f"/{wife}"
+    session = Session()
+    try:
+        # 随机获取一个老婆
+        wife = session.query(Wife).order_by(func.random()).first()
+        return wife.file_path if wife else None
+    finally:
+        session.close()
 
 
 async def add_wife(file_name: str, img_url: str) -> bool:
@@ -230,98 +236,60 @@ async def del_wife(app: Ariadne, group: Group, source: Source,
     )
 
 
-wife_dict = {
-    "wife_path": {
-        "owner": {
-            "qq": "qq_id",
-            "name": "owner_name",
-        },
-        "wife_name": "wife_name"
-    },
-}
-counter = {
-    "qq": [],
-    "time": time.time()
-}
+async def judge(app: Ariadne, sender: Member, wife_path: str) -> MessageChain:
+    session = Session()
+    try:
+        wife = session.query(Wife).filter_by(file_path=wife_path).first()
+        if not wife:
+            return MessageChain("该老婆不存在")
 
-
-async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
-    global wife_dict, counter
-    qq = sender.id
-    name = (await app.get_member_profile(sender)).nickname
-    wife_name = wife[wife.rfind('/') + 1:wife.rfind('.')]
-    # 初始化字典
-    if (time.time() - counter.get("time")) >= 3600 * 24:
-        wife_dict = {
-        }
-        counter = {
-            "time": time.time()
-        }
-    # 初始化老婆
-    if wife not in wife_dict:
-        wife_dict[wife] = {
-            "owner": {
-                "qq": None,
-                "name": None
-            },
-            "wife_name": wife[wife.rfind('/') + 1:wife.rfind('.')]
-        }
-    # 初始化计数器
-    if qq not in counter:
-        counter[qq] = []
-    del_wife_item = None
-    for key in wife_dict:
-        # 如果有老婆就返回信息
-        if wife_dict[key]["owner"]["qq"] == qq:
-            if os.path.exists(key):
-                return MessageChain(
-                    f"你的老婆是{wife_dict[key]['wife_name']}哦~可发送‘-离婚’来取消",
-                    Image(path=key)
-                )
-            del_wife_item = key
-            break
-    if del_wife_item:
-        wife_dict.pop(del_wife_item)
-    # 如果没有老婆(先看wife是否有owner,如果没有则返回wife,有则判断counter(如果counter内没有这个wife则返回你抽到别人的老婆并计数，如果counter内有这个老婆则抢走别人的老婆))
-    if wife_dict[wife]["owner"]["qq"] is None:
-        wife_dict[wife] = {
-            "owner": {
-                "qq": qq,
-                "name": name
-            },
-            "wife_name": wife_name
-        }
-        counter[qq] = []
-        return MessageChain(
-            f"你的老婆是{wife_name}哦~可发送‘-离婚’来取消",
-            Image(path=wife)
-        )
-    else:
-        if wife not in counter[qq]:
-            if len(counter[qq]) >= 10:
-                counter[qq] = [wife]
-            else:
-                counter[qq].append(wife)
-            if counter[qq].count(wife) >= 2:
-                counter[qq] = []
-                msg = MessageChain(
-                    f"你抢走了【{wife_dict[wife]['owner']['name']}】的老婆{wife_name}~",
-                    Image(path=wife),
-                    "\n达成成就【NTR】"
-                )
-                wife_dict[wife] = {
-                    "owner": {
-                        "qq": qq,
-                        "name": name
-                    },
-                    "wife_name": wife_name
-                }
-                return msg
+        # 检查用户是否已有老婆
+        current_wife = session.query(Wife).filter_by(owner_qq=str(sender.id)).first()
+        if current_wife:
             return MessageChain(
-                f"你抽到了{wife_name},是【{wife_dict[wife]['owner']['name']}】的老婆哦~",
-                Image(path=wife)
+                f"你的老婆是{current_wife.name}哦~可发送'-离婚'来取消",
+                Image(path=current_wife.file_path)
             )
-    return MessageChain("没有抽到老婆哦~")
+
+        # 记录抽取记录
+        record = DrawRecord(user_qq=str(sender.id), wife_id=wife.id)
+        session.add(record)
+
+        # 检查在过去24小时内是否重复抽到同一位老婆
+        yesterday = datetime.now() - timedelta(days=1)
+        draw_count = session.query(DrawRecord).filter(
+            DrawRecord.user_qq == str(sender.id),
+            DrawRecord.wife_id == wife.id,
+            DrawRecord.draw_time > yesterday
+        ).count()
+
+        if wife.owner_qq is None:
+            # 无主的老婆直接获得
+            wife.owner_qq = str(sender.id)
+            wife.owner_name = sender.name
+            session.commit()
+            return MessageChain(
+                f"你的老婆是{wife.name}哦~可发送'-离婚'来取消",
+                Image(path=wife.file_path)
+            )
+        elif draw_count >= 2:
+            # NTR 成功
+            old_owner = wife.owner_name
+            wife.owner_qq = str(sender.id)
+            wife.owner_name = sender.name
+            session.commit()
+            return MessageChain(
+                f"你抢走了【{old_owner}】的老婆{wife.name}~",
+                Image(path=wife.file_path),
+                "\n达成成就【NTR】"
+            )
+        else:
+            return MessageChain(
+                f"你抽到了{wife.name},是【{wife.owner_name}】的老婆哦~",
+                Image(path=wife.file_path)
+            )
+    finally:
+        session.close()
 
 
 @listen(GroupMessage)
@@ -340,33 +308,25 @@ async def judge(app: Ariadne, sender: Member, wife: str) -> MessageChain:
     )
 )
 async def give_up_wife(app: Ariadne, sender: Member, group: Group, source: Source):
-    global wife_dict
-    wife_name = None
-    wife = None
-    for item in wife_dict:
-        if wife_dict.get(item).get("owner").get("qq") == sender.id:
-            wife_name = item[item.rfind('/') + 1:item.rfind('.')]
-            wife = item
-    if not wife_name:
+    session = Session()
+    try:
+        wife = session.query(Wife).filter_by(owner_qq=str(sender.id)).first()
+        if not wife:
+            return await app.send_message(
+                group, MessageChain("你还没有抽到老婆,请先使用'抽老婆'抽一个哦~"), quote=source
+            )
+        wife.owner_qq = None
+        wife.owner_name = None
+        session.commit()
         await app.send_message(
-            group, MessageChain("你还没有抽到老婆,请先使用'抽老婆'抽一个哦~"), quote=source
+            group,
+            MessageChain(
+                f"你已和{wife.name}离婚了哦~"
+            ),
+            quote=source
         )
-        return
-    wife_dict[wife] = {
-        "owner": {
-            "qq": None,
-            "name": None
-        },
-        "wife_name": wife[wife.rfind('/') + 1:wife.rfind('.')]
-    }
-    await app.send_message(
-        group,
-        MessageChain(
-            f"你已和{wife_name}离婚了哦~"
-        ),
-        quote=source
-    )
-    return
+    finally:
+        session.close()
 
 
 @listen(GroupMessage)
@@ -403,3 +363,68 @@ async def random_wife(app: Ariadne, sender: Member, group: Group, source: Source
             MessageChain("当前没有老婆哦~"),
             quote=source
         )
+
+
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        ["message" @ UnionMatch(
+            "查看老婆"
+        ).space(SpacePolicy.PRESERVE)]
+    )
+)
+async def list_wives(app: Ariadne, sender: Member, group: Group, source: Source):
+    """查看老婆列表"""
+    session = Session()
+    try:
+        wives = session.query(Wife).filter_by(owner_qq=str(sender.id)).all()
+        if not wives:
+            return await app.send_message(group, MessageChain("你还没有老婆哦~"), quote=source)
+        
+        msg = ["你的老婆列表:"]
+        for wife in wives:
+            star = "★" if wife.is_favorite else "☆"
+            msg.append(f"\n{star} {wife.name}")
+        
+        await app.send_message(group, MessageChain("\n".join(msg)), quote=source)
+    finally:
+        session.close()
+
+
+@listen(GroupMessage) 
+@decorate(
+    Distribute.require(),
+    Function.require(channel.module),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level, if_noticed=True),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        ["message" @ UnionMatch(
+            "收藏老婆", "取消收藏老婆"
+        ).space(SpacePolicy.PRESERVE)]
+    )
+)
+async def favorite_wife(app: Ariadne, sender: Member, group: Group, source: Source):
+    """收藏/取消收藏老婆"""
+    session = Session()
+    try:
+        wife = session.query(Wife).filter_by(owner_qq=str(sender.id)).first()
+        if not wife:
+            return await app.send_message(group, MessageChain("你还没有老婆哦~"), quote=source)
+            
+        wife.is_favorite = not wife.is_favorite
+        session.commit()
+        
+        status = "收藏" if wife.is_favorite else "取消收藏"
+        await app.send_message(group, MessageChain(f"已{status}{wife.name}"), quote=source)
+    finally:
+        session.close()

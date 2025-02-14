@@ -85,19 +85,12 @@ class Conversation:
         
         在以下情况下会添加时间信息:
         1. 首次对话(_last_time 为 None)
-        2. 小时数发生变化(如从14时变为15时)
-        3. 日期发生变化(包括跨天、整24小时等情况)
-        
-        添加的时间信息格式为: "现在是北京时间: YYYY年MM月DD日 星期X HH时"
-        
-        时间信息作为 system 角色消息被添加到对话历史中,用于让 AI 了解当前时间上下文
+        2. 小时数发生变化(包括日期变化)
         """
-        current_time = datetime.now()
-        if (self._last_time is None or 
-            current_time.hour != self._last_time.hour or 
-            current_time.date() != self._last_time.date()):
+        current_hour = datetime.now().strftime('%Y-%m-%d %H')
+        if self._last_time is None or current_hour != self._last_time:
             self.history.append(self._get_time_message())
-            self._last_time = current_time
+            self._last_time = current_hour
 
     def _clean_history_if_needed(self) -> int:
         """
@@ -272,7 +265,6 @@ class Conversation:
             plugin_map = {}
 
             # 清理历史记录
-            # self._clean_history_if_needed()
             if await self.summarize_history():
                 yield "服务器忙不过来了哦，稍后再试吧~"
                 return

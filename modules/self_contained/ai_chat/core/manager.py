@@ -568,13 +568,8 @@ class ConversationManager:
             shared: bool, use_tool: bool = False
     ) -> str:
         response_chunks = []
-        if shared:
-            async for chunk in conversation.process_message(f"{member_name}(QQ:{member_id})说:{message}",
-                                                            use_tool=use_tool):
-                response_chunks.append(chunk)
-        else:
-            async for chunk in conversation.process_message(message, use_tool=use_tool):
-                response_chunks.append(chunk)
+        async for chunk in conversation.process_message(message, use_tool=use_tool):
+            response_chunks.append(chunk)
         return "".join(response_chunks)
 
     # 获取对话回合数

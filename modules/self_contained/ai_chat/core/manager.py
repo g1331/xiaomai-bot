@@ -218,6 +218,49 @@ class Conversation:
             logger.error(f"Error in summarize_history: {e}")
             return f"Error: {str(e)}"
 
+    @staticmethod
+    def _deduplicate_tool_calls(tool_calls) -> tuple[list, int, int]:
+        """
+        对tool_calls进行去重，防止有些模型重复调用相同的工具和参数
+        
+        Args:
+            tool_calls: 原始工具调用列表
+            
+        Returns:
+            tuple[list, int, int]: (去重后的工具调用列表, 重复ID数量, 重复调用数量)
+        """
+        tool_call_ids = set()
+        unique_tool_calls = []
+        seen_calls = set()  # 用于检查name和arguments组合的集合
+        
+        # 统计重复的数量
+        skipped_by_id = 0
+        skipped_by_key = 0
+        
+        for tool_call in tool_calls:
+            # 先检查id是否重复
+            if tool_call.id in tool_call_ids:
+                skipped_by_id += 1
+                continue
+                
+            # 创建用于检查重复的键
+            call_key = (
+                tool_call.function.name,
+                tool_call.function.arguments
+            )
+            
+            # 检查name和arguments组合是否重复
+            if call_key in seen_calls:
+                skipped_by_key += 1
+                continue
+                
+            # 如果都不重复，则添加到结果中
+            tool_call_ids.add(tool_call.id)
+            seen_calls.add(call_key)
+            unique_tool_calls.append(tool_call)
+        
+        return unique_tool_calls, skipped_by_id, skipped_by_key
+
     async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用"""
         try:
@@ -274,40 +317,11 @@ class Conversation:
                     return
 
                 if use_tool and tools and response.tool_calls:
-                    # 对tool_calls进行去重，防止有些模型重复调用相同的工具和参数
-                    tool_call_ids = set()
-                    tool_calls = []
-                    seen_calls = set()  # 用于检查name和arguments组合的集合
-                    
-                    # 统计重复的数量
-                    skipped_by_id = 0
-                    skipped_by_key = 0
-                    
-                    for tool_call in response.tool_calls:
-                        # 先检查id是否重复
-                        if tool_call.id in tool_call_ids:
-                            skipped_by_id += 1
-                            continue
-                            
-                        # 创建用于检查重复的键
-                        call_key = (
-                            tool_call.function.name,
-                            tool_call.function.arguments
-                        )
-                        
-                        # 检查name和arguments组合是否重复
-                        if call_key in seen_calls:
-                            skipped_by_key += 1
-                            continue
-                            
-                        # 如果都不重复，则添加到结果中
-                        tool_call_ids.add(tool_call.id)
-                        seen_calls.add(call_key)
-                        tool_calls.append(tool_call)
-                    
+                    # 对tool_calls进行去重处理
+                    tool_calls, skipped_by_id, skipped_by_key = self._deduplicate_tool_calls(response.tool_calls)
                     response.tool_calls = tool_calls
                     
-                    # 循环结束后统一输出日志（仅在有重复时）
+                    # 只在有重复时输出日志
                     if skipped_by_id or skipped_by_key:
                         logger.info(
                             f"工具调用去重: 跳过 {skipped_by_id} 个重复ID，{skipped_by_key} 个重复（name, arguments）的调用"

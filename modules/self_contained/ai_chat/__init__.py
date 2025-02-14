@@ -125,6 +125,8 @@ async def init():
                     optional=True, type=bool, default=False
                 ) @ "show_tokens",
                 ArgumentMatch("--reload-cfg", action="store_true", optional=True) @ "reload_cfg",
+                # -c --clear，清除对话历史
+                ArgumentMatch("-c", "--clear", action="store_true", optional=True) @ "clear_history",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])
         ],
@@ -151,7 +153,8 @@ async def ai_chat(
         content: RegexResult,
         show_preset: ArgResult,
         show_tokens: ArgResult,
-        reload_cfg: ArgResult
+        reload_cfg: ArgResult,
+        clear_history: ArgResult
 ):
     """
     修改默认为文字响应，主要考量：
@@ -262,6 +265,24 @@ async def ai_chat(
         await app.send_group_message(
             group,
             MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
+            quote=source
+        )
+    
+    if clear_history.matched:
+        # 先获取群聊模式，如果是shared就鉴权，只能是群管理员以上才能清除上下文
+        cur_group_mode = g_manager.get_group_mode(group_id_str)
+        if cur_group_mode == ConversationManager.GroupMode.SHARED:
+            group_perm = await Permission.get_user_perm_byID(group.id, member.id)
+            if group_perm < Permission.GroupAdmin:
+                return await app.send_group_message(
+                    group,
+                    MessageChain("当前对话为群共享模式，只有群管理员才能执行这个操作"),
+                    quote=source
+                )
+        g_manager.clear_memory(group_id_str, member_id_str)
+        await app.send_group_message(
+            group,
+            MessageChain("已清除对话历史"),
             quote=source
         )
 

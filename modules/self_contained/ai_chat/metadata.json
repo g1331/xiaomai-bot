@@ -15,6 +15,7 @@
     "-P / --pic - 以图片模式回复(默认文本回复)",
     "-t / --tool - 自动使用工具(如网络搜索/天气等)",
     "-p / -preset - 设定预设",
+    "-c / --clear - 清除当前对话历史记录",
     "--show-preset - 显示预设",
     "--show-tokens - 输出当前花费的Token数量",
     "--reload-cfg - 重载配置(限BOT管理员)"

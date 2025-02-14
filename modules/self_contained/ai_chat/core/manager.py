@@ -501,7 +501,6 @@ class ConversationManager:
         if conv_key.key not in self.conversations:
             conversation = self._create_conversation(conv_key, preset)
             self.conversations[conv_key.key] = conversation
-            self.clear_memory(group_id, member_id)
             return conversation
 
         # 仅在对话存在时进行锁检查和中断逻辑

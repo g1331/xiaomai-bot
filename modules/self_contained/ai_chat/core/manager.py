@@ -25,10 +25,11 @@ class Conversation:
         self.provider = provider
         self.plugins = plugins
         self._last_time = None  # 记录上次添加时间信息的时间
-        self.history = [self._get_time_message()]  # 初始化时添加时间信息
+        self.history = []
         self.mode = Conversation.Mode.DEFAULT
         self.preset = None  # preset 设定
         self.interrupted = False  # 中断标记
+        self._maybe_add_time_message()
 
     def switch_provider(self, new_provider: BaseAIProvider):
         if self.mode == Conversation.Mode.DEFAULT:
@@ -80,11 +81,23 @@ class Conversation:
         return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
 
     def _maybe_add_time_message(self):
-        """根据时间间隔决定是否添加时间信息"""
+        """根据小时变化或日期变化决定是否添加时间信息
+        
+        在以下情况下会添加时间信息:
+        1. 首次对话(_last_time 为 None)
+        2. 小时数发生变化(如从14时变为15时)
+        3. 日期发生变化(包括跨天、整24小时等情况)
+        
+        添加的时间信息格式为: "现在是北京时间: YYYY年MM月DD日 星期X HH时"
+        
+        时间信息作为 system 角色消息被添加到对话历史中,用于让 AI 了解当前时间上下文
+        """
         current_time = datetime.now()
-        if self._last_time is None or (current_time - self._last_time).total_seconds() >= 3600:  # 超过1小时
+        if (self._last_time is None or 
+            current_time.hour != self._last_time.hour or 
+            current_time.date() != self._last_time.date()):
             self.history.append(self._get_time_message())
-            self._last_time = current_time  # 更新最后添加时间
+            self._last_time = current_time
 
     def _clean_history_if_needed(self) -> int:
         """
@@ -261,6 +274,45 @@ class Conversation:
                     return
 
                 if use_tool and tools and response.tool_calls:
+                    # 对tool_calls进行去重，防止有些模型重复调用相同的工具和参数
+                    tool_call_ids = set()
+                    tool_calls = []
+                    seen_calls = set()  # 用于检查name和arguments组合的集合
+                    
+                    # 统计重复的数量
+                    skipped_by_id = 0
+                    skipped_by_key = 0
+                    
+                    for tool_call in response.tool_calls:
+                        # 先检查id是否重复
+                        if tool_call.id in tool_call_ids:
+                            skipped_by_id += 1
+                            continue
+                            
+                        # 创建用于检查重复的键
+                        call_key = (
+                            tool_call.function.name,
+                            tool_call.function.arguments
+                        )
+                        
+                        # 检查name和arguments组合是否重复
+                        if call_key in seen_calls:
+                            skipped_by_key += 1
+                            continue
+                            
+                        # 如果都不重复，则添加到结果中
+                        tool_call_ids.add(tool_call.id)
+                        seen_calls.add(call_key)
+                        tool_calls.append(tool_call)
+                    
+                    response.tool_calls = tool_calls
+                    
+                    # 循环结束后统一输出日志（仅在有重复时）
+                    if skipped_by_id or skipped_by_key:
+                        logger.info(
+                            f"工具调用去重: 跳过 {skipped_by_id} 个重复ID，{skipped_by_key} 个重复（name, arguments）的调用"
+                        )
+                    
                     # 工具调用模式
                     tool_response_messages.append({
                         "role": "assistant",

@@ -232,21 +232,6 @@ async def ai_chat(
             quote=source
         )
 
-    if preset.matched:
-        # 群聊预设暂不鉴权
-        preset_str = preset.result.display.strip()
-        g_manager.set_preset(
-            group_id_str,
-            member_id_str,
-            preset_dict[preset_str]["content"] if preset_str in preset_dict \
-                else (preset_str or preset_dict["umaru"]["content"])
-        )
-        await app.send_group_message(
-            group,
-            MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
-            quote=source
-        )
-
     if new_thread.matched:
         # 先获取群聊模式，如果是shared就鉴权，只能是群管理员以上才能清除上下文并开始新对话
         cur_group_mode = g_manager.get_group_mode(group_id_str)
@@ -265,12 +250,23 @@ async def ai_chat(
             quote=source
         )
 
-    if not content:
-        return await app.send_group_message(
+    if preset.matched:
+        # 群聊预设暂不鉴权
+        preset_str = preset.result.display.strip()
+        g_manager.set_preset(
+            group_id_str,
+            member_id_str,
+            preset_dict[preset_str]["content"] if preset_str in preset_dict \
+                else (preset_str or preset_dict["umaru"]["content"])
+        )
+        await app.send_group_message(
             group,
-            MessageChain("你好像什么也没说哦(｡･∀･)ﾉﾞ"),
+            MessageChain(f"已设置预设：{preset_str}{'(内置预设)' if preset_str in preset_dict else '(自定义预设)'}"),
             quote=source
         )
+
+    if not content:
+        return
     response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
     if not pic.matched:
         return await app.send_group_message(

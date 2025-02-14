@@ -288,6 +288,8 @@ async def ai_chat(
 
     if not content:
         return
+    else:
+        content = f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content}"
     response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
     if not pic.matched:
         return await app.send_group_message(

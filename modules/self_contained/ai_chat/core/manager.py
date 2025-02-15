@@ -563,8 +563,7 @@ class ConversationManager:
 
     async def __process_conversation(
             self, conversation: Conversation,
-            member_name: str, member_id: str, message: str,
-            shared: bool, use_tool: bool = False
+            message: str, use_tool: bool = False
     ) -> str:
         response_chunks = []
         async for chunk in conversation.process_message(message, use_tool=use_tool):
@@ -600,13 +599,13 @@ class ConversationManager:
                     return "错误：正在处理群内其他消息，请稍后再试。"
                 async with group_lock:
                     return await self.__process_conversation(
-                        conversation, member_name, member_id, message,
-                        shared=True, use_tool=use_tool
+                        conversation, message,
+                        use_tool=use_tool
                     )
             else:
                 return await self.__process_conversation(
-                    conversation, member_name, member_id, message,
-                    shared=False, use_tool=use_tool
+                    conversation, message,
+                    use_tool=use_tool
                 )
         finally:
             if conv_lock.locked():

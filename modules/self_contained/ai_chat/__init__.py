@@ -291,7 +291,8 @@ async def ai_chat(
     else:
         content = f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content}"
     response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
-    if not pic.matched:
+    # 当用户主动选择图片输出或者对话内容过长时，使用图片输出，目前QQ限制消息字符长度为9000，这里取6000字符作为限制，汉字约3000字
+    if not pic.matched or  len(response) < 6000:
         return await app.send_group_message(
             group,
             MessageChain(response),

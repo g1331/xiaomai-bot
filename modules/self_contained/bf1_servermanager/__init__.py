@@ -4373,31 +4373,7 @@ async def add_cloudban(
             action="cloudban",
             info=reason,
         )
-        # 检查是否接入EAC，若没有接入EAC则警告cb无作用
-        server_info = await account_instance.getFullServerDetails(server_gameid)
-        if isinstance(server_info, str):
-            return await app.send_message(
-                group,
-                MessageChain(f"WANING: 校验EAC状态时出错!{server_info}"),
-                quote=source
-            )
-        server_info = server_info["result"]
-        admin_list = [item["personaId"] for item in server_info["rspInfo"]["adminList"]]
-        tvbot_list = await EACUtils().get_22tvbot_list()
-        if not tvbot_list:
-            return await app.send_message(
-                group,
-                MessageChain(f"WANING: 校验EAC状态时出错!获取BOT列表失败"),
-                quote=source
-            )
-        bot_pid_list = {str(bot["personaId"]) for bot in tvbot_list}
-        if not any(admin_id in bot_pid_list for admin_id in admin_list):
-            return await app.send_message(
-                group,
-                MessageChain(f"WANING: 校验EAC状态时出错!服务器未接入EAC,CloudBan is not working!"),
-                quote=source
-            )
-        return
+        return 
     return await app.send_message(group, MessageChain(
         f"执行出错!{result}"
     ), quote=source)

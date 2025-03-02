@@ -4,7 +4,7 @@
 """
 import json
 from pathlib import Path
-from typing import Dict, Any, Type
+from typing import Dict, Any
 
 from loguru import logger
 

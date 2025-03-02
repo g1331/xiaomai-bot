@@ -5,7 +5,7 @@ import asyncio
 import json
 import warnings
 from enum import Enum
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List, Optional
 from datetime import datetime
 
 from loguru import logger
@@ -13,7 +13,7 @@ from loguru import logger
 from .preset import preset_dict
 from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
-from ..core.provider import BaseAIProvider
+from ..core.provider import BaseAIProvider, FileContent, FileType
 
 
 class Conversation:
@@ -254,8 +254,19 @@ class Conversation:
         
         return unique_tool_calls, skipped_by_id, skipped_by_key
 
-    async def process_message(self, user_input: str, use_tool: bool = False) -> AsyncGenerator[str, None]:
-        """处理用户消息,包括历史记录管理和工具调用"""
+    async def process_message(
+            self, 
+            user_input: str, 
+            files: List[FileContent] = None, 
+            use_tool: bool = False
+    ) -> AsyncGenerator[str, None]:
+        """处理用户消息,包括历史记录管理和工具调用
+        
+        Args:
+            user_input: 用户输入文本
+            files: 多模态文件列表
+            use_tool: 是否启用工具
+        """
         try:
             # 重置中断标记
             self.interrupted = False
@@ -272,11 +283,70 @@ class Conversation:
             # 添加时间信息(如果需要)
             self._maybe_add_time_message()
 
+            # 限制用户输入长度，防止超出API限制
+            max_input_length = 32000  # 设置一个合理的最大长度
+            if len(user_input) > max_input_length:
+                logger.warning(f"用户输入过长({len(user_input)}字符)，已截断至{max_input_length}字符")
+                user_input = user_input[:max_input_length] + "...(内容已截断)"
+                
             # 构造传入 AI 模型的消息列表
             preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
             user_input_messages = [{"role": "user", "content": user_input}]
-            ask_messages = preset_messages + self.history + user_input_messages
+            
+            # 检查历史记录中是否有格式不正确的消息
+            sanitized_history = []
+            for msg in self.history:
+                # 确保每条消息都有role和content字段
+                if "role" not in msg:
+                    logger.warning(f"跳过缺少role字段的历史消息: {msg}")
+                    continue
+                
+                # 处理content字段
+                if "content" not in msg:
+                    # 如果没有content但有tool_calls，这是合法的
+                    if msg.get("role") == "assistant" and "tool_calls" in msg:
+                        sanitized_history.append(msg)
+                        continue
+                    # 否则添加空content字段
+                    msg = msg.copy()
+                    msg["content"] = ""
+                elif isinstance(msg["content"], list):
+                    # 检查多模态content列表格式
+                    valid_content = []
+                    for item in msg["content"]:
+                        if isinstance(item, dict) and "type" in item:
+                            if item["type"] == "text" and "text" in item:
+                                valid_content.append(item)
+                            elif item["type"] == "image_url" and "image_url" in item:
+                                valid_content.append(item)
+                            # 跳过无效格式
+                        else:
+                            logger.warning(f"跳过格式不正确的content项: {item}")
+                    if valid_content:
+                        msg_copy = msg.copy()
+                        msg_copy["content"] = valid_content
+                        sanitized_history.append(msg_copy)
+                else:
+                    # 确保字符串内容不超过API限制
+                    if isinstance(msg["content"], str) and len(msg["content"]) > max_input_length:
+                        msg_copy = msg.copy()
+                        msg_copy["content"] = msg["content"][:max_input_length] + "...(内容已截断)"
+                        sanitized_history.append(msg_copy)
+                    else:
+                        sanitized_history.append(msg)
+                    
+            # 使用净化后的历史记录
+            ask_messages = preset_messages + sanitized_history + user_input_messages
             tool_response_messages = []
+
+            # 检查API调用的消息是否超过数量限制
+            max_messages = 100  # OpenAI API通常有消息数量限制
+            if len(ask_messages) > max_messages:
+                logger.warning(f"消息数量({len(ask_messages)})超过限制，已截断至最新的{max_messages}条")
+                # 保留系统消息和最新的消息
+                system_messages = [msg for msg in ask_messages if msg.get("role") == "system"]
+                non_system_messages = [msg for msg in ask_messages if msg.get("role") != "system"]
+                ask_messages = system_messages + non_system_messages[-max_messages + len(system_messages):]
 
             if use_tool:  # 只有在启用工具时才准备工具配置
                 for plugin in self.plugins:
@@ -302,74 +372,91 @@ class Conversation:
             response_contents = []
             response_messages = []
 
-            async for response in self.provider.ask(messages=ask_messages, tools=tools if use_tool else None):
-                # 检查是否被中断
-                if self.interrupted:
-                    logger.info("对话被中断")
-                    return
+            try:
+                async for response in self.provider.ask(
+                    messages=ask_messages, 
+                    files=files, 
+                    tools=tools if use_tool else None
+                ):
+                    # 检查是否被中断
+                    if self.interrupted:
+                        logger.info("对话被中断")
+                        return
 
-                if use_tool and tools and response.tool_calls:
-                    # 对tool_calls进行去重处理
-                    tool_calls, skipped_by_id, skipped_by_key = self._deduplicate_tool_calls(response.tool_calls)
-                    response.tool_calls = tool_calls
-                    
-                    # 只在有重复时输出日志
-                    if skipped_by_id or skipped_by_key:
-                        logger.info(
-                            f"工具调用去重: 跳过 {skipped_by_id} 个重复ID，{skipped_by_key} 个重复（name, arguments）的调用"
-                        )
-                    
-                    # 工具调用模式
-                    tool_response_messages.append({
-                        "role": "assistant",
-                        "content": response.content,
-                        "tool_calls": response.tool_calls
-                    })
+                    if use_tool and tools and hasattr(response, "tool_calls") and response.tool_calls:
+                        # 对tool_calls进行去重处理
+                        tool_calls, skipped_by_id, skipped_by_key = self._deduplicate_tool_calls(response.tool_calls)
+                        response.tool_calls = tool_calls
+                        
+                        # 只在有重复时输出日志
+                        if skipped_by_id or skipped_by_key:
+                            logger.info(
+                                f"工具调用去重: 跳过 {skipped_by_id} 个重复ID，{skipped_by_key} 个重复（name, arguments）的调用"
+                            )
+                        
+                        # 工具调用模式
+                        tool_response_content = getattr(response, "content", "") or ""
+                        tool_response_messages.append({
+                            "role": "assistant",
+                            "content": tool_response_content,
+                            "tool_calls": response.tool_calls
+                        })
 
-                    # 日志输出本次要执行的工具调用，以及本身拥有的插件
-                    logger.info(f"Tool calls: {';'.join([tc.function.name for tc in response.tool_calls])}")
+                        # 日志输出本次要执行的工具调用，以及本身拥有的插件
+                        logger.info(f"Tool calls: {';'.join([tc.function.name for tc in response.tool_calls])}")
 
-                    async def execute_tool_call(tool_call):
-                        _plugin = plugin_map.get(tool_call.function.name)
-                        if not _plugin:
-                            return None
+                        # ...existing code for tool execution...
+                        async def execute_tool_call(tool_call):
+                            _plugin = plugin_map.get(tool_call.function.name)
+                            if not _plugin:
+                                return None
+                            try:
+                                arguments = json.loads(tool_call.function.arguments)
+                            except json.JSONDecodeError:
+                                arguments = {"raw": tool_call.function.arguments}
+                            try:
+                                logger.debug(f"Plugin {_plugin.description.name} execute with arguments: {arguments}")
+                                result = await _plugin.execute(arguments)
+                                logger.debug(f"Plugin {_plugin.description.name} execute result: {result}")
+                                return {
+                                    "role": "tool",
+                                    "content": str(result),
+                                    "tool_call_id": tool_call.id
+                                }
+                            except Exception as e:
+                                logger.error(f"Plugin {_plugin.description.name} execute error: {e}")
+                                return {
+                                    "role": "tool",
+                                    "content": f"插件 {_plugin.description.name} 执行异常",
+                                    "tool_call_id": tool_call.id
+                                }
+
+                        tasks = [execute_tool_call(tc) for tc in response.tool_calls if plugin_map.get(tc.function.name)]
+                        results = await asyncio.gather(*tasks, return_exceptions=False)
+                        tool_response_messages.extend([r for r in results if r is not None])
+
+                        # 获取最终响应
+                        final_ask_messages = ask_messages + tool_response_messages
                         try:
-                            arguments = json.loads(tool_call.function.arguments)
-                        except json.JSONDecodeError:
-                            arguments = {"raw": tool_call.function.arguments}
-                        try:
-                            logger.debug(f"Plugin {_plugin.description.name} execute with arguments: {arguments}")
-                            result = await _plugin.execute(arguments)
-                            logger.debug(f"Plugin {_plugin.description.name} execute result: {result}")
-                            return {
-                                "role": "tool",
-                                "content": str(result),
-                                "tool_call_id": tool_call.id
-                            }
+                            async for final_chunk in self.provider.ask(messages=final_ask_messages):
+                                content = final_chunk.content if hasattr(final_chunk, 'content') else ''
+                                if content:
+                                    yield content
+                                    response_contents.append(content)
                         except Exception as e:
-                            logger.error(f"Plugin {_plugin.description.name} execute error: {e}")
-                            return {
-                                "role": "tool",
-                                "content": f"插件 {_plugin.description.name} 执行异常",
-                                "tool_call_id": tool_call.id
-                            }
-
-                    tasks = [execute_tool_call(tc) for tc in response.tool_calls if plugin_map.get(tc.function.name)]
-                    results = await asyncio.gather(*tasks, return_exceptions=False)
-                    tool_response_messages.extend([r for r in results if r is not None])
-
-                    # 获取最终响应
-                    ask_messages.extend(tool_response_messages)
-                    async for final_chunk in self.provider.ask(messages=ask_messages):
-                        content = final_chunk.content if hasattr(final_chunk, 'content') else ''
+                            error_msg = f"工具调用后获取最终响应失败: {str(e)}"
+                            logger.error(error_msg)
+                            yield f"抱歉，工具使用过程中出现了问题：{error_msg}"
+                    else:  # 普通对话模式
+                        content = response.content if hasattr(response, 'content') else ''
                         if content:
                             yield content
                             response_contents.append(content)
-                else:  # 普通对话模式
-                    content = response.content if hasattr(response, 'content') else ''
-                    if content:
-                        yield content
-                        response_contents.append(content)
+            except Exception as api_error:
+                error_msg = f"API调用发生错误: {str(api_error)}"
+                logger.error(error_msg)
+                yield f"抱歉，与AI通信时发生了错误：{error_msg}"
+                return
 
             # 组装结果
             if response_contents:
@@ -384,7 +471,7 @@ class Conversation:
 
         except Exception as e:
             logger.error(f"Error in process_message: {e}")
-            yield f"Error: {str(e)}"
+            yield f"处理消息时发生错误: {str(e)}"
 
 
 class ConversationManager:
@@ -563,10 +650,10 @@ class ConversationManager:
 
     async def __process_conversation(
             self, conversation: Conversation,
-            message: str, use_tool: bool = False
+            message: str, files: List[FileContent] = None, use_tool: bool = False
     ) -> str:
         response_chunks = []
-        async for chunk in conversation.process_message(message, use_tool=use_tool):
+        async for chunk in conversation.process_message(message, files, use_tool=use_tool):
             response_chunks.append(chunk)
         return "".join(response_chunks)
 
@@ -576,8 +663,13 @@ class ConversationManager:
         return conversation.get_round()
 
     async def send_message(
-            self, group_id: str, member_id: str, member_name: str,
-            message: str, use_tool: bool
+            self, 
+            group_id: str, 
+            member_id: str, 
+            member_name: str,
+            message: str, 
+            files: List[FileContent] = None,
+            use_tool: bool = False
     ) -> str | None:
         conv_key = self._get_conversation_key(group_id, member_id)
         conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
@@ -599,12 +691,12 @@ class ConversationManager:
                     return "错误：正在处理群内其他消息，请稍后再试。"
                 async with group_lock:
                     return await self.__process_conversation(
-                        conversation, message,
+                        conversation, message, files,
                         use_tool=use_tool
                     )
             else:
                 return await self.__process_conversation(
-                    conversation, message,
+                    conversation, message, files,
                     use_tool=use_tool
                 )
         finally:

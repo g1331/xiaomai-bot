@@ -11,10 +11,13 @@ class OpenAIConfig(OpenAICompatibleConfig):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.model = kwargs.get("model", "gpt-3.5-turbo")
-        # 保留 session_token 字段兼容配置，但不再使用
-        self.session_token = kwargs.get("session_token", "")
         if not self.base_url:
             self.base_url = "https://api.openai.com"
+        
+        # 根据模型名称设置多模态支持
+        vision_models = ["gpt-4-vision", "gpt-4-vision-preview", "gpt-4o", "gpt-4-turbo"]
+        if any(vm in self.model for vm in vision_models):
+            self.supports_vision = True
 
 
 class OpenAIProvider(OpenAICompatibleProvider):
@@ -25,4 +28,17 @@ class OpenAIProvider(OpenAICompatibleProvider):
         self.encoder = tiktoken.encoding_for_model(config.model)
 
     def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
-        return sum(self.encoder.encode(message["content"]) for message in messages)
+        token_count = 0
+        for message in messages:
+            content = message.get("content", "")
+            if isinstance(content, str):
+                token_count += len(self.encoder.encode(content))
+            elif isinstance(content, list):
+                # 处理多模态内容
+                for item in content:
+                    if item.get("type") == "text":
+                        token_count += len(self.encoder.encode(item.get("text", "")))
+                    # 图片大致估算，每张图片约1000 tokens
+                    elif item.get("type") == "image_url":
+                        token_count += 1000
+        return token_count

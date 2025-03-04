@@ -1,12 +1,14 @@
+import mimetypes
 import re
 from pathlib import Path
 
+import aiohttp
 from graia.ariadne import Ariadne
 from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image as GraiaImage, At
+from graia.ariadne.message.element import Image as GraiaImage, At, Image, File
 from graia.ariadne.message.parser.twilight import Twilight, ArgumentMatch, WildcardMatch, ArgResult, \
     RegexResult, ElementMatch, ElementResult, SpacePolicy
 from graia.ariadne.model import Group, Member
@@ -14,6 +16,7 @@ from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
 from loguru import logger
+from pydantic import ValidationError
 
 from core.control import Distribute, Function, FrequencyLimitation, Permission, AtBotReply
 from core.models import saya_model, response_model
@@ -22,10 +25,9 @@ from utils.text2img.md2img import MarkdownToImageConverter, Theme, OutputMode, H
 from .config import ConfigLoader
 from .core.manager import ConversationManager
 from .core.preset import preset_dict
-from .core.provider import BaseAIProvider
+from .core.provider import BaseAIProvider, FileContent, FileType
 from .plugins_registry import ALL_PLUGINS
 from .providers.deepseek import DeepSeekProvider, DeepSeekConfig
-from pydantic import ValidationError
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
@@ -97,6 +99,103 @@ def plugins_factory(key: str):
     return enabled_plugins
 
 
+async def process_image(image: Image) -> FileContent | None:
+    """处理图像元素，转换为FileContent对象"""
+    try:
+        # 有URL，下载图片
+        if hasattr(image, "url") and image.url:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image.url) as response:
+                    if response.status == 200:
+                        image_data = await response.read()
+                        return FileContent(
+                            file_type=FileType.IMAGE,
+                            file_bytes=image_data,
+                            mime_type=response.headers.get("Content-Type", "image/jpeg"),
+                            file_name="image.jpg"
+                        )
+                
+        # 如果所有方法都失败，尝试使用临时直链获取图片
+        if hasattr(image, "get_bytes") and callable(image.get_bytes):
+            image_data = await image.get_bytes()
+            return FileContent(
+                file_type=FileType.IMAGE,
+                file_bytes=image_data,
+                mime_type="image/jpeg",  # 假设为JPEG
+                file_name="image.jpg"
+            )
+            
+        raise ValueError("无法获取图片数据")
+    except Exception as e:
+        logger.error(f"处理图像时出错: {e}")
+        return None
+
+
+async def process_file(file: File) -> FileContent:
+    """处理文件元素，转换为FileContent对象"""
+    try:
+        # 确定文件类型
+        file_type = FileType.DOCUMENT  # 默认文档类型
+        mime_type = None
+        
+        if hasattr(file, "name") and file.name:
+            mime_type = mimetypes.guess_type(file.name)[0]
+            if mime_type:
+                if mime_type.startswith("image/"):
+                    file_type = FileType.IMAGE
+                elif mime_type.startswith("audio/"):
+                    file_type = FileType.AUDIO
+                elif mime_type.startswith("video/"):
+                    file_type = FileType.VIDEO
+        
+        # 获取文件内容
+        file_bytes = None
+        if hasattr(file, "data") and file.data:
+            file_bytes = file.data
+        elif hasattr(file, "url") and file.url:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(file.url) as response:
+                    if response.status == 200:
+                        file_bytes = await response.read()
+        elif hasattr(file, "path") and file.path:
+            with open(file.path, "rb") as f:
+                file_bytes = f.read()
+        elif hasattr(file, "get_bytes") and callable(file.get_bytes):
+            file_bytes = await file.get_bytes()
+            
+        if not file_bytes:
+            raise ValueError("无法获取文件数据")
+            
+        return FileContent(
+            file_type=file_type,
+            file_bytes=file_bytes,
+            mime_type=mime_type,
+            file_name=getattr(file, "name", "file") or "file"
+        )
+    except Exception as e:
+        logger.error(f"处理文件时出错: {e}")
+        return None
+
+
+async def extract_files_from_message(message_chain) -> list[FileContent]:
+    """从消息链中提取所有文件"""
+    files = []
+    
+    # 处理图片
+    for image in message_chain.get(Image):
+        file_content = await process_image(image)
+        if file_content:
+            files.append(file_content)
+            
+    # 处理文件
+    for file in message_chain.get(File):
+        file_content = await process_file(file)
+        if file_content:
+            files.append(file_content)
+            
+    return files
+
+
 @channel.use(ListenerSchema(listening_events=[ApplicationLaunched]))
 async def init():
     global g_manager, g_config_loader
@@ -127,6 +226,10 @@ async def init():
                 ArgumentMatch("--reload-cfg", action="store_true", optional=True) @ "reload_cfg",
                 # -c --clear，清除对话历史
                 ArgumentMatch("-c", "--clear", action="store_true", optional=True) @ "clear_history",
+                # 禁用多模态
+                ArgumentMatch("--no-vision", action="store_true", optional=True) @ "no_vision",
+                # 显示模型信息
+                ArgumentMatch("--model-info", "--info", action="store_true", optional=True) @ "show_model_info",
                 WildcardMatch().flags(re.DOTALL) @ "content",
             ])
         ],
@@ -144,6 +247,7 @@ async def ai_chat(
         app: Ariadne,
         group: Group,
         member: Member,
+        message: MessageChain,
         source: Source,
         AtResult: ElementResult,
         new_thread: ArgResult,
@@ -154,7 +258,9 @@ async def ai_chat(
         show_preset: ArgResult,
         show_tokens: ArgResult,
         reload_cfg: ArgResult,
-        clear_history: ArgResult
+        clear_history: ArgResult,
+        no_vision: ArgResult,
+        show_model_info: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -175,6 +281,10 @@ async def ai_chat(
       - 让用户自主选择输出格式更灵活
       - 避免在简单对话时产生不必要的图片负担
       - 图片加载失败的风险更低
+      
+    新增多模态支持:
+    - 自动检测消息中的图片和文件
+    - 支持通过--no-vision选项禁用多模态
     """
     global g_config_loader, g_manager
 
@@ -189,7 +299,7 @@ async def ai_chat(
 
     group_id_str = str(group.id)
     member_id_str = str(member.id)
-    content = content.result.display.strip() if content.matched else ""
+    content_text = content.result.display.strip() if content.matched else ""
 
     if reload_cfg.matched:
         # 鉴权
@@ -286,13 +396,122 @@ async def ai_chat(
             quote=source
         )
 
-    if not content:
+    if show_model_info.matched:
+        # 获取当前会话对象
+        conversation = g_manager.get_conversation(group_id_str, member_id_str)
+        provider = conversation.provider
+        
+        # 收集模型信息
+        provider_name = provider.__class__.__name__
+        model_name = provider.config.model
+        max_tokens = provider.config.max_tokens
+        max_total_tokens = provider.config.max_total_tokens
+        
+        # 多模态支持情况
+        supports_vision = "✅ 支持" if provider.config.supports_vision else "❌ 不支持"
+        supports_audio = "✅ 支持" if provider.config.supports_audio else "❌ 不支持"
+        supports_document = "✅ 支持" if provider.config.supports_document else "❌ 不支持"
+        
+        # 会话状态
+        current_round = conversation.get_round()
+        has_conversation = current_round > 0
+        conversation_status = f"已有 {current_round} 轮对话" if has_conversation else "暂无对话"
+        usage_tokens = provider.get_usage().get("total_tokens", 0)
+        
+        # 插件信息
+        loaded_plugins = conversation.plugins
+        plugin_count = len(loaded_plugins)
+        
+        # 格式化插件信息，包含名称和描述
+        plugin_info = ""
+        if plugin_count > 0:
+            plugin_info = "\n\n### 已加载插件详情\n"
+            for plugin in loaded_plugins:
+                plugin_name = plugin.description.name
+                # 使用HTML <br>标签替换换行符，确保不会破坏Markdown列表结构
+                plugin_desc = plugin.description.description.replace("\n", "<br>")
+                plugin_info += f"- **{plugin_name}**: {plugin_desc}\n"
+        else:
+            plugin_info = "\n\n目前没有加载任何插件"
+        
+        # 群聊模式
+        group_mode = g_manager.get_group_mode(group_id_str).name
+        user_mode = g_manager.get_user_mode(group_id_str, member_id_str).name
+        
+        # 预设信息
+        preset_info = "未设置"
+        if conversation.preset:
+            # 限制显示的预设长度，过长时截断
+            preset_text = conversation.preset
+            preset_info = f"{preset_text}"
+        
+        # 构建信息字符串
+        info_md = f"""
+# AI模型信息
+
+## 基本信息
+- **提供商**: {provider_name}
+- **模型名称**: {model_name}
+- **单次输出上限**: {max_tokens} tokens
+- **上下文窗口**: {max_total_tokens} tokens
+
+## 多模态支持
+- **图片**: {supports_vision}
+- **音频**: {supports_audio}
+- **文档**: {supports_document}
+
+## 会话状态
+- **当前状态**: {conversation_status}
+- **已消耗**: {usage_tokens} tokens
+- **对话模式**: 群聊({group_mode}) / 用户({user_mode})
+
+## 插件信息
+- **已加载插件数量**: {plugin_count} 个{plugin_info}
+
+## 预设信息
+- **当前预设**: {preset_info}
+"""
+        
+        # 渲染为图片
+        converter = MarkdownToImageConverter(
+            browser=app.current().launch_manager.get_interface(PlaywrightBrowser).browser)
+        img_bytes = await converter.convert_markdown(
+            info_md,
+            theme=Theme.DARK,
+            output_mode=OutputMode.BINARY,
+            highlight_theme=HighlightTheme.ATOM_ONE_DARK
+        )
+        return await app.send_group_message(
+            group,
+            MessageChain(GraiaImage(data_bytes=img_bytes)),
+            quote=source
+        )
+
+    if not content_text and not any(isinstance(elem, (Image, File)) for elem in message):
         return
-    else:
-        content = f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content}"
-    response = await g_manager.send_message(group_id_str, member_id_str, member.name, content, tool.matched)
+    
+    # 提取消息内容
+    user_content = f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content_text}"
+    
+    # 处理文件和图片
+    files = []
+    if not no_vision.matched:
+        files = await extract_files_from_message(message)
+        if files:
+            logger.info(f"从消息中提取到 {len(files)} 个文件")
+    
+    # 向AI发送消息
+    response = await g_manager.send_message(
+        group_id_str, 
+        member_id_str, 
+        member.name, 
+        user_content, 
+        files=files, 
+        use_tool=tool.matched
+    )
+    
     # 当用户主动选择图片输出或者对话内容过长时，使用图片输出，目前QQ限制消息字符长度为9000，这里取6000字符作为限制，汉字约3000字
-    if not pic.matched or  len(response) < 6000:
+    if not pic.matched and len(response) < 6000:
         return await app.send_group_message(
             group,
             MessageChain(response),

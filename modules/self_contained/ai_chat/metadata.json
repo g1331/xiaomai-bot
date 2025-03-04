@@ -18,6 +18,8 @@
     "-c / --clear - 清除当前对话历史记录",
     "--show-preset - 显示预设",
     "--show-tokens - 输出当前花费的Token数量",
+    "--model-info / --info - 显示当前模型信息及状态",
+    "--no-vision - 禁用多模态输入",
     "--reload-cfg - 重载配置(限BOT管理员)"
   ],
   "example": [
@@ -27,6 +29,7 @@
     "@bot --tool 讲讲关于CloseAI的消息",
     "@bot --show-preset",
     "@bot --show-tokens",
+    "@bot --model-info",
     "@bot --reload-cfg"
   ],
   "default_switch": false,

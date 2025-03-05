@@ -1,19 +1,20 @@
 """
 对话管理逻辑
 """
+
 import asyncio
 import json
 import warnings
-from enum import Enum
-from typing import AsyncGenerator, List, Optional
 from datetime import datetime
+from enum import Enum
+from typing import AsyncGenerator, List
 
 from loguru import logger
 
 from .preset import preset_dict
 from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
-from ..core.provider import BaseAIProvider, FileContent, FileType
+from ..core.provider import BaseAIProvider, FileContent
 
 
 class Conversation:
@@ -67,27 +68,27 @@ class Conversation:
             3: "星期四",
             4: "星期五",
             5: "星期六",
-            6: "星期日"
+            6: "星期日",
         }
         weekday = weekday_map[current_time.weekday()]
         time_str = current_time.strftime(f"%Y年%m月%d日 {weekday} %H时")
-        return {
-            "role": "system",
-            "content": f"现在是北京时间: {time_str}"
-        }
+        return {"role": "system", "content": f"现在是北京时间: {time_str}"}
 
     def get_round(self) -> int:
         # 要排除 system 和 tool 的消息，然后计算 user 和 assistant 的消息数量，然后除以 2
-        return len([msg for msg in self.history if msg["role"] in ["user", "assistant"]]) // 2
+        return (
+                len([msg for msg in self.history if msg["role"] in ["user", "assistant"]])
+                // 2
+        )
 
     def _maybe_add_time_message(self):
         """根据小时变化或日期变化决定是否添加时间信息
-        
+
         在以下情况下会添加时间信息:
         1. 首次对话(_last_time 为 None)
         2. 小时数发生变化(包括日期变化)
         """
-        current_hour = datetime.now().strftime('%Y-%m-%d %H')
+        current_hour = datetime.now().strftime("%Y-%m-%d %H")
         if self._last_time is None or current_hour != self._last_time:
             self.history.append(self._get_time_message())
             self._last_time = current_hour
@@ -100,11 +101,11 @@ class Conversation:
         warnings.warn(
             "Conversation._clean_history_if_needed() is deprecated and will be removed in the future.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         cleaned_count = 0
-        max_token = self.provider.config.max_total_tokens
+        max_token = self.provider.config.get_model_config().max_total_tokens
         current_tokens = self.provider.get_usage().get("total_tokens", 0)
 
         if current_tokens <= max_token:
@@ -127,8 +128,8 @@ class Conversation:
                 next_index = i + 1
                 tool_indices = []
                 while (
-                        next_index < len(self.history) and
-                        self.history[next_index]["role"] == "tool"
+                        next_index < len(self.history)
+                        and self.history[next_index]["role"] == "tool"
                 ):
                     tool_indices.append(next_index)
                     next_index += 1
@@ -164,18 +165,22 @@ class Conversation:
 
     # 让模型总结历史记录
     async def summarize_history(self) -> str | None:
-        max_token = self.provider.config.max_total_tokens
+        max_token = self.provider.model_config.max_total_tokens
         current_tokens = self.provider.get_usage().get("prompt_tokens", 0)
         # 预留0.5k token给总结历史记录
         if current_tokens + 512 <= max_token:
             return None
-        logger.info(f"历史记录token数超过限制，当前token数: {current_tokens}, 最大token数: {max_token}，开始总结历史记录")
+        logger.info(
+            f"历史记录token数超过限制，当前token数: {current_tokens}, 最大token数: {max_token}，开始总结历史记录"
+        )
         try:
             response_contents = []
             response_messages = []
             origin_tokens_num = self.provider.calculate_tokens(self.history)
             # 这里仍然添加preset是为了命中缓存
-            preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
+            preset_messages = (
+                [{"role": "system", "content": self.preset}] if self.preset else []
+            )
             summary_instruction = {
                 "role": "system",
                 "content": (
@@ -185,11 +190,11 @@ class Conversation:
                     "3.模型主要回答：总结你给出的重要回复。\n"
                     "4.未解决问题（如有）：如果对话中仍有未解答的问题，列出它们。\n"
                     "请按照规则生成结构化总结。"
-                )
+                ),
             }
             ask_messages = preset_messages + self.history + [summary_instruction]
             async for response in self.provider.ask(messages=ask_messages):
-                content = response.content if hasattr(response, 'content') else ''
+                content = response.content if hasattr(response, "content") else ""
                 if content:
                     response_contents.append(content)
             if response_contents:
@@ -215,53 +220,47 @@ class Conversation:
     def _deduplicate_tool_calls(tool_calls) -> tuple[list, int, int]:
         """
         对tool_calls进行去重，防止有些模型重复调用相同的工具和参数
-        
+
         Args:
             tool_calls: 原始工具调用列表
-            
+
         Returns:
             tuple[list, int, int]: (去重后的工具调用列表, 重复ID数量, 重复调用数量)
         """
         tool_call_ids = set()
         unique_tool_calls = []
         seen_calls = set()  # 用于检查name和arguments组合的集合
-        
+
         # 统计重复的数量
         skipped_by_id = 0
         skipped_by_key = 0
-        
+
         for tool_call in tool_calls:
             # 先检查id是否重复
             if tool_call.id in tool_call_ids:
                 skipped_by_id += 1
                 continue
-                
+
             # 创建用于检查重复的键
-            call_key = (
-                tool_call.function.name,
-                tool_call.function.arguments
-            )
-            
+            call_key = (tool_call.function.name, tool_call.function.arguments)
+
             # 检查name和arguments组合是否重复
             if call_key in seen_calls:
                 skipped_by_key += 1
                 continue
-                
+
             # 如果都不重复，则添加到结果中
             tool_call_ids.add(tool_call.id)
             seen_calls.add(call_key)
             unique_tool_calls.append(tool_call)
-        
+
         return unique_tool_calls, skipped_by_id, skipped_by_key
 
     async def process_message(
-            self, 
-            user_input: str, 
-            files: List[FileContent] = None, 
-            use_tool: bool = False
+            self, user_input: str, files: List[FileContent] = None, use_tool: bool = False
     ) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用
-        
+
         Args:
             user_input: 用户输入文本
             files: 多模态文件列表
@@ -286,13 +285,17 @@ class Conversation:
             # 限制用户输入长度，防止超出API限制
             max_input_length = 32000  # 设置一个合理的最大长度
             if len(user_input) > max_input_length:
-                logger.warning(f"用户输入过长({len(user_input)}字符)，已截断至{max_input_length}字符")
+                logger.warning(
+                    f"用户输入过长({len(user_input)}字符)，已截断至{max_input_length}字符"
+                )
                 user_input = user_input[:max_input_length] + "...(内容已截断)"
-                
+
             # 构造传入 AI 模型的消息列表
-            preset_messages = [{"role": "system", "content": self.preset}] if self.preset else []
+            preset_messages = (
+                [{"role": "system", "content": self.preset}] if self.preset else []
+            )
             user_input_messages = [{"role": "user", "content": user_input}]
-            
+
             # 检查历史记录中是否有格式不正确的消息
             sanitized_history = []
             for msg in self.history:
@@ -300,7 +303,7 @@ class Conversation:
                 if "role" not in msg:
                     logger.warning(f"跳过缺少role字段的历史消息: {msg}")
                     continue
-                
+
                 # 处理content字段
                 if "content" not in msg:
                     # 如果没有content但有tool_calls，这是合法的
@@ -328,13 +331,18 @@ class Conversation:
                         sanitized_history.append(msg_copy)
                 else:
                     # 确保字符串内容不超过API限制
-                    if isinstance(msg["content"], str) and len(msg["content"]) > max_input_length:
+                    if (
+                            isinstance(msg["content"], str)
+                            and len(msg["content"]) > max_input_length
+                    ):
                         msg_copy = msg.copy()
-                        msg_copy["content"] = msg["content"][:max_input_length] + "...(内容已截断)"
+                        msg_copy["content"] = (
+                                msg["content"][:max_input_length] + "...(内容已截断)"
+                        )
                         sanitized_history.append(msg_copy)
                     else:
                         sanitized_history.append(msg)
-                    
+
             # 使用净化后的历史记录
             ask_messages = preset_messages + sanitized_history + user_input_messages
             tool_response_messages = []
@@ -342,13 +350,29 @@ class Conversation:
             # 检查API调用的消息是否超过数量限制
             max_messages = 100  # OpenAI API通常有消息数量限制
             if len(ask_messages) > max_messages:
-                logger.warning(f"消息数量({len(ask_messages)})超过限制，已截断至最新的{max_messages}条")
+                logger.warning(
+                    f"消息数量({len(ask_messages)})超过限制，已截断至最新的{max_messages}条"
+                )
                 # 保留系统消息和最新的消息
-                system_messages = [msg for msg in ask_messages if msg.get("role") == "system"]
-                non_system_messages = [msg for msg in ask_messages if msg.get("role") != "system"]
-                ask_messages = system_messages + non_system_messages[-max_messages + len(system_messages):]
+                system_messages = [
+                    msg for msg in ask_messages if msg.get("role") == "system"
+                ]
+                non_system_messages = [
+                    msg for msg in ask_messages if msg.get("role") != "system"
+                ]
+                ask_messages = (
+                        system_messages
+                        + non_system_messages[-max_messages + len(system_messages):]
+                )
 
-            if use_tool:  # 只有在启用工具时才准备工具配置
+            # 判断当前提供者是否支持工具调用
+            supports_tools = use_tool and self.provider.supports_tools
+
+            if use_tool and not self.provider.supports_tools:
+                logger.warning(f"当前模型不支持工具调用，将忽略工具请求")
+                use_tool = False
+
+            if use_tool:  # 只有在启用工具且模型支持时才准备工具配置
                 for plugin in self.plugins:
                     desc = plugin.description
                     tool = {
@@ -362,9 +386,9 @@ class Conversation:
                                     key: {"type": "string", "description": value}
                                     for key, value in desc.parameters.items()
                                 },
-                                "required": list(desc.parameters.keys())
-                            }
-                        }
+                                "required": list(desc.parameters.keys()),
+                            },
+                        },
                     }
                     tools.append(tool)
                     plugin_map[desc.name] = plugin
@@ -374,38 +398,48 @@ class Conversation:
 
             try:
                 async for response in self.provider.ask(
-                    messages=ask_messages, 
-                    files=files, 
-                    tools=tools if use_tool else None
+                        messages=ask_messages,
+                        files=files,
+                        tools=tools if use_tool else None,
                 ):
                     # 检查是否被中断
                     if self.interrupted:
                         logger.info("对话被中断")
                         return
 
-                    if use_tool and tools and hasattr(response, "tool_calls") and response.tool_calls:
+                    if (
+                            use_tool
+                            and tools
+                            and hasattr(response, "tool_calls")
+                            and response.tool_calls
+                    ):
                         # 对tool_calls进行去重处理
-                        tool_calls, skipped_by_id, skipped_by_key = self._deduplicate_tool_calls(response.tool_calls)
+                        tool_calls, skipped_by_id, skipped_by_key = (
+                            self._deduplicate_tool_calls(response.tool_calls)
+                        )
                         response.tool_calls = tool_calls
-                        
+
                         # 只在有重复时输出日志
                         if skipped_by_id or skipped_by_key:
                             logger.info(
                                 f"工具调用去重: 跳过 {skipped_by_id} 个重复ID，{skipped_by_key} 个重复（name, arguments）的调用"
                             )
-                        
+
                         # 工具调用模式
                         tool_response_content = getattr(response, "content", "") or ""
-                        tool_response_messages.append({
-                            "role": "assistant",
-                            "content": tool_response_content,
-                            "tool_calls": response.tool_calls
-                        })
+                        tool_response_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": tool_response_content,
+                                "tool_calls": response.tool_calls,
+                            }
+                        )
 
                         # 日志输出本次要执行的工具调用，以及本身拥有的插件
-                        logger.info(f"Tool calls: {';'.join([tc.function.name for tc in response.tool_calls])}")
+                        logger.info(
+                            f"Tool calls: {';'.join([tc.function.name for tc in response.tool_calls])}"
+                        )
 
-                        # ...existing code for tool execution...
                         async def execute_tool_call(tool_call):
                             _plugin = plugin_map.get(tool_call.function.name)
                             if not _plugin:
@@ -415,31 +449,49 @@ class Conversation:
                             except json.JSONDecodeError:
                                 arguments = {"raw": tool_call.function.arguments}
                             try:
-                                logger.debug(f"Plugin {_plugin.description.name} execute with arguments: {arguments}")
+                                logger.debug(
+                                    f"Plugin {_plugin.description.name} execute with arguments: {arguments}"
+                                )
                                 result = await _plugin.execute(arguments)
-                                logger.debug(f"Plugin {_plugin.description.name} execute result: {result}")
+                                logger.debug(
+                                    f"Plugin {_plugin.description.name} execute result: {result}"
+                                )
                                 return {
                                     "role": "tool",
                                     "content": str(result),
-                                    "tool_call_id": tool_call.id
+                                    "tool_call_id": tool_call.id,
                                 }
                             except Exception as e:
-                                logger.error(f"Plugin {_plugin.description.name} execute error: {e}")
+                                logger.error(
+                                    f"Plugin {_plugin.description.name} execute error: {e}"
+                                )
                                 return {
                                     "role": "tool",
                                     "content": f"插件 {_plugin.description.name} 执行异常",
-                                    "tool_call_id": tool_call.id
+                                    "tool_call_id": tool_call.id,
                                 }
 
-                        tasks = [execute_tool_call(tc) for tc in response.tool_calls if plugin_map.get(tc.function.name)]
+                        tasks = [
+                            execute_tool_call(tc)
+                            for tc in response.tool_calls
+                            if plugin_map.get(tc.function.name)
+                        ]
                         results = await asyncio.gather(*tasks, return_exceptions=False)
-                        tool_response_messages.extend([r for r in results if r is not None])
+                        tool_response_messages.extend(
+                            [r for r in results if r is not None]
+                        )
 
                         # 获取最终响应
                         final_ask_messages = ask_messages + tool_response_messages
                         try:
-                            async for final_chunk in self.provider.ask(messages=final_ask_messages):
-                                content = final_chunk.content if hasattr(final_chunk, 'content') else ''
+                            async for final_chunk in self.provider.ask(
+                                    messages=final_ask_messages
+                            ):
+                                content = (
+                                    final_chunk.content
+                                    if hasattr(final_chunk, "content")
+                                    else ""
+                                )
                                 if content:
                                     yield content
                                     response_contents.append(content)
@@ -448,7 +500,9 @@ class Conversation:
                             logger.error(error_msg)
                             yield f"抱歉，工具使用过程中出现了问题：{error_msg}"
                     else:  # 普通对话模式
-                        content = response.content if hasattr(response, 'content') else ''
+                        content = (
+                            response.content if hasattr(response, "content") else ""
+                        )
                         if content:
                             yield content
                             response_contents.append(content)
@@ -460,7 +514,9 @@ class Conversation:
 
             # 组装结果
             if response_contents:
-                response_messages = [{"role": "assistant", "content": "".join(response_contents)}]
+                response_messages = [
+                    {"role": "assistant", "content": "".join(response_contents)}
+                ]
 
             # 更新历史记录
             if response_contents:
@@ -488,18 +544,29 @@ class ConversationManager:
     class ConversationKey:
         """会话密钥管理"""
 
-        def __init__(self, manager: 'ConversationManager', group_id: str, member_id: str):
+        def __init__(
+                self, manager: "ConversationManager", group_id: str, member_id: str
+        ):
             self.key = self._generate_key(manager, group_id, member_id)
-            self.is_shared = manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
-            self.lock_key = f"group:{self.key}" if self.is_shared else f"user:{self.key}"
+            self.is_shared = (
+                    manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
+            )
+            self.lock_key = (
+                f"group:{self.key}" if self.is_shared else f"user:{self.key}"
+            )
 
         @staticmethod
-        def _generate_key(manager: 'ConversationManager', group_id: str, member_id: str) -> str:
+        def _generate_key(
+                manager: "ConversationManager", group_id: str, member_id: str
+        ) -> str:
             """生成会话密钥"""
             if manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
                 return group_id
             else:
-                if manager.get_user_mode(group_id, member_id) == ConversationManager.UserMode.GLOBAL:
+                if (
+                        manager.get_user_mode(group_id, member_id)
+                        == ConversationManager.UserMode.GLOBAL
+                ):
                     return f"global-{member_id}"
                 else:
                     return f"{group_id}-{member_id}"
@@ -529,13 +596,17 @@ class ConversationManager:
         except Exception:
             pass
 
-    def update_group_mode(self, group_id: str, new_mode: "ConversationManager.GroupMode"):
+    def update_group_mode(
+            self, group_id: str, new_mode: "ConversationManager.GroupMode"
+    ):
         group_config = self._configs.setdefault(group_id, {})
         group_config["group_mode"] = new_mode.value
         self._config_dirty = True
         asyncio.create_task(self._delayed_save_configs())
 
-    def update_user_mode(self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"):
+    def update_user_mode(
+            self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"
+    ):
         group_config = self._configs.setdefault(group_id, {})
         user_modes = group_config.setdefault("user_modes", {})
         user_modes[member_id] = new_mode.value
@@ -549,7 +620,9 @@ class ConversationManager:
         return ConversationManager.GroupMode(mode)
 
     # 获取用户模式，默认返回 GLOBAL
-    def get_user_mode(self, group_id: str, member_id: str) -> "ConversationManager.UserMode":
+    def get_user_mode(
+            self, group_id: str, member_id: str
+    ) -> "ConversationManager.UserMode":
         group_config = self._configs.get(group_id, {})
         user_modes = group_config.get("user_modes", {})
         mode = user_modes.get(member_id, "global")
@@ -559,13 +632,18 @@ class ConversationManager:
         """获取会话密钥对象"""
         return self.ConversationKey(self, group_id, member_id)
 
-    def _create_conversation(self, conv_key: ConversationKey, preset: str = "") -> Conversation:
+    def _create_conversation(
+            self, conv_key: ConversationKey, preset: str = ""
+    ) -> Conversation:
         """创建新的对话实例"""
         provider = self.provider_factory(conv_key.key)
         plugins = self.plugins_factory(conv_key.key)
         conversation = Conversation(provider, plugins)
-        preset_content = preset_dict[preset]["content"] if preset in preset_dict \
+        preset_content = (
+            preset_dict[preset]["content"]
+            if preset in preset_dict
             else (preset or preset_dict["umaru"]["content"])
+        )
         conversation.set_preset(preset_content)
         return conversation
 
@@ -599,7 +677,11 @@ class ConversationManager:
                 self.remove_conversation(group_id, member_id)
             del self.locks[conv_key.lock_key]
 
-        if conv_key.is_shared and f"group:{group_id}" in self.locks and self.locks[f"group:{group_id}"].locked():
+        if (
+                conv_key.is_shared
+                and f"group:{group_id}" in self.locks
+                and self.locks[f"group:{group_id}"].locked()
+        ):
             logger.info("检测到群聊对话未结束，打断并覆盖旧群对话。")
             if conv_key.key in self.conversations:
                 old_conversation = self.conversations[conv_key.key]
@@ -617,11 +699,15 @@ class ConversationManager:
         self.clear_memory(group_id, member_id)
         return conversation
 
-    def set_user_custom_mode(self, group_id: str, member_id: str, custom_provider: BaseAIProvider):
+    def set_user_custom_mode(
+            self, group_id: str, member_id: str, custom_provider: BaseAIProvider
+    ):
         conversation = self.get_conversation(group_id, member_id)
         conversation.set_custom_mode(custom_provider)
 
-    def switch_user_provider(self, group_id: str, member_id: str, new_provider: BaseAIProvider):
+    def switch_user_provider(
+            self, group_id: str, member_id: str, new_provider: BaseAIProvider
+    ):
         conversation = self.get_conversation(group_id, member_id)
         conversation.switch_provider(new_provider)
 
@@ -645,15 +731,24 @@ class ConversationManager:
     def get_total_usage(self, group_id: str, member_id: str) -> int:
         conv_key = self._get_conversation_key(group_id, member_id)
         if conv_key.key in self.conversations:
-            return self.conversations[conv_key.key].provider.get_usage().get("total_tokens", 0)
+            return (
+                self.conversations[conv_key.key]
+                .provider.get_usage()
+                .get("total_tokens", 0)
+            )
         return 0
 
     async def __process_conversation(
-            self, conversation: Conversation,
-            message: str, files: List[FileContent] = None, use_tool: bool = False
+            self,
+            conversation: Conversation,
+            message: str,
+            files: List[FileContent] = None,
+            use_tool: bool = False,
     ) -> str:
         response_chunks = []
-        async for chunk in conversation.process_message(message, files, use_tool=use_tool):
+        async for chunk in conversation.process_message(
+                message, files, use_tool=use_tool
+        ):
             response_chunks.append(chunk)
         return "".join(response_chunks)
 
@@ -663,13 +758,13 @@ class ConversationManager:
         return conversation.get_round()
 
     async def send_message(
-            self, 
-            group_id: str, 
-            member_id: str, 
+            self,
+            group_id: str,
+            member_id: str,
             member_name: str,
-            message: str, 
+            message: str,
             files: List[FileContent] = None,
-            use_tool: bool = False
+            use_tool: bool = False,
     ) -> str | None:
         conv_key = self._get_conversation_key(group_id, member_id)
         conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
@@ -691,13 +786,11 @@ class ConversationManager:
                     return "错误：正在处理群内其他消息，请稍后再试。"
                 async with group_lock:
                     return await self.__process_conversation(
-                        conversation, message, files,
-                        use_tool=use_tool
+                        conversation, message, files, use_tool=use_tool
                     )
             else:
                 return await self.__process_conversation(
-                    conversation, message, files,
-                    use_tool=use_tool
+                    conversation, message, files, use_tool=use_tool
                 )
         finally:
             if conv_lock.locked():

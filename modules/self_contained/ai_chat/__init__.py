@@ -106,6 +106,25 @@ def provider_factory(key: str):
     return create_provider(provider_name, user_id)
 
 
+def get_provider_models(provider_name: str) -> list[str]:
+    """获取指定提供商的可用模型列表"""
+    global g_config_loader
+    if not g_config_loader:
+        raise ValueError("ConfigLoader not initialized")
+
+    provider_config = g_config_loader.get_provider_config(provider_name)
+
+    if provider_name == "deepseek":
+        _config = DeepSeekConfig(**provider_config)
+        provider = DeepSeekProvider(_config)
+        return provider.get_available_models()
+    elif provider_name == "openai":
+        _config = OpenAIConfig(**provider_config)
+        provider = OpenAIProvider(_config)
+        return provider.get_available_models()
+    raise ValueError(f"Unknown provider: {provider_name}")
+
+
 def plugins_factory(key: str):
     """为ConversationManager提供的插件工厂函数"""
     enabled_plugins = []
@@ -264,9 +283,6 @@ async def init():
                     @ "new_thread",
                     ArgumentMatch("-P", "--pic", action="store_true", optional=True)
                     @ "pic",
-                    # -t --tool 参数保留为兼容旧版，但不再需要显式启用工具
-                    ArgumentMatch("-t", "--tool", action="store_true", optional=True)
-                    @ "legacy_tool",
                     # 新增参数 --no-tool 用于禁用工具
                     ArgumentMatch("--no-tool", action="store_true", optional=True)
                     @ "no_tool",
@@ -285,6 +301,8 @@ async def init():
                         "--model-info", "--info", action="store_true", optional=True
                     )
                     @ "show_model_info",
+                    # 切换模型
+                    ArgumentMatch("--model", "-m", optional=True) @ "switch_model",
                     WildcardMatch().flags(re.DOTALL) @ "content",
                 ]
             )
@@ -302,23 +320,23 @@ async def init():
     )
 )
 async def ai_chat(
-        app: Ariadne,
-        group: Group,
-        member: Member,
-        message: MessageChain,
-        source: Source,
-        AtResult: ElementResult,
-        new_thread: ArgResult,
-        pic: ArgResult,
-        legacy_tool: ArgResult,  # 重命名为legacy_tool，表示已过时的参数
-        no_tool: ArgResult,
-        preset: ArgResult,
-        content: RegexResult,
-        show_preset: ArgResult,
-        reload_cfg: ArgResult,
-        clear_history: ArgResult,
-        no_vision: ArgResult,
-        show_model_info: ArgResult,
+    app: Ariadne,
+    group: Group,
+    member: Member,
+    message: MessageChain,
+    source: Source,
+    AtResult: ElementResult,
+    new_thread: ArgResult,
+    pic: ArgResult,
+    no_tool: ArgResult,
+    preset: ArgResult,
+    content: RegexResult,
+    show_preset: ArgResult,
+    reload_cfg: ArgResult,
+    clear_history: ArgResult,
+    no_vision: ArgResult,
+    show_model_info: ArgResult,
+    switch_model: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -372,6 +390,199 @@ async def ai_chat(
             group, MessageChain("已重新加载AI对话模块配置"), quote=source
         )
 
+    if switch_model.matched:
+        model_name = switch_model.result.display.strip()
+        if not model_name:
+            return await app.send_group_message(
+                group,
+                MessageChain("请指定要切换的模型名称，使用 --info 查看可用模型"),
+                quote=source,
+            )
+
+        # 获取当前用户的提供商
+        provider_name = g_config_loader.get_user_provider(member_id_str)
+
+        try:
+            # 检查模型是否在可用列表中
+            models = get_provider_models(provider_name)
+
+            # 获取当前正在使用的模型
+            current_model = g_config_loader.get_user_model(member_id_str, provider_name)
+
+            # 获取当前会话的实际模型
+            current_conversation = g_manager.get_conversation(
+                group_id_str, member_id_str
+            )
+            actual_model = current_conversation.provider.model_name
+
+            if model_name not in models:
+                # 使用实心圆(●)标记当前模型，其他模型使用空心圆(○)
+                models_text = "\n".join(
+                    [
+                        f"- {'●' if model == actual_model else '○'} {model}"
+                        for model in models
+                    ]
+                )
+                return await app.send_group_message(
+                    group,
+                    MessageChain(
+                        f"模型 '{model_name}' 不存在。\n\n当前提供商{provider_name}可用模型：\n{models_text}"
+                    ),
+                    quote=source,
+                )
+
+            # 如果已经在使用这个模型，不需要切换
+            if actual_model == model_name:
+                return await app.send_group_message(
+                    group,
+                    MessageChain(f"已经在使用模型：{model_name}"),
+                    quote=source,
+                )
+
+            # 切换模型并验证结果
+            success, message = g_manager.switch_conversation_model(
+                group_id_str, member_id_str, model_name
+            )
+
+            if success:
+                # 切换成功后再更新用户模型偏好配置
+                g_config_loader.set_user_model(member_id_str, provider_name, model_name)
+
+                return await app.send_group_message(
+                    group,
+                    MessageChain(f"已切换到模型：{model_name}\n对话历史和预设已保留"),
+                    quote=source,
+                )
+            else:
+                # 切换失败，保持原模型不变，并显示失败原因
+                return await app.send_group_message(
+                    group,
+                    MessageChain(
+                        f"模型切换失败：{message}\n\n如需强制切换，请先使用 -n 开始新对话，再使用 --model 切换模型"
+                    ),
+                    quote=source,
+                )
+        except Exception as e:
+            logger.error(f"切换模型时出错: {str(e)}")
+            return await app.send_group_message(
+                group, MessageChain(f"切换模型时出错: {str(e)}"), quote=source
+            )
+
+    if show_model_info.matched:
+        # 获取当前会话对象
+        conversation = g_manager.get_conversation(group_id_str, member_id_str)
+        provider = conversation.provider
+
+        # 收集模型信息
+        provider_name = provider.__class__.__name__
+        model_name = provider.model_name
+        model_config = provider.model_config
+        max_tokens = model_config.max_tokens
+        max_total_tokens = model_config.max_total_tokens
+
+        # 多模态支持情况
+        supports_vision = "✅ 支持" if model_config.supports_vision else "❌ 不支持"
+        supports_audio = "✅ 支持" if model_config.supports_audio else "❌ 不支持"
+        supports_document = "✅ 支持" if model_config.supports_document else "❌ 不支持"
+
+        # 工具调用支持
+        supports_tools = "✅ 支持" if model_config.supports_tool_calls else "❌ 不支持"
+
+        # 会话状态
+        current_round = conversation.get_round()
+        has_conversation = current_round > 0
+        conversation_status = (
+            f"已有 {current_round} 轮对话" if has_conversation else "暂无对话"
+        )
+        usage_tokens = provider.get_usage().get("total_tokens", 0)
+
+        # 插件信息
+        loaded_plugins = conversation.plugins
+        plugin_count = len(loaded_plugins)
+
+        # 格式化插件信息，包含名称和描述
+        plugin_info = ""
+        if plugin_count > 0:
+            plugin_info = "\n\n### 已加载插件详情\n"
+            for plugin in loaded_plugins:
+                plugin_name = plugin.description.name
+                # 使用HTML <br>标签替换换行符，确保不会破坏Markdown列表结构
+                plugin_desc = plugin.description.description.replace("\n", "<br>")
+                plugin_info += f"- **{plugin_name}**: {plugin_desc}\n"
+        else:
+            plugin_info = "\n\n目前没有加载任何插件"
+
+        # 群聊模式
+        group_mode = g_manager.get_group_mode(group_id_str).name
+        user_mode = g_manager.get_user_mode(group_id_str, member_id_str).name
+
+        # 预设信息
+        preset_info = "未设置"
+        if conversation.preset:
+            # 限制显示的预设长度，过长时截断
+            preset_text = conversation.preset
+            preset_info = f"{preset_text}"
+
+        # 获取当前提供商的可用模型列表
+        try:
+            available_models = get_provider_models(
+                g_config_loader.get_user_provider(member_id_str)
+            )
+            available_models_text = "\n".join(
+                [
+                    f"- `{model}`{' (当前)' if model == model_name else ''}"
+                    for model in available_models
+                ]
+            )
+            models_info = f"\n\n## 可用模型\n可以使用 `--model <模型名>` 切换模型\n\n{available_models_text}"
+        except Exception as e:
+            models_info = f"\n\n## 可用模型\n获取模型列表失败: {str(e)}"
+
+        # 构建信息字符串
+        info_md = f"""
+# AI模型信息
+
+## 基本信息
+- **提供商**: {provider_name}
+- **模型名称**: {model_name}
+- **单次输出上限**: {max_tokens} tokens
+- **上下文窗口**: {max_total_tokens} tokens
+{models_info}
+
+## 多模态支持
+- **图片**: {supports_vision}
+- **音频**: {supports_audio}
+- **文档**: {supports_document}
+- **工具调用**: {supports_tools}
+
+## 会话状态
+- **当前状态**: {conversation_status}
+- **已消耗**: {usage_tokens} tokens
+- **对话模式**: 群聊({group_mode}) / 用户({user_mode})
+
+## 插件信息
+- **已加载插件数量**: {plugin_count} 个{plugin_info}
+
+## 预设信息
+- **当前预设**: {preset_info}
+"""
+
+        # 渲染为图片
+        converter = MarkdownToImageConverter(
+            browser=app.current()
+            .launch_manager.get_interface(PlaywrightBrowser)
+            .browser
+        )
+        img_bytes = await converter.convert_markdown(
+            info_md,
+            theme=Theme.DARK,
+            output_mode=OutputMode.BINARY,
+            highlight_theme=HighlightTheme.ATOM_ONE_DARK,
+        )
+        return await app.send_group_message(
+            group, MessageChain(GraiaImage(data_bytes=img_bytes)), quote=source
+        )
+
     if show_preset.matched:
         return await app.send_group_message(
             group,
@@ -380,7 +591,7 @@ async def ai_chat(
                     data_bytes=await html2img(
                         MarkdownToImageConverter.generate_html(
                             "# 预设列表\n\n" + "> 请使用标题括号前的文本进行设置\n"
-                                               "## 当前预设\n\n"
+                            "## 当前预设\n\n"
                             + f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n"
                             + "## 内置预设：\n\n"
                             + "\n\n".join(
@@ -444,107 +655,8 @@ async def ai_chat(
             group, MessageChain("已清除对话历史"), quote=source
         )
 
-    if show_model_info.matched:
-        # 获取当前会话对象
-        conversation = g_manager.get_conversation(group_id_str, member_id_str)
-        provider = conversation.provider
-
-        # 收集模型信息
-        provider_name = provider.__class__.__name__
-        model_name = provider.model_name
-        model_config = provider.model_config
-        max_tokens = model_config.max_tokens
-        max_total_tokens = model_config.max_total_tokens
-
-        # 多模态支持情况
-        supports_vision = "✅ 支持" if model_config.supports_vision else "❌ 不支持"
-        supports_audio = "✅ 支持" if model_config.supports_audio else "❌ 不支持"
-        supports_document = "✅ 支持" if model_config.supports_document else "❌ 不支持"
-
-        # 工具调用支持
-        supports_tools = "✅ 支持" if model_config.supports_tool_calls else "❌ 不支持"
-
-        # 会话状态
-        current_round = conversation.get_round()
-        has_conversation = current_round > 0
-        conversation_status = (
-            f"已有 {current_round} 轮对话" if has_conversation else "暂无对话"
-        )
-        usage_tokens = provider.get_usage().get("total_tokens", 0)
-
-        # 插件信息
-        loaded_plugins = conversation.plugins
-        plugin_count = len(loaded_plugins)
-
-        # 格式化插件信息，包含名称和描述
-        plugin_info = ""
-        if plugin_count > 0:
-            plugin_info = "\n\n### 已加载插件详情\n"
-            for plugin in loaded_plugins:
-                plugin_name = plugin.description.name
-                # 使用HTML <br>标签替换换行符，确保不会破坏Markdown列表结构
-                plugin_desc = plugin.description.description.replace("\n", "<br>")
-                plugin_info += f"- **{plugin_name}**: {plugin_desc}\n"
-        else:
-            plugin_info = "\n\n目前没有加载任何插件"
-
-        # 群聊模式
-        group_mode = g_manager.get_group_mode(group_id_str).name
-        user_mode = g_manager.get_user_mode(group_id_str, member_id_str).name
-
-        # 预设信息
-        preset_info = "未设置"
-        if conversation.preset:
-            # 限制显示的预设长度，过长时截断
-            preset_text = conversation.preset
-            preset_info = f"{preset_text}"
-
-        # 构建信息字符串
-        info_md = f"""
-# AI模型信息
-
-## 基本信息
-- **提供商**: {provider_name}
-- **模型名称**: {model_name}
-- **单次输出上限**: {max_tokens} tokens
-- **上下文窗口**: {max_total_tokens} tokens
-
-## 多模态支持
-- **图片**: {supports_vision}
-- **音频**: {supports_audio}
-- **文档**: {supports_document}
-- **工具调用**: {supports_tools}
-
-## 会话状态
-- **当前状态**: {conversation_status}
-- **已消耗**: {usage_tokens} tokens
-- **对话模式**: 群聊({group_mode}) / 用户({user_mode})
-
-## 插件信息
-- **已加载插件数量**: {plugin_count} 个{plugin_info}
-
-## 预设信息
-- **当前预设**: {preset_info}
-"""
-
-        # 渲染为图片
-        converter = MarkdownToImageConverter(
-            browser=app.current()
-            .launch_manager.get_interface(PlaywrightBrowser)
-            .browser
-        )
-        img_bytes = await converter.convert_markdown(
-            info_md,
-            theme=Theme.DARK,
-            output_mode=OutputMode.BINARY,
-            highlight_theme=HighlightTheme.ATOM_ONE_DARK,
-        )
-        return await app.send_group_message(
-            group, MessageChain(GraiaImage(data_bytes=img_bytes)), quote=source
-        )
-
     if not content_text and not any(
-            isinstance(elem, (Image, File)) for elem in message
+        isinstance(elem, (Image, File)) for elem in message
     ):
         return
 

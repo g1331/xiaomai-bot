@@ -22,13 +22,13 @@ class FileContent:
     """文件内容结构"""
 
     def __init__(
-            self,
-            file_type: FileType,
-            file_bytes: bytes = None,
-            file_path: str = None,
-            file_url: str = None,
-            file_name: str = None,
-            mime_type: str = None,
+        self,
+        file_type: FileType,
+        file_bytes: bytes = None,
+        file_path: str = None,
+        file_url: str = None,
+        file_name: str = None,
+        mime_type: str = None,
     ):
         self.file_type = file_type
         self.file_bytes = file_bytes
@@ -93,11 +93,11 @@ class BaseAIProvider(ABC):
 
     @abstractmethod
     async def ask(
-            self,
-            messages: List[Dict[str, Any]],
-            files: List[FileContent] = None,
-            tools: List[Dict[str, Any]] = None,
-            **kwargs,
+        self,
+        messages: List[Dict[str, Any]],
+        files: List[FileContent] = None,
+        tools: List[Dict[str, Any]] = None,
+        **kwargs,
     ) -> AsyncGenerator[Any, None]:
         """
         纯粹的消息接口封装,接收完整的消息列表和工具配置
@@ -169,3 +169,10 @@ class BaseAIProvider(ABC):
             return []
 
         return [f for f in files if self.supports_file_type(f.file_type)]
+
+    def get_available_models(self) -> list[str]:
+        """获取当前提供商可用的模型列表"""
+        # 默认实现返回当前模型
+        if hasattr(self, "model_name") and self.model_name:
+            return [self.model_name]
+        return []

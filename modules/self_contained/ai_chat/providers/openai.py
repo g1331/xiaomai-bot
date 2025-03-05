@@ -112,3 +112,8 @@ class OpenAIProvider(OpenAICompatibleProvider):
                     elif item.get("type") == "image_url":
                         token_count += 1000
         return token_count
+
+    def get_available_models(self) -> list[str]:
+        """获取OpenAI可用的模型列表"""
+        # 返回配置中支持的模型
+        return list(self.config.models.keys())

@@ -11,10 +11,10 @@ from typing import AsyncGenerator, List
 
 from loguru import logger
 
-from .preset import preset_dict
 from ..config import CONFIG_PATH
 from ..core.plugin import BasePlugin
 from ..core.provider import BaseAIProvider, FileContent
+from .preset import preset_dict
 
 
 class Conversation:
@@ -33,8 +33,18 @@ class Conversation:
         self._maybe_add_time_message()
 
     def switch_provider(self, new_provider: BaseAIProvider):
+        """切换提供商，同时保留历史和预设"""
         if self.mode == Conversation.Mode.DEFAULT:
+            # 记录旧提供商的token消耗信息，以便在新提供商中保持连续性
+            old_usage = self.provider.get_usage()
             self.provider = new_provider
+            # 将旧使用情况传递给新提供商，确保历史token统计的连续性
+            for key, value in old_usage.items():
+                if hasattr(self.provider.usage, key):
+                    self.provider.usage[key] = value
+            logger.info(
+                f"已切换到新提供商: {new_provider.__class__.__name__}, 模型: {new_provider.model_name}"
+            )
 
     def set_custom_mode(self, custom_provider: BaseAIProvider):
         self.mode = Conversation.Mode.CUSTOM
@@ -77,8 +87,8 @@ class Conversation:
     def get_round(self) -> int:
         # 要排除 system 和 tool 的消息，然后计算 user 和 assistant 的消息数量，然后除以 2
         return (
-                len([msg for msg in self.history if msg["role"] in ["user", "assistant"]])
-                // 2
+            len([msg for msg in self.history if msg["role"] in ["user", "assistant"]])
+            // 2
         )
 
     def _maybe_add_time_message(self):
@@ -120,16 +130,16 @@ class Conversation:
         while i < len(self.history) and iteration_count < max_iterations:
             # 如果是工具调用，则遍历一直到下一个非工具调用消息
             if (
-                    self.history[i]["role"] == "assistant"
-                    and self.history[i]["tool_calls"] is not None
-                    and i + 1 < len(self.history)
+                self.history[i]["role"] == "assistant"
+                and self.history[i]["tool_calls"] is not None
+                and i + 1 < len(self.history)
             ):
                 # 如果是assistant消息，检查后面是否有相关的tool消息
                 next_index = i + 1
                 tool_indices = []
                 while (
-                        next_index < len(self.history)
-                        and self.history[next_index]["role"] == "tool"
+                    next_index < len(self.history)
+                    and self.history[next_index]["role"] == "tool"
                 ):
                     tool_indices.append(next_index)
                     next_index += 1
@@ -257,7 +267,7 @@ class Conversation:
         return unique_tool_calls, skipped_by_id, skipped_by_key
 
     async def process_message(
-            self, user_input: str, files: List[FileContent] = None, use_tool: bool = False
+        self, user_input: str, files: List[FileContent] = None, use_tool: bool = False
     ) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用
 
@@ -332,12 +342,12 @@ class Conversation:
                 else:
                     # 确保字符串内容不超过API限制
                     if (
-                            isinstance(msg["content"], str)
-                            and len(msg["content"]) > max_input_length
+                        isinstance(msg["content"], str)
+                        and len(msg["content"]) > max_input_length
                     ):
                         msg_copy = msg.copy()
                         msg_copy["content"] = (
-                                msg["content"][:max_input_length] + "...(内容已截断)"
+                            msg["content"][:max_input_length] + "...(内容已截断)"
                         )
                         sanitized_history.append(msg_copy)
                     else:
@@ -361,8 +371,8 @@ class Conversation:
                     msg for msg in ask_messages if msg.get("role") != "system"
                 ]
                 ask_messages = (
-                        system_messages
-                        + non_system_messages[-max_messages + len(system_messages):]
+                    system_messages
+                    + non_system_messages[-max_messages + len(system_messages) :]
                 )
 
             # 判断当前提供者是否支持工具调用
@@ -398,9 +408,9 @@ class Conversation:
 
             try:
                 async for response in self.provider.ask(
-                        messages=ask_messages,
-                        files=files,
-                        tools=tools if use_tool else None,
+                    messages=ask_messages,
+                    files=files,
+                    tools=tools if use_tool else None,
                 ):
                     # 检查是否被中断
                     if self.interrupted:
@@ -408,10 +418,10 @@ class Conversation:
                         return
 
                     if (
-                            use_tool
-                            and tools
-                            and hasattr(response, "tool_calls")
-                            and response.tool_calls
+                        use_tool
+                        and tools
+                        and hasattr(response, "tool_calls")
+                        and response.tool_calls
                     ):
                         # 对tool_calls进行去重处理
                         tool_calls, skipped_by_id, skipped_by_key = (
@@ -485,7 +495,7 @@ class Conversation:
                         final_ask_messages = ask_messages + tool_response_messages
                         try:
                             async for final_chunk in self.provider.ask(
-                                    messages=final_ask_messages
+                                messages=final_ask_messages
                             ):
                                 content = (
                                     final_chunk.content
@@ -529,6 +539,42 @@ class Conversation:
             logger.error(f"Error in process_message: {e}")
             yield f"处理消息时发生错误: {str(e)}"
 
+    def check_model_compatibility(self, model_config) -> tuple[bool, str]:
+        """
+        检查给定的模型配置是否与当前会话历史兼容
+
+        Args:
+            model_config: 要检查的模型配置
+
+        Returns:
+            tuple: (是否兼容, 不兼容的原因)
+        """
+        # 检查历史中是否有工具调用
+        has_tool_calls = any(
+            msg.get("role") == "assistant" and msg.get("tool_calls")
+            for msg in self.history
+        )
+        if has_tool_calls and not model_config.supports_tool_calls:
+            return False, "当前会话包含工具调用记录，但目标模型不支持工具调用"
+
+        # 检查历史中是否有多模态内容
+        has_vision_content = False
+        for msg in self.history:
+            content = msg.get("content", "")
+            if isinstance(content, list):
+                # 检查多模态内容
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "image_url":
+                        has_vision_content = True
+                        break
+            if has_vision_content:
+                break
+
+        if has_vision_content and not model_config.supports_vision:
+            return False, "当前会话包含图像内容，但目标模型不支持视觉功能"
+
+        return True, ""
+
 
 class ConversationManager:
     CONFIG_FILE = CONFIG_PATH / "chat_run_mode_config.json"  # 配置文件路径
@@ -545,11 +591,11 @@ class ConversationManager:
         """会话密钥管理"""
 
         def __init__(
-                self, manager: "ConversationManager", group_id: str, member_id: str
+            self, manager: "ConversationManager", group_id: str, member_id: str
         ):
             self.key = self._generate_key(manager, group_id, member_id)
             self.is_shared = (
-                    manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
+                manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
             )
             self.lock_key = (
                 f"group:{self.key}" if self.is_shared else f"user:{self.key}"
@@ -557,15 +603,15 @@ class ConversationManager:
 
         @staticmethod
         def _generate_key(
-                manager: "ConversationManager", group_id: str, member_id: str
+            manager: "ConversationManager", group_id: str, member_id: str
         ) -> str:
             """生成会话密钥"""
             if manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED:
                 return group_id
             else:
                 if (
-                        manager.get_user_mode(group_id, member_id)
-                        == ConversationManager.UserMode.GLOBAL
+                    manager.get_user_mode(group_id, member_id)
+                    == ConversationManager.UserMode.GLOBAL
                 ):
                     return f"global-{member_id}"
                 else:
@@ -597,7 +643,7 @@ class ConversationManager:
             pass
 
     def update_group_mode(
-            self, group_id: str, new_mode: "ConversationManager.GroupMode"
+        self, group_id: str, new_mode: "ConversationManager.GroupMode"
     ):
         group_config = self._configs.setdefault(group_id, {})
         group_config["group_mode"] = new_mode.value
@@ -605,7 +651,7 @@ class ConversationManager:
         asyncio.create_task(self._delayed_save_configs())
 
     def update_user_mode(
-            self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"
+        self, group_id: str, member_id: str, new_mode: "ConversationManager.UserMode"
     ):
         group_config = self._configs.setdefault(group_id, {})
         user_modes = group_config.setdefault("user_modes", {})
@@ -621,7 +667,7 @@ class ConversationManager:
 
     # 获取用户模式，默认返回 GLOBAL
     def get_user_mode(
-            self, group_id: str, member_id: str
+        self, group_id: str, member_id: str
     ) -> "ConversationManager.UserMode":
         group_config = self._configs.get(group_id, {})
         user_modes = group_config.get("user_modes", {})
@@ -633,7 +679,7 @@ class ConversationManager:
         return self.ConversationKey(self, group_id, member_id)
 
     def _create_conversation(
-            self, conv_key: ConversationKey, preset: str = ""
+        self, conv_key: ConversationKey, preset: str = ""
     ) -> Conversation:
         """创建新的对话实例"""
         provider = self.provider_factory(conv_key.key)
@@ -659,6 +705,12 @@ class ConversationManager:
         conv_key = self._get_conversation_key(group_id, member_id)
         if conv_key.key in self.conversations:
             del self.conversations[conv_key.key]
+            # 同时清理相关锁
+            if conv_key.lock_key in self.locks:
+                del self.locks[conv_key.lock_key]
+            if conv_key.is_shared and f"group:{group_id}" in self.locks:
+                del self.locks[f"group:{group_id}"]
+            logger.info(f"已移除会话: {conv_key.key}")
 
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
         conv_key = self._get_conversation_key(group_id, member_id)
@@ -678,9 +730,9 @@ class ConversationManager:
             del self.locks[conv_key.lock_key]
 
         if (
-                conv_key.is_shared
-                and f"group:{group_id}" in self.locks
-                and self.locks[f"group:{group_id}"].locked()
+            conv_key.is_shared
+            and f"group:{group_id}" in self.locks
+            and self.locks[f"group:{group_id}"].locked()
         ):
             logger.info("检测到群聊对话未结束，打断并覆盖旧群对话。")
             if conv_key.key in self.conversations:
@@ -700,13 +752,13 @@ class ConversationManager:
         return conversation
 
     def set_user_custom_mode(
-            self, group_id: str, member_id: str, custom_provider: BaseAIProvider
+        self, group_id: str, member_id: str, custom_provider: BaseAIProvider
     ):
         conversation = self.get_conversation(group_id, member_id)
         conversation.set_custom_mode(custom_provider)
 
     def switch_user_provider(
-            self, group_id: str, member_id: str, new_provider: BaseAIProvider
+        self, group_id: str, member_id: str, new_provider: BaseAIProvider
     ):
         conversation = self.get_conversation(group_id, member_id)
         conversation.switch_provider(new_provider)
@@ -739,15 +791,15 @@ class ConversationManager:
         return 0
 
     async def __process_conversation(
-            self,
-            conversation: Conversation,
-            message: str,
-            files: List[FileContent] = None,
-            use_tool: bool = False,
+        self,
+        conversation: Conversation,
+        message: str,
+        files: List[FileContent] = None,
+        use_tool: bool = False,
     ) -> str:
         response_chunks = []
         async for chunk in conversation.process_message(
-                message, files, use_tool=use_tool
+            message, files, use_tool=use_tool
         ):
             response_chunks.append(chunk)
         return "".join(response_chunks)
@@ -758,13 +810,13 @@ class ConversationManager:
         return conversation.get_round()
 
     async def send_message(
-            self,
-            group_id: str,
-            member_id: str,
-            member_name: str,
-            message: str,
-            files: List[FileContent] = None,
-            use_tool: bool = False,
+        self,
+        group_id: str,
+        member_id: str,
+        member_name: str,
+        message: str,
+        files: List[FileContent] = None,
+        use_tool: bool = False,
     ) -> str | None:
         conv_key = self._get_conversation_key(group_id, member_id)
         conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
@@ -795,3 +847,53 @@ class ConversationManager:
         finally:
             if conv_lock.locked():
                 conv_lock.release()
+
+    def switch_conversation_model(
+        self, group_id: str, member_id: str, model_name: str
+    ) -> tuple[bool, str]:
+        """
+        为现有会话切换模型，保留对话历史和预设
+
+        Args:
+            group_id: 群组ID
+            member_id: 成员ID
+            model_name: 目标模型名称
+
+        Returns:
+            tuple: (是否成功切换, 成功/失败的详细信息)
+        """
+        conv_key = self._get_conversation_key(group_id, member_id)
+
+        # 检查会话是否存在
+        if conv_key.key not in self.conversations:
+            return False, "会话不存在，请先开始对话"
+
+        conversation = self.conversations[conv_key.key]
+        current_provider = conversation.provider
+
+        try:
+            # 创建新的提供商实例以获取目标模型配置
+            new_provider = self.provider_factory(conv_key.key)
+
+            # 先检查模型是否有效
+            try:
+                new_provider.switch_model(model_name)
+            except ValueError as e:
+                return False, f"模型切换失败: {str(e)}"
+
+            # 检查模型与当前会话的兼容性
+            compatible, reason = conversation.check_model_compatibility(
+                new_provider.model_config
+            )
+            if not compatible:
+                return False, reason
+
+            # 直接在当前提供商上切换模型
+            current_provider.switch_model(model_name)
+            logger.info(f"会话 {conv_key.key} 直接切换到模型 {model_name}")
+            return True, f"已成功切换到模型 {model_name}"
+
+        except Exception as e:
+            error_msg = f"切换会话模型失败: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg

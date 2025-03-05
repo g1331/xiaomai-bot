@@ -12,8 +12,13 @@ CONFIG_PATH = Path("data/ai_chat")
 
 
 class ConfigLoader:
-    def __init__(self, config_path: Path = CONFIG_PATH / "ai_chat.json"):
+    def __init__(
+        self,
+        config_path: Path = CONFIG_PATH / "ai_chat.json",
+        user_prefs_path: Path = CONFIG_PATH / "user_preferences.json",
+    ):
         self.config_path = config_path
+        self.user_prefs_path = user_prefs_path
         self.default_config = {
             "providers": {
                 "openai": {
@@ -54,7 +59,7 @@ class ConfigLoader:
                             "max_total_tokens": 64000,
                             "supports_tool_calls": True,
                         },
-                        "deepseek-r1": {
+                        "deepseek-reasoner": {
                             "max_tokens": 8192,
                             "max_total_tokens": 64000,
                             "supports_tool_calls": False,
@@ -65,10 +70,14 @@ class ConfigLoader:
             "plugins": {},  # 将由自动生成填充
             "user_preferences": {
                 "default": {"provider": "deepseek", "model": "deepseek-chat"},
-                "users": {},
             },
         }
+        self.default_user_prefs = {
+            "default": {"provider": "deepseek", "model": "deepseek-chat"},
+            "users": {},
+        }
         self._config = self.load_config()
+        self._user_prefs = self.load_user_preferences()
         self._update_plugins_config()
         self._migrate_old_config_if_needed()
 
@@ -87,29 +96,47 @@ class ConfigLoader:
             logger.info(f"[AIChat]Config loaded from: {self.config_path}")
             return config
 
+    def load_user_preferences(self) -> Dict[str, Any]:
+        """加载用户偏好设置文件"""
+        if not self.user_prefs_path.exists():
+            self.user_prefs_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.user_prefs_path, "w") as f:
+                json.dump(self.default_user_prefs, f, indent=4, ensure_ascii=False)
+            logger.info(
+                f"[AIChat]User preferences not found, created at: {self.user_prefs_path}"
+            )
+            return self.default_user_prefs
+
+        with open(self.user_prefs_path) as f:
+            prefs = json.load(f)
+            logger.info(f"[AIChat]User preferences loaded from: {self.user_prefs_path}")
+            return prefs
+
     def save_config(self):
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(self._config, f, indent=4, ensure_ascii=False)
 
+    def save_user_preferences(self):
+        """保存用户偏好设置"""
+        with open(self.user_prefs_path, "w", encoding="utf-8") as f:
+            json.dump(self._user_prefs, f, indent=4, ensure_ascii=False)
+
     def _migrate_old_config_if_needed(self):
         """迁移旧版配置到新版配置结构"""
         # 检测旧版配置结构
-        if "user_providers" in self._config and "user_preferences" not in self._config:
+        if "user_providers" in self._config:
             logger.info("[AIChat]检测到旧版配置结构，正在迁移...")
 
             old_providers = self._config.pop("user_providers", {})
             default_provider = old_providers.get("default", "deepseek")
             user_providers = old_providers.get("users", {})
 
-            # 创建新的用户偏好配置
-            user_preferences = {
-                "default": {
-                    "provider": default_provider,
-                    "model": self._config["providers"]
-                    .get(default_provider, {})
-                    .get("default_model", ""),
-                },
-                "users": {},
+            # 设置默认提供商和模型
+            self._user_prefs["default"] = {
+                "provider": default_provider,
+                "model": self._config["providers"]
+                .get(default_provider, {})
+                .get("default_model", ""),
             }
 
             # 迁移用户提供商配置
@@ -117,31 +144,68 @@ class ConfigLoader:
                 default_model = (
                     self._config["providers"].get(provider, {}).get("default_model", "")
                 )
-                user_preferences["users"][user_id] = {
+                self._user_prefs["users"][user_id] = {
                     "provider": provider,
                     "model": default_model,
                 }
 
-            self._config["user_preferences"] = user_preferences
+            self.save_user_preferences()
 
-            # 迁移旧版提供商配置到新版模型结构
-            for provider, config in list(self._config["providers"].items()):
-                if "model" in config and "models" not in config:
-                    model_name = config.pop("model", "")
-                    max_tokens = config.pop("max_tokens", 8192)
+        # 从主配置中迁移用户偏好到单独文件
+        if "user_preferences" in self._config:
+            logger.info("[AIChat]将用户偏好从主配置迁移到单独文件...")
 
-                    # 创建默认模型配置
-                    config["default_model"] = model_name
-                    config["models"] = {
-                        model_name: {
-                            "max_tokens": max_tokens,
-                            "max_total_tokens": max_tokens * 4,  # 默认为输出限制的4倍
-                            "supports_tool_calls": False,  # 默认不支持工具调用
+            # 将主配置中的用户偏好合并到用户偏好文件
+            old_prefs = self._config.pop("user_preferences", {})
+
+            # 迁移默认设置
+            if "default" in old_prefs:
+                self._user_prefs["default"] = old_prefs["default"]
+
+            # 迁移用户设置
+            if "users" in old_prefs:
+                for user_id, prefs in old_prefs["users"].items():
+                    self._user_prefs["users"][user_id] = prefs
+
+            # 迁移可能保存在user_models中的用户模型偏好
+            if "user_models" in self._config:
+                for user_id, provider_models in self._config.pop(
+                    "user_models", {}
+                ).items():
+                    if user_id not in self._user_prefs["users"]:
+                        # 获取用户默认提供商
+                        default_provider = self._user_prefs["default"]["provider"]
+                        self._user_prefs["users"][user_id] = {
+                            "provider": default_provider,
+                            "model": "",
                         }
-                    }
+
+                    # 设置用户的模型偏好
+                    for provider, model in provider_models.items():
+                        if self._user_prefs["users"][user_id]["provider"] == provider:
+                            self._user_prefs["users"][user_id]["model"] = model
 
             self.save_config()
-            logger.success("[AIChat]配置迁移完成")
+            self.save_user_preferences()
+            logger.success("[AIChat]用户偏好迁移完成")
+
+        # 迁移旧版提供商配置到新版模型结构
+        for provider, config in list(self._config["providers"].items()):
+            if "model" in config and "models" not in config:
+                model_name = config.pop("model", "")
+                max_tokens = config.pop("max_tokens", 8192)
+
+                # 创建默认模型配置
+                config["default_model"] = model_name
+                config["models"] = {
+                    model_name: {
+                        "max_tokens": max_tokens,
+                        "max_total_tokens": max_tokens * 4,  # 默认为输出限制的4倍
+                        "supports_tool_calls": False,  # 默认不支持工具调用
+                    }
+                }
+
+        self.save_config()
 
     def _update_plugins_config(self):
         """根据已注册的插件更新配置"""
@@ -168,13 +232,11 @@ class ConfigLoader:
     def get_user_preference(self, user_id: str) -> Dict[str, str]:
         """获取用户偏好设置，包括提供商和模型"""
         if not user_id:
-            return self._config["user_preferences"]["default"]
+            return self._user_prefs["default"]
 
-        user_prefs = (
-            self._config.get("user_preferences", {}).get("users", {}).get(user_id)
-        )
+        user_prefs = self._user_prefs.get("users", {}).get(user_id)
         if not user_prefs:
-            return self._config["user_preferences"]["default"]
+            return self._user_prefs["default"]
 
         return user_prefs
 
@@ -218,22 +280,43 @@ class ConfigLoader:
                 f"Model {model} not available for provider {provider}, using default model"
             )
 
-        # 确保user_preferences结构存在
-        if "user_preferences" not in self._config:
-            self._config["user_preferences"] = {
-                "default": {"provider": "deepseek", "model": "deepseek-chat"},
-                "users": {},
-            }
-
-        self._config["user_preferences"].setdefault("users", {})[user_id] = {
+        # 更新用户偏好
+        self._user_prefs.setdefault("users", {})[user_id] = {
             "provider": provider,
             "model": model,
         }
-        self.save_config()
+        self.save_user_preferences()
+
+    def set_user_model(self, user_id: str, provider_name: str, model_name: str) -> None:
+        """设置用户偏好的模型"""
+        if not user_id:
+            return
+
+        # 验证模型是否有效
+        provider_config = self.get_provider_config(provider_name)
+        if model_name not in provider_config["models"]:
+            raise ValueError(f"无效的模型名称: {model_name}")
+
+        # 获取当前用户偏好
+        current_pref = self.get_user_preference(user_id)
+
+        # 如果用户当前的提供商与要设置的不同，则更新用户配置中的提供商
+        if current_pref.get("provider") != provider_name:
+            self._user_prefs.setdefault("users", {})[user_id] = {
+                "provider": provider_name,
+                "model": model_name,
+            }
+        else:
+            # 如果提供商相同，只更新模型
+            self._user_prefs.setdefault("users", {})[user_id]["model"] = model_name
+
+        # 保存用户偏好
+        self.save_user_preferences()
+        logger.info(f"已设置用户 {user_id} 的模型为 {provider_name}:{model_name}")
 
     def get_default_preference(self) -> Dict[str, str]:
         """获取默认的提供商和模型偏好"""
-        return self._config["user_preferences"]["default"]
+        return self._user_prefs["default"]
 
     def set_default_preference(self, provider: str, model: Optional[str] = None):
         """设置默认的提供商和模型偏好"""
@@ -252,11 +335,11 @@ class ConfigLoader:
                 f"Model {model} not available for provider {provider}, using default model"
             )
 
-        self._config["user_preferences"]["default"] = {
+        self._user_prefs["default"] = {
             "provider": provider,
             "model": model,
         }
-        self.save_config()
+        self.save_user_preferences()
 
     def get_provider_config(self, provider_name: str) -> Dict[str, Any]:
         """获取提供商配置"""
@@ -312,3 +395,7 @@ class ConfigLoader:
     @property
     def config(self):
         return self._config
+
+    @property
+    def user_preferences(self):
+        return self._user_prefs

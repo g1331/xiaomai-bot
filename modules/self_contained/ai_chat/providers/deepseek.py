@@ -27,8 +27,8 @@ class DeepSeekConfig(OpenAICompatibleConfig):
                 max_total_tokens=64000,
                 supports_tool_calls=True,
             )
-            self.models["deepseek-r1"] = ModelConfig(
-                name="deepseek-r1",
+            self.models["deepseek-reasoner"] = ModelConfig(
+                name="deepseek-reasoner",
                 max_tokens=8192,
                 max_total_tokens=64000,
                 supports_tool_calls=True,
@@ -94,3 +94,8 @@ class DeepSeekProvider(OpenAICompatibleProvider):
                     elif item.get("type") == "image_url":
                         total_tokens += 1000
         return int(total_tokens)
+
+    def get_available_models(self) -> list[str]:
+        """获取DeepSeek可用的模型列表"""
+        # 返回配置中支持的模型
+        return list(self.config.models.keys())

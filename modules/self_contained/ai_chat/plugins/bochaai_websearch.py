@@ -31,11 +31,15 @@ EndPoint：https://api.bochaai.com/v1/web-search
 本插件将返回格式化后的搜索结果文本，主要展示网页标题、描述和链接。
 """
 
-from typing import Dict, Any, Set
+from typing import Any, Dict, Set
 
 import aiohttp
 
-from modules.self_contained.ai_chat.core.plugin import BasePlugin, PluginConfig, PluginDescription
+from modules.self_contained.ai_chat.core.plugin import (
+    BasePlugin,
+    PluginConfig,
+    PluginDescription,
+)
 
 
 class BochaaiWebSearchConfig(PluginConfig):
@@ -50,6 +54,7 @@ class BochaaiWebSearchConfig(PluginConfig):
         page: 页码，默认 1。
         endpoint: API 接口地址，固定为 "https://api.bochaai.com/v1/web-search"。
     """
+
     freshness: str = "noLimit"
     summary: bool = False
     count: int = 10
@@ -80,15 +85,15 @@ class BochaaiWebSearchPlugin(BasePlugin):
     def description(self) -> PluginDescription:
         return PluginDescription(
             name="bochaai_websearch",
-            description="博查AI高级搜索插件，通过博查AI开放平台 API 实现网页搜索，支持时间范围、摘要显示、结果条数及页码设置。",
+            description="通过博查AI接口执行网页搜索。支持设置时间范围、结果摘要、分页等高级功能。",
             parameters={
                 "query": "搜索关键词",
-                "freshness": "搜索时间范围，可选值：oneDay, oneWeek, oneMonth, oneYear, noLimit（默认）",
-                "summary": "是否返回文本摘要，取值 true 或 false，默认 false",
-                "count": "返回结果条数（范围 1-10），默认 10",
-                "page": "页码，默认 1"
+                "freshness": "搜索时间范围，可选值：oneDay(一日内), oneWeek(一周内), oneMonth(一月内), oneYear(一年内), noLimit(不限)",
+                "summary": "是否返回文本摘要，取值true或false",
+                "count": "返回结果条数(1-10)",
+                "page": "页码",
             },
-            example="搜索 'Python教程'，freshness 设为 oneWeek，summary 设为 true，count 为 5"
+            example="{'query': 'Python教程', 'freshness': 'oneWeek', 'summary': true, 'count': 5}",
         )
 
     async def execute(self, parameters: Dict[str, Any]) -> str:
@@ -118,14 +123,16 @@ class BochaaiWebSearchPlugin(BasePlugin):
             "freshness": freshness,
             "summary": summary,
             "count": count,
-            "page": page
+            "page": page,
         }
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         async with aiohttp.ClientSession() as session:
-            async with session.post(self.config.endpoint, json=payload, headers=headers) as response:
+            async with session.post(
+                    self.config.endpoint, json=payload, headers=headers
+            ) as response:
                 if response.status != 200:
                     return f"请求失败，状态码：{response.status}"
                 data = await response.json()

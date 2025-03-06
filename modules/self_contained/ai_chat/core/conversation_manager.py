@@ -267,6 +267,74 @@ class ConversationManager:
         conversation = self.get_conversation(group_id, member_id)
         return conversation.get_round()
 
+    def can_retry(self, group_id: str, member_id: str) -> Tuple[bool, str]:
+        """检查是否可以重试上一次对话
+
+        Args:
+            group_id: 群组ID
+            member_id: 成员ID
+
+        Returns:
+            Tuple[bool, str]: (是否可以重试, 成功/失败的原因)
+        """
+        try:
+            conversation = self.get_conversation(group_id, member_id)
+            return conversation.can_retry()
+        except Exception as e:
+            logger.error(f"检查重试状态时出错: {str(e)}")
+            return False, f"检查重试状态时出错: {str(e)}"
+
+    async def retry(
+        self,
+        group_id: str,
+        member_id: str,
+        files: List[FileContent] = None,
+        use_tool: bool = False,
+    ) -> Optional[str]:
+        """重试上一次对话，即删除AI的最后一个回复，重新生成
+
+        Args:
+            group_id: 群组ID
+            member_id: 成员ID
+            files: 附加文件
+            use_tool: 是否使用工具
+
+        Returns:
+            str或None: 响应内容，如果出错则返回错误消息
+        """
+        conv_key = self._get_conversation_key(group_id, member_id)
+        conv_lock = self.locks.setdefault(conv_key.lock_key, asyncio.Lock())
+
+        if conv_lock.locked():
+            return "错误：正在处理上一条消息，请稍后再试。"
+
+        try:
+            if not await conv_lock.acquire():
+                return "错误：正在处理上一条消息，请稍后再试。"
+
+            conversation = self.conversations.get(conv_key.key)
+            if not conversation:
+                return "错误：未找到有效的对话记录。"
+
+            # 检查是否可以重试
+            can_retry, message = conversation.can_retry()
+            if not can_retry:
+                return f"无法重试: {message}"
+
+            if conv_key.is_shared:
+                group_lock = self.locks.setdefault(f"group:{group_id}", asyncio.Lock())
+                if group_lock.locked():
+                    return "错误：正在处理群内其他消息，请稍后再试。"
+                async with group_lock:
+                    return await conversation.retry_last_message(
+                        files, use_tool=use_tool
+                    )
+            else:
+                return await conversation.retry_last_message(files, use_tool=use_tool)
+        finally:
+            if conv_lock.locked():
+                conv_lock.release()
+
     async def send_message(
         self,
         group_id: str,

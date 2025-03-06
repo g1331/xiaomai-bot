@@ -4,9 +4,12 @@
 支持文本搜索与新闻搜索，均可实时获取信息并返回参考链接。
 使用duckduckgo_search库的text()和news()方法执行搜索。
 """
-from typing import Dict, Any, Set
+
 import asyncio
+from typing import Any, Dict, Set
+
 from duckduckgo_search import DDGS
+
 from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
 
 
@@ -17,6 +20,7 @@ class DuckDuckGoConfig(PluginConfig):
         region: 搜索区域代码，默认"cn-zh"
         max_results: 最大返回结果数，默认10条
     """
+
     region: str = "cn-zh"
     max_results: int = 10
 
@@ -44,15 +48,15 @@ class DuckDuckGoPlugin(BasePlugin):
             PluginDescription: 包含插件功能描述的对象
         """
         return PluginDescription(
-            name="duckduckgo",
-            description="提供简易的搜索功能。",
+            name="duckduckgo_search",
+            description="使用DuckDuckGo搜索引擎查询网页内容或最新新闻。",
             parameters={
                 "query": "搜索关键词",
-                "region": "搜索区域代码，如`cn-zh`表示中国",
-                "max_results": f"最大返回结果数，不能超过{self.config.max_results}条",
-                "type": "搜索类型，默认为'web'，可选'news'表示新闻搜索",
+                "region": "搜索区域代码，如cn-zh表示中国",
+                "max_results": f"最大返回结果数(1-{self.config.max_results})",
+                "type": "搜索类型，web表示网页搜索，news表示新闻搜索",
             },
-            example="搜索`Python`相关信息，或搜索新闻时指定 type 为 news",
+            example="{'query': 'Python教程', 'type': 'web', 'max_results': 5}",
         )
 
     async def execute(self, parameters: Dict[str, Any]) -> str:
@@ -74,7 +78,7 @@ class DuckDuckGoPlugin(BasePlugin):
 
         Args:
             params: 搜索参数字典，必须包含"query"键
-            
+
         Returns:
             str: 格式化的搜索结果文本，包含标题、描述和链接
         """
@@ -90,22 +94,32 @@ class DuckDuckGoPlugin(BasePlugin):
 
         # 根据搜索类型调用不同的方法
         if search_type == "news":
-            search_func = lambda: list(DDGS().news(
-                keywords=query,
-                region=region,
-                safesearch="moderate",
-                timelimit=None,
-                max_results=max_results,
-            )) or []
+            search_func = (
+                lambda: list(
+                    DDGS().news(
+                        keywords=query,
+                        region=region,
+                        safesearch="moderate",
+                        timelimit=None,
+                        max_results=max_results,
+                    )
+                )
+                        or []
+            )
         else:
-            search_func = lambda: list(DDGS().text(
-                keywords=query,
-                region=region,
-                safesearch="moderate",
-                timelimit=None,
-                backend="auto",
-                max_results=max_results,
-            )) or []
+            search_func = (
+                lambda: list(
+                    DDGS().text(
+                        keywords=query,
+                        region=region,
+                        safesearch="moderate",
+                        timelimit=None,
+                        backend="auto",
+                        max_results=max_results,
+                    )
+                )
+                        or []
+            )
 
         results = await loop.run_in_executor(None, search_func)
         formatted = "网络搜索结果：\n"

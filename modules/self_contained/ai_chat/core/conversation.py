@@ -89,6 +89,82 @@ class Conversation:
             // 2
         )
 
+    def can_retry(self) -> Tuple[bool, str]:
+        """检查是否可以重试上一次对话
+
+        Returns:
+            Tuple[bool, str]: (是否可以重试, 成功/失败的原因)
+        """
+        # 检查历史记录中是否有用户消息
+        user_messages = [msg for msg in self.history if msg.get("role") == "user"]
+        if not user_messages:
+            return False, "没有检测到历史对话"
+
+        # 检查最后一次用户消息后是否有AI回复
+        last_user_index = -1
+        for i in range(len(self.history) - 1, -1, -1):
+            if self.history[i].get("role") == "user":
+                last_user_index = i
+                break
+
+        if last_user_index == -1 or last_user_index == len(self.history) - 1:
+            return False, "没有找到需要重试的AI回复"
+
+        # 检查用户消息后是否有AI回复
+        has_assistant_reply = False
+        for i in range(last_user_index + 1, len(self.history)):
+            if self.history[i].get("role") == "assistant":
+                has_assistant_reply = True
+                break
+
+        if not has_assistant_reply:
+            return False, "没有找到需要重试的AI回复"
+
+        return True, "可以重试"
+
+    async def retry_last_message(
+        self, files: List[FileContent] = None, use_tool: bool = False
+    ) -> str:
+        """重试上一次对话，即删除AI的最后一个回复，重新生成
+
+        Args:
+            files: 附加文件
+            use_tool: 是否启用工具
+
+        Returns:
+            str: 重新生成的回复
+        """
+        try:
+            # 查找最后一个用户消息的索引
+            last_user_index = -1
+            for i in range(len(self.history) - 1, -1, -1):
+                if self.history[i].get("role") == "user":
+                    last_user_index = i
+                    break
+
+            if last_user_index == -1:
+                return "错误：没有找到用户的历史消息。"
+
+            # 删除最后一个用户消息之后的所有消息（包括AI回复和工具结果）
+            self.history = self.history[: last_user_index + 1]
+
+            # 重置中断标记
+            self.interrupted = False
+
+            # 获取最后一次用户输入，便于调试
+            last_user_message = self.history[last_user_index].get("content", "")
+            logger.info(f"重试用户消息: {last_user_message[:50]}...")
+
+            # 调用处理消息流程重新生成回复
+            response_chunks = []
+            async for chunk in self.process_message("", files, use_tool=use_tool):
+                response_chunks.append(chunk)
+
+            return "".join(response_chunks)
+        except Exception as e:
+            logger.error(f"重试消息时发生错误: {str(e)}")
+            return f"重试消息时发生错误: {str(e)}"
+
     def _maybe_add_time_message(self):
         """根据小时变化或日期变化决定是否添加时间信息
 
@@ -232,7 +308,11 @@ class Conversation:
             preset_messages = (
                 [{"role": "system", "content": self.preset}] if self.preset else []
             )
-            user_input_messages = [{"role": "user", "content": user_input}]
+
+            # 仅当有用户输入时才添加到历史记录
+            user_input_messages = []
+            if user_input:
+                user_input_messages = [{"role": "user", "content": user_input}]
 
             # 检查历史记录中是否有格式不正确的消息
             sanitized_history = []

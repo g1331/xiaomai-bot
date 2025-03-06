@@ -148,7 +148,7 @@ async def show_emoji_combinations(
 ):
     """显示与特定emoji可组合的其他emoji"""
     # 提取关键字
-    query_emoji = keyword.result.display[1:].trip()
+    query_emoji = keyword.result.display[1:].strip()
 
     # 获取可用组合
     available_pairs = get_available_pairs(query_emoji)

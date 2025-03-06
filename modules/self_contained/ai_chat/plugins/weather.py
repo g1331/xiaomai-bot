@@ -3,8 +3,11 @@
 本模块实现了基于心知天气API的天气查询功能。
 支持实时天气和天气预报。
 """
-from typing import Dict, Any, Set
+
+from typing import Any, Dict, Set
+
 import aiohttp
+
 from ..core.plugin import BasePlugin, PluginConfig, PluginDescription
 
 
@@ -43,17 +46,17 @@ class WeatherPlugin(BasePlugin):
     @property
     def description(self) -> PluginDescription:
         return PluginDescription(
-            name="SeniverseWeather",
-            description="心知天气：查询指定城市的天气信息，包括实时天气和天气预报",
+            name="weather",
+            description="查询指定城市的天气信息，支持实时天气和天气预报。",
             parameters={
                 "location": "查询的城市名称",
-                "query_type": "查询类型：now(实时天气)、forecast(天气预报)",
-                "days": "可选，预报天数(1-15)，默认3天",
-                "start": "可选，起始时间偏移，-1代表昨天",
-                "language": "可选，返回结果的语言，默认zh-Hans",
-                "unit": "可选，温度单位(c:摄氏度，f:华氏度)，默认c"
+                "query_type": "查询类型，now表示实时天气，forecast表示天气预报",
+                "days": "预报天数(1-15天)",
+                "start": "起始时间偏移，-1代表昨天",
+                "language": "返回结果的语言，如zh-Hans表示简体中文",
+                "unit": "温度单位，c表示摄氏度，f表示华氏度",
             },
-            example="查询北京未来3天天气预报: {'location': 'beijing', 'query_type': 'forecast', 'days': 3}"
+            example="{'location': 'beijing', 'query_type': 'forecast', 'days': 3}",
         )
 
     async def execute(self, parameters: Dict[str, Any]) -> str:
@@ -87,7 +90,7 @@ class WeatherPlugin(BasePlugin):
             "language": parameters.get("language", self.config.language),
             "unit": parameters.get("unit", self.config.unit),
             "start": parameters.get("start", 0),
-            "days": min(int(parameters.get("days", 3)), 15)
+            "days": min(int(parameters.get("days", 3)), 15),
         }
 
         async with aiohttp.ClientSession() as session:
@@ -127,7 +130,7 @@ class WeatherPlugin(BasePlugin):
             "key": self.config.api_key,
             "location": location,
             "language": parameters.get("language", self.config.language),
-            "unit": parameters.get("unit", self.config.unit)
+            "unit": parameters.get("unit", self.config.unit),
         }
 
         async with aiohttp.ClientSession() as session:

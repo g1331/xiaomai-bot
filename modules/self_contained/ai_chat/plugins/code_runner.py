@@ -281,27 +281,12 @@ class CodeRunner(BasePlugin):
 
         return PluginDescription(
             name="code_runner",
-            description=(
-                "Python代码安全沙箱执行环境\n"
-                "- 支持数学/科学计算\n"
-                "- 内置安全限制\n"
-                f"- 代码上限:{self.config.max_code_length}字符\n"
-                f"- 超时限制:{self.config.timeout}秒\n"
-                "工具运行完毕后会返回完整的代码及其执行输出结果。"
-            ),
+            description="在安全沙箱环境中执行Python代码，支持数学和科学计算。",
             parameters={
-                "code": f"Python代码\n可用模块:{allowed_mods}\n可用函数:{allowed_funcs}",
-                "timeout": f"执行超时(秒),默认{self.config.timeout}"
+                "code": f"要执行的Python代码，可用模块包括：{allowed_mods}，可用内置函数包括：{allowed_funcs}",
+                "timeout": f"执行超时时间(秒)，默认{self.config.timeout}秒",
             },
-            example=(
-                "基础数学计算示例：\n"
-                "{'code': 'import math\\n"
-                "import numpy as np\\n"
-                "# 计算正弦函数和数组操作\\n"
-                "x = np.linspace(0, 2*math.pi, 5)\\n"
-                "y = np.sin(x)\\n"
-                "print(f\"x点: {x}\\ny值: {y}\")'}"
-            )
+            example="{'code': 'import math\\nresult = math.sqrt(16)\\nprint(f\"平方根: {result}\")'}",
         )
 
     def _validate_code(self, code: str) -> None:
@@ -326,13 +311,13 @@ class CodeRunner(BasePlugin):
         # 构建函数调用图
         function_deps = {}
         defined_functions = set()
-    
+
         class FunctionCallVisitor(ast.NodeVisitor):
             def visit_FunctionDef(self, node):
                 defined_functions.add(node.name)
                 function_deps[node.name] = set()
                 self.generic_visit(node)
-    
+
             def visit_Call(self, node):
                 # 只考虑 f() 形式
                 if isinstance(node.func, ast.Name):
@@ -344,32 +329,32 @@ class CodeRunner(BasePlugin):
                             break
                         p = getattr(p, 'parent', None)
                 self.generic_visit(node)
-    
+
         FunctionCallVisitor().visit(tree)
-    
+
         def get_call_depth(func_name, visited=None):
             if visited is None:
                 visited = set()
-    
+
             # 如果再次遇到func_name，说明出现递归或环路
             if func_name in visited:
                 # 方案A：返回一个超过 max_depth 的值，让后续判断报错
                 return self.config.max_function_depth + 1
                 # 或者：raise ValueError(f"检测到函数 {func_name} 存在递归，已超限")
-    
+
             if func_name not in function_deps:
                 # 该函数未在function_deps里登记，表示不调用其他用户函数
                 return 0
-    
+
             visited.add(func_name)
             if not function_deps[func_name]:
                 return 0
-    
+
             # 继续向下递归调用
             return 1 + max(
                 get_call_depth(fn, visited.copy()) for fn in function_deps[func_name]
             )
-    
+
         # 检查每个函数定义的调用链深度
         for func in defined_functions:
             depth = get_call_depth(func)

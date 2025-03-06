@@ -17,6 +17,7 @@
     "-p / -preset - 设定预设",
     "-c / --clear - 清除当前对话历史记录",
     "-m / --model - 切换模型",
+    "-r / --retry - 重试上次请求",
     "--show-preset - 显示预设",
     "--model-info / --info - 显示当前模型信息及状态",
     "--no-vision - 禁用多模态输入",

@@ -298,11 +298,14 @@ async def init():
                     @ "no_vision",
                     # 显示模型信息
                     ArgumentMatch(
-                        "--model-info", "--info", action="store_true", optional=True
+                        "--info", "--model-info", action="store_true", optional=True
                     )
                     @ "show_model_info",
                     # 切换模型
-                    ArgumentMatch("--model", "-m", optional=True) @ "switch_model",
+                    ArgumentMatch("-m", "--model", optional=True) @ "switch_model",
+                    # 重试指令
+                    ArgumentMatch("-r", "--retry", action="store_true", optional=True)
+                    @ "retry",
                     WildcardMatch().flags(re.DOTALL) @ "content",
                 ]
             )
@@ -320,23 +323,24 @@ async def init():
     )
 )
 async def ai_chat(
-    app: Ariadne,
-    group: Group,
-    member: Member,
-    message: MessageChain,
-    source: Source,
-    AtResult: ElementResult,
-    new_thread: ArgResult,
-    pic: ArgResult,
-    no_tool: ArgResult,
-    preset: ArgResult,
-    content: RegexResult,
-    show_preset: ArgResult,
-    reload_cfg: ArgResult,
-    clear_history: ArgResult,
-    no_vision: ArgResult,
-    show_model_info: ArgResult,
-    switch_model: ArgResult,
+        app: Ariadne,
+        group: Group,
+        member: Member,
+        message: MessageChain,
+        source: Source,
+        AtResult: ElementResult,
+        new_thread: ArgResult,
+        pic: ArgResult,
+        no_tool: ArgResult,
+        preset: ArgResult,
+        content: RegexResult,
+        show_preset: ArgResult,
+        reload_cfg: ArgResult,
+        clear_history: ArgResult,
+        no_vision: ArgResult,
+        show_model_info: ArgResult,
+        switch_model: ArgResult,
+        retry: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -591,7 +595,7 @@ async def ai_chat(
                     data_bytes=await html2img(
                         MarkdownToImageConverter.generate_html(
                             "# 预设列表\n\n" + "> 请使用标题括号前的文本进行设置\n"
-                            "## 当前预设\n\n"
+                                               "## 当前预设\n\n"
                             + f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n"
                             + "## 内置预设：\n\n"
                             + "\n\n".join(
@@ -655,35 +659,75 @@ async def ai_chat(
             group, MessageChain("已清除对话历史"), quote=source
         )
 
-    if not content_text and not any(
-        isinstance(elem, (Image, File)) for elem in message
-    ):
-        return
+    # 处理重试请求
+    if retry.matched:
+        # 检查群聊模式，如果是共享模式需要鉴权
+        cur_group_mode = g_manager.get_group_mode(group_id_str)
+        if cur_group_mode == ConversationManager.GroupMode.SHARED:
+            group_perm = await Permission.get_user_perm_byID(group.id, member.id)
+            if group_perm < Permission.GroupAdmin:
+                return await app.send_group_message(
+                    group,
+                    MessageChain("当前对话为群共享模式，只有群管理员才能执行重试操作"),
+                    quote=source,
+                )
 
-    # 提取消息内容
-    user_content = (
-        f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content_text}"
-    )
+        # 尝试重试
+        success, retry_result_or_error = g_manager.can_retry(
+            group_id_str, member_id_str
+        )
+        if not success:
+            return await app.send_group_message(
+                group,
+                MessageChain(f"无法重试: {retry_result_or_error}"),
+                quote=source,
+            )
 
-    # 处理文件和图片
-    files = []
-    if not no_vision.matched:
-        files = await extract_files_from_message(message)
-        if files:
-            logger.info(f"从消息中提取到 {len(files)} 个文件")
+        # 处理文件和图片
+        files = []
+        if not no_vision.matched:
+            files = await extract_files_from_message(message)
+            if files:
+                logger.info(f"从消息中提取到 {len(files)} 个文件")
 
-    # 向AI发送消息
-    # 反转工具使用逻辑: 默认启用，除非使用 --no-tool 禁用
-    use_tool = not no_tool.matched
+        # 反转工具使用逻辑: 默认启用，除非使用 --no-tool 禁用
+        use_tool = not no_tool.matched
 
-    response = await g_manager.send_message(
-        group_id_str,
-        member_id_str,
-        member.name,
-        user_content,
-        files=files,
-        use_tool=use_tool,
-    )
+        # 执行重试
+        response = await g_manager.retry(
+            group_id_str, member_id_str, files=files, use_tool=use_tool
+        )
+    else:
+        # 如果没有内容，且消息中没有图片或文件，则不处理
+        if not content_text and not any(
+                isinstance(elem, (Image, File)) for elem in message
+        ):
+            return
+
+        # 提取消息内容
+        user_content = (
+            f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content_text}"
+        )
+
+        # 处理文件和图片
+        files = []
+        if not no_vision.matched:
+            files = await extract_files_from_message(message)
+            if files:
+                logger.info(f"从消息中提取到 {len(files)} 个文件")
+
+        # 向AI发送消息
+        # 反转工具使用逻辑: 默认启用，除非使用 --no-tool 禁用
+        use_tool = not no_tool.matched
+
+        response = await g_manager.send_message(
+            group_id_str,
+            member_id_str,
+            member.name,
+            user_content,
+            files=files,
+            use_tool=use_tool,
+        )
 
     # 当用户主动选择图片输出或者对话内容过长时，使用图片输出，目前QQ限制消息字符长度为9000，这里取6000字符作为限制，汉字约3000字
     if not pic.matched and len(response) < 6000:

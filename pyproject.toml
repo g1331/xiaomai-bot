@@ -81,16 +81,17 @@ select = [
 
 # 忽略特定规则，避免误报或影响开发效率
 ignore = [
-    "E203",  # `:` 前有空格（与 Black 代码格式化冲突）
-    "E266",  # 过多的 `#` 号用于注释（有时用于代码分割）
-    "E501",  # 行长度超过限制（Ruff 已经使用 `line-length` 处理）
-    "F401",  # 导入未使用的模块（有时用于动态导入）
+    "E203", # `:` 前有空格（与 Black 代码格式化冲突）
+    "E266", # 过多的 `#` 号用于注释（有时用于代码分割）
+    "E501", # 行长度超过限制（Ruff 已经使用 `line-length` 处理）
+    "F401", # 导入未使用的模块（有时用于动态导入）
 ]
 
 # 配置 Ruff 代码格式化功能（类似于 Black）
 [tool.ruff.format]
 quote-style = "single"  # 统一使用单引号（'）而非双引号（"），确保代码风格一致
 indent-style = "space"  # 统一使用空格缩进，而不是 Tab
+docstring-code-format = true # 启用docstring代码片段格式化
 
 # 配置 Ruff 的 PyUpgrade 功能（Python 版本兼容性优化）
 [tool.ruff.lint.pyupgrade]

@@ -1,8 +1,42 @@
-name: Ruff
+name: Ruff Linter
+
 on: [ push, pull_request ]
+
 jobs:
   ruff:
+    name: Run Ruff Linter
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: astral-sh/ruff-action@v1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'  # 兼容所有 Python 版本
+
+      - name: Cache Ruff
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ruff
+          key: ruff-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ruff-${{ runner.os }}-
+
+      - name: Run Ruff Linter
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: check .  # 检查整个项目（可以改成 src/ 以限定范围）
+          format: github  # 让 GitHub 直接在 PR 代码行上显示问题
+
+      # 可选：如果想让 Ruff 自动修复问题，可以启用这个步骤
+      - name: Fix Ruff Issues (Optional)
+        run: ruff check . --fix
+
+      # 可选：如果检测失败，则终止 CI
+      - name: Fail if Lint Errors Exist
+        run: |
+          if [[ $(ruff check . --output-format=json | jq '. | length') -gt 0 ]]; then
+            exit 1
+          fi

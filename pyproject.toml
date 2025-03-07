@@ -64,3 +64,13 @@ dependencies = [
     "restrictedpython>=8.0",
     "scipy>=1.15.1",
 ]
+
+[tool.ruff]
+line-length = 120  # 代码最大行宽
+select = [         # 选择的规则
+    "F",
+    "E",
+    "W",
+    "UP",
+]
+ignore = ["F401"]  # 忽略的规则

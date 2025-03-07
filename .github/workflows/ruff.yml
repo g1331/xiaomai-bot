@@ -27,14 +27,13 @@ jobs:
       - name: Run Ruff Linter
         uses: astral-sh/ruff-action@v3
         with:
-          args: check .  # 检查整个项目（可以改成 src/ 以限定范围）
-          format: github  # 让 GitHub 直接在 PR 代码行上显示问题
+          args: check .  # 执行 lint 代码检查
 
-      # 可选：如果想让 Ruff 自动修复问题，可以启用这个步骤
+      # 尝试自动修复
       - name: Fix Ruff Issues (Optional)
         run: ruff check . --fix
 
-      # 可选：如果检测失败，则终止 CI
+      # 如果检测失败，则终止 CI
       - name: Fail if Lint Errors Exist
         run: |
           if [[ $(ruff check . --output-format=json | jq '. | length') -gt 0 ]]; then

@@ -1323,7 +1323,7 @@ class BF1BlazeManager:
         blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
         if not blaze_socket:
             logger.error("无法获取到BlazeSocket")
-            return
+            return None
         # 1.获取账号实例
         bf1_account = api_instance.get_api_instance(
             pid=pid,

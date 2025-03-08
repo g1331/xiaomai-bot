@@ -1240,7 +1240,9 @@ async def who_are_playing(
     # 去除管理员后的
     non_admin_list_of_players = [item for item in filtered_list_of_players if item["pid"] not in admin_pid_list]
 
-    player_list_send = [f"({item['rank']}){item['display_name']}{'(管理员)' if item['pid'] in admin_pid_list else '(vip)' if item['pid'] in vip_pid_list else ''}" for item in filtered_list_of_players]
+    player_list_send = [
+        f"({item['rank']}){item['display_name']}{'(管理员)' if item['pid'] in admin_pid_list else '(vip)' if item['pid'] in vip_pid_list else ''}"
+        for item in filtered_list_of_players]
 
     player_num = len(player_list_send)
 
@@ -1297,7 +1299,7 @@ async def who_are_playing(
         operation_mode = False
         if server_fullInfo["serverInfo"]["mapModePretty"] == "行動模式":
             operation_mode = True
-            
+
         # 上V
         success_list = []
         failed_list = []
@@ -1306,7 +1308,7 @@ async def who_are_playing(
 
             player_cache_info = await BF1ServerVipManager.get_server_vip(server_id, player["pid"])
             if player_cache_info:
-                if not player_cache_info["expire_time"]: # 跳过永久V
+                if not player_cache_info["expire_time"]:  # 跳过永久V
                     continue
                 # 如果expire_time小于今天，则将expire_time设置为今天
                 if player_cache_info["expire_time"] < datetime.now():
@@ -1315,7 +1317,8 @@ async def who_are_playing(
                 # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
                 date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
                 if date_diff < 0:
-                    player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                    player[
+                        "result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
                     failed_list.append(player)
                 else:
                     # 写入数据库
@@ -1344,7 +1347,8 @@ async def who_are_playing(
                     # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
                     date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
                     if date_diff < 0:
-                        player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                        player[
+                            "result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
                         failed_list.append(player)
                         continue
                     result = await account_instance.addServerVip(personaId=player["pid"], serverId=server_id)
@@ -1380,7 +1384,8 @@ async def who_are_playing(
                     # 校验目标日期与今天日期差是否小于0，如果小于0则返回目标日期无效
                     date_diff = DateTimeUtils.diff_days(target_date, datetime.now())
                     if date_diff < 0:
-                        player["result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
+                        player[
+                            "result"] = f"目标日期{target_date.strftime('%Y-%m-%d')}小于今天日期{datetime.now().strftime('%Y-%m-%d')},操作失败!"
                         failed_list.append(player)
                         continue
 
@@ -1537,6 +1542,36 @@ async def get_server_playerList(
     return await app.send_message(group, message_send)
 
 
+# 重新登录blaze，需要先检查是否断开了，如果断开了则重登，命令为 /blaze relogin
+@listen(GroupMessage)
+@decorate(
+    Distribute.require(),
+    Function.require("modules.self_contained.bf1_info"),
+    FrequencyLimitation.require(channel.module),
+    Permission.group_require(channel.metadata.level),
+    Permission.user_require(Permission.User, if_noticed=True),
+)
+@dispatch(
+    Twilight(
+        [
+            FullMatch("/blaze relogin").space(SpacePolicy.PRESERVE),
+        ]
+    )
+)
+async def relogin_blaze(
+        app: Ariadne, group: Group, source: Source, sender: Member
+):
+    # 获取公共账号
+    gateway_instance = await BF1DA.get_api_instance()
+    if not gateway_instance:
+        return await app.send_message(group, MessageChain("获取默认账号失败"), quote=source)
+    # 重新初始化blaze socket
+    blaze_socket = await BF1BlazeManager.init_socket(gateway_instance.pid, gateway_instance.remid, gateway_instance.sid)
+    if not blaze_socket:
+        return await app.send_message(group, MessageChain("Blaze重新登录失败"), quote=source)
+    return await app.send_message(group, MessageChain("Blaze重新登录成功"), quote=source)
+
+
 # 图片版玩家列表
 @listen(GroupMessage)
 @decorate(
@@ -1677,7 +1712,8 @@ async def get_server_playerList_pic(
     ]), quote=source)
 
     # TODO 待重构的回复踢出
-    async def waiter(waiter_app: Ariadne, event: GroupMessage, waiter_member: Member, waiter_group: Group, waiter_message: MessageChain):
+    async def waiter(waiter_app: Ariadne, event: GroupMessage, waiter_member: Member, waiter_group: Group,
+                     waiter_message: MessageChain):
         if (await perm_judge(bf_group_name, waiter_group, waiter_member)) and waiter_group.id == group.id and (
                 event.quote and event.quote.id == bot_message.id and waiter_app.account == app.account):
             waiter_message = waiter_message.replace(At(app.account), "")
@@ -4373,7 +4409,7 @@ async def add_cloudban(
             action="cloudban",
             info=reason,
         )
-        return 
+        return
     return await app.send_message(group, MessageChain(
         f"执行出错!{result}"
     ), quote=source)

@@ -1549,7 +1549,7 @@ async def get_server_playerList(
     Function.require("modules.self_contained.bf1_info"),
     FrequencyLimitation.require(channel.module),
     Permission.group_require(channel.metadata.level),
-    Permission.user_require(Permission.User, if_noticed=True),
+    Permission.user_require(Permission.Administrator, if_noticed=True),
 )
 @dispatch(
     Twilight(
@@ -1559,7 +1559,7 @@ async def get_server_playerList(
     )
 )
 async def relogin_blaze(
-        app: Ariadne, group: Group, source: Source, sender: Member
+        app: Ariadne, group: Group, source: Source
 ):
     # 获取公共账号
     gateway_instance = await BF1DA.get_api_instance()

@@ -1315,7 +1315,7 @@ class BF1BlazeManager:
         pid = int(pid)
         if pid in BlazeClientManagerInstance.clients_by_pid:
             blaze_socket = BlazeClientManagerInstance.clients_by_pid[pid]
-            if blaze_socket.connect:
+            if blaze_socket.authenticated:
                 return await BlazeClientManagerInstance.get_socket_for_pid(pid)
             else:
                 await BlazeClientManagerInstance.remove_client(pid)
@@ -1352,6 +1352,7 @@ class BF1BlazeManager:
             uid = response["data"]["UID"]
             CGID = response["data"]["CGID"][2]
             logger.success(f"Blaze登录成功: Name:{name} Pid:{pid} Uid:{uid} CGID:{CGID}")
+            blaze_socket.authenticated = True
             BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
             return blaze_socket
         except Exception as e:
@@ -1388,6 +1389,7 @@ class BF1BlazeManager:
             return response
         response = BlazeData.player_list_handle(response)
         if not isinstance(response, dict):
+            blaze_socket.authenticated = False
             return response
         if platoon:
             bf1_account = await BF1DA.get_api_instance()

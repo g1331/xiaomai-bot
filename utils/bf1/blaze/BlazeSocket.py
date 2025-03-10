@@ -67,6 +67,7 @@ class BlazeSocket:
         self.callback = callback
         self.connect = False
         self.finish = True
+        self.authenticated = False
         self.map = {}
         self.id = 1
         self.temp = {}

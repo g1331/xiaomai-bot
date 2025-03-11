@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Union
 
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
@@ -11,19 +10,15 @@ from graia.ariadne.model import Group
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast import ListenerSchema
 
-from core.control import (
-    Permission,
-    Function,
-    Distribute
-)
+from core.control import Permission, Function, Distribute
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("GithubCard")
-channel.meta["description"] = ("自动解析消息中的Github链接转为图片")
-channel.meta["author"] = ("13")
+channel.meta["name"] = "GithubCard"
+channel.meta["description"] = "自动解析消息中的Github链接转为图片"
+channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 url_re = r"https?://github\.com/.*"
@@ -33,9 +28,11 @@ url_re = r"https?://github\.com/.*"
     ListenerSchema(
         listening_events=[GroupMessage],
         inline_dispatchers=[
-            Twilight([
-                RegexMatch(url_re) @ "url",
-            ])
+            Twilight(
+                [
+                    RegexMatch(url_re) @ "url",
+                ]
+            )
         ],
         decorators=[
             Distribute.require(),
@@ -45,25 +42,23 @@ url_re = r"https?://github\.com/.*"
         ],
     )
 )
-async def github_card(app: Ariadne, group: Group, message: MessageChain, source: Source, url: RegexResult):
+async def github_card(
+    app: Ariadne, group: Group, message: MessageChain, source: Source, url: RegexResult
+):
     if message.has(Image) or message.has(Forward):
         return
     url = url.result.display
     image_url = await get_github_reposity_information(url)
     await app.send_group_message(
-        group,
-        MessageChain(
-            Image(url=image_url)
-        ),
-        quote=source
+        group, MessageChain(Image(url=image_url)), quote=source
     )
 
 
-async def get_github_reposity_information(url: str) -> Union[str, None]:
+async def get_github_reposity_information(url: str) -> str | None:
     if url.startswith("https://github.com"):
-        cleaned_url = url[len("https://github.com"):]
+        cleaned_url = url[len("https://github.com") :]
     elif url.startswith("http://github.com"):
-        cleaned_url = url[len("http://github.com"):]
+        cleaned_url = url[len("http://github.com") :]
     else:
         return None
     return f"https://opengraph.githubassets.com/c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"

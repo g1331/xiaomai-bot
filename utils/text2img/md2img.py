@@ -2,7 +2,7 @@ import os
 import textwrap
 import time
 from enum import Enum
-from typing import Optional, Union, Any
+from typing import Any
 
 import markdown
 from playwright.async_api import async_playwright, Browser, Page
@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright, Browser, Page
 
 class Theme(Enum):
     """Markdown 渲染主题枚举。"""
+
     LIGHT = "light"
     DARK = "dark"
     SAKURA = "sakura"
@@ -23,6 +24,7 @@ class Theme(Enum):
 
 class HighlightTheme(Enum):
     """代码高亮主题枚举。"""
+
     DEFAULT = "default"
     ATOM_ONE_DARK = "atom-one-dark"
     GITHUB = "github"
@@ -30,6 +32,7 @@ class HighlightTheme(Enum):
 
 class OutputMode(Enum):
     """输出模式枚举。"""
+
     BINARY = "binary"
     LOCAL = "local"
 
@@ -37,7 +40,7 @@ class OutputMode(Enum):
 class MarkdownToImageConverter:
     """
     将 Markdown 文本渲染为 PNG 图片的工具，支持 KaTeX 数学公式、代码高亮、任务列表、删除线等语法。
-    
+
     采用 Playwright 渲染页面，通过直接设置 HTML 内容（内联静态资源），避免了临时文件的生成，同时解决浏览器拒绝加载 file:// 本地资源的问题。
     """
 
@@ -51,16 +54,18 @@ class MarkdownToImageConverter:
         Theme.SUNSET_GLOW: "static/css/github-markdown-light.min.css",
         Theme.FOREST_GREEN: "static/css/github-markdown-light.min.css",
         Theme.SANDY_BEACH: "static/css/github-markdown-light.min.css",
-        Theme.MIDNIGHT_PURPLE: "static/css/github-markdown-dark.min.css"
+        Theme.MIDNIGHT_PURPLE: "static/css/github-markdown-dark.min.css",
     }
 
     HIGHLIGHT_THEMES = {
         HighlightTheme.DEFAULT: "static/css/default.min.css",
         HighlightTheme.ATOM_ONE_DARK: "static/css/atom-one-dark.min.css",
-        HighlightTheme.GITHUB: "static/css/github.min.css"
+        HighlightTheme.GITHUB: "static/css/github.min.css",
     }
 
-    def __init__(self, headless: bool = True, debug: bool = False, browser: Optional[Browser] = None) -> None:
+    def __init__(
+        self, headless: bool = True, debug: bool = False, browser: Browser | None = None
+    ) -> None:
         """
         Args:
             headless: 是否启用无头模式，默认 True。
@@ -71,7 +76,7 @@ class MarkdownToImageConverter:
         self.debug = debug
         self.playwright = None  # 当内部创建时才有值
         self.browser = browser  # 外部传入的 Browser 实例或 None
-        self.page: Optional[Page] = None
+        self.page: Page | None = None
         self._external_browser = browser is not None
 
     async def __aenter__(self) -> "MarkdownToImageConverter":
@@ -114,16 +119,16 @@ class MarkdownToImageConverter:
         """
         base_dir = os.path.dirname(os.path.abspath(__file__))
         abs_path = os.path.join(base_dir, relative_path)
-        with open(abs_path, "r", encoding="utf-8") as f:
+        with open(abs_path, encoding="utf-8") as f:
             return f.read()
 
     @classmethod
     def generate_html(
-            cls,
-            md_content: str,
-            css: Optional[str] = None,
-            theme: Theme = Theme.LIGHT,
-            highlight_theme: HighlightTheme = HighlightTheme.ATOM_ONE_DARK
+        cls,
+        md_content: str,
+        css: str | None = None,
+        theme: Theme = Theme.LIGHT,
+        highlight_theme: HighlightTheme = HighlightTheme.ATOM_ONE_DARK,
     ) -> str:
         """
         生成包含 KaTeX 自动渲染、代码高亮和自定义 CSS 的 HTML 页面，并将所有静态资源内联到页面中。
@@ -134,8 +139,8 @@ class MarkdownToImageConverter:
             extensions=["extra", "tables", "pymdownx.tasklist", "pymdownx.tilde"],
             extension_configs={
                 "pymdownx.tasklist": {"custom_checkbox": True},
-                "pymdownx.tilde": {}
-            }
+                "pymdownx.tilde": {},
+            },
         )
 
         # 内联各类静态资源内容
@@ -366,14 +371,14 @@ class MarkdownToImageConverter:
         """)
 
     async def convert(
-            self,
-            md_content: str,
-            output_path: Optional[str] = None,
-            css: Optional[str] = None,
-            theme: Theme = Theme.LIGHT,
-            highlight_theme: HighlightTheme = HighlightTheme.DEFAULT,
-            output_mode: OutputMode = OutputMode.BINARY
-    ) -> Union[bytes, str]:
+        self,
+        md_content: str,
+        output_path: str | None = None,
+        css: str | None = None,
+        theme: Theme = Theme.LIGHT,
+        highlight_theme: HighlightTheme = HighlightTheme.DEFAULT,
+        output_mode: OutputMode = OutputMode.BINARY,
+    ) -> bytes | str:
         """
         将 Markdown 文本转换为 PNG 图片（异步执行）。
 
@@ -406,21 +411,27 @@ class MarkdownToImageConverter:
         # 等待 KaTeX 渲染完成（依赖于页面内 JS 设置 data-katex-done 属性）
         t_katex_start = time.perf_counter()
         # 获取当前 KaTeX 渲染状态
-        katex_status = await self.page.evaluate("document.body.getAttribute('data-katex-done')")
+        katex_status = await self.page.evaluate(
+            "document.body.getAttribute('data-katex-done')"
+        )
         self._log(f"当前 KaTeX 渲染状态：{katex_status}")
         if katex_status not in ("true", "error"):
             self._log("等待 KaTeX 渲染完成...")
             await self.page.wait_for_function(
                 "['true', 'error'].includes(document.body.getAttribute('data-katex-done'))",
-                timeout=15000
+                timeout=15000,
             )
-            katex_status = await self.page.evaluate("document.body.getAttribute('data-katex-done')")
+            katex_status = await self.page.evaluate(
+                "document.body.getAttribute('data-katex-done')"
+            )
         if katex_status == "error":
             self._log("警告：KaTeX 渲染出错，截图可能不包含正确的公式。")
         else:
             self._log("KaTeX 渲染完成.")
         t_katex_end = time.perf_counter()
-        self._log(f"KaTeX 渲染等待耗时：{(t_katex_end - t_katex_start) * 1000:.2f} 毫秒")
+        self._log(
+            f"KaTeX 渲染等待耗时：{(t_katex_end - t_katex_start) * 1000:.2f} 毫秒"
+        )
 
         # 直接截图 .markdown-body 元素
         element = await self.page.query_selector(".markdown-body")
@@ -431,7 +442,9 @@ class MarkdownToImageConverter:
         self._log(f"截图耗时：{(t_shot_end - t_shot_start) * 1000:.2f} 毫秒")
 
         t_total_end = time.perf_counter()
-        self._log(f"整个转换过程总耗时：{(t_total_end - t_total_start) * 1000:.2f} 毫秒")
+        self._log(
+            f"整个转换过程总耗时：{(t_total_end - t_total_start) * 1000:.2f} 毫秒"
+        )
 
         if output_mode == OutputMode.LOCAL:
             if not output_path:
@@ -446,17 +459,17 @@ class MarkdownToImageConverter:
 
     @classmethod
     async def convert_markdown(
-            cls,
-            md_content: str,
-            output_path: Optional[str] = None,
-            headless: bool = True,
-            css: Optional[str] = None,
-            theme: Theme = Theme.LIGHT,
-            highlight_theme: HighlightTheme = HighlightTheme.DEFAULT,
-            output_mode: OutputMode = OutputMode.BINARY,
-            debug: bool = False,
-            browser: Optional[Browser] = None  # 新增参数，用于传入外部浏览器实例
-    ) -> Union[bytes, str]:
+        cls,
+        md_content: str,
+        output_path: str | None = None,
+        headless: bool = True,
+        css: str | None = None,
+        theme: Theme = Theme.LIGHT,
+        highlight_theme: HighlightTheme = HighlightTheme.DEFAULT,
+        output_mode: OutputMode = OutputMode.BINARY,
+        debug: bool = False,
+        browser: Browser | None = None,  # 新增参数，用于传入外部浏览器实例
+    ) -> bytes | str:
         """
         异步接口，将 Markdown 转换为图片。
         """
@@ -467,5 +480,5 @@ class MarkdownToImageConverter:
                 css=css,
                 theme=theme,
                 highlight_theme=highlight_theme,
-                output_mode=output_mode
+                output_mode=output_mode,
             )

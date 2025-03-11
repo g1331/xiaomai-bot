@@ -46,7 +46,7 @@ class LaunchTimeService(Launchable):
             )
 
             for module, (_time, code) in sorted(
-                    _launch_time.items(), key=lambda x: x[1], reverse=True
+                _launch_time.items(), key=lambda x: x[1], reverse=True
             ):
                 top += (
                     f"<red>{module:<{name_length}}</red> "

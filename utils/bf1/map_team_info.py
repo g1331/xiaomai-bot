@@ -43,7 +43,7 @@ class MapData:
         "MP_River": {"Chinese": "卡波雷托", "Team1": AHU, "Team2": ITA},
         "MP_Alps": {"Chinese": "剃刀边缘", "Team1": GER, "Team2": UK},
         "MP_Blitz": {"Chinese": "伦敦的呼唤：夜袭", "Team1": GER, "Team2": UK},
-        "MP_London": {"Chinese": "伦敦的呼唤：灾祸", "Team1": GER, "Team2": UK}
+        "MP_London": {"Chinese": "伦敦的呼唤：灾祸", "Team1": GER, "Team2": UK},
     }
 
     ModeDict = {
@@ -56,5 +56,5 @@ class MapData:
         "BreakthroughLarge": "行动模式",
         "TugOfWar": "前线",
         "ZoneControl": "空降补给",
-        "AirAssault": "空中突击"
+        "AirAssault": "空中突击",
     }

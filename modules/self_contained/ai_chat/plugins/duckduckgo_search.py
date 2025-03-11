@@ -6,7 +6,7 @@
 """
 
 import asyncio
-from typing import Any, Dict, Set
+from typing import Any
 
 from duckduckgo_search import DDGS
 
@@ -25,7 +25,7 @@ class DuckDuckGoConfig(PluginConfig):
     max_results: int = 10
 
     @property
-    def required_fields(self) -> Set[str]:
+    def required_fields(self) -> set[str]:
         return set()
 
 
@@ -59,7 +59,7 @@ class DuckDuckGoPlugin(BasePlugin):
             example="{'query': 'Python教程', 'type': 'web', 'max_results': 5}",
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> str:
+    async def execute(self, parameters: dict[str, Any]) -> str:
         """执行搜索功能。
 
         Args:
@@ -94,32 +94,36 @@ class DuckDuckGoPlugin(BasePlugin):
 
         # 根据搜索类型调用不同的方法
         if search_type == "news":
-            search_func = (
-                lambda: list(
-                    DDGS().news(
-                        keywords=query,
-                        region=region,
-                        safesearch="moderate",
-                        timelimit=None,
-                        max_results=max_results,
+
+            def search_func():
+                return (
+                    list(
+                        DDGS().news(
+                            keywords=query,
+                            region=region,
+                            safesearch="moderate",
+                            timelimit=None,
+                            max_results=max_results,
+                        )
                     )
+                    or []
                 )
-                        or []
-            )
         else:
-            search_func = (
-                lambda: list(
-                    DDGS().text(
-                        keywords=query,
-                        region=region,
-                        safesearch="moderate",
-                        timelimit=None,
-                        backend="auto",
-                        max_results=max_results,
+
+            def search_func():
+                return (
+                    list(
+                        DDGS().text(
+                            keywords=query,
+                            region=region,
+                            safesearch="moderate",
+                            timelimit=None,
+                            backend="auto",
+                            max_results=max_results,
+                        )
                     )
+                    or []
                 )
-                        or []
-            )
 
         results = await loop.run_in_executor(None, search_func)
         formatted = "网络搜索结果：\n"

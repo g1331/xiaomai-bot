@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import tiktoken
 
@@ -76,7 +76,7 @@ class OpenAIConfig(OpenAICompatibleConfig):
 class OpenAIProvider(OpenAICompatibleProvider):
     """原生 OpenAI 提供者"""
 
-    def __init__(self, config: OpenAIConfig, model_name: Optional[str] = None):
+    def __init__(self, config: OpenAIConfig, model_name: str | None = None):
         # 确保传入的model_name在config.models中存在，否则使用默认模型
         if model_name and model_name not in config.models:
             model_name = config.default_model
@@ -97,7 +97,7 @@ class OpenAIProvider(OpenAICompatibleProvider):
         super().switch_model(model_name)
         self._setup_encoder()
 
-    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+    def calculate_tokens(self, messages: list[dict[str, Any]]) -> int:
         token_count = 0
         for message in messages:
             content = message.get("content", "")

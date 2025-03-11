@@ -3,41 +3,37 @@ import random
 import re
 from io import BytesIO
 from pathlib import Path
-from typing import Union
 
 import aiohttp
 import imageio
 import numpy
-from PIL import Image as IMG
-from PIL import ImageDraw, ImageFilter, ImageOps
 from graia.ariadne import Ariadne
-from graia.ariadne.event.message import Group, Member, GroupMessage
+from graia.ariadne.event.message import Group, GroupMessage, Member
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image
 from graia.ariadne.message.parser.twilight import (
-    RegexMatch,
     ElementMatch,
-    RegexResult,
     ElementResult,
+    RegexMatch,
+    RegexResult,
+    Twilight,
 )
-from graia.ariadne.message.parser.twilight import Twilight
-from graia.ariadne.util.saya import listen, decorate, dispatch
-from graia.saya import Saya, Channel
+from graia.ariadne.util.saya import decorate, dispatch, listen
+from graia.saya import Channel, Saya
+from PIL import Image as IMG
+from PIL import ImageDraw, ImageFilter, ImageOps
 
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Distribute, FrequencyLimitation, Function, Permission
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("AvatarFunPic")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可")
+channel.meta["name"] = "AvatarFunPic"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["description"] = (
+    "一个可以生成头像相关趣味图的插件，在群中发送 `[摸|亲|贴|撕|丢|爬|精神支柱|吞] [@目标|目标qq|目标图片]` 即可"
+)
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 frame_spec = [
     (27, 31, 86, 90),
@@ -82,19 +78,19 @@ frames = tuple([f"./statics/PetPetFrames/frame{i}.png" for i in range(5)])
     Permission.user_require(Permission.User, if_noticed=True),
 )
 async def avatar_fun_pic(
-        app: Ariadne,
-        message: MessageChain,
-        group: Group,
-        member: Member,
-        at1: ElementResult,
-        at2: ElementResult,
-        qq1: RegexResult,
-        qq2: RegexResult,
-        img1: ElementResult,
-        img2: ElementResult,
+    app: Ariadne,
+    message: MessageChain,
+    group: Group,
+    member: Member,
+    at1: ElementResult,
+    at2: ElementResult,
+    qq1: RegexResult,
+    qq2: RegexResult,
+    img1: ElementResult,
+    img2: ElementResult,
 ):
     if not any(
-            [at1.matched, at2.matched, qq1.matched, qq2.matched, img1.matched, img2.matched]
+        [at1.matched, at2.matched, qq1.matched, qq2.matched, img1.matched, img2.matched]
     ):
         return
     # await update_user_call_count_plus(
@@ -304,10 +300,10 @@ async def avatar_fun_pic(
 
 
 def get_match_element(message: MessageChain) -> list:
-    return [element for element in message.__root__ if isinstance(element, (Image, At))]
+    return [element for element in message.__root__ if isinstance(element, Image | At)]
 
 
-async def get_pil_avatar(image: Union[int, str]):
+async def get_pil_avatar(image: int | str):
     if isinstance(image, int):
         url = f"http://q1.qlogo.cn/g?b=qq&nk={str(image)}&s=640"
     else:
@@ -373,7 +369,8 @@ async def make_frame(avatar, i, squish=0, flip=False):
         avatar = ImageOps.mirror(avatar)
     # 将头像放缩成所需大小
     avatar = avatar.resize(
-        (int((spec[2] - spec[0]) * 1.2), int((spec[3] - spec[1]) * 1.2)), IMG.Resampling.LANCZOS
+        (int((spec[2] - spec[0]) * 1.2), int((spec[3] - spec[1]) * 1.2)),
+        IMG.Resampling.LANCZOS,
     )
     # 并贴到空图像上
     gif_frame = IMG.new("RGB", (112, 112), (255, 255, 255))
@@ -384,7 +381,7 @@ async def make_frame(avatar, i, squish=0, flip=False):
     return numpy.array(gif_frame)
 
 
-async def petpet(image: Union[int, str], flip=False, squish=0, fps=20) -> MessageChain:
+async def petpet(image: int | str, flip=False, squish=0, fps=20) -> MessageChain:
     """生成PetPet
     将输入的头像生成为所需的 PetPet 并输出
     参数
@@ -429,9 +426,7 @@ async def kiss_make_frame(operator, target, i):
     return numpy.array(gif_frame)
 
 
-async def kiss(
-        operator_image: Union[int, str], target_image: Union[int, str]
-) -> MessageChain:
+async def kiss(operator_image: int | str, target_image: int | str) -> MessageChain:
     """
     Author: https://github.com/SuperWaterGod
     """
@@ -464,7 +459,7 @@ async def kiss(
     return MessageChain([Image(data_bytes=img_content)])
 
 
-async def ripped(image: Union[int, str]) -> MessageChain:
+async def ripped(image: int | str) -> MessageChain:
     ripped = IMG.open("./statics/ripped.png")
     frame = IMG.new("RGBA", (1080, 804), (255, 255, 255, 0))
     avatar = await get_pil_avatar(image)
@@ -479,7 +474,7 @@ async def ripped(image: Union[int, str]) -> MessageChain:
     return MessageChain([Image(data_bytes=output.getvalue())])
 
 
-async def throw(image: Union[int, str]) -> MessageChain:
+async def throw(image: int | str) -> MessageChain:
     avatar = await get_pil_avatar(image)
     mask = IMG.new("L", avatar.size, 0)
     draw = ImageDraw.Draw(mask)
@@ -499,7 +494,7 @@ async def throw(image: Union[int, str]) -> MessageChain:
     return MessageChain([Image(data_bytes=output.getvalue())])
 
 
-async def crawl(image: Union[int, str]) -> MessageChain:
+async def crawl(image: int | str) -> MessageChain:
     avatar = await get_pil_avatar(image)
     mask = IMG.new("L", avatar.size, 0)
     draw = ImageDraw.Draw(mask)
@@ -533,9 +528,7 @@ async def resize_img(img, width, height, angle=0):
     return img
 
 
-async def rub(
-        operator_image: Union[int, str], target_image: Union[int, str]
-) -> MessageChain:
+async def rub(operator_image: int | str, target_image: int | str) -> MessageChain:
     user_locs = [
         (39, 91, 75, 75, 0),
         (49, 101, 75, 75, 0),
@@ -556,9 +549,7 @@ async def rub(
     self_img = await get_pil_avatar(operator_image)
     user_img = await get_pil_avatar(target_image)
     for i in range(6):
-        frame = IMG.open(f"./statics/RubFrames/frame{i}.png").convert(
-            "RGBA"
-        )
+        frame = IMG.open(f"./statics/RubFrames/frame{i}.png").convert("RGBA")
         x, y, w, h, angle = user_locs[i]
         user_img_new = (await resize_img(user_img, w, h, angle)).convert("RGBA")
         frame.paste(user_img_new, (x, y), mask=user_img_new)
@@ -571,7 +562,7 @@ async def rub(
     return MessageChain([Image(data_bytes=output.getvalue())])
 
 
-async def support(image: Union[int, str]) -> MessageChain:
+async def support(image: int | str) -> MessageChain:
     avatar = await get_pil_avatar(image)
     support = IMG.open("./statics/support.png")
     frame = IMG.new("RGBA", (1293, 1164), (255, 255, 255, 0))
@@ -584,7 +575,7 @@ async def support(image: Union[int, str]) -> MessageChain:
     return MessageChain([Image(data_bytes=output.getvalue())])
 
 
-async def swallowed(image: Union[int, str]) -> MessageChain:
+async def swallowed(image: int | str) -> MessageChain:
     avatar = await get_pil_avatar(image)
     frame_locs = [
         (180, 60, 100, 100),
@@ -606,16 +597,14 @@ async def swallowed(image: Union[int, str]) -> MessageChain:
         (183, 71, 90, 96),
         (180, 131, 92, 101),
     ]
-    raw_frames = [
-        f"./statics/SwallowedFrames/frame{i}.png" for i in range(23)
-    ]
+    raw_frames = [f"./statics/SwallowedFrames/frame{i}.png" for i in range(23)]
     raw_frames = [IMG.open(i).convert("RGBA") for i in raw_frames]
 
     avatar_frames = []
     for i, frame_loc in enumerate(frame_locs):
         frame = IMG.new("RGBA", (480, 400), (255, 255, 255, 0))
-        x, y, l, w = frame_loc
-        avatar_resized = avatar.resize((l, w), IMG.Resampling.LANCZOS)
+        x, y, width, height = frame_loc
+        avatar_resized = avatar.resize((width, height), IMG.Resampling.LANCZOS)
         frame.paste(avatar_resized, (x, y))
         img = raw_frames[i]
         frame.paste(img, mask=img)

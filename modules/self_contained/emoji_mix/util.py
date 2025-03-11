@@ -4,7 +4,6 @@ import shutil
 import tempfile
 from json import JSONDecodeError
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
 
 import aiofiles
 from aiohttp import ClientError, ClientSession
@@ -91,7 +90,7 @@ async def download_metadata_update() -> None:
 
                     # 验证下载文件是否为有效的 JSON
                     try:
-                        with open(temp_file, "r", encoding="utf-8") as check_file:
+                        with open(temp_file, encoding="utf-8") as check_file:
                             json.load(check_file)  # 尝试解析 JSON
 
                         # 备份当前文件（如果存在）
@@ -128,13 +127,13 @@ async def download_metadata_update() -> None:
 
 
 # 解析metadata数据
-def parse_metadata_file(file_path: Path) -> List[Tuple[str, str, str]]:
+def parse_metadata_file(file_path: Path) -> list[tuple[str, str, str]]:
     """解析metadata.json文件，提取emoji组合数据"""
     ensure_directory_exists(file_path)
-    emoji_combinations: List[Tuple[str, str, str]] = []
+    emoji_combinations: list[tuple[str, str, str]] = []
 
     try:
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             json_data = json.load(file)
             logger.debug(f"加载JSON数据: {file_path}")
 
@@ -179,7 +178,7 @@ def parse_metadata_file(file_path: Path) -> List[Tuple[str, str, str]]:
 
 
 # 加载emoji组合数据，包含备份恢复机制
-def load_emoji_combinations() -> List[Tuple[str, str, str]]:
+def load_emoji_combinations() -> list[tuple[str, str, str]]:
     """加载emoji组合数据，如果主文件损坏则尝试从备份恢复"""
     # 尝试从主文件加载
     try:
@@ -208,7 +207,7 @@ def load_emoji_combinations() -> List[Tuple[str, str, str]]:
 
 
 # 加载emoji组合数据
-EMOJI_COMBINATIONS: List[Tuple[str, str, str]] = load_emoji_combinations()
+EMOJI_COMBINATIONS: list[tuple[str, str, str]] = load_emoji_combinations()
 
 
 # Emoji处理函数
@@ -227,7 +226,7 @@ def emoji_to_codepoint(emoji: str) -> str:
     return "-".join(f"{ord(char):x}" for char in emoji)
 
 
-def collect_all_emojis() -> Set[str]:
+def collect_all_emojis() -> set[str]:
     """获取所有可用的emoji"""
     emoji_set = set()
     for left, right, _ in EMOJI_COMBINATIONS:
@@ -237,11 +236,11 @@ def collect_all_emojis() -> Set[str]:
 
 
 # 所有可用的emoji集合
-ALL_EMOJIS: Set[str] = collect_all_emojis()
+ALL_EMOJIS: set[str] = collect_all_emojis()
 
 
 # 查询函数
-def get_mix_emoji_url(left_emoji: str, right_emoji: str) -> Optional[str]:
+def get_mix_emoji_url(left_emoji: str, right_emoji: str) -> str | None:
     """获取emoji组合的图片URL"""
     left_code = emoji_to_codepoint(left_emoji)
     right_code = emoji_to_codepoint(right_emoji)
@@ -259,7 +258,7 @@ def get_mix_emoji_url(left_emoji: str, right_emoji: str) -> Optional[str]:
     return None
 
 
-def get_available_pairs(emoji: str) -> Set[str]:
+def get_available_pairs(emoji: str) -> set[str]:
     """获取与指定emoji可以组合的其他emoji"""
     emoji_code = emoji_to_codepoint(emoji)
     compatible_pairs = set()

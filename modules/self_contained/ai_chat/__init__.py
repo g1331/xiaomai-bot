@@ -8,8 +8,7 @@ from graia.ariadne.event.lifecycle import ApplicationLaunched
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, File
-from graia.ariadne.message.element import Image
+from graia.ariadne.message.element import At, File, Image
 from graia.ariadne.message.element import Image as GraiaImage
 from graia.ariadne.message.parser.twilight import (
     ArgResult,
@@ -323,24 +322,24 @@ async def init():
     )
 )
 async def ai_chat(
-        app: Ariadne,
-        group: Group,
-        member: Member,
-        message: MessageChain,
-        source: Source,
-        AtResult: ElementResult,
-        new_thread: ArgResult,
-        pic: ArgResult,
-        no_tool: ArgResult,
-        preset: ArgResult,
-        content: RegexResult,
-        show_preset: ArgResult,
-        reload_cfg: ArgResult,
-        clear_history: ArgResult,
-        no_vision: ArgResult,
-        show_model_info: ArgResult,
-        switch_model: ArgResult,
-        retry: ArgResult,
+    app: Ariadne,
+    group: Group,
+    member: Member,
+    message: MessageChain,
+    source: Source,
+    AtResult: ElementResult,
+    new_thread: ArgResult,
+    pic: ArgResult,
+    no_tool: ArgResult,
+    preset: ArgResult,
+    content: RegexResult,
+    show_preset: ArgResult,
+    reload_cfg: ArgResult,
+    clear_history: ArgResult,
+    no_vision: ArgResult,
+    show_model_info: ArgResult,
+    switch_model: ArgResult,
+    retry: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -409,9 +408,6 @@ async def ai_chat(
         try:
             # 检查模型是否在可用列表中
             models = get_provider_models(provider_name)
-
-            # 获取当前正在使用的模型
-            current_model = g_config_loader.get_user_model(member_id_str, provider_name)
 
             # 获取当前会话的实际模型
             current_conversation = g_manager.get_conversation(
@@ -595,7 +591,7 @@ async def ai_chat(
                     data_bytes=await html2img(
                         MarkdownToImageConverter.generate_html(
                             "# 预设列表\n\n" + "> 请使用标题括号前的文本进行设置\n"
-                                               "## 当前预设\n\n"
+                            "## 当前预设\n\n"
                             + f"{g_manager.get_preset(group_id_str, member_id_str)}\n\n"
                             + "## 内置预设：\n\n"
                             + "\n\n".join(
@@ -700,14 +696,12 @@ async def ai_chat(
     else:
         # 如果没有内容，且消息中没有图片或文件，则不处理
         if not content_text and not any(
-                isinstance(elem, (Image, File)) for elem in message
+            isinstance(elem, Image | File) for elem in message
         ):
             return
 
         # 提取消息内容
-        user_content = (
-            f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content_text}"
-        )
+        user_content = f"群{group.name}({group.id})用户{member.name}(QQ{member.id})说：{content_text}"
 
         # 处理文件和图片
         files = []

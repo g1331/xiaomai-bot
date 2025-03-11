@@ -8,20 +8,20 @@ from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
 from graia.ariadne.message.parser.twilight import (
-    Twilight, ElementMatch, ElementResult,
-    SpacePolicy, UnionMatch, ArgumentMatch, ArgResult
+    Twilight,
+    ElementMatch,
+    ElementResult,
+    SpacePolicy,
+    UnionMatch,
+    ArgumentMatch,
+    ArgResult,
 )
 from graia.ariadne.model import Group
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel, Saya
 
 from core.config import GlobalConfig
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 from .generator import ASCIIArtGenerator
 
@@ -45,24 +45,37 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Permission.user_require(Permission.User, if_noticed=True),
 )
 @dispatch(
-    Twilight([
-        UnionMatch("-ascii", "字符画").space(SpacePolicy.PRESERVE),
-        ArgumentMatch("-density", "-d", type=str, choices=["low", "medium", "high"], optional=True) @ "density",
-        ArgumentMatch("-brightness", "-b", type=float, optional=True) @ "brightness",
-        ArgumentMatch("-contrast", "-c", type=float, optional=True) @ "contrast",
-        ArgumentMatch("-invert", "-i", action="store_true", optional=True) @ "invert",
-        ArgumentMatch("-width", "-w", type=int, optional=True) @ "width",
-        ElementMatch(Image, optional=False) @ "img",
-    ])
+    Twilight(
+        [
+            UnionMatch("-ascii", "字符画").space(SpacePolicy.PRESERVE),
+            ArgumentMatch(
+                "-density",
+                "-d",
+                type=str,
+                choices=["low", "medium", "high"],
+                optional=True,
+            )
+            @ "density",
+            ArgumentMatch("-brightness", "-b", type=float, optional=True)
+            @ "brightness",
+            ArgumentMatch("-contrast", "-c", type=float, optional=True) @ "contrast",
+            ArgumentMatch("-invert", "-i", action="store_true", optional=True)
+            @ "invert",
+            ArgumentMatch("-width", "-w", type=int, optional=True) @ "width",
+            ElementMatch(Image, optional=False) @ "img",
+        ]
+    )
 )
 async def ascii_art(
-        app: Ariadne, group: Group, source: Source,
-        density: ArgResult,
-        brightness: ArgResult,
-        contrast: ArgResult,
-        invert: ArgResult,
-        width: ArgResult,
-        img: ElementResult
+    app: Ariadne,
+    group: Group,
+    source: Source,
+    density: ArgResult,
+    brightness: ArgResult,
+    contrast: ArgResult,
+    invert: ArgResult,
+    width: ArgResult,
+    img: ElementResult,
 ):
     # 设置默认参数
     density_value = density.result or None
@@ -86,14 +99,16 @@ async def ascii_art(
         density=density_value,
         contrast_factor=contrast_value,
         brightness=brightness_value,
-        invert=invert_value
+        invert=invert_value,
     )
 
     # 处理图片
     try:
         ascii_image = await _generator.image_to_ascii_image(image_data)
     except Exception as e:
-        await app.send_group_message(group, MessageChain(f"生成字符画时出错：{e}"), quote=source)
+        await app.send_group_message(
+            group, MessageChain(f"生成字符画时出错：{e}"), quote=source
+        )
         return
 
     # 保存 ASCII 图像到缓冲区
@@ -102,7 +117,7 @@ async def ascii_art(
         # 处理 GIF 动图
         ascii_image[0].save(
             buffer,
-            format='GIF',
+            format="GIF",
             save_all=True,
             append_images=ascii_image[1:],
             loop=0,
@@ -110,6 +125,8 @@ async def ascii_art(
             optimize=True,
         )
     else:
-        ascii_image.save(buffer, format='PNG')
+        ascii_image.save(buffer, format="PNG")
     buffer.seek(0)
-    await app.send_group_message(group, MessageChain(Image(data_bytes=buffer.getvalue())), quote=source)
+    await app.send_group_message(
+        group, MessageChain(Image(data_bytes=buffer.getvalue())), quote=source
+    )

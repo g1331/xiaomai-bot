@@ -2,7 +2,14 @@ import json
 import base64
 
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Plain, Image, Face, Voice, At, MultimediaElement
+from graia.ariadne.message.element import (
+    Plain,
+    Image,
+    Face,
+    Voice,
+    At,
+    MultimediaElement,
+)
 
 
 async def message_chain_to_json(message: MessageChain) -> str:

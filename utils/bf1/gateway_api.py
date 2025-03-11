@@ -2,7 +2,6 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Union
 
 import aiohttp
 from creart import create
@@ -19,9 +18,10 @@ async def get_a_uuid() -> str:
     return str(uuid.uuid4())
 
 
-class bf1_api(object):
-
-    def __init__(self, pid: int, remid: str = None, sid: str = None, session: str = None):
+class bf1_api:
+    def __init__(
+        self, pid: int, remid: str = None, sid: str = None, session: str = None
+    ):
         self.pid = pid
         self.remid = remid
         self.sid = sid
@@ -34,7 +34,7 @@ class bf1_api(object):
         # token过期的时间
         self.access_token_expires_time = 0
         self.BB_PREFIX = "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
-        self.api_url = 'https://sparta-gw.battlelog.com/jsonrpc/pc/api'
+        self.api_url = "https://sparta-gw.battlelog.com/jsonrpc/pc/api"
         self.api_header = {
             "User-Agent": "ProtoHttp 1.3/DS 15.1.2.1.0 (Windows)",
             "X-ClientVersion": "release-bf1-lsu35_26385_ad7bf56a_tunguska_all_prod",
@@ -50,10 +50,8 @@ class bf1_api(object):
         self.body = {
             "jsonrpc": "2.0",
             "method": str,
-            "params": {
-                "game": "tunguska"
-            },
-            "id": str
+            "params": {"game": "tunguska"},
+            "id": str,
         }
         self.error_code_dict = {
             -32501: "Session失效",
@@ -83,7 +81,7 @@ class bf1_api(object):
             "ServerNotRestartableException": "服务器未开启",
             "InvalidLevelIndexException": "地图编号无效",
             "RspErrUserIsAlreadyVip()": "玩家已经是VIP了",
-            "RspErrServerBanMax()": "服务器BAN位已满"
+            "RspErrServerBanMax()": "服务器BAN位已满",
         }
         self.filter_dict = {
             # 所有值都是可选的, 要什么写什么就行, 在getGameData有详细的
@@ -92,7 +90,7 @@ class bf1_api(object):
                 "OFFICIAL": "on",  # 官服
                 "RANKED": "on",  # 私服
                 "UNRANKED": "on",  # 私服(不计战绩)
-                "PRIVATE": "on"  # 密码服
+                "PRIVATE": "on",  # 密码服
             },
             "maps": {  # 地图
                 "MP_MountainFort": "on",
@@ -126,7 +124,7 @@ class bf1_api(object):
                 "MP_Trench": "on",
                 "MP_ShovelTown": "on",
                 "MP_Bridge": "on",
-                "MP_Islands": "on"
+                "MP_Islands": "on",
             },
             "gameModes": {  # 模式
                 "ZoneControl": "on",
@@ -138,11 +136,11 @@ class bf1_api(object):
                 "TeamDeathMatch": "on",
                 "BreakthroughLarge": "on",
                 "Possession": "on",
-                "Conquest": "on"
+                "Conquest": "on",
             },
             "vehicles": {  # 载具
                 "L": "on",  # 地面
-                "A": "on"  # 空中
+                "A": "on",  # 空中
             },
             "weaponClasses": {
                 "M": "on",  # 刀
@@ -154,7 +152,7 @@ class bf1_api(object):
                 "SAR": "on",  # 半自动
                 "SR": "on",  # 狙
                 "KG": "on",  # 兵种装备
-                "SIR": "off"  # 制式
+                "SIR": "off",  # 制式
             },
             "slots": {  # 空位
                 "oneToFive": "on",  # 1-5
@@ -162,7 +160,7 @@ class bf1_api(object):
                 "none": "on",  # 无
                 "tenPlus": "on",  # 10+
                 "all": "on",  # 全部
-                "spectator": "on"  # 观战
+                "spectator": "on",  # 观战
             },
             "regions": {  # 地区
                 "OC": "on",  # 大洋
@@ -171,14 +169,14 @@ class bf1_api(object):
                 "Afr": "on",  # 非
                 "AC": "on",  # 南极洲(真有人吗)
                 "SAm": "on",  # 南美
-                "NAm": "on"  # 北美
+                "NAm": "on",  # 北美
             },
             "kits": {  # 兵种 四大兵种和精英
                 "1": "on",
                 "2": "on",
                 "3": "on",
                 "4": "on",
-                "HERO": "on"
+                "HERO": "on",
             },
             "misc": {  # 自己看getGameData去,懒得打了
                 "KC": "on",
@@ -201,15 +199,9 @@ class bf1_api(object):
                 "LNL": "off",
                 "UM": "off",
                 "DSD": "off",
-                "DTB": "off"
+                "DTB": "off",
             },
-            "scales": {
-                "BD2": "on",
-                "TC2": "on",
-                "SR2": "on",
-                "VR2": "on",
-                "RT1": "on"
-            },
+            "scales": {"BD2": "on", "TC2": "on", "SR2": "on", "VR2": "on", "RT1": "on"},
             "gameSizes": {  # 服务器最大人数
                 "10": "on",
                 "16": "on",
@@ -217,14 +209,14 @@ class bf1_api(object):
                 "32": "on",
                 "40": "on",
                 "48": "on",
-                "64": "on"
+                "64": "on",
             },
             "tickRates": {  # 帧率
                 "30": "on",
                 "60": "on",
                 "120": "on",
-                "144": "on"
-            }
+                "144": "on",
+            },
         }
         self.auto_login_count = 0
         self.http_session = aiohttp.ClientSession()
@@ -236,17 +228,17 @@ class bf1_api(object):
             return True
         if (not self.remid) or (not self.pid):
             data = await self.Companion_isLoggedIn()
-            if not data.get('result').get('isLoggedIn'):
+            if not data.get("result").get("isLoggedIn"):
                 self.check_login = False
                 return True
             else:
                 self.check_login = True
                 return False
         return (
-                not self.check_login
-                or self.access_token is None
-                or (time.time() - self.access_token_time)
-                >= int(self.access_token_expires_time)
+            not self.check_login
+            or self.access_token is None
+            or (time.time() - self.access_token_time)
+            >= int(self.access_token_expires_time)
         )
 
     async def get_session(self) -> str:
@@ -263,22 +255,22 @@ class bf1_api(object):
         self.api_header["X-Gatewaysession"] = await self.get_session()
         return self.api_header
 
-    async def api_call(self, body: dict, proxied=False) -> Union[dict, str]:
+    async def api_call(self, body: dict, proxied=False) -> dict | str:
         try:
             async with self.http_session.post(
-                    url=self.api_url if not proxied else self.proxied_api_url,
-                    headers=await self.get_api_header(),
-                    data=json.dumps(body),
-                    timeout=10,
-                    ssl=False,
-                    proxy=proxy
+                url=self.api_url if not proxied else self.proxied_api_url,
+                headers=await self.get_api_header(),
+                data=json.dumps(body),
+                timeout=10,
+                ssl=False,
+                proxy=proxy,
             ) as response:
                 return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
     # 玩家信息相关
-    async def login(self, remid: str, sid: str) -> Union[str, None]:
+    async def login(self, remid: str, sid: str) -> str | None:
         """
         使用remid和sid登录，返回session
         :param remid: 玩家登录时cookie的remid
@@ -286,22 +278,19 @@ class bf1_api(object):
         :return: 成功登录后的session
         """
         from utils.bf1.database import BF1DB
+
         logger.debug(f"BF1账号{self.pid}登录ing\nremid={remid}\nsid={sid}")
         self.remid = remid
         self.sid = sid
         # 获取access_token
-        url = 'https://accounts.ea.com/connect/auth?client_id=ORIGIN_JS_SDK&response_type=token&redirect_uri=nucleus%3Arest&prompt=none&release_type=prod'
+        url = "https://accounts.ea.com/connect/auth?client_id=ORIGIN_JS_SDK&response_type=token&redirect_uri=nucleus%3Arest&prompt=none&release_type=prod"
         header = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36',
-            'Content-Type': 'application/json',
-            'Cookie': f'remid={self.remid}; sid={self.sid}'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.193 Safari/537.36",
+            "Content-Type": "application/json",
+            "Cookie": f"remid={self.remid}; sid={self.sid}",
         }
         response = await self.http_session.get(
-            url=url,
-            headers=header,
-            timeout=10,
-            ssl=False,
-            proxy=proxy
+            url=url, headers=header, timeout=10, ssl=False, proxy=proxy
         )
         try:
             res = eval(await response.text())
@@ -312,8 +301,12 @@ class bf1_api(object):
             # 获取返回值的头部
             header = dict(response.headers)
             # 取出 Set-Cookie
-            logger.debug(f"type:{type(header['Set-Cookie'])},header['Set-Cookie']:{header['Set-Cookie']}")
-            sid = header['Set-Cookie'][header['Set-Cookie'].find('sid=') + 4:header['Set-Cookie'].find(';')]
+            logger.debug(
+                f"type:{type(header['Set-Cookie'])},header['Set-Cookie']:{header['Set-Cookie']}"
+            )
+            sid = header["Set-Cookie"][
+                header["Set-Cookie"].find("sid=") + 4 : header["Set-Cookie"].find(";")
+            ]
             logger.success(f"更新sid成功!sid:{sid}")
             self.sid = sid
             await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), sid=sid)
@@ -323,11 +316,15 @@ class bf1_api(object):
             try:
                 error_data = eval(await response.text())
                 if error_data.get("error") == "login_required":
-                    logger.warning(f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count + 1}次刷新")
+                    logger.warning(
+                        f"BF1账号:{self.pid}已经失效，正在尝试第{self.auto_login_count + 1}次刷新"
+                    )
                     if self.auto_login_count <= 2:
                         await self.auto_login(str(self.pid))
                     else:
-                        logger.error(f"BF1账号:{self.pid}登录失败次数过多!请检查账密信息是否正确!")
+                        logger.error(
+                            f"BF1账号:{self.pid}登录失败次数过多!请检查账密信息是否正确!"
+                        )
                         return await response.text()
             except Exception as e:
                 logger.error(f"BF1账号{self.pid}登录刷新session失败!{e}")
@@ -335,19 +332,21 @@ class bf1_api(object):
             logger.error(f"BF1账号{self.pid}登录刷新session失败!")
             return await response.text()
         # 获取authcode
-        url2 = (f"https://accounts.ea.com/connect/auth?access_token={self.access_token}"
-                f"&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod")
+        url2 = (
+            f"https://accounts.ea.com/connect/auth?access_token={self.access_token}"
+            f"&client_id=sparta-backend-as-user-pc&response_type=code&release_type=prod"
+        )
         header2 = {
             "UserAgent": "Mozilla / 5.0 EA Download Manager Origin/ 10.5.94.46774",
-            'Cookie': f'remid={self.remid}; sid={self.sid}',
+            "Cookie": f"remid={self.remid}; sid={self.sid}",
             "localeInfo": "zh_TW",
-            "X-Origin-Platform": "PCWIN"
+            "X-Origin-Platform": "PCWIN",
         }
         try:
             async with httpx.AsyncClient() as client:
                 response2 = await client.get(url2, headers=header2)
-            authcode = response2.headers['location']
-            authcode = authcode[authcode.rfind('=') + 1:]
+            authcode = response2.headers["location"]
+            authcode = authcode[authcode.rfind("=") + 1 :]
             self.authcode = authcode
             logger.success(f"获取authcode成功!authcode:{self.authcode}")
         except Exception as e:
@@ -369,7 +368,9 @@ class bf1_api(object):
         if isinstance(await self.setLocale(), dict):
             logger.success(f"BF1账号{self.pid}已自动设置语言为zhtw")
         self.auto_login_count = 0
-        await BF1DB.bf1account.update_bf1account_loginInfo(int(self.pid), self.remid, self.sid, self.session)
+        await BF1DB.bf1account.update_bf1account_loginInfo(
+            int(self.pid), self.remid, self.sid, self.session
+        )
         return self.session
 
     async def setLocale(self, locale: str = "zhtw") -> dict:
@@ -382,10 +383,8 @@ class bf1_api(object):
             {
                 "jsonrpc": "2.0",
                 "method": "CompanionSettings.setLocale",
-                "params": {
-                    "locale": locale
-                },
-                "id": await get_a_uuid()
+                "params": {"locale": locale},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -402,26 +401,26 @@ class bf1_api(object):
                 "sessionId": "xxx"
             }
         """
-        url = 'https://login.2788.pro/login'
+        url = "https://login.2788.pro/login"
         headers = {
-            'authority': 'login.2788.pro',
-            'accept': '*/*',
-            'accept-language': 'zh-CN,zh;q=0.9',
-            'content-type': 'application/x-www-form-urlencoded',
-            'origin': 'https://login.2788.pro',
-            'referer': 'https://login.2788.pro/',
-            'sec-ch-ua': '"Chromium";v="118", "Microsoft Edge";v="118", "Not=A?Brand";v="99"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Windows"',
-            'sec-fetch-dest': 'empty',
-            'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'same-origin',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.0.0',
+            "authority": "login.2788.pro",
+            "accept": "*/*",
+            "accept-language": "zh-CN,zh;q=0.9",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://login.2788.pro",
+            "referer": "https://login.2788.pro/",
+            "sec-ch-ua": '"Chromium";v="118", "Microsoft Edge";v="118", "Not=A?Brand";v="99"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36 Edg/118.0.0.0",
         }
         data = {
-            'email': email,
-            'password': password,
-            'bypass2fa': 'true',
+            "email": email,
+            "password": password,
+            "bypass2fa": "true",
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, data=data) as response:
@@ -429,7 +428,7 @@ class bf1_api(object):
 
     async def auto_login(self, pid):
         file_path = "utils/bf1/ap_info.json"
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             ap_info = json.load(f)
         if not ap_info.get(pid):
             logger.error(f"BF1账号:{pid}没有账密信息!取消更新remid和sid!")
@@ -458,27 +457,23 @@ class bf1_api(object):
             remid = self.remid
         if not sid:
             sid = self.sid
-        url = 'https://accounts.ea.com/connect/auth?client_id=GOS-BlazeServer-BFTUN-PC&response_type=code&prompt=none'
+        url = "https://accounts.ea.com/connect/auth?client_id=GOS-BlazeServer-BFTUN-PC&response_type=code&prompt=none"
         header = {
-            'Connection': 'keep-alive',
-            'User-Agent': 'Mozilla/5.0 EA Download Manager Origin/10.5.88.45577',
-            'Host': 'accounts.ea.com',
-            'Accept': '*/*',
-            'X-Origin-Platform': 'PCWIN',
-            'localeInfo': 'zh_TW',
-            'Accept-Language': 'zh-TW',
-            'Cookie': f'remid={remid}; sid={sid}'
+            "Connection": "keep-alive",
+            "User-Agent": "Mozilla/5.0 EA Download Manager Origin/10.5.88.45577",
+            "Host": "accounts.ea.com",
+            "Accept": "*/*",
+            "X-Origin-Platform": "PCWIN",
+            "localeInfo": "zh_TW",
+            "Accept-Language": "zh-TW",
+            "Cookie": f"remid={remid}; sid={sid}",
         }
         response = await self.http_session.get(
-            url=url,
-            headers=header,
-            timeout=10,
-            allow_redirects=False,
-            proxy=proxy
+            url=url, headers=header, timeout=10, allow_redirects=False, proxy=proxy
         )
         try:
-            authcode = response.headers['location']
-            return authcode[authcode.rfind('=') + 1:]
+            authcode = response.headers["location"]
+            return authcode[authcode.rfind("=") + 1 :]
         except Exception as e:
             logger.error(e)
             logger.error(await response.text())
@@ -521,7 +516,7 @@ class bf1_api(object):
                 data=json.dumps(body),
                 timeout=10,
                 ssl=False,
-                proxy=proxy
+                proxy=proxy,
             )
             return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
@@ -546,11 +541,8 @@ class bf1_api(object):
             {
                 "jsonrpc": "2.0",
                 "method": "Onboarding.welcomeMessage",
-                "params": {
-                    "game": "tunguska",
-                    "minutesToUTC": -480
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "minutesToUTC": -480},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -568,21 +560,17 @@ class bf1_api(object):
             "Accept": "application/json",
             "X-Expand-Results": "true",
             "Authorization": f"Bearer {self.access_token}",
-            "Accept-Encoding": "deflate"
+            "Accept-Encoding": "deflate",
         }
         try:
             response = await self.http_session.get(
-                url=url,
-                headers=header,
-                timeout=10,
-                ssl=False,
-                proxy=proxy
+                url=url, headers=header, timeout=10, ssl=False, proxy=proxy
             )
             return await response.json()
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
 
-    async def getPersonasByIds(self, personaIds: list[Union[int, str]]) -> dict:
+    async def getPersonasByIds(self, personaIds: list[int | str]) -> dict:
         """
         根据pid获取Personas
         :param personaIds: PID列表
@@ -608,9 +596,11 @@ class bf1_api(object):
                 "method": "RSP.getPersonasByIds",
                 "params": {
                     "game": "tunguska",
-                    "personaIds": personaIds if isinstance(personaIds, list) else [personaIds]
+                    "personaIds": personaIds
+                    if isinstance(personaIds, list)
+                    else [personaIds],
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
@@ -633,7 +623,7 @@ class bf1_api(object):
             {
                 "jsonrpc": "2.0",
                 "method": "Companion.isLoggedIn",
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
@@ -642,12 +632,12 @@ class bf1_api(object):
             {
                 "jsonrpc": "2.0",
                 "method": "Companion.isLoggedIn",
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
     # 返回数据前进行错误处理
-    async def error_handle(self, data: dict) -> Union[dict, str]:
+    async def error_handle(self, data: dict) -> dict | str:
         """
         错误处理
             {
@@ -663,9 +653,13 @@ class bf1_api(object):
         """
         if not (error_data := data.get("error")):
             return data
-        if error_msg := self.error_msg_dict.get(str(error_data.get("message")), error_data.get("message")):
+        if error_msg := self.error_msg_dict.get(
+            str(error_data.get("message")), error_data.get("message")
+        ):
             return error_msg
-        elif error_msg := self.error_code_dict.get(error_data.get("code"), error_data.get("code")):
+        elif error_msg := self.error_code_dict.get(
+            error_data.get("code"), error_data.get("code")
+        ):
             if error_data.get("code") == -32501:
                 self.check_login = False
                 logger.warning(f"BF1账号{self.pid}session失效,尝试重新登录")
@@ -681,7 +675,7 @@ class bf1_api(object):
 class Game(bf1_api):
     """进出服务器"""
 
-    async def reserveSlot(self, gameId: Union[int, str]) -> dict:
+    async def reserveSlot(self, gameId: int | str) -> dict:
         """
         进入服务器
         :param gameId: 服务器gameId
@@ -696,13 +690,13 @@ class Game(bf1_api):
                     "gameId": gameId,
                     "gameProtocolVersion": "3779779",
                     "currentGame": "tunguska",
-                    "settings": {"role": "spectator"}
+                    "settings": {"role": "spectator"},
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def leaveGame(self, gameId: Union[int, str]) -> dict:
+    async def leaveGame(self, gameId: int | str) -> dict:
         """
         退出服务器
         :param gameId: 服务器gameId
@@ -721,14 +715,13 @@ class Game(bf1_api):
                     "game": "tunguska",
                     "gameId": gameId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
 
 class Progression(bf1_api):
-
-    async def getDogtagsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getDogtagsByPersonaId(self, personaId: int | str) -> dict:
         """
         获取狗牌
         :param personaId: PID
@@ -763,15 +756,12 @@ class Progression(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Progression.getDogtagsByPersonaId",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getMedalsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getMedalsByPersonaId(self, personaId: int | str) -> dict:
         """
         获取勋章
         :param personaId: PID
@@ -838,15 +828,12 @@ class Progression(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Progression.getMedalsByPersonaId",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getWeaponsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getWeaponsByPersonaId(self, personaId: int | str) -> dict:
         """
         获取武器
         :param personaId: PID
@@ -879,15 +866,12 @@ class Progression(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Progression.getWeaponsByPersonaId",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getVehiclesByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getVehiclesByPersonaId(self, personaId: int | str) -> dict:
         """
         获取载具
         :param personaId: PID
@@ -920,11 +904,8 @@ class Progression(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Progression.getVehiclesByPersonaId",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -942,7 +923,7 @@ class ScrapExchange(bf1_api):
                 "params": {
                     "game": "tunguska",
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
@@ -950,75 +931,75 @@ class ScrapExchange(bf1_api):
 class CampaignOperations(bf1_api):
     async def getPlayerCampaignStatus(self) -> dict:
         """
-        获取战役信息
-        示例响应：
-        {
-            "jsonrpc": "2.0",
-            "id": "5550a321-f899-4912-8625-966f29a77a6a",
-            "result": {
-                "campaignId": "119",
-                "minutesRemaining": 45129,
-                "name": "火與冰",
-                "shortDesc": "德國在 1916 年 2 月對凡爾登高地猛烈進攻，讓法國人大吃一驚，地獄般的戰鬥很快地就折損了許多法國軍力。霞飛元帥要求俄羅斯人加速他們在東部戰線的計畫，引開部署在凡爾登的德國軍隊。就在 6 月 4 日，勃魯西洛夫就沿著加利西亞 250 英里長的前線發動了全面進攻。 ",
-                "campaignIndex": "2",
-                "currentCompletionCount": 0,
-                "previousCompletionCount": 0,
-                "dailyLimitReached": false,
-                "minutesToDailyReset": 1210,
-                "firstBattlepack": {
-                    "visualName": "行動戰鬥包",
-                    "images": {
-                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
-                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
-                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
-                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
-                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
-                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
-                    },
-                    "rarenessLevel": {
-                        "originalName": "STANDARD",
-                        "name": "Standard",
-                        "value": 0
+                获取战役信息
+                示例响应：
+                {
+                    "jsonrpc": "2.0",
+                    "id": "5550a321-f899-4912-8625-966f29a77a6a",
+                    "result": {
+                        "campaignId": "119",
+                        "minutesRemaining": 45129,
+                        "name": "火與冰",
+                        "shortDesc": "德國在 1916 年 2 月對凡爾登高地猛烈進攻，讓法國人大吃一驚，地獄般的戰鬥很快地就折損了許多法國軍力。霞飛元帥要求俄羅斯人加速他們在東部戰線的計畫，引開部署在凡爾登的德國軍隊。就在 6 月 4 日，勃魯西洛夫就沿著加利西亞 250 英里長的前線發動了全面進攻。 ",
+                        "campaignIndex": "2",
+                        "currentCompletionCount": 0,
+                        "previousCompletionCount": 0,
+                        "dailyLimitReached": false,
+                        "minutesToDailyReset": 1210,
+                        "firstBattlepack": {
+                            "visualName": "行動戰鬥包",
+                            "images": {
+                                "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                                "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                                "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                                "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                                "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                                "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                            },
+                            "rarenessLevel": {
+                                "originalName": "STANDARD",
+                                "name": "Standard",
+                                "value": 0
+                            }
+                        },
+                        "extraBattlepack": {
+                            "visualName": "行動戰鬥包",
+                            "images": {
+                                "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
+                                "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
+                                "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
+                                "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
+                                "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
+                                "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
+                            },
+                            "rarenessLevel": {
+                                "originalName": "STANDARD",
+                                "name": "Standard",
+                                "value": 0
+                            }
+                        },
+                        "op1": {
+                            "operationIndex": 6,
+                            "name": "勃魯西洛夫攻勢",
+                            "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/49/103/Operation7campaign-cf991e2f.png",
+                            "previousScore": 0,
+                            "currentScore": 0,
+                            "requiredScore": 25000
+                        },
+                        "op2": {
+                            "operationIndex": 5,
+                            "name": "惡魔熔爐",
+                            "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/17/32/Operation6campaign-ef206c2e.png",
+                            "previousScore": 0,
+                            "currentScore": 0,
+                            "requiredScore": 25000
+                        },
+                        "op3": null,
+                        "op4": null,
+                        "op5": null
                     }
-                },
-                "extraBattlepack": {
-                    "visualName": "行動戰鬥包",
-                    "images": {
-                        "front_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-d5f96eb3.png",
-                        "Small": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/Battlepack_Standard-818dbc33.png",
-                        "side_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-w-f054c43b.png",
-                        "side_normal": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/perspective-1-2eaba9c5.png",
-                        "side_big": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/icon-battlepack-96744ac1.png",
-                        "front_white": "[BB_PREFIX]/sparta/assets/tunguska/battlepacks/front-battlepack-w-f1ea087d.png"
-                    },
-                    "rarenessLevel": {
-                        "originalName": "STANDARD",
-                        "name": "Standard",
-                        "value": 0
-                    }
-                },
-                "op1": {
-                    "operationIndex": 6,
-                    "name": "勃魯西洛夫攻勢",
-                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/49/103/Operation7campaign-cf991e2f.png",
-                    "previousScore": 0,
-                    "currentScore": 0,
-                    "requiredScore": 25000
-                },
-                "op2": {
-                    "operationIndex": 5,
-                    "name": "惡魔熔爐",
-                    "imageUrl": "[BB_PREFIX]/gamedata/Tunguska/17/32/Operation6campaign-ef206c2e.png",
-                    "previousScore": 0,
-                    "currentScore": 0,
-                    "requiredScore": 25000
-                },
-                "op3": null,
-                "op4": null,
-                "op5": null
-            }
-}
-        :return:
+        }
+                :return:
         """
         return await self.api_call(
             {
@@ -1027,13 +1008,13 @@ class CampaignOperations(bf1_api):
                 "params": {
                     "game": "tunguska",
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
 
 class Stats(bf1_api):
-    async def detailedStatsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def detailedStatsByPersonaId(self, personaId: int | str) -> dict:
         """
         获取战绩
         :param personaId: PID
@@ -1069,17 +1050,14 @@ class Stats(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Stats.detailedStatsByPersonaId",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
 
 class ServerHistory(bf1_api):
-    async def mostRecentServers(self, personaId: Union[int, str]) -> dict:
+    async def mostRecentServers(self, personaId: int | str) -> dict:
         """
         最近游玩
         :param personaId: PID
@@ -1097,11 +1075,8 @@ class ServerHistory(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "ServerHistory.mostRecentServers",
-                "params": {
-                    "game": "tunguska",
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -1140,17 +1115,16 @@ class Gamedata(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Gamedata.getGameData",
-                "params": {
-                    "game": "tunguska"
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska"},
+                "id": await get_a_uuid(),
             }
         )
 
 
 class GameServer(bf1_api):
-
-    async def searchServers(self, server_name: str, limit: int = 200, filter_dict=None) -> dict:
+    async def searchServers(
+        self, server_name: str, limit: int = 200, filter_dict=None
+    ) -> dict:
         """
         搜索服务器
         :return:
@@ -1185,11 +1159,11 @@ class GameServer(bf1_api):
                     "limit": limit,
                     "filterJson": filter_dict,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getServerDetails(self, gameId: Union[int, str]) -> dict:
+    async def getServerDetails(self, gameId: int | str) -> dict:
         """
         服务器信息
         :param gameId: 服务器gameId
@@ -1225,15 +1199,12 @@ class GameServer(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "GameServer.getServerDetails",
-                "params": {
-                    "game": "tunguska",
-                    "gameId": gameId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "gameId": gameId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getFullServerDetails(self, gameId: Union[int, str]) -> dict:
+    async def getFullServerDetails(self, gameId: int | str) -> dict:
         """
         服务器完整信息
         :param gameId: 服务器gameId
@@ -1259,15 +1230,12 @@ class GameServer(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "GameServer.getFullServerDetails",
-                "params": {
-                    "game": "tunguska",
-                    "gameId": gameId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "gameId": gameId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getServersByPersonaIds(self, personaIds: list[Union[int, str]]) -> dict:
+    async def getServersByPersonaIds(self, personaIds: list[int | str]) -> dict:
         """
         获取正在游玩的服务器
         :param personaIds: PID列表
@@ -1288,11 +1256,8 @@ class GameServer(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "GameServer.getServersByPersonaIds",
-                "params": {
-                    "game": "tunguska",
-                    "personaIds": personaIds
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "personaIds": personaIds},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -1300,7 +1265,7 @@ class GameServer(bf1_api):
 class RSP(bf1_api):
     """服管相关"""
 
-    async def RSPgetServerDetails(self, serverId: Union[int, str]) -> dict:
+    async def RSPgetServerDetails(self, serverId: int | str) -> dict:
         """
         服务器RSP信息
         :param serverId: serverId
@@ -1331,15 +1296,12 @@ class RSP(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "RSP.getServerDetails",
-                "params": {
-                    "game": "tunguska",
-                    "serverId": serverId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "serverId": serverId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def kickPlayer(self, gameId: Union[int, str], personaId, reason: str) -> dict | str:
+    async def kickPlayer(self, gameId: int | str, personaId, reason: str) -> dict | str:
         """
         踢人
         :param gameId: 服务器gameId
@@ -1366,13 +1328,13 @@ class RSP(bf1_api):
                     "game": "tunguska",
                     "personaId": personaId,
                     "gameId": gameId,
-                    "reason": reason
+                    "reason": reason,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def chooseLevel(self, persistedGameId: str, levelIndex: Union[int, str]) -> dict:
+    async def chooseLevel(self, persistedGameId: str, levelIndex: int | str) -> dict:
         """
         换图
         :param levelIndex: 地图序号
@@ -1395,13 +1357,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "persistedGameId": persistedGameId,
-                    "levelIndex": levelIndex
+                    "levelIndex": levelIndex,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def addServerAdmin(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def addServerAdmin(self, personaId: int | str, serverId: int | str) -> dict:
         """
         上管理
         :param serverId:
@@ -1428,13 +1390,15 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def removeServerAdmin(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def removeServerAdmin(
+        self, personaId: int | str, serverId: int | str
+    ) -> dict:
         """
         下管理
         :param serverId:
@@ -1461,13 +1425,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def addServerVip(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def addServerVip(self, personaId: int | str, serverId: int | str) -> dict:
         """
         上VIP
         :param serverId:
@@ -1494,13 +1458,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def removeServerVip(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def removeServerVip(self, personaId: int | str, serverId: int | str) -> dict:
         """
         下VIP
         :param serverId:
@@ -1527,13 +1491,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def addServerBan(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def addServerBan(self, personaId: int | str, serverId: int | str) -> dict:
         """
         上Ban
         :param serverId:
@@ -1560,13 +1524,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def removeServerBan(self, personaId: Union[int, str], serverId: Union[int, str]) -> dict:
+    async def removeServerBan(self, personaId: int | str, serverId: int | str) -> dict:
         """
         下Ban
         :param serverId:
@@ -1593,13 +1557,13 @@ class RSP(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "personaId": personaId,
-                    "serverId": serverId
+                    "serverId": serverId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def updateServer(self, serverId: Union[int, str], config: dict = None) -> dict:
+    async def updateServer(self, serverId: int | str, config: dict = None) -> dict:
         """
         修改配置
         :param config:
@@ -1625,70 +1589,28 @@ class RSP(bf1_api):
                 },
                 "game": "tunguska",
                 "serverId": serverId,  # 服务器ServerId
-                "bannerSettings": {
-                    "bannerUrl": "",
-                    "clearBanner": True
-                },
+                "bannerSettings": {"bannerUrl": "", "clearBanner": True},
                 "mapRotation": {
                     "maps": [  # 地图池
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_MountainFort"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Amiens"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Chateau"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_ShovelTown"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Graveyard"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Desert"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Scar"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Suez"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Trench"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Forest"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Underworld"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Fields"
-                        },
-                        {
-                            "gameMode": "TOW0",
-                            "mapName": "MP_Verdun"
-                        }
+                        {"gameMode": "TOW0", "mapName": "MP_MountainFort"},
+                        {"gameMode": "TOW0", "mapName": "MP_Amiens"},
+                        {"gameMode": "TOW0", "mapName": "MP_Chateau"},
+                        {"gameMode": "TOW0", "mapName": "MP_ShovelTown"},
+                        {"gameMode": "TOW0", "mapName": "MP_Graveyard"},
+                        {"gameMode": "TOW0", "mapName": "MP_Desert"},
+                        {"gameMode": "TOW0", "mapName": "MP_Scar"},
+                        {"gameMode": "TOW0", "mapName": "MP_Suez"},
+                        {"gameMode": "TOW0", "mapName": "MP_Trench"},
+                        {"gameMode": "TOW0", "mapName": "MP_Forest"},
+                        {"gameMode": "TOW0", "mapName": "MP_Underworld"},
+                        {"gameMode": "TOW0", "mapName": "MP_Fields"},
+                        {"gameMode": "TOW0", "mapName": "MP_Verdun"},
                     ],
                     "rotationType": "",
                     "mod": "32",
                     "name": "0",
                     "description": "",
-                    "id": "100"
+                    "id": "100",
                 },
                 "serverSettings": {
                     "name": "Frontline Test Server",  # 服务器名 需低于64字节
@@ -1699,91 +1621,86 @@ class RSP(bf1_api):
                     "mapRotationId": "100",
                     "customGameSettings": json.dumps(
                         {
-                            'version': 10,
-                            'kits': {
-                                '8': 'off',
-                                '4': 'on',
-                                '9': 'off',
-                                '5': 'off',
-                                '6': 'off',
-                                'HERO': 'on',
-                                '1': 'on',
-                                '2': 'on',
-                                '7': 'off',
-                                '3': 'on'
+                            "version": 10,
+                            "kits": {
+                                "8": "off",
+                                "4": "on",
+                                "9": "off",
+                                "5": "off",
+                                "6": "off",
+                                "HERO": "on",
+                                "1": "on",
+                                "2": "on",
+                                "7": "off",
+                                "3": "on",
                             },
-                            'vehicles': {
-                                'L': 'on',
-                                'A': 'on'
+                            "vehicles": {"L": "on", "A": "on"},
+                            "weaponClasses": {
+                                "E": "on",
+                                "SIR": "off",
+                                "SAR": "on",
+                                "KG": "on",
+                                "M": "on",
+                                "LMG": "on",
+                                "SMG": "on",
+                                "H": "on",
+                                "S": "on",
+                                "SR": "on",
                             },
-                            'weaponClasses': {
-                                'E': 'on',
-                                'SIR': 'off',
-                                'SAR': 'on',
-                                'KG': 'on',
-                                'M': 'on',
-                                'LMG': 'on',
-                                'SMG': 'on',
-                                'H': 'on',
-                                'S': 'on',
-                                'SR': 'on'
+                            "serverType": {"SERVER_TYPE_RANKED": "on"},
+                            "misc": {
+                                "RWM": "off",
+                                "UM": "off",
+                                "LL": "off",
+                                "AAS": "off",
+                                "LNL": "off",
+                                "3S": "off",
+                                "KC": "off",
+                                "MV": "off",
+                                "BH": "on",
+                                "F": "off",
+                                "MM": "on",
+                                "DTB": "on",
+                                "FF": "off",
+                                "RH": "on",
+                                "3VC": "on",
+                                "SLSO": "off",
+                                "DSD": "on",
+                                "AAR": "off",
+                                "NT": "on",
+                                "BPL": "off",
+                                "MS": "on",
                             },
-                            'serverType': {
-                                'SERVER_TYPE_RANKED': 'on'
+                            "scales": {
+                                "RT3": "off",
+                                "BD3": "off",
+                                "VR3": "off",
+                                "BD4": "off",
+                                "BD2": "on",
+                                "TC1": "off",
+                                "SR1": "off",
+                                "SR2": "on",
+                                "VR2": "off",
+                                "RT1": "on",
+                                "BD1": "off",
+                                "RT5": "off",
+                                "RT2": "off",
+                                "TC2": "on",
+                                "TC3": "off",
+                                "SR3": "off",
+                                "RT4": "off",
+                                "VR1": "on",
                             },
-                            'misc': {
-                                'RWM': 'off',
-                                'UM': 'off',
-                                'LL': 'off',
-                                'AAS': 'off',
-                                'LNL': 'off',
-                                '3S': 'off',
-                                'KC': 'off',
-                                'MV': 'off',
-                                'BH': 'on',
-                                'F': 'off',
-                                'MM': 'on',
-                                'DTB': 'on',
-                                'FF': 'off',
-                                'RH': 'on',
-                                '3VC': 'on',
-                                'SLSO': 'off',
-                                'DSD': 'on',
-                                'AAR': 'off',
-                                'NT': 'on',
-                                'BPL': 'off',
-                                'MS': 'on'
-                            },
-                            'scales': {
-                                'RT3': 'off',
-                                'BD3': 'off',
-                                'VR3': 'off',
-                                'BD4': 'off',
-                                'BD2': 'on',
-                                'TC1': 'off',
-                                'SR1': 'off',
-                                'SR2': 'on',
-                                'VR2': 'off',
-                                'RT1': 'on',
-                                'BD1': 'off',
-                                'RT5': 'off',
-                                'RT2': 'off',
-                                'TC2': 'on',
-                                'TC3': 'off',
-                                'SR3': 'off',
-                                'RT4': 'off',
-                                'VR1': 'on'
-                            }
                         }
-                    )
+                    ),
                     # 自定义设置, GameData那有
-                }
+                },
             }
-        return await self.api_call(
-            config
-        )
+        return await self.api_call(config)
 
-    async def movePlayer(self, gameId: Union[int, str], personaId: Union[int, str], teamId: int) -> dict:
+    async def movePlayer(
+        self, gameId: int | str, personaId: int | str, teamId: int
+    ) -> dict:
         """
         移动玩家
         :param gameId:
@@ -1801,13 +1718,13 @@ class RSP(bf1_api):
                     "teamId": teamId,
                     "personaId": personaId,
                     "forceKill": True,
-                    "moveParty": False
+                    "moveParty": False,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def proxiedMethodGetLogs(self, serverId: Union[int, str]) -> dict:
+    async def proxiedMethodGetLogs(self, serverId: int | str) -> dict:
         """
         获取服务器日志
         :param serverId: serverId
@@ -1817,11 +1734,8 @@ class RSP(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "RSP.getLogs",
-                "params": {
-                    "game": "tunguska",
-                    "serverId": serverId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "serverId": serverId},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -1829,7 +1743,7 @@ class RSP(bf1_api):
 class CloudBanBy22(bf1_api):
     """22的云封禁"""
 
-    async def cb_listServerBan(self, serverId: Union[int, str]) -> dict:
+    async def cb_listServerBan(self, serverId: int | str) -> dict:
         """
         获取服务器封禁列表
         :param serverId:
@@ -1846,16 +1760,15 @@ class CloudBanBy22(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "CloudBan.listServerBan",
-                "params": {
-                    "game": "tunguska",
-                    "serverId": serverId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "serverId": serverId},
+                "id": await get_a_uuid(),
             },
-            proxied=True
+            proxied=True,
         )
 
-    async def cb_addServerBan(self, serverId: Union[int, str], personaId: Union[int, str], reason: str) -> dict:
+    async def cb_addServerBan(
+        self, serverId: int | str, personaId: int | str, reason: str
+    ) -> dict:
         """
         添加服务器封禁
         :param serverId:
@@ -1871,14 +1784,16 @@ class CloudBanBy22(bf1_api):
                     "game": "tunguska",
                     "serverId": serverId,
                     "personaId": personaId,
-                    "reason": reason
+                    "reason": reason,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             },
-            proxied=True
+            proxied=True,
         )
 
-    async def cb_removeServerBan(self, serverId: Union[int, str], personaId: Union[int, str]) -> dict:
+    async def cb_removeServerBan(
+        self, serverId: int | str, personaId: int | str
+    ) -> dict:
         """
         移除服务器封禁
         :param serverId:
@@ -1892,11 +1807,11 @@ class CloudBanBy22(bf1_api):
                 "params": {
                     "game": "tunguska",
                     "serverId": serverId,
-                    "personaId": personaId
+                    "personaId": personaId,
                 },
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             },
-            proxied=True
+            proxied=True,
         )
 
 
@@ -1905,7 +1820,7 @@ class Platoons(bf1_api):
     战队相关
     """
 
-    async def getPlatoonForRspServer(self, serverId: Union[int, str]) -> dict:
+    async def getPlatoonForRspServer(self, serverId: int | str) -> dict:
         """
         服务器战队信息
         :param serverId: serverId
@@ -1935,15 +1850,12 @@ class Platoons(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Platoons.getPlatoonForRspServer",
-                "params": {
-                    "game": "tunguska",
-                    "serverId": serverId
-                },
-                "id": await get_a_uuid()
+                "params": {"game": "tunguska", "serverId": serverId},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getActiveTagsByPersonaIds(self, personaIds: list[Union[int, str]]) -> dict:
+    async def getActiveTagsByPersonaIds(self, personaIds: list[int | str]) -> dict:
         """
         获取代表战队图章
         :param personaIds: PID列表
@@ -1962,14 +1874,12 @@ class Platoons(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Platoons.getActiveTagsByPersonaIds",
-                "params": {
-                    "personaIds": personaIds
-                },
-                "id": await get_a_uuid()
+                "params": {"personaIds": personaIds},
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getActivePlatoon(self, personaId: Union[int, str]) -> dict:
+    async def getActivePlatoon(self, personaId: int | str) -> dict:
         """
         获取玩家所在战队
         :param personaId:
@@ -2000,10 +1910,8 @@ class Platoons(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Platoons.getActivePlatoon",
-                "params": {
-                    "personaId": personaId
-                },
-                "id": await get_a_uuid()
+                "params": {"personaId": personaId},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -2038,11 +1946,11 @@ class Platoons(bf1_api):
                 "jsonrpc": "2.0",
                 "method": "Platoons.getPlatoon",
                 "params": {"guid": platoon_guid},
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getPlatoons(self, personaId: Union[int, str]) -> dict:
+    async def getPlatoons(self, personaId: int | str) -> dict:
         """
         获取玩家所在战排列表
         :param personaId:
@@ -2058,7 +1966,7 @@ class Platoons(bf1_api):
                 "jsonrpc": "2.0",
                 "method": "Platoons.getPlatoons",
                 "params": {"personaId": personaId},
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
@@ -2278,7 +2186,7 @@ class Platoons(bf1_api):
                 "jsonrpc": "2.0",
                 "method": "Platoons.getServersWithPlayers",
                 "params": {"game": "tunguska", "guid": platoon_guid},
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
@@ -2288,7 +2196,7 @@ class Emblems(bf1_api):
     图章
     """
 
-    async def getEquippedEmblem(self, personaId: Union[int, str]) -> dict:
+    async def getEquippedEmblem(self, personaId: int | str) -> dict:
         """
         获取玩家当前装备的图章
         :param personaId:
@@ -2306,11 +2214,8 @@ class Emblems(bf1_api):
             {
                 "jsonrpc": "2.0",
                 "method": "Emblems.getEquippedEmblem",
-                "params": {
-                    "personaId": personaId,
-                    "platform": "pc"
-                },
-                "id": await get_a_uuid()
+                "params": {"personaId": personaId, "platform": "pc"},
+                "id": await get_a_uuid(),
             }
         )
 
@@ -2320,36 +2225,47 @@ class Loadout(bf1_api):
     装备
     """
 
-    async def getEquippedDogtagsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getEquippedDogtagsByPersonaId(self, personaId: int | str) -> dict:
         return await self.api_call(
             {
                 "jsonrpc": "2.0",
                 "method": "Loadout.getEquippedDogtagsByPersonaId",
                 "params": {"game": "tunguska", "personaId": personaId},
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
-    async def getPresetsByPersonaId(self, personaId: Union[int, str]) -> dict:
+    async def getPresetsByPersonaId(self, personaId: int | str) -> dict:
         return await self.api_call(
             {
                 "jsonrpc": "2.0",
                 "method": "Loadout.getPresetsByPersonaId",
                 "params": {"game": "tunguska", "personaId": personaId},
-                "id": await get_a_uuid()
+                "id": await get_a_uuid(),
             }
         )
 
 
 class InstanceExistsError(Exception):
     """Raised when an instance already exists for the given pid."""
+
     pass
 
 
 class api_instance(
-    Game, Progression, Stats, ServerHistory, Gamedata,
-    GameServer, RSP, Platoons, ScrapExchange, CampaignOperations,
-    Emblems, Loadout, CloudBanBy22
+    Game,
+    Progression,
+    Stats,
+    ServerHistory,
+    Gamedata,
+    GameServer,
+    RSP,
+    Platoons,
+    ScrapExchange,
+    CampaignOperations,
+    Emblems,
+    Loadout,
+    CloudBanBy22,
 ):
     # 存储所有实例的字典
     instances = {}

@@ -61,7 +61,9 @@ class AsyncORM:
         """
         Lock
         """
-        self.db_mutex = db_mutex or Lock() if self.db_link.startswith("sqlite") else None
+        self.db_mutex = (
+            db_mutex or Lock() if self.db_link.startswith("sqlite") else None
+        )
 
     async def close(self):
         """关闭数据库连接"""
@@ -173,7 +175,9 @@ class AsyncORM:
         :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件
         """
         # 构造所有的delete语句
-        delete_stmts = [delete(table).where(*condition) for condition in conditions_list]
+        delete_stmts = [
+            delete(table).where(*condition) for condition in conditions_list
+        ]
         # 执行批量删除操作
         await self.execute_all(delete_stmts)
 
@@ -194,8 +198,10 @@ class AsyncORM:
         :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件
         """
         # 构造所有的update语句
-        update_stmts = [update(table).where(*condition).values(**data) for data, condition in
-                        zip(data_list, conditions_list)]
+        update_stmts = [
+            update(table).where(*condition).values(**data)
+            for data, condition in zip(data_list, conditions_list)
+        ]
         # 执行批量更新操作
         await self.execute_all(update_stmts)
 
@@ -211,7 +217,7 @@ class AsyncORM:
         if exist:
             # 如果存在，则执行更新操作
             stmt = update(table).where(*condition).values(**data)
-            stmt = stmt.execution_options(synchronize_session='fetch')
+            stmt = stmt.execution_options(synchronize_session="fetch")
             await self.execute(stmt)
         else:
             # 否则执行插入操作
@@ -297,7 +303,7 @@ class AsyncORM:
             "postgresql+asyncpg": "postgresql",
             "mysql+aiomysql": "mysql",
             "postgresql+pg8000": "postgresql+pg8000",
-            "mysql+pymysql": "mysql+pymysql"
+            "mysql+pymysql": "mysql+pymysql",
         }
 
         for async_driver, sync_driver in async_to_sync_drivers.items():

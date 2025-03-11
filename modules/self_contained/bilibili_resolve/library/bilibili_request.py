@@ -23,5 +23,3 @@ async def get_b23_url(burl: str) -> str:
         "share_mode": 3,
     }
     return (await post(url, data=data))["content"]
-
-

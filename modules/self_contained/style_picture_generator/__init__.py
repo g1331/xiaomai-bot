@@ -1,33 +1,37 @@
 import asyncio
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from io import BytesIO
 from math import radians, tan
 from pathlib import Path
 
-import PIL.Image
 import numpy as np
-from PIL import ImageDraw, ImageFont
+import PIL.Image
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Source
-from graia.ariadne.message.parser.twilight import RegexMatch, RegexResult, SpacePolicy
-from graia.ariadne.message.parser.twilight import Twilight
-from graia.ariadne.util.saya import listen, decorate, dispatch
-from graia.saya import Channel
-
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
+from graia.ariadne.message.parser.twilight import (
+    RegexMatch,
+    RegexResult,
+    SpacePolicy,
+    Twilight,
 )
+from graia.ariadne.util.saya import decorate, dispatch, listen
+from graia.saya import Channel
+from PIL import ImageDraw, ImageFont
+
+from core.control import Distribute, FrequencyLimitation, Function, Permission
 from core.models import saya_model
 
-_round = lambda f, r=ROUND_HALF_UP: int(
-    Decimal(str(f)).quantize(Decimal("0"), rounding=r)
-)
-rgb = lambda r, g, b: (r, g, b)
+
+def _round(f, r=ROUND_HALF_UP):
+    return int(Decimal(str(f)).quantize(Decimal("0"), rounding=r))
+
+
+def rgb(r, g, b):
+    return (r, g, b)
+
+
 LEFT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT = 2
 LEFT_PART_HORIZONTAL_BLANK_MULTIPLY_FONT_WIDTH = 1 / 4
 RIGHT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT = 1
@@ -44,19 +48,23 @@ downer_font_path = str(Path.cwd() / "statics" / "fonts" / "NotoSerifCJKSC-Black.
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.meta["name"] = ("StylePictureGenerator")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("一个可以生成不同风格图片的插件，在群中发送 `[5000兆|ph|yt] 文字1 文字2` 即可")
+channel.meta["name"] = "StylePictureGenerator"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["description"] = (
+    "一个可以生成不同风格图片的插件，在群中发送 `[5000兆|ph|yt] 文字1 文字2` 即可"
+)
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 @listen(GroupMessage)
 @dispatch(
-    Twilight([
-        RegexMatch("(5000兆|ph|yt)").space(SpacePolicy.FORCE) @ "logo_type",
-        RegexMatch(r"[^\s]+"),
-        RegexMatch(r"[^\s]+"),
-    ])
+    Twilight(
+        [
+            RegexMatch("(5000兆|ph|yt)").space(SpacePolicy.FORCE) @ "logo_type",
+            RegexMatch(r"[^\s]+"),
+            RegexMatch(r"[^\s]+"),
+        ]
+    )
 )
 @decorate(
     Distribute.require(),
@@ -66,11 +74,11 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Permission.user_require(Permission.User),
 )
 async def style_picture_generator(
-        app: Ariadne,
-        message: MessageChain,
-        group: Group,
-        source: Source,
-        logo_type: RegexResult,
+    app: Ariadne,
+    message: MessageChain,
+    group: Group,
+    source: Source,
+    logo_type: RegexResult,
 ):
     logo_type = logo_type.result.display
     if logo_type == "5000兆":
@@ -98,7 +106,9 @@ def gosencho_en_hoshi_style_image_generator(message: MessageChain) -> MessageCha
         _, left_text, right_text = message.display.split(" ")
         try:
             img_byte = BytesIO()
-            GoSenChoEnHoShiStyleUtils.gen_image(word_a=left_text, word_b=right_text).save(img_byte, format="PNG")
+            GoSenChoEnHoShiStyleUtils.gen_image(
+                word_a=left_text, word_b=right_text
+            ).save(img_byte, format="PNG")
             return MessageChain([Image(data_bytes=img_byte.getvalue())])
         except TypeError:
             return MessageChain("不支持的内容！不要给我一些稀奇古怪的东西！")
@@ -162,11 +172,11 @@ class GoSenChoEnHoShiStyleUtils:
 
     @staticmethod
     def get_gradient_3d(
-            width, height, start_list, stop_list, is_horizontal_list=(False, False, False)
+        width, height, start_list, stop_list, is_horizontal_list=(False, False, False)
     ):
         result = np.zeros((height, width, len(start_list)), dtype=float)
         for i, (start, stop, is_horizontal) in enumerate(
-                zip(start_list, stop_list, is_horizontal_list)
+            zip(start_list, stop_list, is_horizontal_list)
         ):
             result[:, :, i] = GoSenChoEnHoShiStyleUtils.get_gradient_2d(
                 start, stop, width, height, is_horizontal
@@ -265,7 +275,9 @@ class GoSenChoEnHoShiStyleUtils:
             "downerSilver": PIL.Image.fromarray(np.uint8(downerSilverArray)).crop(
                 (0, 0, width, height)
             ),
-            "gold": PIL.Image.fromarray(np.uint8(goldArray)).crop((0, 0, width, height)),
+            "gold": PIL.Image.fromarray(np.uint8(goldArray)).crop(
+                (0, 0, width, height)
+            ),
             "red": PIL.Image.fromarray(np.uint8(redArray)).crop((0, 0, width, height)),
             "strokeRed": PIL.Image.fromarray(np.uint8(strokeRedArray)).crop(
                 (0, 0, width, height)
@@ -276,20 +288,20 @@ class GoSenChoEnHoShiStyleUtils:
             "strokeNavy": PIL.Image.fromarray(np.uint8(navyArray)).crop(
                 (0, 0, width, height)
             ),  # Width: 7
-            "baseStrokeBlack": PIL.Image.new("RGBA", (width, height), rgb(0, 0, 0)).crop(
-                (0, 0, width, height)
-            ),
+            "baseStrokeBlack": PIL.Image.new(
+                "RGBA", (width, height), rgb(0, 0, 0)
+            ).crop((0, 0, width, height)),
             # Width: 17
             "strokeBlack": PIL.Image.new("RGBA", (width, height), rgb(16, 25, 58)).crop(
                 (0, 0, width, height)
             ),  # Width: 17
-            "strokeWhite": PIL.Image.new("RGBA", (width, height), rgb(221, 221, 221)).crop(
-                (0, 0, width, height)
-            ),
+            "strokeWhite": PIL.Image.new(
+                "RGBA", (width, height), rgb(221, 221, 221)
+            ).crop((0, 0, width, height)),
             # Width: 8
             "baseStrokeWhite": PIL.Image.new(
                 "RGBA", (width, height), rgb(255, 255, 255)
-            ).crop((0, 0, width, height))
+            ).crop((0, 0, width, height)),
             # Width: 8
         }
         for k in result:
@@ -298,25 +310,30 @@ class GoSenChoEnHoShiStyleUtils:
 
     @staticmethod
     def gen_image(
-            word_a="5000兆円",
-            word_b="欲しい!",
-            default_width=1500,
-            height=500,
-            bg="white",
-            subset=250,
-            default_base=None,
+        word_a="5000兆円",
+        word_b="欲しい!",
+        default_width=1500,
+        height=500,
+        bg="white",
+        subset=250,
+        default_base=None,
     ):
         # width = max_width
         k = 0.8
         alpha = (0, 0, 0, 0)
         leftmargin = 50
         upmargin = 20
-        font_upper = ImageFont.truetype(upper_font_path, _round(height * 0.35 * k) + upmargin)
-        font_downer = ImageFont.truetype(downer_font_path, _round(height * 0.35 * k) + upmargin)
+        font_upper = ImageFont.truetype(
+            upper_font_path, _round(height * 0.35 * k) + upmargin
+        )
+        font_downer = ImageFont.truetype(
+            downer_font_path, _round(height * 0.35 * k) + upmargin
+        )
 
         # Prepare Width
         upper_width = (
-                max([
+            max(
+                [
                     default_width,
                     GoSenChoEnHoShiStyleUtils.getTextWidth(
                         word_a,
@@ -324,11 +341,13 @@ class GoSenChoEnHoShiStyleUtils:
                         width=default_width,
                         height=_round(height / 2),
                     ),
-                ])
-                + 300
+                ]
+            )
+            + 300
         )
         downer_width = (
-                max([
+            max(
+                [
                     default_width,
                     GoSenChoEnHoShiStyleUtils.getTextWidth(
                         word_b,
@@ -336,8 +355,9 @@ class GoSenChoEnHoShiStyleUtils:
                         width=default_width,
                         height=_round(height / 2),
                     ),
-                ])
-                + 300
+                ]
+            )
+            + 300
         )
 
         # Prepare base - Upper (if required)
@@ -357,7 +377,9 @@ class GoSenChoEnHoShiStyleUtils:
         # else:
 
         # Prepare mask - Upper
-        upper_mask_base = PIL.Image.new("L", (upper_width + leftmargin, _round(height / 2) + upmargin), 0)
+        upper_mask_base = PIL.Image.new(
+            "L", (upper_width + leftmargin, _round(height / 2) + upmargin), 0
+        )
 
         mask_img_upper = []
         upper_data = [
@@ -417,9 +439,11 @@ class GoSenChoEnHoShiStyleUtils:
         img_upper = PIL.Image.new("RGBA", (upper_width, _round(height / 2)), alpha)
 
         for i, (pos, stroke, color) in enumerate(
-                zip(upper_data[0], upper_data[1], upper_data[2])
+            zip(upper_data[0], upper_data[1], upper_data[2])
         ):
-            img_upper_part = PIL.Image.new("RGBA", (upper_width, _round(height / 2)), alpha)
+            img_upper_part = PIL.Image.new(
+                "RGBA", (upper_width, _round(height / 2)), alpha
+            )
             img_upper_part.paste(upper_base[color], (0, 0), mask=mask_img_upper[i])
             img_upper.alpha_composite(img_upper_part)
 
@@ -428,7 +452,7 @@ class GoSenChoEnHoShiStyleUtils:
             "RGBA", (downer_width + leftmargin, _round(height / 2)), alpha
         )
         for i, (pos, stroke, color) in enumerate(
-                zip(downer_data[0], downer_data[1], downer_data[2])
+            zip(downer_data[0], downer_data[1], downer_data[2])
         ):
             img_downer_part = PIL.Image.new(
                 "RGBA", (downer_width + leftmargin, _round(height / 2)), alpha
@@ -449,14 +473,23 @@ class GoSenChoEnHoShiStyleUtils:
         # finish
         previmg = PIL.Image.new(
             "RGBA",
-            (max([upper_width, downer_width]) + leftmargin + subset + 100, height + upmargin + 100),
-            (255, 255, 255, 0)
+            (
+                max([upper_width, downer_width]) + leftmargin + subset + 100,
+                height + upmargin + 100,
+            ),
+            (255, 255, 255, 0),
         )
         previmg.alpha_composite(tiltres[0], (0, 50), (0, 0))
         if upper_width > downer_width + subset:
-            previmg.alpha_composite(tiltres[1], (upper_width + subset - downer_width, _round(height / 2) + 50), (0, 0))
+            previmg.alpha_composite(
+                tiltres[1],
+                (upper_width + subset - downer_width, _round(height / 2) + 50),
+                (0, 0),
+            )
         else:
-            previmg.alpha_composite(tiltres[1], (subset, _round(height / 2) + 50), (0, 0))
+            previmg.alpha_composite(
+                tiltres[1], (subset, _round(height / 2) + 50), (0, 0)
+            )
         croprange = previmg.getbbox()
         img = previmg.crop(croprange)
         final_image = PIL.Image.new("RGB", (img.size[0] + 100, img.size[1] + 100), bg)
@@ -468,7 +501,9 @@ class GoSenChoEnHoShiStyleUtils:
 class PornhubStyleUtils:
     @staticmethod
     def create_left_part_img(text: str, font_size: int):
-        font = ImageFont.truetype(str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size)
+        font = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size
+        )
         font_width, font_height = font.getsize(text)
         offset_y = font.font.getsize(text)[1][1]
         blank_height = font_height * LEFT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT
@@ -486,7 +521,9 @@ class PornhubStyleUtils:
     @staticmethod
     def create_right_part_img(text: str, font_size: int):
         radii = RIGHT_PART_RADII
-        font = ImageFont.truetype(str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size)
+        font = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size
+        )
         font_width, font_height = font.getsize(text)
         offset_y = font.font.getsize(text)[1][1]
         blank_height = font_height * RIGHT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT
@@ -565,7 +602,9 @@ class PornhubStyleUtils:
     def make_ph_style_logo(left_text: str, right_text: str) -> MessageChain:
         return MessageChain(
             Image(
-                data_bytes=PornhubStyleUtils.combine_img(left_text, right_text, FONT_SIZE)
+                data_bytes=PornhubStyleUtils.combine_img(
+                    left_text, right_text, FONT_SIZE
+                )
             )
         )
 
@@ -578,7 +617,9 @@ class YoutubeStyleUtils:
 
     @staticmethod
     def create_left_part_img(text: str, font_size: int):
-        font = ImageFont.truetype(str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size)
+        font = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size
+        )
         font_width, font_height = font.getsize(text)
         offset_y = font.font.getsize(text)[1][1]
         blank_height = font_height * LEFT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT
@@ -598,7 +639,9 @@ class YoutubeStyleUtils:
     @staticmethod
     def create_right_part_img(text: str, font_size: int):
         radii = RIGHT_PART_RADII
-        font = ImageFont.truetype(str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size)
+        font = ImageFont.truetype(
+            str(Path.cwd() / "statics" / "fonts" / "ArialEnUnicodeBold.ttf"), font_size
+        )
         font_width, font_height = font.getsize(text)
         offset_y = font.font.getsize(text)[1][1]
         blank_height = font_height * RIGHT_PART_VERTICAL_BLANK_MULTIPLY_FONT_HEIGHT

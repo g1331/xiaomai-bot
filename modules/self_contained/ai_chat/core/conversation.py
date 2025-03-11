@@ -4,15 +4,14 @@
 
 import asyncio
 import json
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from enum import Enum
-from typing import AsyncGenerator, List, Optional, Tuple
 
 from loguru import logger
 
 from ..core.plugin import BasePlugin
 from ..core.provider import BaseAIProvider, FileContent
-from .preset import preset_dict
 
 
 class Conversation:
@@ -20,7 +19,7 @@ class Conversation:
         DEFAULT = "default"
         CUSTOM = "custom"
 
-    def __init__(self, provider: BaseAIProvider, plugins: List[BasePlugin]):
+    def __init__(self, provider: BaseAIProvider, plugins: list[BasePlugin]):
         self.provider = provider
         self.plugins = plugins
         self._last_time = None  # 记录上次添加时间信息的时间
@@ -89,7 +88,7 @@ class Conversation:
             // 2
         )
 
-    def can_retry(self) -> Tuple[bool, str]:
+    def can_retry(self) -> tuple[bool, str]:
         """检查是否可以重试上一次对话
 
         Returns:
@@ -123,7 +122,7 @@ class Conversation:
         return True, "可以重试"
 
     async def retry_last_message(
-        self, files: List[FileContent] = None, use_tool: bool = False
+        self, files: list[FileContent] = None, use_tool: bool = False
     ) -> str:
         """重试上一次对话，即删除AI的最后一个回复，重新生成
 
@@ -178,7 +177,7 @@ class Conversation:
             self._last_time = current_hour
 
     # 让模型总结历史记录
-    async def summarize_history(self) -> Optional[str]:
+    async def summarize_history(self) -> str | None:
         max_token = self.provider.model_config.max_total_tokens
         current_tokens = self.provider.get_usage().get("prompt_tokens", 0)
         # 预留0.5k token给总结历史记录
@@ -231,7 +230,7 @@ class Conversation:
             return f"Error: {str(e)}"
 
     @staticmethod
-    def _deduplicate_tool_calls(tool_calls) -> Tuple[list, int, int]:
+    def _deduplicate_tool_calls(tool_calls) -> tuple[list, int, int]:
         """
         对tool_calls进行去重，防止有些模型重复调用相同的工具和参数
 
@@ -271,7 +270,7 @@ class Conversation:
         return unique_tool_calls, skipped_by_id, skipped_by_key
 
     async def process_message(
-        self, user_input: str, files: List[FileContent] = None, use_tool: bool = False
+        self, user_input: str, files: list[FileContent] = None, use_tool: bool = False
     ) -> AsyncGenerator[str, None]:
         """处理用户消息,包括历史记录管理和工具调用
 
@@ -383,11 +382,8 @@ class Conversation:
                     + non_system_messages[-max_messages + len(system_messages) :]
                 )
 
-            # 判断当前提供者是否支持工具调用
-            supports_tools = use_tool and self.provider.supports_tools
-
             if use_tool and not self.provider.supports_tools:
-                logger.warning(f"当前模型不支持工具调用，将忽略工具请求")
+                logger.warning("当前模型不支持工具调用，将忽略工具请求")
                 use_tool = False
 
             if use_tool:  # 只有在启用工具且模型支持时才准备工具配置
@@ -547,7 +543,7 @@ class Conversation:
             logger.error(f"Error in process_message: {e}")
             yield f"处理消息时发生错误: {str(e)}"
 
-    def check_model_compatibility(self, model_config) -> Tuple[bool, str]:
+    def check_model_compatibility(self, model_config) -> tuple[bool, str]:
         """
         检查给定的模型配置是否与当前会话历史兼容
 

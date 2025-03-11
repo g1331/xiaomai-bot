@@ -11,31 +11,20 @@ from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePoli
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Saya, Channel
 
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("Tarot")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("可以抽塔罗牌的插件，在群中发送 `-塔罗牌` 即可")
+channel.meta["name"] = "Tarot"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["description"] = "可以抽塔罗牌的插件，在群中发送 `-塔罗牌` 即可"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
 @listen(GroupMessage)
-@dispatch(
-    Twilight(
-        [
-            FullMatch("-塔罗牌").space(SpacePolicy.PRESERVE)
-        ]
-    )
-)
+@dispatch(Twilight([FullMatch("-塔罗牌").space(SpacePolicy.PRESERVE)]))
 @decorate(
     Distribute.require(),
     Function.require(channel.module),
@@ -47,7 +36,7 @@ async def tarot(app: Ariadne, group: Group, source: Source):
     await app.send_group_message(group, Tarot.get_tarot(), quote=source)
 
 
-class Tarot(object):
+class Tarot:
     @staticmethod
     def get_tarot() -> MessageChain:
         card, filename = Tarot.get_random_tarot()
@@ -64,7 +53,7 @@ class Tarot(object):
     @staticmethod
     def get_random_tarot():
         path = Path(os.getcwd()) / "statics" / "tarot" / "tarot.json"
-        with open(path, "r", encoding="utf-8") as json_file:
+        with open(path, encoding="utf-8") as json_file:
             data = json.load(json_file)
         kinds = ["major", "pentacles", "wands", "cups", "swords"]
         cards = []

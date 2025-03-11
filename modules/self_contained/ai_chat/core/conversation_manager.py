@@ -5,8 +5,6 @@
 import asyncio
 import json
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -58,7 +56,7 @@ class ConversationManager:
                     return f"{group_id}-{member_id}"
 
     def __init__(self, provider_factory, plugins_factory):
-        self.conversations: Dict[str, Conversation] = {}
+        self.conversations: dict[str, Conversation] = {}
         self.provider_factory = provider_factory
         self.plugins_factory = plugins_factory
         self._configs = self._load_configs()
@@ -67,7 +65,7 @@ class ConversationManager:
 
     def _load_configs(self) -> dict:
         try:
-            with open(self.CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(self.CONFIG_FILE, encoding="utf-8") as f:
                 data = json.load(f)
             return data
         except Exception:
@@ -241,7 +239,7 @@ class ConversationManager:
         self,
         conversation: Conversation,
         message: str,
-        files: List[FileContent] = None,
+        files: list[FileContent] = None,
         use_tool: bool = False,
     ) -> str:
         """处理会话消息并获取完整响应
@@ -267,7 +265,7 @@ class ConversationManager:
         conversation = self.get_conversation(group_id, member_id)
         return conversation.get_round()
 
-    def can_retry(self, group_id: str, member_id: str) -> Tuple[bool, str]:
+    def can_retry(self, group_id: str, member_id: str) -> tuple[bool, str]:
         """检查是否可以重试上一次对话
 
         Args:
@@ -288,9 +286,9 @@ class ConversationManager:
         self,
         group_id: str,
         member_id: str,
-        files: List[FileContent] = None,
+        files: list[FileContent] = None,
         use_tool: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """重试上一次对话，即删除AI的最后一个回复，重新生成
 
         Args:
@@ -341,9 +339,9 @@ class ConversationManager:
         member_id: str,
         member_name: str,
         message: str,
-        files: List[FileContent] = None,
+        files: list[FileContent] = None,
         use_tool: bool = False,
-    ) -> Optional[str]:
+    ) -> str | None:
         """发送消息到会话并获取响应
 
         Args:
@@ -389,7 +387,7 @@ class ConversationManager:
 
     def switch_conversation_model(
         self, group_id: str, member_id: str, model_name: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         为现有会话切换模型，保留对话历史和预设
 

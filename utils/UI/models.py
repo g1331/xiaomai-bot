@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from typing import List, Literal
+from typing import Literal
 
 
 class HTMLElement(BaseModel):
@@ -47,7 +47,7 @@ class ColumnListTextWithItem(BaseModel):
 
 
 class ColumnList(BaseModel):
-    rows: List[ColumnListItem]
+    rows: list[ColumnListItem]
     style: str = ""
     el_name: str = "ColumnList"
 
@@ -71,17 +71,18 @@ class Column(BaseModel):
 
 
 class GenForm(BaseModel):
-
-    columns: List[Column] = []
+    columns: list[Column] = []
     color_type: Literal["light", "dark"] = "light"
     load_awesome_font: bool = False
     body_width: int = 580
 
     def calc_body_width(self):
         different = len(self.columns) - 2
-        self.body_width = len(self.columns) * 580 - (different * 20 if different > 0 else 0)
+        self.body_width = len(self.columns) * 580 - (
+            different * 20 if different > 0 else 0
+        )
         return self.body_width
 
 
 def get_color_type_follow_time():
-    return 'light' if 7 <= datetime.now().hour < 18 else 'dark'
+    return "light" if 7 <= datetime.now().hour < 18 else "dark"

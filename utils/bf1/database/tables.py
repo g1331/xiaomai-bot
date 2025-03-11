@@ -1,4 +1,13 @@
-from sqlalchemy import Column, Integer, BIGINT, String, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import (
+    Column,
+    Integer,
+    BIGINT,
+    String,
+    DateTime,
+    ForeignKey,
+    JSON,
+    Boolean,
+)
 
 from core.orm import orm
 
@@ -189,7 +198,7 @@ class Bf1MatchCache(orm.Base):
     team_win = Column(Integer, nullable=False)
 
     persona_id = Column(BIGINT, nullable=True)
-    display_name = Column(String(collation='NOCASE'), nullable=False)
+    display_name = Column(String(collation="NOCASE"), nullable=False)
 
     kills = Column(Integer, nullable=False)
     deaths = Column(Integer, nullable=False)
@@ -217,6 +226,7 @@ class Bf1PermGroupBind(orm.Base):
     """
     一个群只能绑定一个权限组
     """
+
     __tablename__ = "bf1_perm_group_bind"
     id = Column(Integer, primary_key=True)
     qq_group_id = Column(BIGINT, nullable=False, unique=True)

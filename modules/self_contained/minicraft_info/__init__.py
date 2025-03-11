@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Union
 
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
@@ -9,7 +8,9 @@ from graia.ariadne.message.element import Image
 from graia.ariadne.message.parser.twilight import (
     Twilight,
     ParamMatch,
-    RegexResult, UnionMatch, SpacePolicy,
+    RegexResult,
+    UnionMatch,
+    SpacePolicy,
 )
 from graia.ariadne.model import Group
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -17,19 +18,14 @@ from graia.saya import Channel
 from loguru import logger
 from mcstatus import JavaServer
 
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.meta["name"] = ("MiniCraftInfo")
-channel.meta["description"] = ("获取Minecraft服务器信息")
-channel.meta["author"] = ("13")
+channel.meta["name"] = "MiniCraftInfo"
+channel.meta["description"] = "获取Minecraft服务器信息"
+channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -50,28 +46,29 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
     Permission.user_require(Permission.User, if_noticed=True),
 )
 async def server_info_handle(
-        app: Ariadne, group: Group, source: Source,
-        server_host: RegexResult
+    app: Ariadne, group: Group, source: Source, server_host: RegexResult
 ):
     server_host = server_host.result.display
     result = await get_minecraft_server_info(server_host)
     if isinstance(result, str):
-        return await app.send_message(
-            group, MessageChain(result), quote=source
-        )
+        return await app.send_message(group, MessageChain(result), quote=source)
     img_base64 = result["favicon"]
     return await app.send_message(
         group,
-        MessageChain([
-            f"服务器地址: {server_host}\n",
-            Image(base64=img_base64[img_base64.find(",") + 1:]) if img_base64 else "",
-            f"描述:\n{result['description']}\n",
-            f"游戏版本:{result['version']}\n",
-            f"协议版本:{result['protocol']}\n",
-            f"在线人数:{result['online_players']}/{result['max_players']}\n",
-            f"ping:{result['ping']}ms",
-        ]),
-        quote=source
+        MessageChain(
+            [
+                f"服务器地址: {server_host}\n",
+                Image(base64=img_base64[img_base64.find(",") + 1 :])
+                if img_base64
+                else "",
+                f"描述:\n{result['description']}\n",
+                f"游戏版本:{result['version']}\n",
+                f"协议版本:{result['protocol']}\n",
+                f"在线人数:{result['online_players']}/{result['max_players']}\n",
+                f"ping:{result['ping']}ms",
+            ]
+        ),
+        quote=source,
     )
 
 
@@ -92,15 +89,12 @@ async def server_info_handle(
     Permission.user_require(Permission.User, if_noticed=True),
 )
 async def server_player_handle(
-        app: Ariadne, group: Group, source: Source,
-        server_host: RegexResult
+    app: Ariadne, group: Group, source: Source, server_host: RegexResult
 ):
     server_host = server_host.result.display
     result = await get_minecraft_server_info(server_host)
     if isinstance(result, str):
-        return await app.send_message(
-            group, MessageChain(result), quote=source
-        )
+        return await app.send_message(group, MessageChain(result), quote=source)
 
     if len(result["players"]) == 0:
         return await app.send_message(
@@ -111,24 +105,34 @@ async def server_player_handle(
     # 先排序
     result["players"].sort()
     if len(result["players"]) > 15:
-        players_str = "玩家列表:\n" + "\n".join([f"{player}" for player in result["players"][:15]]) + "\n超长只显示前15个玩家"
+        players_str = (
+            "玩家列表:\n"
+            + "\n".join([f"{player}" for player in result["players"][:15]])
+            + "\n超长只显示前15个玩家"
+        )
     else:
-        players_str = "玩家列表:\n" + "\n".join([f"{player}" for player in result["players"]])
+        players_str = "玩家列表:\n" + "\n".join(
+            [f"{player}" for player in result["players"]]
+        )
 
     img_base64 = result["favicon"]
     return await app.send_message(
         group,
-        MessageChain([
-            f"服务器地址: {server_host}\n",
-            Image(base64=img_base64[img_base64.find(",") + 1:]) if img_base64 else "",
-            f"在线人数:{result['online_players']}/{result['max_players']}\n",
-            f"{players_str}"
-        ]),
-        quote=source
+        MessageChain(
+            [
+                f"服务器地址: {server_host}\n",
+                Image(base64=img_base64[img_base64.find(",") + 1 :])
+                if img_base64
+                else "",
+                f"在线人数:{result['online_players']}/{result['max_players']}\n",
+                f"{players_str}",
+            ]
+        ),
+        quote=source,
     )
 
 
-async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
+async def get_minecraft_server_info(server_host: str) -> dict | str:
     """
     获取Minecraft服务器信息
     :param server_host: 服务器地址
@@ -153,12 +157,14 @@ async def get_minecraft_server_info(server_host: str) -> Union[dict, str]:
 
     return {
         "server_host": server_host,
-        "description": ''.join([item for item in status.motd.parsed if isinstance(item, str)]),
+        "description": "".join(
+            [item for item in status.motd.parsed if isinstance(item, str)]
+        ),
         "version": status.version.name,
         "protocol": status.version.protocol,
         "online_players": query_result.players.online,
         "max_players": query_result.players.max,
         "ping": round(status.latency, 2),
         "players": query_result.players.names,
-        "favicon": status.icon
+        "favicon": status.icon,
     }

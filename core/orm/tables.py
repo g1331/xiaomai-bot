@@ -13,11 +13,17 @@ class MemberPerm(orm.Base):
     128为Admin
     256为Master
     """
-    __tablename__ = 'MemberPerm'
+
+    __tablename__ = "MemberPerm"
 
     group_id = Column(Integer, primary_key=True)
     qq = Column(Integer, primary_key=True)
-    perm = Column(Integer, nullable=False, info={'check': [-1, 0, 16, 32, 64, 128, 256]}, default=16)
+    perm = Column(
+        Integer,
+        nullable=False,
+        info={"check": [-1, 0, 16, 32, 64, 128, 256]},
+        default=16,
+    )
 
 
 class GroupPerm(orm.Base):
@@ -27,11 +33,12 @@ class GroupPerm(orm.Base):
     2为vip群组
     3为测试群组
     """
-    __tablename__ = 'GroupPerm'
+
+    __tablename__ = "GroupPerm"
 
     group_id = Column(Integer, primary_key=True)
     group_name = Column(String(length=60), nullable=False)
-    perm = Column(Integer, nullable=False, info={'check': [0, 1, 2, 3]}, default=1)
+    perm = Column(Integer, nullable=False, info={"check": [0, 1, 2, 3]}, default=1)
     active = Column(Boolean, default=True)
 
 
@@ -39,15 +46,20 @@ class GroupSetting(orm.Base):
     """
     群设置
     """
-    __tablename__ = 'GroupSetting'
+
+    __tablename__ = "GroupSetting"
 
     group_id = Column(Integer, primary_key=True)
     # 频率限制
     frequency_limitation = Column(Boolean, default=True)
     # 多账户响应类型
-    response_type = Column(String, info={'check': ["random", "deterministic"]}, default="random")
+    response_type = Column(
+        String, info={"check": ["random", "deterministic"]}, default="random"
+    )
     # 权限组类型
-    permission_type = Column(String, info={'check': ["default", "admin"]}, default="default")
+    permission_type = Column(
+        String, info={"check": ["default", "admin"]}, default="default"
+    )
 
 
 class ChatRecord(orm.Base):

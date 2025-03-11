@@ -1,15 +1,15 @@
-from loguru import logger
-from typing import Optional, AsyncIterator
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from playwright.async_api import Page, Browser, async_playwright, Playwright
 
+from loguru import logger
+from playwright.async_api import Browser, Page, Playwright, async_playwright
 
 path_to_extension = "./util/browser/extension/ad"
 user_data_dir = "./util/browser/data"
 
 
-_browser: Optional[Browser] = None
-_playwright: Optional[Playwright] = None
+_browser: Browser | None = None
+_playwright: Playwright | None = None
 
 
 async def init(**kwargs) -> Browser:
@@ -56,6 +56,7 @@ async def shutdown_browser():
 async def install_browser():
     logger.info("正在安装 chromium")
     import sys
+
     from playwright.__main__ import main
 
     sys.argv = ["", "install", "chromium"]

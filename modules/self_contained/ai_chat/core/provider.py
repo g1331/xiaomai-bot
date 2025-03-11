@@ -5,7 +5,8 @@ AI提供商抽象层
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from typing import Any
+from collections.abc import AsyncGenerator
 
 
 class FileType(Enum):
@@ -66,9 +67,9 @@ class ProviderConfig:
         # 默认使用的模型名称
         self.default_model: str = kwargs.get("default_model", "")
         # 该提供商支持的所有模型配置字典
-        self.models: Dict[str, ModelConfig] = kwargs.get("models", {})
+        self.models: dict[str, ModelConfig] = kwargs.get("models", {})
 
-    def get_model_config(self, model_name: Optional[str] = None) -> ModelConfig:
+    def get_model_config(self, model_name: str | None = None) -> ModelConfig:
         """获取指定模型的配置，如果未指定则返回默认模型配置"""
         name = model_name or self.default_model
         if not name:
@@ -81,8 +82,7 @@ class ProviderConfig:
 
 
 class BaseAIProvider(ABC):
-
-    def __init__(self, config: ProviderConfig, model_name: Optional[str] = None):
+    def __init__(self, config: ProviderConfig, model_name: str | None = None):
         self.config = config
         self.model_name = model_name or config.default_model
 
@@ -94,9 +94,9 @@ class BaseAIProvider(ABC):
     @abstractmethod
     async def ask(
         self,
-        messages: List[Dict[str, Any]],
-        files: List[FileContent] = None,
-        tools: List[Dict[str, Any]] = None,
+        messages: list[dict[str, Any]],
+        files: list[FileContent] = None,
+        tools: list[dict[str, Any]] = None,
         **kwargs,
     ) -> AsyncGenerator[Any, None]:
         """
@@ -123,7 +123,7 @@ class BaseAIProvider(ABC):
         pass
 
     @abstractmethod
-    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+    def calculate_tokens(self, messages: list[dict[str, Any]]) -> int:
         """计算消息的token数"""
         pass
 
@@ -160,7 +160,7 @@ class BaseAIProvider(ABC):
             return self.model_config.supports_document
         return False
 
-    def process_files(self, files: List[FileContent]) -> List[FileContent]:
+    def process_files(self, files: list[FileContent]) -> list[FileContent]:
         """处理并过滤文件列表，只保留支持的类型"""
         if not files:
             return []

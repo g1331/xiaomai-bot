@@ -1,11 +1,10 @@
 import random
 import time
 from abc import ABC
-from typing import Type, List
 
-from creart import create, CreateTargetInfo, AbstractCreator, exists_module, add_creator
+from creart import AbstractCreator, CreateTargetInfo, add_creator, create, exists_module
 from graia.ariadne import Ariadne
-from graia.ariadne.model import Member, Group
+from graia.ariadne.model import Group, Member
 from loguru import logger
 from sqlalchemy import select
 
@@ -69,8 +68,9 @@ class AccountController:
 
     @staticmethod
     async def get_response_type(group_id: int) -> str:
-        if result := await orm.fetch_one(select(GroupSetting.response_type).where(
-                GroupSetting.group_id == group_id)):
+        if result := await orm.fetch_one(
+            select(GroupSetting.response_type).where(GroupSetting.group_id == group_id)
+        ):
             return result[0]
         else:
             return "random"
@@ -81,23 +81,29 @@ class AccountController:
             return await orm.insert_or_update(
                 table=GroupSetting,
                 data={"group_id": group_id, "response_type": response_type},
-                condition=[
-                    GroupSetting.group_id == group_id
-                ]
+                condition=[GroupSetting.group_id == group_id],
             )
         else:
             return
 
-    async def get_response_account(self, group_id: int, source_id: int = time.time()) -> int:
+    async def get_response_account(
+        self, group_id: int, source_id: int = time.time()
+    ) -> int:
         if group_id not in self.total_groups:
             return 0
         if group_id in self.account_dict:
-            return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]
+            return self.account_dict[group_id][
+                round(source_id) % len(self.account_dict[group_id])
+            ]
         if await self.get_response_type(group_id) == "deterministic":
             return self.account_dict[group_id][self.deterministic_account[group_id]]
-        return self.account_dict[group_id][round(source_id) % len(self.account_dict[group_id])]
+        return self.account_dict[group_id][
+            round(source_id) % len(self.account_dict[group_id])
+        ]
 
-    async def get_app_from_total_groups(self, group_id: int, require_perm=None, bot_id: int = None) -> (Ariadne, Group):
+    async def get_app_from_total_groups(
+        self, group_id: int, require_perm=None, bot_id: int = None
+    ) -> tuple[Ariadne, Group]:
         """
         从指定群号和bot权限获取对应Ariadne实例和Group
         @param group_id: 群号
@@ -113,7 +119,9 @@ class AccountController:
             app: Ariadne = self.total_groups[group_id][bot_id]
             group = await app.get_group(group_id)
         else:
-            app: Ariadne = self.total_groups[group_id][random.choice(list(self.total_groups[group_id].keys()))]
+            app: Ariadne = self.total_groups[group_id][
+                random.choice(list(self.total_groups[group_id].keys()))
+            ]
             group = await app.get_group(group_id)
         if group_id not in self.total_groups:
             return None, None
@@ -124,7 +132,10 @@ class AccountController:
                 return self.total_groups[group_id][app.account], group
             for member in member_list:
                 member: Member
-                if member.id in self.total_groups[group_id] and member.permission.name in require_perm:
+                if (
+                    member.id in self.total_groups[group_id]
+                    and member.permission.name in require_perm
+                ):
                     group = await Ariadne.current(member.id).get_group(group_id)
                     return self.total_groups[group_id][member.id], group
             return None, None
@@ -141,7 +152,9 @@ class AccountController:
             for k in self.account_dict[group_id]
         )
 
-    async def init_group(self, group_id: int, member_list: List[Member], bot_account: int):
+    async def init_group(
+        self, group_id: int, member_list: list[Member], bot_account: int
+    ):
         self.account_dict[group_id] = {0: bot_account}
         self.deterministic_account[group_id] = 0
         if group_id not in self.total_groups:
@@ -149,7 +162,9 @@ class AccountController:
         self.total_groups[group_id][bot_account] = Ariadne.current(bot_account)
         for member in member_list:
             if self.check_account_available(member.id):
-                self.account_dict[group_id][len(self.account_dict[group_id])] = member.id
+                self.account_dict[group_id][len(self.account_dict[group_id])] = (
+                    member.id
+                )
         if await self.get_response_type(group_id) != "random":
             return
         await orm.insert_or_update(
@@ -157,7 +172,7 @@ class AccountController:
             {"group_id": group_id, "response_type": "random"},
             [
                 GroupSetting.group_id == group_id,
-            ]
+            ],
         )
 
     async def init_all_group(self):
@@ -195,7 +210,7 @@ class AccountController:
                 {"group_id": group.id, "response_type": "random"},
                 [
                     GroupSetting.group_id == group.id,
-                ]
+                ],
             )
         self.initialized_bot_list.append(bot_account)
 
@@ -213,8 +228,10 @@ class AccountController:
         self.account_dict[group_id][len(self.account_dict[group_id])] = bot_account
 
     def remove_account(self, group_id: int, bot_account: int):
-        if self.deterministic_account.get(group_id) and \
-                self.account_dict[self.deterministic_account[group_id]] == bot_account:
+        if (
+            self.deterministic_account.get(group_id)
+            and self.account_dict[self.deterministic_account[group_id]] == bot_account
+        ):
             del self.deterministic_account[group_id]
         temp: dict = self.account_dict[group_id]
         self.account_dict[group_id] = {}
@@ -238,7 +255,7 @@ class AccountControllerClassCreator(AbstractCreator, ABC):
         return exists_module("core.models.response_model")
 
     @staticmethod
-    def create(create_type: Type[AccountController]) -> AccountController:
+    def create(create_type: type[AccountController]) -> AccountController:
         return AccountController()
 
 

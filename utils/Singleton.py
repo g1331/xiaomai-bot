@@ -1,4 +1,3 @@
-
 def singleton(cls):
     _instance = {}
 

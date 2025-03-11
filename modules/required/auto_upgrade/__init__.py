@@ -1,34 +1,40 @@
 import asyncio
 from datetime import datetime, timedelta
+from pathlib import Path
 
+from aiohttp import ClientError
+from creart import create
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message import Source
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image
-from graia.ariadne.message.parser.twilight import UnionMatch, Twilight
+from graia.ariadne.message.parser.twilight import Twilight, UnionMatch
 from graia.ariadne.model import Group, Member
-from graia.ariadne.util.saya import dispatch, decorate, listen
+from graia.ariadne.util.saya import decorate, dispatch, listen
 from graia.broadcast.interrupt import InterruptControl
 from graia.saya import Channel, Saya
 from graia.scheduler import timers
 from graia.scheduler.saya import SchedulerSchema
+from loguru import logger
 
-from core.control import Permission, FrequencyLimitation, Function, Distribute
-from core.models import saya_model, response_model
-from utils.self_upgrade import *
+from core.config import GlobalConfig
+from core.control import Distribute, FrequencyLimitation, Function, Permission
+from core.models import response_model, saya_model
+from utils.self_upgrade import check_update, perform_update, has_git
 from utils.waiter import ConfirmWaiter
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 channel = Channel.current()
 saya = Saya.current()
-channel.meta["name"] = ("AutoUpgrade")
-channel.meta["author"] = ("十三")
-channel.meta["description"] = ("自动更新")
+channel.meta["name"] = "AutoUpgrade"
+channel.meta["author"] = "十三"
+channel.meta["description"] = "自动更新"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
+config = create(GlobalConfig)
 
-upgrade_dict = {}
+upgrade_dict: dict[str, str] = {}
 noticed_list = []
 
 inc = InterruptControl(saya.broadcast)
@@ -43,10 +49,12 @@ inc = InterruptControl(saya.broadcast)
     Permission.user_require(Permission.Master, if_noticed=True),
 )
 @dispatch(
-    Twilight([
-        UnionMatch("-upgrade"),
-        # 示例: -upgrade
-    ])
+    Twilight(
+        [
+            UnionMatch("-upgrade"),
+            # 示例: -upgrade
+        ]
+    )
 )
 async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Source):
     global upgrade_dict
@@ -60,28 +68,38 @@ async def upgrade_handle(app: Ariadne, group: Group, member: Member, source: Sou
     await app.send_message(
         group,
         MessageChain(
-            f"【Upgrade】获取到更新信息如下:\n",
+            "【Upgrade】获取到更新信息如下:\n",
             "\n".join(upgrade_info[:3]),
-            f"\n你确定要更新吗?(y/n)"
+            "\n你确定要更新吗?(y/n)",
         ),
-        quote=source
+        quote=source,
     )
     try:
-        if not await asyncio.wait_for(
-                inc.wait(ConfirmWaiter(group, member)), 30
-        ):
-            return await app.send_message(group, MessageChain("未预期回复,操作退出"), quote=source)
+        if not await asyncio.wait_for(inc.wait(ConfirmWaiter(group, member)), 30):
+            return await app.send_message(
+                group, MessageChain("未预期回复,操作退出"), quote=source
+            )
         logger.opt(colors=True).info("<cyan>【Upgrade】正在更新</cyan>")
         try:
             await asyncio.to_thread(perform_update)
             upgrade_dict = {}
             logger.success("【Upgrade】更新完成,将在重新启动后生效")
-            await app.send_message(group, MessageChain(f"【Upgrade】更新完成!\n 将在重新启动后生效"), quote=source)
+            await app.send_message(
+                group,
+                MessageChain("【Upgrade】更新完成!\n 将在重新启动后生效"),
+                quote=source,
+            )
         except Exception as e:
             logger.error(e)
-            return await app.send_message(group, MessageChain(f"【Upgrade】更新失败!\n 请手动更新!{e}"), quote=source)
+            return await app.send_message(
+                group,
+                MessageChain(f"【Upgrade】更新失败!\n 请手动更新!{e}"),
+                quote=source,
+            )
     except asyncio.TimeoutError:
-        return await app.send_group_message(group, MessageChain("回复等待超时,进程退出"), quote=source)
+        return await app.send_group_message(
+            group, MessageChain("回复等待超时,进程退出"), quote=source
+        )
 
 
 @channel.use(SchedulerSchema(timers.every_custom_hours(24)))
@@ -93,11 +111,15 @@ async def auto_upgrade_handle():
     global upgrade_dict, noticed_list
     if not has_git:
         return
-    target_app, target_group = await account_controller.get_app_from_total_groups(config.test_group)
+    target_app, target_group = await account_controller.get_app_from_total_groups(
+        config.test_group
+    )
     logger.debug("【Upgrade】自动检测更新运行ing")
     try:
         if not (update := await check_update()):
-            logger.opt(colors=True).success("<green>【Upgrade】当前版本已是最新</green>")
+            logger.opt(colors=True).success(
+                "<green>【Upgrade】当前版本已是最新</green>"
+            )
             upgrade_dict = {}
             return
     except ClientError:
@@ -116,26 +138,39 @@ async def auto_upgrade_handle():
             if sha not in upgrade_dict:
                 upgrade_dict[sha] = message
         history = "\n".join(["", *output, ""])
-        logger.opt(colors=True).warning(f"<yellow>【Upgrade】发现新版本</yellow>\n{history}")
+        logger.opt(colors=True).warning(
+            f"<yellow>【Upgrade】发现新版本</yellow>\n{history}"
+        )
         if not config.auto_upgrade:
             return
-        committer_name = f'{update[0].get("commit", {}).get("committer", {}).get("name")}'
-        utc_time_str = f'{update[0].get("commit", {}).get("committer", {}).get("date", "")}'
+        committer_name = (
+            f"{update[0].get('commit', {}).get('committer', {}).get('name')}"
+        )
+        utc_time_str = (
+            f"{update[0].get('commit', {}).get('committer', {}).get('date', '')}"
+        )
         committer_time = (
-                datetime.fromisoformat(utc_time_str.replace("Z", "+00:00")) + timedelta(hours=8)).strftime(
-            "%Y年%m月%d日 %H:%M:%S")
+            datetime.fromisoformat(utc_time_str.replace("Z", "+00:00"))
+            + timedelta(hours=8)
+        ).strftime("%Y年%m月%d日 %H:%M:%S")
         sha = update[0].get("sha", "")[:7]
-        message = update[0].get("commit", {}).get("message", "").replace("<", r"\<").splitlines()[0]
-        url = f'{update[0].get("html_url")}'
+        message = (
+            update[0]
+            .get("commit", {})
+            .get("message", "")
+            .replace("<", r"\<")
+            .splitlines()[0]
+        )
+        url = f"{update[0].get('html_url')}"
         if target_app and target_group and sha not in noticed_list:
-            cleaned_url = url[len("https://github.com"):]
+            cleaned_url = url[len("https://github.com") :]
             await target_app.send_message(
                 target_group,
                 MessageChain(
-                    f"【自动更新】发现新的提交!\n",
+                    "【自动更新】发现新的提交!\n",
                     Image(
                         url=f"https://opengraph.githubassets.com/"
-                            f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"
+                        f"c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"
                     ),
                     f"提交时间：{committer_time}\n",
                     f"提交信息：{message}\n",
@@ -143,6 +178,6 @@ async def auto_upgrade_handle():
                     f"sha：{sha}\n",
                     f"链接：{url}\n"
                     f"--请Master在能登录服务器操作的情况下执行指令 ’-upgrade‘ 更新到最新版本",
-                )
+                ),
             )
             noticed_list.append(sha)

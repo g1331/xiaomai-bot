@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from utils.text2img import template2img
 
-template = (Path(__file__).parent / "template.html").read_text(encoding='utf-8')
+template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
 
 
 @dataclass
@@ -48,10 +48,14 @@ class UserInfo:
 async def get_video_info(vid_id: str) -> dict:
     async with aiohttp.ClientSession() as session:
         if vid_id[:2] in {"av", "aV", "Av", "AV"}:
-            async with session.get(f"https://api.bilibili.com/x/web-interface/view?aid={vid_id[2:]}") as resp:
+            async with session.get(
+                f"https://api.bilibili.com/x/web-interface/view?aid={vid_id[2:]}"
+            ) as resp:
                 video_info = await resp.json(content_type=resp.content_type)
         elif vid_id[:2] in {"bv", "bV", "Bv", "BV"}:
-            async with session.get(f"https://api.bilibili.com/x/web-interface/view?bvid={vid_id}") as resp:
+            async with session.get(
+                f"https://api.bilibili.com/x/web-interface/view?bvid={vid_id}"
+            ) as resp:
                 video_info = await resp.json(content_type=resp.content_type)
         else:
             raise ValueError("视频 ID 格式错误，只可为 av 或 BV")
@@ -60,7 +64,9 @@ async def get_video_info(vid_id: str) -> dict:
 
 async def get_user_info(mid: int) -> UserInfo:
     async with aiohttp.ClientSession() as session:
-        async with session.get(f"https://api.bilibili.com/x/web-interface/card?mid={mid}") as resp:
+        async with session.get(
+            f"https://api.bilibili.com/x/web-interface/card?mid={mid}"
+        ) as resp:
             data = await resp.json(content_type=resp.content_type)
     data = data.get("data", {}).get("card")
     return UserInfo(
@@ -71,18 +77,18 @@ async def get_user_info(mid: int) -> UserInfo:
         sign=data.get("sign"),
         level=data.get("level"),
         fans=data.get("fans"),
-        friend=data.get("friend")
+        friend=data.get("friend"),
     )
 
 
 async def b23_url_extract(b23_url: str) -> Literal[False] | str:
-    url = re.search(r'b23.tv[/\\]+([0-9a-zA-Z]+)', b23_url)
+    url = re.search(r"b23.tv[/\\]+([0-9a-zA-Z]+)", b23_url)
     if url is None:
         return False
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'https://{url.group()}', allow_redirects=True) as resp:
+        async with session.get(f"https://{url.group()}", allow_redirects=True) as resp:
             target = str(resp.url)
-    return target if 'www.bilibili.com/video/' in target else False
+    return target if "www.bilibili.com/video/" in target else False
 
 
 def url_vid_extract(url: str) -> Literal[False] | str:
@@ -96,29 +102,29 @@ def math(num: int):
     if num < 10000:
         return str(num)
     elif num < 100000000:
-        return ('%.2f' % (num / 10000)) + '万'
+        return ("%.2f" % (num / 10000)) + "万"
     else:
-        return ('%.2f' % (num / 100000000)) + '亿'
+        return ("%.2f" % (num / 100000000)) + "亿"
 
 
 def info_json_dump(obj: dict) -> VideoInfo:
     return VideoInfo(
-        cover_url=obj['pic'],
-        bvid=obj['bvid'],
-        avid=obj['aid'],
-        title=obj['title'],
-        sub_count=obj['videos'],
-        pub_timestamp=obj['pubdate'],
-        unload_timestamp=obj['ctime'],
-        desc=obj['desc'].strip(),
-        duration=obj['duration'],
-        up_mid=obj['owner']['mid'],
-        up_name=obj['owner']['name'],
-        views=obj['stat']['view'],
-        danmu=obj['stat']['danmaku'],
-        likes=obj['stat']['like'],
-        coins=obj['stat']['coin'],
-        favorites=obj['stat']['favorite'],
+        cover_url=obj["pic"],
+        bvid=obj["bvid"],
+        avid=obj["aid"],
+        title=obj["title"],
+        sub_count=obj["videos"],
+        pub_timestamp=obj["pubdate"],
+        unload_timestamp=obj["ctime"],
+        desc=obj["desc"].strip(),
+        duration=obj["duration"],
+        up_mid=obj["owner"]["mid"],
+        up_name=obj["owner"]["name"],
+        views=obj["stat"]["view"],
+        danmu=obj["stat"]["danmaku"],
+        likes=obj["stat"]["like"],
+        coins=obj["stat"]["coin"],
+        favorites=obj["stat"]["favorite"],
     )
 
 
@@ -140,9 +146,11 @@ async def gen_img(data: VideoInfo) -> bytes:
             "bv": data.bvid,
             "av": f"av{data.avid}",
             "title": data.title,
-            "desc": data.desc.strip().replace('\n', '<br/>'),
+            "desc": data.desc.strip().replace("\n", "<br/>"),
             "username": data.up_name,
-            "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(data.pub_timestamp)),
+            "time": time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(data.pub_timestamp)
+            ),
             "views": math(data.views),
             "likes": math(data.likes),
             "danmu": math(data.danmu),
@@ -151,7 +159,7 @@ async def gen_img(data: VideoInfo) -> bytes:
             "cover": data.cover_url,
             "avatar": user_info.avatar_url,
             "fans": user_info.fans,
-            "qrcode": f"data:image/png;base64,{qrcode_base64.decode()}"
+            "qrcode": f"data:image/png;base64,{qrcode_base64.decode()}",
         },
-        {"viewport": {'width': 800, 'height': 10}},
+        {"viewport": {"width": 800, "height": 10}},
     )

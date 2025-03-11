@@ -31,7 +31,7 @@ EndPoint：https://api.bochaai.com/v1/web-search
 本插件将返回格式化后的搜索结果文本，主要展示网页标题、描述和链接。
 """
 
-from typing import Any, Dict, Set
+from typing import Any
 
 import aiohttp
 
@@ -65,7 +65,7 @@ class BochaaiWebSearchConfig(PluginConfig):
         super().__init__(*args, **kwargs)
 
     @property
-    def required_fields(self) -> Set[str]:
+    def required_fields(self) -> set[str]:
         return {"api_key"}
 
 
@@ -96,11 +96,11 @@ class BochaaiWebSearchPlugin(BasePlugin):
             example="{'query': 'Python教程', 'freshness': 'oneWeek', 'summary': true, 'count': 5}",
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> str:
+    async def execute(self, parameters: dict[str, Any]) -> str:
         """执行搜索功能。"""
         return await self.handle(parameters)
 
-    async def handle(self, params: Dict[str, Any]) -> str:
+    async def handle(self, params: dict[str, Any]) -> str:
         """
         处理搜索请求，调用博查AI网页搜索 API 接口，并格式化返回结果。
 
@@ -131,7 +131,7 @@ class BochaaiWebSearchPlugin(BasePlugin):
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                    self.config.endpoint, json=payload, headers=headers
+                self.config.endpoint, json=payload, headers=headers
             ) as response:
                 if response.status != 200:
                     return f"请求失败，状态码：{response.status}"

@@ -1,5 +1,4 @@
 import random
-from typing import Union
 
 from utils.bf1.blaze.BlazeSocket import BlazeSocket, BlazeServerREQ
 
@@ -8,7 +7,9 @@ class BlazeClient:
     def __init__(self):
         self.socket: BlazeSocket = None
 
-    async def connect(self, host: str = "diceprodblapp-08.ea.com", port: int = 10539, callback=None) -> BlazeSocket:
+    async def connect(
+        self, host: str = "diceprodblapp-08.ea.com", port: int = 10539, callback=None
+    ) -> BlazeSocket:
         if not self.socket:
             self.socket = await BlazeSocket.create(host, port, callback)
         return self.socket
@@ -23,9 +24,11 @@ class BlazeClientManager:
     def __init__(self):
         self.clients_by_pid = {}
 
-    async def get_socket_for_pid(self, pid=None) -> Union[BlazeSocket, None]:
+    async def get_socket_for_pid(self, pid=None) -> BlazeSocket | None:
         if not pid:
-            connected_clients = [client for client in self.clients_by_pid.values() if client.connect]
+            connected_clients = [
+                client for client in self.clients_by_pid.values() if client.connect
+            ]
             try:
                 return random.choice(connected_clients)
             except IndexError:

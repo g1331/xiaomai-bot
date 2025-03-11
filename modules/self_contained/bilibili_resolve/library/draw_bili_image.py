@@ -62,7 +62,11 @@ def binfo_image_create(video_info: dict, b23_url: str):
     bg_y += title_bg_y
 
     # 简介
-    dynamic = "该视频没有简介" if video_info["data"]["desc"] == "" else video_info["data"]["desc"]
+    dynamic = (
+        "该视频没有简介"
+        if video_info["data"]["desc"] == ""
+        else video_info["data"]["desc"]
+    )
     dynamic_font = ImageFont.truetype(font_semibold, 18)
     dynamic_cut_str = "\n".join(get_cut_str(dynamic, 58))
     _, dynamic_text_y = dynamic_font.getsize_multiline(dynamic_cut_str)
@@ -86,16 +90,16 @@ def binfo_image_create(video_info: dict, b23_url: str):
 
     info_bg = Image.new("RGB", (560, 170), "#F5F5F7")
     draw = ImageDraw.Draw(info_bg)
-    draw.text((5 + 10, 20), "\uE6E0", icon_color, icon_font)
+    draw.text((5 + 10, 20), "\ue6e0", icon_color, icon_font)
     draw.text((5 + 64, 27), like, "#474747", info_font)
-    draw.text((5 + 10 + 180, 20), "\uE6E4", icon_color, icon_font)
+    draw.text((5 + 10 + 180, 20), "\ue6e4", icon_color, icon_font)
     draw.text((5 + 64 + 180, 27), coin, "#474747", info_font)
-    draw.text((5 + 10 + 180 + 180, 20), "\uE6E1", icon_color, icon_font)
+    draw.text((5 + 10 + 180 + 180, 20), "\ue6e1", icon_color, icon_font)
     draw.text((5 + 64 + 180 + 180, 27), favorite, "#474747", info_font)
 
-    draw.text((5 + 100, 93), "\uE6E6", icon_color, icon_font)
+    draw.text((5 + 100, 93), "\ue6e6", icon_color, icon_font)
     draw.text((5 + 154, 100), view, "#474747", info_font)
-    draw.text((5 + 100 + 210, 93), "\uE6E7", icon_color, icon_font)
+    draw.text((5 + 100 + 210, 93), "\ue6e7", icon_color, icon_font)
     draw.text((5 + 154 + 210, 100), danmaku, "#474747", info_font)
 
     info_bg_y = info_bg.size[1]
@@ -126,8 +130,12 @@ def binfo_image_create(video_info: dict, b23_url: str):
             )
     else:
         up_mid = video_info["data"]["owner"]["mid"]
-        up_data = client.get(f"https://api.bilibili.com/x/space/acc/info?mid={up_mid}").json()
-        up_stat = client.get(f"https://api.bilibili.com/x/relation/stat?vmid={up_mid}").json()
+        up_data = client.get(
+            f"https://api.bilibili.com/x/space/acc/info?mid={up_mid}"
+        ).json()
+        up_stat = client.get(
+            f"https://api.bilibili.com/x/relation/stat?vmid={up_mid}"
+        ).json()
         up_list = [
             {
                 "name": up_data["data"]["name"],
@@ -153,25 +161,25 @@ def binfo_image_create(video_info: dict, b23_url: str):
 
     for i, up in enumerate(up_list):
         if up["level"] == 0:
-            up_level = "\uE6CB"
+            up_level = "\ue6cb"
             level_color = (191, 191, 191)
         elif up["level"] == 1:
-            up_level = "\uE6CC"
+            up_level = "\ue6cc"
             level_color = (191, 191, 191)
         elif up["level"] == 2:
-            up_level = "\uE6CD"
+            up_level = "\ue6cd"
             level_color = (149, 221, 178)
         elif up["level"] == 3:
-            up_level = "\uE6CE"
+            up_level = "\ue6ce"
             level_color = (146, 209, 229)
         elif up["level"] == 4:
-            up_level = "\uE6CF"
+            up_level = "\ue6cf"
             level_color = (255, 179, 124)
         elif up["level"] == 5:
-            up_level = "\uE6D0"
+            up_level = "\ue6d0"
             level_color = (255, 108, 0)
         else:
-            up_level = "\uE6D1"
+            up_level = "\ue6d1"
             level_color = (255, 0, 0)
 
         # 头像
@@ -186,7 +194,9 @@ def binfo_image_create(video_info: dict, b23_url: str):
         draw.text((160, 25 + (i * 120)), up["name"], up["color"], name_font)
         name_size_x, _ = name_font.getsize(up["name"])
         # 等级
-        draw.text((160 + name_size_x + 10, 16 + (i * 120)), up_level, level_color, icon_font)
+        draw.text(
+            (160 + name_size_x + 10, 16 + (i * 120)), up_level, level_color, icon_font
+        )
         # 身份
         up_title_size_x, up_title_size_y = up_title_font.getsize(up["up_title"])
         draw.rectangle(
@@ -223,7 +233,7 @@ def binfo_image_create(video_info: dict, b23_url: str):
     # Logo
     # LOGO \uE725
     logo_font = ImageFont.truetype(font_vanfont, 100)
-    draw.text((300, 28), "\uE725", "#F5F5F7", logo_font)
+    draw.text((300, 28), "\ue725", "#F5F5F7", logo_font)
     bg_y += 170
 
     video = Image.new("RGB", (600, bg_y + 40), "#F5F5F7")
@@ -232,7 +242,9 @@ def binfo_image_create(video_info: dict, b23_url: str):
     video.paste(dynamic_bg, (20, 390 + title_bg_y + 20))
     video.paste(info_bg, (20, 390 + title_bg_y + 20 + dynamic_bg_y + 20))
     video.paste(up_bg, (20, 390 + title_bg_y + 20 + dynamic_bg_y + 10 + info_bg_y))
-    video.paste(banner_bg, (0, 390 + title_bg_y + 20 + dynamic_bg_y + 10 + info_bg_y + up_bg_y))
+    video.paste(
+        banner_bg, (0, 390 + title_bg_y + 20 + dynamic_bg_y + 10 + info_bg_y + up_bg_y)
+    )
 
     image = BytesIO()
     video.save(image, "JPEG")

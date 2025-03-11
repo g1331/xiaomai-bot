@@ -1,7 +1,6 @@
 import asyncio
 import os
 import time
-from typing import List, Tuple
 
 from md2img import MarkdownToImageConverter, Theme, HighlightTheme, OutputMode
 
@@ -26,7 +25,7 @@ async def async_usage_example():
     ```python
     def greet(name):
         print(f"Hello, {name}!")
-    
+
     greet("World")
     ```
 
@@ -69,7 +68,9 @@ async def async_usage_example():
     for theme in Theme:
         for highlight_theme in HighlightTheme:
             output_filename = f"output_{theme.value}_{highlight_theme.value}.png"
-            print(f"准备渲染主题：{theme.value}，代码高亮：{highlight_theme.value} -> 输出：{output_filename}")
+            print(
+                f"准备渲染主题：{theme.value}，代码高亮：{highlight_theme.value} -> 输出：{output_filename}"
+            )
             task = asyncio.create_task(
                 MarkdownToImageConverter.convert_markdown(
                     md_content=sample_md,
@@ -102,8 +103,12 @@ async def reuse_example():
         tasks = []
         for theme in Theme:
             for highlight_theme in HighlightTheme:
-                output_filename = f"reuse_output_{theme.value}_{highlight_theme.value}.png"
-                print(f"准备渲染主题：{theme.value}，代码高亮：{highlight_theme.value} -> 输出：{output_filename}")
+                output_filename = (
+                    f"reuse_output_{theme.value}_{highlight_theme.value}.png"
+                )
+                print(
+                    f"准备渲染主题：{theme.value}，代码高亮：{highlight_theme.value} -> 输出：{output_filename}"
+                )
                 # 调用异步接口转换
                 task = asyncio.create_task(
                     converter.convert_markdown(
@@ -111,7 +116,7 @@ async def reuse_example():
                         output_path=output_filename,
                         theme=theme,
                         highlight_theme=highlight_theme,
-                        output_mode=OutputMode.LOCAL
+                        output_mode=OutputMode.LOCAL,
                     )
                 )
                 tasks.append(task)
@@ -134,8 +139,8 @@ async def performance_test(iterations: int = 5) -> None:
 
     这是用于性能测试的 Markdown 示例文档。
     """
-    times_new_instance: List[float] = []
-    times_reuse_instance: List[float] = []
+    times_new_instance: list[float] = []
+    times_reuse_instance: list[float] = []
 
     # 测试每次新建实例模式（同步调用）
     for i in range(iterations):
@@ -149,7 +154,7 @@ async def performance_test(iterations: int = 5) -> None:
             highlight_theme=HighlightTheme.DEFAULT,
             output_mode=OutputMode.LOCAL,
             debug=False,
-            headless=True
+            headless=True,
         )
         t_end = time.perf_counter()
         elapsed_ms = (t_end - t_start) * 1000
@@ -169,7 +174,7 @@ async def performance_test(iterations: int = 5) -> None:
             highlight_theme=HighlightTheme.DEFAULT,
             output_mode=OutputMode.LOCAL,
             debug=False,
-            headless=True
+            headless=True,
         )
         t_end = time.perf_counter()
         elapsed_ms = (t_end - t_start) * 1000
@@ -178,15 +183,19 @@ async def performance_test(iterations: int = 5) -> None:
         if os.path.exists(output_file):
             os.remove(output_file)
 
-    def calc_stats(times: List[float]) -> Tuple[float, float, float]:
+    def calc_stats(times: list[float]) -> tuple[float, float, float]:
         return (sum(times) / len(times), min(times), max(times))
 
     avg_new, min_new, max_new = calc_stats(times_new_instance)
     avg_reuse, min_reuse, max_reuse = calc_stats(times_reuse_instance)
 
     print("\n=== 性能对比统计 ===")
-    print(f"【新建实例】平均耗时：{avg_new:.2f} 毫秒，最小耗时：{min_new:.2f} 毫秒，最大耗时：{max_new:.2f} 毫秒")
-    print(f"【复用实例】平均耗时：{avg_reuse:.2f} 毫秒，最小耗时：{min_reuse:.2f} 毫秒，最大耗时：{max_reuse:.2f} 毫秒")
+    print(
+        f"【新建实例】平均耗时：{avg_new:.2f} 毫秒，最小耗时：{min_new:.2f} 毫秒，最大耗时：{max_new:.2f} 毫秒"
+    )
+    print(
+        f"【复用实例】平均耗时：{avg_reuse:.2f} 毫秒，最小耗时：{min_reuse:.2f} 毫秒，最大耗时：{max_reuse:.2f} 毫秒"
+    )
 
 
 # ============================
@@ -209,7 +218,7 @@ async def manual_instance_example():
     ```python
     def greet(name):
         print(f"Hello, {name}!")
-    
+
     greet("World")
     ```
 
@@ -255,7 +264,7 @@ async def manual_instance_example():
         highlight_theme=HighlightTheme.ATOM_ONE_DARK,
         output_mode=OutputMode.LOCAL,
         debug=True,
-        headless=True
+        headless=True,
     )
     print("转换完成：", result)
 

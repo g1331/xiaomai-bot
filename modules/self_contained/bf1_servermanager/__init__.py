@@ -1787,18 +1787,24 @@ async def get_server_playerList(
         ]
     )
 )
-async def relogin_blaze(
-        app: Ariadne, group: Group, source: Source
-):
+async def relogin_blaze(app: Ariadne, group: Group, source: Source):
     # 获取公共账号
     gateway_instance = await BF1DA.get_api_instance()
     if not gateway_instance:
-        return await app.send_message(group, MessageChain("获取默认账号失败"), quote=source)
+        return await app.send_message(
+            group, MessageChain("获取默认账号失败"), quote=source
+        )
     # 重新初始化blaze socket
-    blaze_socket = await BF1BlazeManager.init_socket(gateway_instance.pid, gateway_instance.remid, gateway_instance.sid)
+    blaze_socket = await BF1BlazeManager.init_socket(
+        gateway_instance.pid, gateway_instance.remid, gateway_instance.sid
+    )
     if not blaze_socket:
-        return await app.send_message(group, MessageChain("Blaze重新登录失败"), quote=source)
-    return await app.send_message(group, MessageChain("Blaze重新登录成功"), quote=source)
+        return await app.send_message(
+            group, MessageChain("Blaze重新登录失败"), quote=source
+        )
+    return await app.send_message(
+        group, MessageChain("Blaze重新登录成功"), quote=source
+    )
 
 
 # 图片版玩家列表

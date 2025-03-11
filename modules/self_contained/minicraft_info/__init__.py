@@ -139,9 +139,8 @@ async def get_minecraft_server_info(server_host: str) -> dict | str:
     :return: 成功返回服务器信息-dict, 失败返回错误信息-str
     """
     try:
-        server = JavaServer.lookup(server_host)
-        status = server.status()
-        query_result = JavaServer.query(server)
+        server = await JavaServer.async_lookup(server_host)
+        status = await server.async_status()
     except ConnectionRefusedError as e:
         logger.error(f"[MC查询]无法连接到服务器 {server_host}, {e}")
         return f"未能连接到服务器「{server_host}」"
@@ -162,9 +161,9 @@ async def get_minecraft_server_info(server_host: str) -> dict | str:
         ),
         "version": status.version.name,
         "protocol": status.version.protocol,
-        "online_players": query_result.players.online,
-        "max_players": query_result.players.max,
+        "online_players": status.players.online,
+        "max_players": status.players.max,
         "ping": round(status.latency, 2),
-        "players": query_result.players.names,
+        "players": [item.name for item in status.players.sample],
         "favicon": status.icon,
     }

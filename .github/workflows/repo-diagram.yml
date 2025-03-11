@@ -1,16 +1,53 @@
-name: Create diagram
+name: Update Repo Diagram
+
 on:
-  workflow_dispatch: {}
-  push:
+  workflow_dispatch: {}            # 手动触发
+  push:                            # 每次推送时触发
     branches:
       - v3
+  pull_request:                    # PR 合并后触发
+    types: [closed]
+    branches:
+      - v3
+  schedule:                        # 每周日 00:00 自动运行，但需检查分支是否有变动
+    - cron: "0 0 * * 0"
+
+# 明确设置工作流权限
+permissions:
+  contents: write  # 需要写入权限以更新仓库内容
+
 jobs:
-  get_data:
+  update-diagram:
+    # 条件判断确保工作流只在指定情况下运行：
+    # 1. 手动触发时
+    # 2. 推送到 v3 分支时
+    # 3. PR 合并到 v3 分支时
+    # 4. 定时触发时
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
+      github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@master
-      - name: Update diagram
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史以检查最近提交
+
+      - name: Check if v3 branch has commits in the last 7 days
+        id: check_changes
+        run: |
+          RECENT_COMMITS=$(git log --since="7 days ago" --oneline | wc -l)
+          echo "recent_commits=$RECENT_COMMITS" >> $GITHUB_OUTPUT
+          if [ "$RECENT_COMMITS" -eq 0 ]; then
+            echo "No recent commits found in the past 7 days"
+          else
+            echo "Found $RECENT_COMMITS commits in the past 7 days"
+          fi
+
+      - name: Update repository structure diagram
+        if: ${{ steps.check_changes.outputs.recent_commits != '0' }}
         uses: githubocto/repo-visualizer@main
         with:
           excluded_paths: "ignore,.github"

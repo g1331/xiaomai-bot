@@ -144,8 +144,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         try:
             await app.get_member(waiter_group, event.supplicant)
             join_judge = True
-        except Exception as e:
-            logger.error(f"获取成员信息失败: {e}")
+        except Exception:
             join_judge = False
         if not join_judge:
             if (
@@ -169,7 +168,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         try:
             return await app.get_member(group, event.supplicant)
         except Exception as e:
-            logger.error(f"获取成员信息失败: {e}")
+            logger.error(f"处理加群请求时出错了!错误信息:{e}")
             return await app.send_message(
                 group,
                 MessageChain(

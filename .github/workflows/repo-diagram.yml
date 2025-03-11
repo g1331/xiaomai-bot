@@ -1,15 +1,15 @@
 name: Update Repo Diagram
 
 on:
-  workflow_dispatch: {}            # 手动触发
-  push:                            # 每次推送时触发
+  workflow_dispatch: { }            # 手动触发
+  push: # 每次推送时触发
     branches:
       - v3
-  pull_request:                    # PR 合并后触发
-    types: [closed]
+  pull_request: # PR 合并后触发
+    types: [ closed ]
     branches:
       - v3
-  schedule:                        # 每周日 00:00 自动运行，但需检查分支是否有变动
+  schedule: # 每周日 00:00 自动运行，但需检查分支是否有变动
     - cron: "0 0 * * 0"
 
 # 明确设置工作流权限
@@ -38,12 +38,15 @@ jobs:
       - name: Check if v3 branch has commits in the last 7 days
         id: check_changes
         run: |
-          RECENT_COMMITS=$(git log --since="7 days ago" --oneline | wc -l)
-          echo "recent_commits=$RECENT_COMMITS" >> $GITHUB_OUTPUT
+          # 获取过去 7 天内的提交，并排除 repo-visualizer 自动提交
+          RECENT_COMMITS=$(git log --since="7 days ago" --oneline --invert-grep --grep="Repo visualizer: update diagram" | wc -l)
+
+          echo "recent_commits=$RECENT_COMMITS" >> $GITHUB_ENV
           if [ "$RECENT_COMMITS" -eq 0 ]; then
-            echo "No recent commits found in the past 7 days"
+            echo "No recent developer commits in the past 7 days. Skipping workflow."
+            exit 1
           else
-            echo "Found $RECENT_COMMITS commits in the past 7 days"
+            echo "Found $RECENT_COMMITS developer commits in the past 7 days. Proceeding with workflow."
           fi
 
       - name: Update repository structure diagram

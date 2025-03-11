@@ -50,6 +50,9 @@ jobs:
           fi
 
       - name: Update repository structure diagram
+        # 输出 recent_commits 方便调试
+        run: |
+          echo "Recent commits in the last 7 days : ${{ steps.check_changes.outputs.recent_commits }}"
         if: ${{ steps.check_changes.outputs.recent_commits != '0' }}
         uses: githubocto/repo-visualizer@main
         with:

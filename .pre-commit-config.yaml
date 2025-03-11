@@ -5,9 +5,8 @@ repos:
       # 运行 Ruff Linter
       - id: ruff
         types_or: [ python, pyi ]
-        args: [ "--fix", "--output-format=github", "--diff" ]
+        args: [ "--fix", "--output-format=github" ]
 
       # 运行 Ruff Formatter
       - id: ruff-format
         types_or: [ python, pyi ]
-        args: [ "--diff" ]

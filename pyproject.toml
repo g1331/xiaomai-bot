@@ -68,31 +68,31 @@ dependencies = [
 
 # 配置 Ruff 的整体行为
 [tool.ruff]
-line-length = 79 # https://peps.python.org/pep-0008/
+line-length = 88  # Black 默认 88，可以改回 79 如果严格遵守 PEP 8
 
 # 配置 Ruff 的代码检查功能（Linting）
 [tool.ruff.lint]
 # 选择要启用的规则集
 select = [
-    "E", # PEP 8 代码格式错误（例如空格、缩进、换行等）
-    "F", # Pyflakes 代码检查（未使用的变量、重复导入、变量未定义等）
-    "W", # 一般代码风格警告（如行尾空格、缩进警告等）
-    "UP"  # Python 版本升级检查（建议 Python 3 代码升级，如 `typing.List -> list`）
+    "E", # PEP 8 代码格式错误（空格、缩进、换行）
+    "F", # Pyflakes 代码检查（未使用变量、重复导入、变量未定义等）
+    "W", # 一般代码风格警告（行尾空格、缩进警告）
+    "UP"  # Python 版本升级检查（建议 Python 3 代码优化）
 ]
 
-# 忽略特定规则，避免误报或影响开发效率
+# 忽略特定规则
 ignore = [
     "E203", # `:` 前有空格（与 Black 代码格式化冲突）
-    "E266", # 过多的 `#` 号用于注释（有时用于代码分割）
+    "E266", # 过多的 `#` 号用于注释（通常用于代码分割）
     "E501", # 行长度超过限制（Ruff 已经使用 `line-length` 处理）
-    "F401", # 导入未使用的模块（有时用于动态导入）
+    # "F401", # 导入未使用的模块（有时用于动态导入），应该使用 # noqa: F401 或 if TYPE_CHECKING 方式更精准地控制 Ruff 规则。
 ]
 
-# 配置 Ruff 代码格式化功能（类似于 Black）
+# 代码格式化配置（类似于 Black）
 [tool.ruff.format]
-quote-style = "single"  # 统一使用单引号（'）而非双引号（"），确保代码风格一致
+quote-style = "single"  # 统一使用单引号（可改为 "double" 兼容 Black）
 indent-style = "space"  # 统一使用空格缩进，而不是 Tab
-docstring-code-format = true # 启用docstring代码片段格式化
+docstring-code-format = true  # 启用 docstring 代码片段格式化
 
 # 配置 Ruff 的 PyUpgrade 功能（Python 版本兼容性优化）
 [tool.ruff.lint.pyupgrade]

@@ -2,11 +2,12 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.10
     hooks:
-      # 代码风格检查（启用所有 Python 文件）
+      # 运行 Ruff Linter
       - id: ruff
         types_or: [ python, pyi ]
-        args: [ --fix --output-format=github --diff ]  # 让 GitHub Actions 直接显示问题
-      # 代码格式化
+        args: [ "--fix", "--output-format=github", "--diff" ]
+
+      # 运行 Ruff Formatter
       - id: ruff-format
         types_or: [ python, pyi ]
-        args: [ --fix --output-format=github --diff ]  # 让 GitHub Actions 直接显示问题
+        args: [ "--diff" ]

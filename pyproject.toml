@@ -89,7 +89,7 @@ ignore = [
 
 # 代码格式化配置（类似于 Black）
 [tool.ruff.format]
-quote-style = "single"  # 统一使用单引号（可改为 "double" 兼容 Black）
+quote-style = "double"  # 统一使用双引号
 indent-style = "space"  # 统一使用空格缩进，而不是 Tab
 docstring-code-format = true  # 启用 docstring 代码片段格式化
 

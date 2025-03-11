@@ -8,29 +8,38 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, Plain, Voice, FlashImage, App, Forward
-from graia.ariadne.message.parser.twilight import RegexResult, ElementResult, Twilight, RegexMatch, ElementMatch
+from graia.ariadne.message.parser.twilight import (
+    RegexResult,
+    ElementResult,
+    Twilight,
+    RegexMatch,
+    ElementMatch,
+)
 from graia.ariadne.model import Group
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast import ListenerSchema
 from loguru import logger
 
-from core.control import (
-    Permission,
-    Function,
-    Distribute
-)
+from core.control import Permission, Function, Distribute
 from core.models import saya_model
 from .library.b23_extract import b23_extract
 from .library.bilibili_request import get_b23_url
 from .library.draw_bili_image import binfo_image_create
-from .utils import get_video_info, b23_url_extract, math, info_json_dump, gen_img, url_vid_extract
+from .utils import (
+    get_video_info,
+    b23_url_extract,
+    math,
+    info_json_dump,
+    gen_img,
+    url_vid_extract,
+)
 
 module_controller = saya_model.get_module_controller()
 saya = Saya.current()
 channel = Channel.current()
-channel.meta["name"] = ("BilibiliResolve")
-channel.meta["description"] = ("自动解析消息中的B站链接、小程序")
-channel.meta["author"] = ("13")
+channel.meta["name"] = "BilibiliResolve"
+channel.meta["description"] = "自动解析消息中的B站链接、小程序"
+channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 avid_re = r"(av|AV)(\d{1,12})"
@@ -44,13 +53,15 @@ p = re.compile(f"({avid_re})|({bvid_re})")
     ListenerSchema(
         listening_events=[GroupMessage],
         inline_dispatchers=[
-            Twilight([
-                RegexMatch(avid_re, optional=True) @ "av",
-                RegexMatch(bvid_re, optional=True) @ "bv",
-                RegexMatch(b23_re, optional=True) @ "b23url",
-                RegexMatch(url_re, optional=True) @ "url",
-                ElementMatch(App, optional=True) @ "bapp"
-            ])
+            Twilight(
+                [
+                    RegexMatch(avid_re, optional=True) @ "av",
+                    RegexMatch(bvid_re, optional=True) @ "bv",
+                    RegexMatch(b23_re, optional=True) @ "b23url",
+                    RegexMatch(url_re, optional=True) @ "url",
+                    ElementMatch(App, optional=True) @ "bapp",
+                ]
+            )
         ],
         decorators=[
             Distribute.require(),
@@ -61,16 +72,21 @@ p = re.compile(f"({avid_re})|({bvid_re})")
     )
 )
 async def bilibili_resolve_text(
-        app: Ariadne,
-        group: Group,
-        message: MessageChain,
-        av: RegexResult,
-        bv: RegexResult,
-        b23url: RegexResult,
-        url: RegexResult,
-        bapp: ElementResult
+    app: Ariadne,
+    group: Group,
+    message: MessageChain,
+    av: RegexResult,
+    bv: RegexResult,
+    b23url: RegexResult,
+    url: RegexResult,
+    bapp: ElementResult,
 ):
-    if message.has(Image) or message.has(Voice) or message.has(FlashImage) or message.has(Forward):
+    if (
+        message.has(Image)
+        or message.has(Voice)
+        or message.has(FlashImage)
+        or message.has(Forward)
+    ):
         return
 
     resolve_choice = random.randint(0, 100)
@@ -86,7 +102,9 @@ async def bilibili_resolve_text(
         video_info = await video_info_get(video_number) if video_number else None
         if video_info:
             if video_info["code"] != 0:
-                return await app.send_group_message(group, MessageChain([Plain("视频不存在或解析失败")]))
+                return await app.send_group_message(
+                    group, MessageChain([Plain("视频不存在或解析失败")])
+                )
             else:
                 ...
             try:
@@ -139,24 +157,24 @@ async def bilibili_resolve_text(
     else:
         return
     video_info = await get_video_info(vid)
-    if video_info['code'] == -404:
+    if video_info["code"] == -404:
         return await app.send_message(group, MessageChain("视频不存在"))
-    elif video_info['code'] != 0:
-        error_text = f'解析B站视频 {vid} 时出错👇\n错误代码：{video_info["code"]}\n错误信息：{video_info["message"]}'
+    elif video_info["code"] != 0:
+        error_text = f"解析B站视频 {vid} 时出错👇\n错误代码：{video_info['code']}\n错误信息：{video_info['message']}"
         logger.error(error_text)
         return await app.send_message(group, MessageChain(error_text))
     else:
-        video_info = info_json_dump(video_info['data'])
+        video_info = info_json_dump(video_info["data"])
         img = await gen_img(video_info)
         await app.send_group_message(
             group,
             MessageChain(
                 Image(data_bytes=img),
                 Plain(
-                    f'\n{video_info.title}\n'
-                    f'UP主：{video_info.up_name}\n'
-                    f'{math(video_info.views)}播放 {math(video_info.likes)}赞\n'
-                    f'链接：https://b23.tv/{video_info.bvid}'
+                    f"\n{video_info.title}\n"
+                    f"UP主：{video_info.up_name}\n"
+                    f"{math(video_info.views)}播放 {math(video_info.likes)}赞\n"
+                    f"链接：https://b23.tv/{video_info.bvid}"
                 ),
             ),
         )

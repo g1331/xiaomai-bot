@@ -10,19 +10,27 @@ from utils.bf1.blaze.Blaze import Blaze, keepalive
 context = ssl.create_default_context()
 context.check_hostname = False
 context.verify_mode = ssl.CERT_NONE
-context.set_ciphers('ALL')
+context.set_ciphers("ALL")
 
 
 class BlazeServerREQ:
-    BF1 = '<serverinstancerequest><name>battlefield-1-pc</name><connectionprofile>standardSecure_v4' \
-          '</connectionprofile></serverinstancerequest> '
-    BFV = '<serverinstancerequest><name>battlefield-casablanca-pc</name><connectionprofile>standardSecure_v4' \
-          '</connectionprofile></serverinstancerequest> '
-    BF2042 = '<serverinstancerequest><name>bf-2021-pc-gen5</name><connectionprofile>standardSecure_v4' \
-             '</connectionprofile></serverinstancerequest> '
+    BF1 = (
+        "<serverinstancerequest><name>battlefield-1-pc</name><connectionprofile>standardSecure_v4"
+        "</connectionprofile></serverinstancerequest> "
+    )
+    BFV = (
+        "<serverinstancerequest><name>battlefield-casablanca-pc</name><connectionprofile>standardSecure_v4"
+        "</connectionprofile></serverinstancerequest> "
+    )
+    BF2042 = (
+        "<serverinstancerequest><name>bf-2021-pc-gen5</name><connectionprofile>standardSecure_v4"
+        "</connectionprofile></serverinstancerequest> "
+    )
 
     @staticmethod
-    async def get_server_address(game_code: Union['BF1', 'BFV', 'BF2042'] = BF1) -> (str, int):
+    async def get_server_address(
+        game_code: Union["BF1", "BFV", "BF2042"] = BF1,
+    ) -> (str, int):
         """
         获取服务器地址
         :param game_code: 游戏代码, 默认为BF1, 可选BF1, BFV, BF2042
@@ -47,12 +55,12 @@ class BlazeServerREQ:
         """
         async with httpx.AsyncClient(verify=False) as client:
             response = await client.post(
-                'https://spring18.gosredirector.ea.com:42230/redirector/getServerInstance',
+                "https://spring18.gosredirector.ea.com:42230/redirector/getServerInstance",
                 headers={
-                    'Content-Type': 'application/xml',
-                    'Accept': 'application/json'
+                    "Content-Type": "application/xml",
+                    "Accept": "application/json",
                 },
-                data=game_code
+                data=game_code,
             )
             response.raise_for_status()
             host = response.json()["address"]["ipAddress"]["hostname"]
@@ -74,14 +82,16 @@ class BlazeSocket:
         self.ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         self.ssl_context.check_hostname = False
         self.ssl_context.verify_mode = ssl.CERT_NONE
-        self.ssl_context.set_ciphers('ALL')
+        self.ssl_context.set_ciphers("ALL")
         self.host = host
         self.port = port
         self.reader: asyncio.StreamReader = None
         self.writer: asyncio.StreamWriter = None
 
     @classmethod
-    async def create(cls, host: str = "diceprodblapp-08.ea.com", port: int = 10539, callback=None):
+    async def create(
+        cls, host: str = "diceprodblapp-08.ea.com", port: int = 10539, callback=None
+    ):
         self = BlazeSocket(host, port, callback)
         await self.connect_to_server()
         _ = asyncio.create_task(self.keepalive())
@@ -126,13 +136,13 @@ class BlazeSocket:
         if packet["id"] in self.map:
             packet["id"] = self.id
             self.id += 1
-        self.map[packet['id']] = future
+        self.map[packet["id"]] = future
         self.id += 1
         await self.request(packet)
         try:
             return await asyncio.wait_for(future, timeout)
         except asyncio.TimeoutError as e:
-            del self.map[packet['id']]
+            del self.map[packet["id"]]
             raise TimeoutError(
                 f"Timeout waiting for response to packet ID: {packet['id']}"
             ) from e
@@ -165,46 +175,52 @@ class BlazeSocket:
         if self.finish:
             header = Blaze(buffer[:16]).decode()
             # logger.debug(f"Header received: {header}")
-            if len(buffer) - 16 < header['length']:
-                self.temp['data'] = bytearray(header['length'] + 16)
-                self.temp['length'] = len(buffer)
-                self.temp['origin'] = header['length'] + 16
+            if len(buffer) - 16 < header["length"]:
+                self.temp["data"] = bytearray(header["length"] + 16)
+                self.temp["length"] = len(buffer)
+                self.temp["origin"] = header["length"] + 16
                 self.finish = False
-                self.temp['data'][:len(buffer)] = buffer
+                self.temp["data"][: len(buffer)] = buffer
             else:
                 await self.response(Blaze(buffer).decode(BlazeSocket.readable))
                 self.temp = {}
-        elif self.temp['length'] >= self.temp['origin']:
+        elif self.temp["length"] >= self.temp["origin"]:
             # 超长了
             self.finish = True
             self.temp = {}
         else:
-            self.temp['data'][self.temp['length']:self.temp['length'] + len(buffer)] = buffer
-            self.temp['length'] += len(buffer)
-            if self.temp['length'] >= self.temp['origin']:
+            self.temp["data"][
+                self.temp["length"] : self.temp["length"] + len(buffer)
+            ] = buffer
+            self.temp["length"] += len(buffer)
+            if self.temp["length"] >= self.temp["origin"]:
                 self.finish = True
-                await self.response(Blaze(self.temp['data']).decode(BlazeSocket.readable))
+                await self.response(
+                    Blaze(self.temp["data"]).decode(BlazeSocket.readable)
+                )
                 self.temp = {}
 
     async def response(self, packet):
         # 处理接收到的数据包
-        if packet['method'] == "KeepAlive":
+        if packet["method"] == "KeepAlive":
             return
-        if packet['id'] in self.map:
+        if packet["id"] in self.map:
             # logger.debug(f"Response received for packet ID: {packet['id']}")
-            future = self.map[packet['id']]
+            future = self.map[packet["id"]]
             future.set_result(packet)
-            del self.map[packet['id']]
-        elif packet['method'] == 'UserSessions.getPermissions':
+            del self.map[packet["id"]]
+        elif packet["method"] == "UserSessions.getPermissions":
             logger.error(f"用户登录信息已过期，请重新登录/连接！\n{packet}")
             await self.close()
-        elif packet['type'] in ["Message", "Result"]:
+        elif packet["type"] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
-        elif packet['type'] == "Pong":
+        elif packet["type"] == "Pong":
             # logger.debug("BlazeSocket working normally")
             pass
         else:
-            logger.warning(f"No matching request found for packet ID: {packet['id']}\n{packet}")
+            logger.warning(
+                f"No matching request found for packet ID: {packet['id']}\n{packet}"
+            )
         if self.callback:
             self.callback(packet)
 

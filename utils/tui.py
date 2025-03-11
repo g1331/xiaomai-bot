@@ -57,8 +57,10 @@ TYPE_MAP = {"int": int, "str": str, "float": float, "bool": bool}
 
 def set_config():
     if not CONFIG_PATH.exists():
-        CONFIG_PATH.write_text(CONFIG_DEMO_PATH.read_text(encoding="utf-8"), encoding="utf-8")
-    with open(CONFIG_PATH, "r", encoding="utf-8") as r:
+        CONFIG_PATH.write_text(
+            CONFIG_DEMO_PATH.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+    with open(CONFIG_PATH, encoding="utf-8") as r:
         configs = yaml.safe_load(r.read())
     path = []
 
@@ -147,7 +149,8 @@ def process_info(
         child_type = info.type[5:-1]
         while not result:
             while res := InputPrompt(
-                f"请输入 {info.name}（{info.description}）（退出此项请直接输入回车）", validator=None
+                f"请输入 {info.name}（{info.description}）（退出此项请直接输入回车）",
+                validator=None,
             ).prompt():
                 if (parsed := parse_type(res, TYPE_MAP[child_type])) is None:
                     print("输入格式错误，请重新输入")
@@ -164,9 +167,13 @@ def process_info(
 
 
 def config_init():
-    if not ConfirmPrompt("未检测到配置文件，是否自动创建并进入初始化？", default_choice=True).prompt():
+    if not ConfirmPrompt(
+        "未检测到配置文件，是否自动创建并进入初始化？", default_choice=True
+    ).prompt():
         exit()
-    required = ConfirmPrompt("配置文件初始化，是否仅进行启动必要项修改？", default_choice=True).prompt()
+    required = ConfirmPrompt(
+        "配置文件初始化，是否仅进行启动必要项修改？", default_choice=True
+    ).prompt()
     config = {
         info.name: process_info(info, bool(not required or info.required))
         for info in INFO_LIST

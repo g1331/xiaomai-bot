@@ -14,7 +14,7 @@ class DefaultAccount:
     """
 
     def __init__(self):
-        self.account_path: Path = Path(__file__).parent / 'default_account.json'
+        self.account_path: Path = Path(__file__).parent / "default_account.json"
         self.account_instance: api_instance = None
         self.pid = None
         self.uid = None
@@ -27,14 +27,18 @@ class DefaultAccount:
     async def get_api_instance(self) -> api_instance:
         if self.account_instance is None:
             if self.pid:
-                self.account_instance = api_instance.get_api_instance(self.pid, self.remid, self.sid, self.session)
+                self.account_instance = api_instance.get_api_instance(
+                    self.pid, self.remid, self.sid, self.session
+                )
                 self.account_instance.session = self.session
                 self.account_instance.remid = self.remid
                 self.account_instance.sid = self.sid
                 if self.remid and self.sid:
                     # 如果session过期，自动登录覆写信息
                     data = await self.account_instance.Companion_isLoggedIn()
-                    if isinstance(data, str) or (data.get('result').get('isLoggedIn') is None):
+                    if isinstance(data, str) or (
+                        data.get("result").get("isLoggedIn") is None
+                    ):
                         logger.debug("正在登录默认账号")
                         await self.account_instance.login(self.remid, self.sid)
                         if await self.account_instance.get_session():
@@ -46,14 +50,22 @@ class DefaultAccount:
                                     pid=self.pid,
                                     remid=self.remid,
                                     sid=self.sid,
-                                    session=self.session
+                                    session=self.session,
                                 )
                                 # 更新玩家信息
-                                player_info = await self.account_instance.getPersonasByIds(personaIds=self.pid)
+                                player_info = (
+                                    await self.account_instance.getPersonasByIds(
+                                        personaIds=self.pid
+                                    )
+                                )
                                 if isinstance(player_info, str):
                                     logger.error(f"获取玩家信息失败: {player_info}")
                                     return None
-                                self.display_name = player_info.get("result").get(str(self.pid)).get("displayName")
+                                self.display_name = (
+                                    player_info.get("result")
+                                    .get(str(self.pid))
+                                    .get("displayName")
+                                )
                                 await self.write_default_account(
                                     pid=self.pid,
                                     uid=self.uid,
@@ -61,9 +73,11 @@ class DefaultAccount:
                                     display_name=self.display_name,
                                     remid=self.remid,
                                     sid=self.sid,
-                                    session=self.session
+                                    session=self.session,
                                 )
-                                logger.success(f"成功登录更新默认账号: {self.display_name}({self.pid})")
+                                logger.success(
+                                    f"成功登录更新默认账号: {self.display_name}({self.pid})"
+                                )
                     else:
                         self.session = self.account_instance.session
                         logger.success("成功获取到默认账号session")
@@ -71,7 +85,7 @@ class DefaultAccount:
                             pid=self.pid,
                             remid=self.remid,
                             sid=self.sid,
-                            session=self.session
+                            session=self.session,
                         )
             else:
                 logger.error("请先配置默认账号pid信息!")
@@ -80,7 +94,9 @@ class DefaultAccount:
             logger.warning("当前默认查询账户未登录!session过期后将尝试自动登录刷新!")
         return self.account_instance
 
-    async def write_default_account(self, pid, remid, sid, uid=None, name=None, display_name=None, session=None):
+    async def write_default_account(
+        self, pid, remid, sid, uid=None, name=None, display_name=None, session=None
+    ):
         self.pid = pid
         self.uid = uid
         self.name = name
@@ -96,19 +112,24 @@ class DefaultAccount:
             display_name=self.display_name,
             remid=self.remid,
             sid=self.sid,
-            session=self.session
+            session=self.session,
         )
         # 写入文件
-        with open(self.account_path, 'w', encoding='utf-8') as f:
-            json.dump({
-                "pid": self.pid,
-                "uid": self.uid,
-                "name": self.name,
-                "display_name": self.display_name,
-                "remid": self.remid,
-                "sid": self.sid,
-                "session": self.session
-            }, f, indent=4, ensure_ascii=False)
+        with open(self.account_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "pid": self.pid,
+                    "uid": self.uid,
+                    "name": self.name,
+                    "display_name": self.display_name,
+                    "remid": self.remid,
+                    "sid": self.sid,
+                    "session": self.session,
+                },
+                f,
+                indent=4,
+                ensure_ascii=False,
+            )
 
     # 从文件读取默认账号信息
     async def read_default_account(self) -> dict:
@@ -117,7 +138,7 @@ class DefaultAccount:
         :return: {pid, uid, name, display_name, remid, sid, session}
         """
         if self.account_path.exists():
-            with open(self.account_path, 'r', encoding='utf-8') as f:
+            with open(self.account_path, encoding="utf-8") as f:
                 data = json.load(f)
                 self.pid = data["pid"]
                 self.uid = data["uid"]
@@ -134,21 +155,27 @@ class DefaultAccount:
                 display_name=self.display_name,
                 remid=self.remid,
                 sid=self.sid,
-                session=self.session
+                session=self.session,
             )
             logger.debug(
-                f"已从默认账号文件读取到默认账号信息, pid={self.pid}, uid={self.uid}, name={self.name}, display_name={self.display_name}, remid={self.remid}, sid={self.sid}, session={self.session}")
+                f"已从默认账号文件读取到默认账号信息, pid={self.pid}, uid={self.uid}, name={self.name}, display_name={self.display_name}, remid={self.remid}, sid={self.sid}, session={self.session}"
+            )
         else:
-            with open(self.account_path, 'w', encoding='utf-8') as f:
-                json.dump({
-                    "pid": self.pid,
-                    "uid": self.uid,
-                    "name": self.name,
-                    "display_name": self.display_name,
-                    "remid": self.remid,
-                    "sid": self.sid,
-                    "session": self.session
-                }, f, indent=4, ensure_ascii=False)
+            with open(self.account_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "pid": self.pid,
+                        "uid": self.uid,
+                        "name": self.name,
+                        "display_name": self.display_name,
+                        "remid": self.remid,
+                        "sid": self.sid,
+                        "session": self.session,
+                    },
+                    f,
+                    indent=4,
+                    ensure_ascii=False,
+                )
             logger.debug("没有找到默认账号文件，已自动创建文件")
         return {
             "pid": self.pid,
@@ -157,7 +184,7 @@ class DefaultAccount:
             "display_name": self.display_name,
             "remid": self.remid,
             "sid": self.sid,
-            "session": self.session
+            "session": self.session,
         }
 
     # 更新玩家信息
@@ -180,7 +207,7 @@ class DefaultAccount:
             display_name=self.display_name,
             remid=self.remid,
             sid=self.sid,
-            session=self.session
+            session=self.session,
         )
         logger.success(f"成功更新默认账号: {self.display_name}({self.pid})")
         return {
@@ -190,7 +217,7 @@ class DefaultAccount:
             "display_name": self.display_name,
             "remid": self.remid,
             "sid": self.sid,
-            "session": self.session
+            "session": self.session,
         }
 
 

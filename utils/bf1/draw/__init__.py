@@ -4,20 +4,18 @@ import json
 import os
 import random
 import time
-
-from creart import create
 from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
-from typing import Union, Tuple
 
 import aiohttp
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from PIL import Image, ImageFont, ImageDraw, ImageFilter, ImageEnhance
+from creart import create
 from loguru import logger
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 from zhconv import zhconv
 
 from core.config import GlobalConfig
@@ -54,21 +52,35 @@ ScoutImg = Path("./data/battlefield/pic/src/soldiers/scout.png").open("rb").read
 SupportImg = Path("./data/battlefield/pic/src/soldiers/support.png").open("rb").read()
 TankerImg = Path("./data/battlefield/pic/src/soldiers/tanker.png").open("rb").read()
 # 头像框模板
-AvatarOnlineImg = Path("./data/battlefield/pic/src/template/avatar2.png").open("rb").read()
-AvatarOfflineImg = Path("./data/battlefield/pic/src/template/avatar1.png").open("rb").read()
+AvatarOnlineImg = (
+    Path("./data/battlefield/pic/src/template/avatar2.png").open("rb").read()
+)
+AvatarOfflineImg = (
+    Path("./data/battlefield/pic/src/template/avatar1.png").open("rb").read()
+)
 # 封禁框模板
 BanImg = Path("./data/battlefield/pic/src/template/ban.png").open("rb").read()
 # 战队框模板
 PlatoonImg = Path("./data/battlefield/pic/src/template/platoon.png").open("rb").read()
-PlatoonImgNone = Path("./data/battlefield/pic/src/template/platoon_none.png").open("rb").read()
+PlatoonImgNone = (
+    Path("./data/battlefield/pic/src/template/platoon_none.png").open("rb").read()
+)
 # 战绩信息框模板
 StatImg = Path("./data/battlefield/pic/src/template/stat.png").open("rb").read()
 # 武器/载具框模板
 SkinRootPath = Path("./data/battlefield/pic/skins/")
-WeaponGoldImg = Path("./data/battlefield/pic/src/template/weapon_gold.png").open("rb").read()
-WeaponBlueImg = Path("./data/battlefield/pic/src/template/weapon_blue.png").open("rb").read()
-WeaponWhiteImg = Path("./data/battlefield/pic/src/template/weapon_white.png").open("rb").read()
-BlackTrapezoidImg = Path("./data/battlefield/pic/src/template/black_trapezoid.png").open("rb").read()
+WeaponGoldImg = (
+    Path("./data/battlefield/pic/src/template/weapon_gold.png").open("rb").read()
+)
+WeaponBlueImg = (
+    Path("./data/battlefield/pic/src/template/weapon_blue.png").open("rb").read()
+)
+WeaponWhiteImg = (
+    Path("./data/battlefield/pic/src/template/weapon_white.png").open("rb").read()
+)
+BlackTrapezoidImg = (
+    Path("./data/battlefield/pic/src/template/black_trapezoid.png").open("rb").read()
+)
 # 交换
 ExchangePricePath = Path("./statics/Battlefield/exchange/price.png")
 # 字体
@@ -94,24 +106,54 @@ ColorWhiteAndGray = (255, 255, 255, 150)
 
 
 class PilImageUtils:
-
     widths = [
-        (126, 1), (159, 0), (687, 1), (710, 0), (711, 1),
-        (727, 0), (733, 1), (879, 0), (1154, 1), (1161, 0),
-        (4347, 1), (4447, 2), (7467, 1), (7521, 0), (8369, 1),
-        (8426, 0), (9000, 1), (9002, 2), (11021, 1), (12350, 2),
-        (12351, 1), (12438, 2), (12442, 0), (19893, 2), (19967, 1),
-        (55203, 2), (63743, 1), (64106, 2), (65039, 1), (65059, 0),
-        (65131, 2), (65279, 1), (65376, 2), (65500, 1), (65510, 2),
-        (120831, 1), (262141, 2), (1114109, 1),
+        (126, 1),
+        (159, 0),
+        (687, 1),
+        (710, 0),
+        (711, 1),
+        (727, 0),
+        (733, 1),
+        (879, 0),
+        (1154, 1),
+        (1161, 0),
+        (4347, 1),
+        (4447, 2),
+        (7467, 1),
+        (7521, 0),
+        (8369, 1),
+        (8426, 0),
+        (9000, 1),
+        (9002, 2),
+        (11021, 1),
+        (12350, 2),
+        (12351, 1),
+        (12438, 2),
+        (12442, 0),
+        (19893, 2),
+        (19967, 1),
+        (55203, 2),
+        (63743, 1),
+        (64106, 2),
+        (65039, 1),
+        (65059, 0),
+        (65131, 2),
+        (65279, 1),
+        (65376, 2),
+        (65500, 1),
+        (65510, 2),
+        (120831, 1),
+        (262141, 2),
+        (1114109, 1),
     ]
 
     @staticmethod
     def draw_centered_text(
-            draw: ImageDraw.Draw, text: str,
-            center: Tuple[int, int],
-            font: ImageFont.FreeTypeFont,
-            fill: Tuple[int, int, int]
+        draw: ImageDraw.Draw,
+        text: str,
+        center: tuple[int, int],
+        font: ImageFont.FreeTypeFont,
+        fill: tuple[int, int, int],
     ) -> None:
         """
         在图像上居中绘制文本。对于给定的坐标x, y，文本将以x, y为轴心水平居中绘制。
@@ -134,11 +176,12 @@ class PilImageUtils:
 
     @staticmethod
     def draw_multiline_text(
-            draw: ImageDraw.Draw,
-            text: str, position: Tuple[int, int],
-            font: ImageFont.FreeTypeFont,
-            fill: Tuple[int, int, int],
-            max_width: int
+        draw: ImageDraw.Draw,
+        text: str,
+        position: tuple[int, int],
+        font: ImageFont.FreeTypeFont,
+        fill: tuple[int, int, int],
+        max_width: int,
     ):
         """
         在图像上绘制多行文本，支持中英文混排，在文本宽度超过max_width时自动换行。
@@ -151,7 +194,7 @@ class PilImageUtils:
         :param max_width: 文本换行的最大宽度。
         """
         x, y = position
-        line = ''
+        line = ""
         for word in text:
             # 单字加入当前行后检测宽度
             test_line = line + word
@@ -161,14 +204,17 @@ class PilImageUtils:
             else:
                 # 绘制当前行并准备新的一行
                 draw.text((x, y), line, font=font, fill=fill)
-                y += draw.textbbox((x, y), line, font=font)[3] - draw.textbbox((x, y), line, font=font)[1]
+                y += (
+                    draw.textbbox((x, y), line, font=font)[3]
+                    - draw.textbbox((x, y), line, font=font)[1]
+                )
                 line = word
         # 绘制最后一行
         if line:
             draw.text((x, y), line, font=font, fill=fill)
 
     @staticmethod
-    def crop_circle(image_input: Union[Image.Image, bytes], radius: int) -> Image:
+    def crop_circle(image_input: Image.Image | bytes, radius: int) -> Image:
         """
         将传入的图片，根据指定的半径裁剪为圆形。
         :param image_input: PIL.Image 对象
@@ -185,23 +231,23 @@ class PilImageUtils:
             raise TypeError("image_input must be a PIL.Image.Image object or bytes")
 
         # 将图片调整为2*radius大小
-        image_input = image_input.resize((2 * radius, 2 * radius), Image.Resampling.LANCZOS)
+        image_input = image_input.resize(
+            (2 * radius, 2 * radius), Image.Resampling.LANCZOS
+        )
 
         # 创建一个遮罩用于裁剪
-        mask = Image.new('L', (2 * radius, 2 * radius), 0)
+        mask = Image.new("L", (2 * radius, 2 * radius), 0)
         draw = ImageDraw.Draw(mask)
         draw.ellipse((0, 0, 2 * radius, 2 * radius), fill=255)
 
         # 应用遮罩裁剪图片
-        result = Image.new('RGBA', (2 * radius, 2 * radius))
+        result = Image.new("RGBA", (2 * radius, 2 * radius))
         result.paste(image_input, (0, 0), mask)
         return result
 
     @staticmethod
     def resize_and_crop_to_center(
-            image_input: Union[Image.Image, bytes],
-            target_width: int,
-            target_height: int
+        image_input: Image.Image | bytes, target_width: int, target_height: int
     ) -> Image:
         """
         将图片调整为指定宽高，并且居中裁剪。
@@ -240,12 +286,14 @@ class PilImageUtils:
 
         # 计算缩放比例
         original_width, original_height = image.size
-        resize_ratio = max(target_width / original_width, target_height / original_height)
+        resize_ratio = max(
+            target_width / original_width, target_height / original_height
+        )
 
         # 根据缩放比例调整图片尺寸
         new_dimensions = (
             int(original_width * resize_ratio),
-            int(original_height * resize_ratio)
+            int(original_height * resize_ratio),
         )
         resized_image = image.resize(new_dimensions, Image.Resampling.LANCZOS)
 
@@ -260,9 +308,7 @@ class PilImageUtils:
     # 适应最长边
     @staticmethod
     def scale_image_to_dimension(
-            image_input: Union[Image.Image, bytes],
-            target_width: int,
-            target_height: int
+        image_input: Image.Image | bytes, target_width: int, target_height: int
     ) -> Image:
         """
         根据提供的目标尺寸缩放图像。会将图形最长边缩放至目标尺寸，另一边按比例缩放，保证图像内容全部被包含。
@@ -298,8 +344,7 @@ class PilImageUtils:
 
     @staticmethod
     def paste_center(
-            background_img: Union[Image.Image, bytes],
-            overlay_img: Union[Image.Image, bytes]
+        background_img: Image.Image | bytes, overlay_img: Image.Image | bytes
     ) -> Image.Image:
         """
         将一个图像居中粘贴到另一个图像上。
@@ -343,7 +388,7 @@ class PilImageUtils:
         return new_img
 
     @staticmethod
-    async def read_img_by_url(url: str) -> Union[bytes, None]:
+    async def read_img_by_url(url: str) -> bytes | None:
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, proxy=proxy) as resp:
@@ -357,7 +402,7 @@ class PilImageUtils:
 
     def get_width(self, o):
         """Return the screen column width for unicode ordinal o."""
-        if o == 0xe or o == 0xf:
+        if o == 0xE or o == 0xF:
             return 0
         for num, wid in self.widths:
             if o <= num:
@@ -367,19 +412,19 @@ class PilImageUtils:
 
 class PlayerStatPic:
     def __init__(
-            self,
-            player_name: str,
-            player_pid: Union[str, int],
-            personas: dict,
-            stat: dict,
-            weapons: dict,
-            vehicles: dict,
-            bfeac_info: dict,
-            bfban_info: dict,
-            server_playing_info: dict,
-            platoon_info: dict,
-            skin_info: dict,
-            gt_id_info: Union[dict, None]
+        self,
+        player_name: str,
+        player_pid: str | int,
+        personas: dict,
+        stat: dict,
+        weapons: dict,
+        vehicles: dict,
+        bfeac_info: dict,
+        bfban_info: dict,
+        server_playing_info: dict,
+        platoon_info: dict,
+        skin_info: dict,
+        gt_id_info: dict | None,
     ):
         self.player_name = player_name
         self.player_pid = str(player_pid)
@@ -397,45 +442,182 @@ class PlayerStatPic:
 
         # 玩家数据
         player_info = self.stat["result"]
-        rank = player_info.get('basicStats').get('rank')
+        rank = player_info.get("basicStats").get("rank")
         rank_list = [
-            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
-            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
-            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
-            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
-            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
-            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
-            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
-            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
-            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
-            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
-            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
-            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
-            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
-            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+            0,
+            1000,
+            5000,
+            15000,
+            25000,
+            40000,
+            55000,
+            75000,
+            95000,
+            120000,
+            145000,
+            175000,
+            205000,
+            235000,
+            265000,
+            295000,
+            325000,
+            355000,
+            395000,
+            435000,
+            475000,
+            515000,
+            555000,
+            595000,
+            635000,
+            675000,
+            715000,
+            755000,
+            795000,
+            845000,
+            895000,
+            945000,
+            995000,
+            1045000,
+            1095000,
+            1145000,
+            1195000,
+            1245000,
+            1295000,
+            1345000,
+            1405000,
+            1465000,
+            1525000,
+            1585000,
+            1645000,
+            1705000,
+            1765000,
+            1825000,
+            1885000,
+            1945000,
+            2015000,
+            2085000,
+            2155000,
+            2225000,
+            2295000,
+            2365000,
+            2435000,
+            2505000,
+            2575000,
+            2645000,
+            2745000,
+            2845000,
+            2945000,
+            3045000,
+            3145000,
+            3245000,
+            3345000,
+            3445000,
+            3545000,
+            3645000,
+            3750000,
+            3870000,
+            4000000,
+            4140000,
+            4290000,
+            4450000,
+            4630000,
+            4830000,
+            5040000,
+            5260000,
+            5510000,
+            5780000,
+            6070000,
+            6390000,
+            6730000,
+            7110000,
+            7510000,
+            7960000,
+            8430000,
+            8960000,
+            9520000,
+            10130000,
+            10800000,
+            11530000,
+            12310000,
+            13170000,
+            14090000,
+            15100000,
+            16190000,
+            17380000,
+            20000000,
+            20500000,
+            21000000,
+            21500000,
+            22000000,
+            22500000,
+            23000000,
+            23500000,
+            24000000,
+            24500000,
+            25000000,
+            25500000,
+            26000000,
+            26500000,
+            27000000,
+            27500000,
+            28000000,
+            28500000,
+            29000000,
+            29500000,
+            30000000,
+            30500000,
+            31000000,
+            31500000,
+            32000000,
+            32500000,
+            33000000,
+            33500000,
+            34000000,
+            34500000,
+            35000000,
+            35500000,
+            36000000,
+            36500000,
+            37000000,
+            37500000,
+            38000000,
+            38500000,
+            39000000,
+            39500000,
+            40000000,
+            41000000,
+            42000000,
+            43000000,
+            44000000,
+            45000000,
+            46000000,
+            47000000,
+            48000000,
+            49000000,
+            50000000,
         ]
         # 转换成xx小时xx分钟
-        time_seconds = player_info.get('basicStats').get('timePlayed')
+        time_seconds = player_info.get("basicStats").get("timePlayed")
         if time_seconds < 3600:
             self.time_played = f"{round(time_seconds // 60)}分钟"
         else:
             self.time_played = f"{round(time_seconds // 3600)}小时{round(time_seconds % 3600 // 60)}分钟"
-        kills = player_info.get('basicStats').get('kills')
+        kills = player_info.get("basicStats").get("kills")
         self.kills = kills
-        deaths = player_info.get('basicStats').get('deaths')
+        deaths = player_info.get("basicStats").get("deaths")
         self.deaths = deaths
         kd = round(kills / deaths, 2) if deaths else kills
         self.kd = kd
-        wins = player_info.get('basicStats').get('wins')
+        wins = player_info.get("basicStats").get("wins")
         self.wins = wins
-        losses = player_info.get('basicStats').get('losses')
+        losses = player_info.get("basicStats").get("losses")
         self.losses = losses
         # 百分制
         win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
         self.win_rate = win_rate
-        kpm = player_info.get('basicStats').get('kpm')
+        kpm = player_info.get("basicStats").get("kpm")
         self.kpm = kpm
-        spm = player_info.get('basicStats').get('spm')
+        spm = player_info.get("basicStats").get("spm")
         self.spm = spm
         # 用spm / 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级
         exp = spm * time_seconds / 60
@@ -454,28 +636,28 @@ class PlayerStatPic:
         vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
         vehicle_kill = int(vehicle_kill)
         self.vehicle_kill = vehicle_kill
-        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
+        infantry_kill = int(player_info["basicStats"]["kills"] - vehicle_kill)
         self.infantry_kill = infantry_kill
-        skill = player_info.get('basicStats').get('skill')
+        skill = player_info.get("basicStats").get("skill")
         self.skill = skill
-        longest_headshot = player_info.get('longestHeadShot')
+        longest_headshot = player_info.get("longestHeadShot")
         self.longest_headshot = longest_headshot
-        killAssists = int(player_info.get('killAssists'))
+        killAssists = int(player_info.get("killAssists"))
         self.killAssists = killAssists
-        highestKillStreak = int(player_info.get('highestKillStreak'))
+        highestKillStreak = int(player_info.get("highestKillStreak"))
         self.highestKillStreak = highestKillStreak
-        revives = int(player_info.get('revives'))
+        revives = int(player_info.get("revives"))
         self.revives = revives
-        heals = int(player_info.get('heals'))
+        heals = int(player_info.get("heals"))
         self.heals = heals
-        repairs = int(player_info.get('repairs'))
+        repairs = int(player_info.get("repairs"))
         self.repairs = repairs
-        dogtagsTaken = int(player_info.get('dogtagsTaken'))
+        dogtagsTaken = int(player_info.get("dogtagsTaken"))
         self.dogtagsTaken = dogtagsTaken
 
     # 根据传入的url下载头像，并打开返回img，如果下载失败则返回default_bot_avatar.jpg
     @staticmethod
-    async def get_avatar(url: str, pid: Union[str, int]) -> bytes:
+    async def get_avatar(url: str, pid: str | int) -> bytes:
         # 如果 URL 为空，直接返回默认头像
         if not url:
             return DefaultAvatarImg
@@ -493,7 +675,7 @@ class PlayerStatPic:
         # 如果下载失败，返回默认头像
         return DefaultAvatarImg
 
-    async def get_background(self, pid: Union[str, int]) -> Image:
+    async def get_background(self, pid: str | int) -> Image:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
@@ -504,7 +686,9 @@ class PlayerStatPic:
         ):
             background = player_background_path.open("rb").read()
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            background = (
+                random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            )
         # if not player_background_path:  # 如果没有背景图，就用默认的，且放大
         #     # 将图片调整为2000*1550，如果图片任意一边小于2000则放大，否则缩小，然后将图片居中的部分裁剪出来
         #     background_img = ImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
@@ -515,9 +699,13 @@ class PlayerStatPic:
         #     background_img = ImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
 
         # 先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
-        background_img = PilImageUtils.resize_and_crop_to_center(background, StatImageWidth, StatImageHeight)
+        background_img = PilImageUtils.resize_and_crop_to_center(
+            background, StatImageWidth, StatImageHeight
+        )
         background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-        background_img_top = PilImageUtils.scale_image_to_dimension(background, StatImageWidth, StatImageHeight)
+        background_img_top = PilImageUtils.scale_image_to_dimension(
+            background, StatImageWidth, StatImageHeight
+        )
         # 将background_img_top粘贴到background_img上
         background_img = PilImageUtils.paste_center(background_img, background_img_top)
         return background_img
@@ -527,9 +715,9 @@ class PlayerStatPic:
         local_avatar_path = AvatarPathRoot / f"{self.player_pid}.jpg"
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
-        if local_avatar_path.is_file() and \
-                (datetime.now() - datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
+        if local_avatar_path.is_file() and (
+            datetime.now() - datetime.fromtimestamp(local_avatar_path.stat().st_mtime)
+        ) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -563,21 +751,21 @@ class PlayerStatPic:
             (80, 110),
             f"名字: {self.player_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # PID
         avatar_template_draw.text(
             (80, 160),
             f"PID : {self.player_pid}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 时长
         avatar_template_draw.text(
             (80, 210),
             f"时长: {self.time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 等级
         text_position = (80, 260)
@@ -585,7 +773,7 @@ class PlayerStatPic:
         text_bbox = avatar_template_draw.textbbox(
             text_position,
             "等级: ",
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # text_bbox是一个四元组(left, top, right, bottom)，我们可以通过right - left来获取文本的宽度
         text_width = text_bbox[2] - text_bbox[0]
@@ -595,13 +783,17 @@ class PlayerStatPic:
             text_position,
             "等级: ",
             fill=ColorWhite,  # 假设等级之前的文字是白色
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         avatar_template_draw.text(
             (rank_position_x, text_position[1]),
             f"{self.rank}",
-            fill=ColorGoldAndGray if self.rank == 150 else ColorBlueAndGray if self.rank >= 100 else ColorWhiteAndGray,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGoldAndGray
+            if self.rank == 150
+            else ColorBlueAndGray
+            if self.rank >= 100
+            else ColorWhiteAndGray,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         return avatar_template
 
@@ -615,7 +807,7 @@ class PlayerStatPic:
             self.bfban_info["stat"] if self.bfban_info["stat"] else "无信息",
             (180, 57),
             fill=ColorRed if self.bfban_info["stat"] == "实锤" else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # BFEAC
         PilImageUtils.draw_centered_text(
@@ -623,7 +815,7 @@ class PlayerStatPic:
             self.bfeac_info["stat"] if self.bfeac_info["stat"] else "无信息",
             (490, 57),
             fill=ColorRed if self.bfeac_info["stat"] == "已封禁" else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         return ban_template
 
@@ -642,76 +834,76 @@ class PlayerStatPic:
             (col1_x, start_row + row_diff_distance * 0),
             f"击杀: {self.kills}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col1_x, start_row + row_diff_distance),
             f"死亡: {self.deaths}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"KD: {self.kd}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         # 胜局、败局、胜率
         stat_template_draw.text(
             (col2_x, start_row + row_diff_distance * 0),
             f"胜局: {self.wins}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"败局: {self.losses}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"胜率: {self.win_rate}%",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         # kpm、spm、技巧值
         stat_template_draw.text(
             (col3_x, start_row + row_diff_distance * 0),
             f"KPM: {self.kpm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col3_x, start_row + row_diff_distance * 1),
             f"SPM: {self.spm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col3_x, start_row + row_diff_distance * 2),
             f"技巧值: {self.skill}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         # 步战击杀、载具击杀、最远爆头距离
         stat_template_draw.text(
             (col1_x, start_row + row_diff_distance * 3),
             f"步战击杀: {self.infantry_kill}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col2_x + 100, start_row + row_diff_distance * 3),
             f"载具击杀: {self.vehicle_kill}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         stat_template_draw.text(
             (col1_x, start_row + row_diff_distance * 4),
             f"最远爆头距离: {self.longest_headshot}米",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         return stat_template
 
@@ -753,43 +945,43 @@ class PlayerStatPic:
             (300, 120),
             f"最佳兵种: {favoriteClass}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         soldier_template_draw.text(
             (col1_x, start_row + row_diff_distance * 0),
             f"协助击杀: {self.killAssists}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         soldier_template_draw.text(
             (col1_x, start_row + row_diff_distance * 1),
             f"复活数: {self.revives}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         soldier_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"修理数: {self.repairs}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         soldier_template_draw.text(
             (col2_x, start_row + row_diff_distance * 0),
             f"最高连杀: {self.highestKillStreak}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         soldier_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"治疗数: {self.heals}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         soldier_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"狗牌数: {self.dogtagsTaken}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
 
         return soldier_img
@@ -802,7 +994,11 @@ class PlayerStatPic:
             platoon_template = Image.open(BytesIO(PlatoonImg)).convert("RGBA")
             platoon_template_draw = ImageDraw.Draw(platoon_template)
             if self.platoon_info["result"]["emblem"]:
-                emblem = self.platoon_info["result"]["emblem"].replace("[SIZE]", "256").replace("[FORMAT]", "png")
+                emblem = (
+                    self.platoon_info["result"]["emblem"]
+                    .replace("[SIZE]", "256")
+                    .replace("[FORMAT]", "png")
+                )
                 emblem_img = await PilImageUtils.read_img_by_url(emblem)
                 if emblem_img:
                     emblem_img = Image.open(BytesIO(emblem_img)).convert("RGBA")
@@ -812,9 +1008,13 @@ class PlayerStatPic:
                     emblem_img_background = PilImageUtils.resize_and_crop_to_center(
                         emblem_img, platoon_template.width, platoon_template.height
                     )
-                    emblem_img_background = emblem_img_background.filter(ImageFilter.GaussianBlur(radius=10))
+                    emblem_img_background = emblem_img_background.filter(
+                        ImageFilter.GaussianBlur(radius=10)
+                    )
                     # 将emblem_img_background粘贴到platoon_template上
-                    platoon_template = PilImageUtils.paste_center(emblem_img_background, platoon_template)
+                    platoon_template = PilImageUtils.paste_center(
+                        emblem_img_background, platoon_template
+                    )
                     platoon_template.paste(emblem_img, (422, 22), emblem_img)
                     platoon_template_draw = ImageDraw.Draw(platoon_template)
                 else:
@@ -824,13 +1024,13 @@ class PlayerStatPic:
                 (col1_x, start_row + row_diff_distance * 0),
                 f"[{self.platoon_info['result']['tag']}]{self.platoon_info['result']['name']}",
                 fill=ColorWhite,
-                font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
             )
             platoon_template_draw.text(
                 (col1_x, start_row + row_diff_distance * 1),
                 f"人数: {self.platoon_info['result']['size']}",
                 fill=ColorWhite,
-                font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
             )
             PilImageUtils.draw_multiline_text(
                 platoon_template_draw,
@@ -838,34 +1038,38 @@ class PlayerStatPic:
                 (col1_x, start_row + row_diff_distance * 2),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 15
+                StatFontSize * 15,
             )
         else:
             platoon_template = Image.open(BytesIO(PlatoonImgNone)).convert("RGBA")
             platoon_template_draw = ImageDraw.Draw(platoon_template)
             file_path = "./data/battlefield/小标语/data.json"
-            with open(file_path, 'r', encoding="utf-8") as file1:
-                data = json.load(file1)['result']
-                data.append({'name': "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
-                data.append({'name': "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~"})
-                tip = zhconv.convert(random.choice(data)['name'], 'zh-cn')
+            with open(file_path, encoding="utf-8") as file1:
+                data = json.load(file1)["result"]
+                data.append({"name": "你知道吗,小埋BOT最初的灵感来自于胡桃-by水神"})
+                data.append(
+                    {
+                        "name": "当武器击杀达到60⭐时为蓝光,当达到100⭐之后会发出耀眼的金光~"
+                    }
+                )
+                tip = zhconv.convert(random.choice(data)["name"], "zh-cn")
             PilImageUtils.draw_multiline_text(
                 platoon_template_draw,
                 tip,
                 (col1_x, start_row + row_diff_distance * 0),
                 ImageFont.truetype(str(GlobalFontPath), StatFontSize),
                 ColorWhite,
-                StatFontSize * 22
+                StatFontSize * 22,
             )
         return platoon_template
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
-        weapon_name = zhconv.convert(weapon.get('name'), 'zh-hans')
+        weapon_name = zhconv.convert(weapon.get("name"), "zh-hans")
         kills = int(weapon["stats"]["values"]["kills"])
         # 星数是kills/100向下取整
         stars = kills // 100
         seconds = weapon["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        kpm = f"{kills / seconds * 60:.2f}" if seconds != 0 else kills
         acc = (
             round(
                 weapon["stats"]["values"]["hits"]
@@ -876,14 +1080,30 @@ class PlayerStatPic:
             if weapon["stats"]["values"]["shots"] != 0
             else 0
         )
-        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
-        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
+        hs = (
+            round(
+                weapon["stats"]["values"]["headshots"]
+                / weapon["stats"]["values"]["kills"]
+                * 100,
+                2,
+            )
+            if weapon["stats"]["values"]["kills"] != 0
+            else 0
+        )
+        eff = (
+            round(
+                weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"],
+                2,
+            )
+            if weapon["stats"]["values"]["kills"] != 0
+            else 0
+        )
         if seconds < 3600:
             time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            time_played = (
+                f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            )
 
         if kills >= 10000:
             weapon_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
@@ -901,11 +1121,19 @@ class PlayerStatPic:
         if skin_guids:
             for k in skin_guids.keys():
                 skin_guid = skin_guids[k]
-                skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
+                skin_all_info = json.loads(
+                    open(SkinAllPathRoot, encoding="utf-8").read()
+                )
                 if skin_all_info.get(skin_guid):
-                    skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
-                    skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]  # Superior/Enhanced/Standard
+                    skin_url = skin_all_info[skin_guid]["images"][
+                        "Png1024xANY"
+                    ].replace("[BB_PREFIX]", BB_PREFIX)
+                    skin_name = zhconv.convert(
+                        skin_all_info[skin_guid]["name"], "zh-hans"
+                    )
+                    skin_level = skin_all_info[skin_guid]["rarenessLevel"][
+                        "name"
+                    ]  # Superior/Enhanced/Standard
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
@@ -931,8 +1159,12 @@ class PlayerStatPic:
         weapon_template_draw.text(
             (54, 97),
             f"{stars}",
-            fill=ColorGold if stars >= 100 else ColorBlue if stars >= 60 else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGold
+            if stars >= 100
+            else ColorBlue
+            if stars >= 60
+            else ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 武器名字 55 160  列1:击杀、命中率、效率 列2:爆头率、kpm、时长
         start_row = 150
@@ -943,66 +1175,70 @@ class PlayerStatPic:
             (col1_x, start_row + row_diff_distance * 0),
             f"{weapon_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         if skin_name:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior"
-                else ColorBlueAndGray if skin_level == "Enhanced"
+                fill=ColorGoldAndGray
+                if skin_level == "Superior"
+                else ColorBlueAndGray
+                if skin_level == "Enhanced"
                 else ColorWhiteAndGray,
-                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize),
             )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 1),
             f"击杀: {kills}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"命中率: {acc}%",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 3),
             f"效率: {eff}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"KPM: {kpm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"爆头率: {hs}%",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 3),
             f"时长: {time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         return weapon_template
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:
-        vehicle_name = zhconv.convert(vehicle.get('name'), 'zh-hans')
+        vehicle_name = zhconv.convert(vehicle.get("name"), "zh-hans")
         kills = int(vehicle["stats"]["values"]["kills"])
         stars = kills // 100
         seconds = vehicle["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        kpm = f"{kills / seconds * 60:.2f}" if seconds != 0 else kills
         destroyed = int(vehicle["stats"]["values"]["destroyed"])
         if seconds < 3600:
             time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            time_played = (
+                f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            )
         if kills >= 10000:
             vehicle_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
         elif kills >= 6000:
@@ -1011,7 +1247,7 @@ class PlayerStatPic:
             vehicle_template = Image.open(BytesIO(WeaponWhiteImg)).convert("RGBA")
         vehicle_template_draw = ImageDraw.Draw(vehicle_template)
         # 粘贴载具图片/皮肤图片
-        vehicle_guid = vehicle["guid"]
+        # vehicle_guid = vehicle["guid"]
         skin_guids = self.skin_info["result"]["kits"].get(f"{vehicle['sortOrder']}")
         if skin_guids:
             skin_guids = skin_guids[0]
@@ -1021,10 +1257,16 @@ class PlayerStatPic:
         if skin_guids:
             for k in skin_guids.keys():
                 skin_guid = skin_guids[k]
-                skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
+                skin_all_info = json.loads(
+                    open(SkinAllPathRoot, encoding="utf-8").read()
+                )
                 if skin_all_info.get(skin_guid):
-                    skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
+                    skin_url = skin_all_info[skin_guid]["images"][
+                        "Png1024xANY"
+                    ].replace("[BB_PREFIX]", BB_PREFIX)
+                    skin_name = zhconv.convert(
+                        skin_all_info[skin_guid]["name"], "zh-hans"
+                    )
                     skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
@@ -1034,7 +1276,9 @@ class PlayerStatPic:
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
-                            vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
+                            vehicle_img = Image.open(BytesIO(vehicle_img)).convert(
+                                "RGBA"
+                            )
                             vehicle_img.save(skin_file_path)
                             break
                         else:
@@ -1051,8 +1295,12 @@ class PlayerStatPic:
         vehicle_template_draw.text(
             (54, 97),
             f"{stars}",
-            fill=ColorGold if stars >= 100 else ColorBlue if stars >= 60 else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGold
+            if stars >= 100
+            else ColorBlue
+            if stars >= 60
+            else ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 载具名字 55 160  列1:击杀、摧毁 列2:kpm、时长
         start_row = 150
@@ -1063,40 +1311,42 @@ class PlayerStatPic:
             (col1_x, start_row + row_diff_distance * 0),
             f"{vehicle_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         if skin_name:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior"
-                else ColorBlueAndGray if skin_level == "Enhanced"
+                fill=ColorGoldAndGray
+                if skin_level == "Superior"
+                else ColorBlueAndGray
+                if skin_level == "Enhanced"
                 else ColorWhiteAndGray,
-                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize),
             )
         vehicle_template_draw.text(
             (col1_x, start_row + row_diff_distance * 1),
             f"击杀: {kills}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"摧毁: {destroyed}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"KPM: {kpm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"时长: {time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         return vehicle_template
 
@@ -1111,11 +1361,11 @@ class PlayerStatPic:
             text,
             (72, 22),
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         return best_text_trapezoid
 
-    async def draw(self) -> Union[bytes, Path]:
+    async def draw(self) -> bytes | Path:
         # 图的大小: 2000*1550
         # 画布
         output_img = Image.new("RGB", (StatImageWidth, StatImageHeight), ColorWhite)
@@ -1144,7 +1394,7 @@ class PlayerStatPic:
         player_weapon: list = WeaponData(self.weapons).filter()
         weapon_templates = []
         for weapon in player_weapon[:4]:
-            if not weapon.get("stats").get('values'):
+            if not weapon.get("stats").get("values"):
                 continue
             weapon_template = await self.weapon_template_handle(weapon)
             weapon_templates.append(weapon_template)
@@ -1156,7 +1406,7 @@ class PlayerStatPic:
             output_img.paste(
                 weapon_template,
                 (weapon_col, weapon_start_row + weapon_row_diff_distance * i),
-                weapon_template
+                weapon_template,
             )
         # 粘贴最佳武器信息 761, 88
         best_weapon_template = await self.best_text_trapezoid("最佳武器")
@@ -1166,7 +1416,7 @@ class PlayerStatPic:
         player_vehicle: list = VehicleData(self.vehicles).filter()
         vehicle_templates = []
         for vehicle in player_vehicle[:4]:
-            if not vehicle.get("stats").get('values'):
+            if not vehicle.get("stats").get("values"):
                 continue
             vehicle_template = await self.vehicle_template_handle(vehicle)
             vehicle_templates.append(vehicle_template)
@@ -1178,7 +1428,7 @@ class PlayerStatPic:
             output_img.paste(
                 vehicle_template,
                 (vehicle_col, vehicle_start_row + vehicle_row_diff_distance * i),
-                vehicle_template
+                vehicle_template,
             )
         # 粘贴最佳载具信息 1374, 88
         best_vehicle_template = await self.best_text_trapezoid("最佳载具")
@@ -1189,10 +1439,11 @@ class PlayerStatPic:
         # 居中
         PilImageUtils.draw_centered_text(
             output_img_draw,
-            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "Powered by XiaoMaiBot | Made by 13&&XM | "
+            + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (StatImageWidth // 2, StatImageHeight - 30),
             fill=(253, 245, 242),
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
 
         # 如果bfeac信息为已封禁，或者bfban信息为实锤，则将整张图片置黑白
@@ -1220,15 +1471,15 @@ class PlayerWeaponPic:
     weapon_data: list
 
     def __init__(
-            self,
-            player_name: str,
-            player_pid: Union[str, int],
-            personas: dict,
-            stat: dict,
-            weapons: list[dict],
-            server_playing_info: dict,
-            skin_info: dict,
-            gt_id_info: Union[dict, None]
+        self,
+        player_name: str,
+        player_pid: str | int,
+        personas: dict,
+        stat: dict,
+        weapons: list[dict],
+        server_playing_info: dict,
+        skin_info: dict,
+        gt_id_info: dict | None,
     ):
         """初始化处理数据,使用PIL绘制图片
         :param player_name: 玩家名字
@@ -1241,57 +1492,194 @@ class PlayerWeaponPic:
         :param gt_id_info: gt玩家信息
         """
         self.player_name: str = player_name
-        self.player_pid: Union[str, int] = str(player_pid)
+        self.player_pid: str | int = str(player_pid)
         self.personas: dict = personas
         self.stat: dict = stat
         self.weapons: list[dict] = weapons
         self.server_playing_info: dict = server_playing_info
         self.skin_info: dict = skin_info
-        self.gt_id_info: Union[dict, None] = gt_id_info
+        self.gt_id_info: dict | None = gt_id_info
 
         self.player_background_path = bg_pic.choose_bg(self.player_pid)
 
         # 玩家数据
         player_info = self.stat["result"]
-        rank = player_info.get('basicStats').get('rank')
+        rank = player_info.get("basicStats").get("rank")
         rank_list = [
-            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
-            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
-            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
-            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
-            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
-            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
-            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
-            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
-            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
-            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
-            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
-            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
-            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
-            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+            0,
+            1000,
+            5000,
+            15000,
+            25000,
+            40000,
+            55000,
+            75000,
+            95000,
+            120000,
+            145000,
+            175000,
+            205000,
+            235000,
+            265000,
+            295000,
+            325000,
+            355000,
+            395000,
+            435000,
+            475000,
+            515000,
+            555000,
+            595000,
+            635000,
+            675000,
+            715000,
+            755000,
+            795000,
+            845000,
+            895000,
+            945000,
+            995000,
+            1045000,
+            1095000,
+            1145000,
+            1195000,
+            1245000,
+            1295000,
+            1345000,
+            1405000,
+            1465000,
+            1525000,
+            1585000,
+            1645000,
+            1705000,
+            1765000,
+            1825000,
+            1885000,
+            1945000,
+            2015000,
+            2085000,
+            2155000,
+            2225000,
+            2295000,
+            2365000,
+            2435000,
+            2505000,
+            2575000,
+            2645000,
+            2745000,
+            2845000,
+            2945000,
+            3045000,
+            3145000,
+            3245000,
+            3345000,
+            3445000,
+            3545000,
+            3645000,
+            3750000,
+            3870000,
+            4000000,
+            4140000,
+            4290000,
+            4450000,
+            4630000,
+            4830000,
+            5040000,
+            5260000,
+            5510000,
+            5780000,
+            6070000,
+            6390000,
+            6730000,
+            7110000,
+            7510000,
+            7960000,
+            8430000,
+            8960000,
+            9520000,
+            10130000,
+            10800000,
+            11530000,
+            12310000,
+            13170000,
+            14090000,
+            15100000,
+            16190000,
+            17380000,
+            20000000,
+            20500000,
+            21000000,
+            21500000,
+            22000000,
+            22500000,
+            23000000,
+            23500000,
+            24000000,
+            24500000,
+            25000000,
+            25500000,
+            26000000,
+            26500000,
+            27000000,
+            27500000,
+            28000000,
+            28500000,
+            29000000,
+            29500000,
+            30000000,
+            30500000,
+            31000000,
+            31500000,
+            32000000,
+            32500000,
+            33000000,
+            33500000,
+            34000000,
+            34500000,
+            35000000,
+            35500000,
+            36000000,
+            36500000,
+            37000000,
+            37500000,
+            38000000,
+            38500000,
+            39000000,
+            39500000,
+            40000000,
+            41000000,
+            42000000,
+            43000000,
+            44000000,
+            45000000,
+            46000000,
+            47000000,
+            48000000,
+            49000000,
+            50000000,
         ]
         # 转换成xx小时xx分钟
-        time_seconds = player_info.get('basicStats').get('timePlayed')
+        time_seconds = player_info.get("basicStats").get("timePlayed")
         if time_seconds < 3600:
             self.time_played = f"{round(time_seconds // 60)}分钟"
         else:
             self.time_played = f"{round(time_seconds // 3600)}小时{round(time_seconds % 3600 // 60)}分钟"
-        kills = player_info.get('basicStats').get('kills')
+        kills = player_info.get("basicStats").get("kills")
         self.kills = kills
-        deaths = player_info.get('basicStats').get('deaths')
+        deaths = player_info.get("basicStats").get("deaths")
         self.deaths = deaths
         kd = round(kills / deaths, 2) if deaths else kills
         self.kd = kd
-        wins = player_info.get('basicStats').get('wins')
+        wins = player_info.get("basicStats").get("wins")
         self.wins = wins
-        losses = player_info.get('basicStats').get('losses')
+        losses = player_info.get("basicStats").get("losses")
         self.losses = losses
         # 百分制
         win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
         self.win_rate = win_rate
-        kpm = player_info.get('basicStats').get('kpm')
+        kpm = player_info.get("basicStats").get("kpm")
         self.kpm = kpm
-        spm = player_info.get('basicStats').get('spm')
+        spm = player_info.get("basicStats").get("spm")
         self.spm = spm
         # 用spm / 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级
         exp = spm * time_seconds / 60
@@ -1310,27 +1698,27 @@ class PlayerWeaponPic:
         vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
         vehicle_kill = int(vehicle_kill)
         self.vehicle_kill = vehicle_kill
-        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
+        infantry_kill = int(player_info["basicStats"]["kills"] - vehicle_kill)
         self.infantry_kill = infantry_kill
-        skill = player_info.get('basicStats').get('skill')
+        skill = player_info.get("basicStats").get("skill")
         self.skill = skill
-        longest_headshot = player_info.get('longestHeadShot')
+        longest_headshot = player_info.get("longestHeadShot")
         self.longest_headshot = longest_headshot
-        killAssists = int(player_info.get('killAssists'))
+        killAssists = int(player_info.get("killAssists"))
         self.killAssists = killAssists
-        highestKillStreak = int(player_info.get('highestKillStreak'))
+        highestKillStreak = int(player_info.get("highestKillStreak"))
         self.highestKillStreak = highestKillStreak
-        revives = int(player_info.get('revives'))
+        revives = int(player_info.get("revives"))
         self.revives = revives
-        heals = int(player_info.get('heals'))
+        heals = int(player_info.get("heals"))
         self.heals = heals
-        repairs = int(player_info.get('repairs'))
+        repairs = int(player_info.get("repairs"))
         self.repairs = repairs
-        dogtagsTaken = int(player_info.get('dogtagsTaken'))
+        dogtagsTaken = int(player_info.get("dogtagsTaken"))
         self.dogtagsTaken = dogtagsTaken
 
     @staticmethod
-    async def get_avatar(url: str, pid: Union[str, int]) -> bytes:
+    async def get_avatar(url: str, pid: str | int) -> bytes:
         # 如果 URL 为空，直接返回默认头像
         if not url:
             return DefaultAvatarImg
@@ -1353,9 +1741,9 @@ class PlayerWeaponPic:
         local_avatar_path = AvatarPathRoot / f"{self.player_pid}.jpg"
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
-        if local_avatar_path.is_file() and \
-                (datetime.now() - datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
+        if local_avatar_path.is_file() and (
+            datetime.now() - datetime.fromtimestamp(local_avatar_path.stat().st_mtime)
+        ) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -1389,21 +1777,21 @@ class PlayerWeaponPic:
             (80, 110),
             f"名字: {self.player_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # PID
         avatar_template_draw.text(
             (80, 160),
             f"PID : {self.player_pid}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 时长
         avatar_template_draw.text(
             (80, 210),
             f"时长: {self.time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 等级
         text_position = (80, 260)
@@ -1411,7 +1799,7 @@ class PlayerWeaponPic:
         text_bbox = avatar_template_draw.textbbox(
             text_position,
             "等级: ",
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # text_bbox是一个四元组(left, top, right, bottom)，我们可以通过right - left来获取文本的宽度
         text_width = text_bbox[2] - text_bbox[0]
@@ -1421,47 +1809,65 @@ class PlayerWeaponPic:
             text_position,
             "等级: ",
             fill=ColorWhite,  # 假设等级之前的文字是白色
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         avatar_template_draw.text(
             (rank_position_x, text_position[1]),
             f"{self.rank}",
-            fill=ColorGoldAndGray if self.rank == 150 else ColorBlueAndGray if self.rank >= 100 else ColorWhiteAndGray,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGoldAndGray
+            if self.rank == 150
+            else ColorBlueAndGray
+            if self.rank >= 100
+            else ColorWhiteAndGray,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         return avatar_template
 
-    async def get_background(self, pid: Union[str, int], target_width, target_height) -> Image:
+    async def get_background(
+        self, pid: str | int, target_width, target_height
+    ) -> Image:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
         if player_background_path:
             background = player_background_path.open("rb").read()
         elif background_path.exists():
-            background = random.choice(list(background_path.iterdir())).open("rb").read()
+            background = (
+                random.choice(list(background_path.iterdir())).open("rb").read()
+            )
         else:
-            background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            background = (
+                random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+            )
         # 默认背景，直接放大填充
         if not player_background_path:
-            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = PilImageUtils.resize_and_crop_to_center(
+                background, target_width, target_height
+            )
             # 加一点高斯模糊
             # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
         # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
         else:
-            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = PilImageUtils.resize_and_crop_to_center(
+                background, target_width, target_height
+            )
             background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            background_img_top = PilImageUtils.scale_image_to_dimension(
+                background, target_width, target_height
+            )
             # 将background_img_top粘贴到background_img上
-            background_img = PilImageUtils.paste_center(background_img, background_img_top)
+            background_img = PilImageUtils.paste_center(
+                background_img, background_img_top
+            )
         return background_img
 
     async def weapon_template_handle(self, weapon: dict) -> Image:
-        weapon_name = zhconv.convert(weapon.get('name'), 'zh-hans')
+        weapon_name = zhconv.convert(weapon.get("name"), "zh-hans")
         kills = int(weapon["stats"]["values"]["kills"])
         # 星数是kills/100向下取整
         stars = kills // 100
         seconds = weapon["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        kpm = f"{kills / seconds * 60:.2f}" if seconds != 0 else kills
         acc = (
             round(
                 weapon["stats"]["values"]["hits"]
@@ -1472,14 +1878,30 @@ class PlayerWeaponPic:
             if weapon["stats"]["values"]["shots"] != 0
             else 0
         )
-        hs = round(weapon["stats"]["values"]["headshots"] / weapon["stats"]["values"]["kills"] * 100, 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
-        eff = round(weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"], 2) \
-            if weapon["stats"]["values"]["kills"] != 0 else 0
+        hs = (
+            round(
+                weapon["stats"]["values"]["headshots"]
+                / weapon["stats"]["values"]["kills"]
+                * 100,
+                2,
+            )
+            if weapon["stats"]["values"]["kills"] != 0
+            else 0
+        )
+        eff = (
+            round(
+                weapon["stats"]["values"]["hits"] / weapon["stats"]["values"]["kills"],
+                2,
+            )
+            if weapon["stats"]["values"]["kills"] != 0
+            else 0
+        )
         if seconds < 3600:
             time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            time_played = (
+                f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            )
 
         if kills >= 10000:
             weapon_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
@@ -1497,11 +1919,19 @@ class PlayerWeaponPic:
         if skin_guids:
             for k in skin_guids.keys():
                 skin_guid = skin_guids[k]
-                skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
+                skin_all_info = json.loads(
+                    open(SkinAllPathRoot, encoding="utf-8").read()
+                )
                 if skin_all_info.get(skin_guid):
-                    skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
-                    skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]  # Superior/Enhanced/Standard
+                    skin_url = skin_all_info[skin_guid]["images"][
+                        "Png1024xANY"
+                    ].replace("[BB_PREFIX]", BB_PREFIX)
+                    skin_name = zhconv.convert(
+                        skin_all_info[skin_guid]["name"], "zh-hans"
+                    )
+                    skin_level = skin_all_info[skin_guid]["rarenessLevel"][
+                        "name"
+                    ]  # Superior/Enhanced/Standard
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
                     if skin_file_path.exists():
@@ -1527,8 +1957,12 @@ class PlayerWeaponPic:
         weapon_template_draw.text(
             (54, 97),
             f"{stars}",
-            fill=ColorGold if stars >= 100 else ColorBlue if stars >= 60 else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGold
+            if stars >= 100
+            else ColorBlue
+            if stars >= 60
+            else ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 武器名字 55 160  列1:击杀、命中率、效率 列2:爆头率、kpm、时长
         start_row = 150
@@ -1539,60 +1973,62 @@ class PlayerWeaponPic:
             (col1_x, start_row + row_diff_distance * 0),
             f"{weapon_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         if skin_name:
             weapon_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior"
-                else ColorBlueAndGray if skin_level == "Enhanced"
+                fill=ColorGoldAndGray
+                if skin_level == "Superior"
+                else ColorBlueAndGray
+                if skin_level == "Enhanced"
                 else ColorWhiteAndGray,
-                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize),
             )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 1),
             f"击杀: {kills}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"命中率: {acc}%",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col1_x, start_row + row_diff_distance * 3),
             f"效率: {eff}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"KPM: {kpm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"爆头率: {hs}%",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         weapon_template_draw.text(
             (col2_x, start_row + row_diff_distance * 3),
             f"时长: {time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         return weapon_template
 
     async def draw(
-            self,
-            col: int = 2,
-            row: int = 6,
-    ) -> Union[bytes, Path, None]:
+        self,
+        col: int = 2,
+        row: int = 6,
+    ) -> bytes | Path | None:
         """绘制武器数据图片
         与生涯不同，武器只绘制头像框+武器数据，默认为两列四行
         这里是动态计算,每个武器框距离左边边界间距:90,列间距:43,行间距:25,右边边界间距:90，
@@ -1607,7 +2043,7 @@ class PlayerWeaponPic:
             return None
         else:
             for weapon in self.weapons:
-                if not weapon.get("stats").get('values'):
+                if not weapon.get("stats").get("values"):
                     continue
                 weapons.append(weapon)
         # 整理成col列row行的列表
@@ -1615,7 +2051,7 @@ class PlayerWeaponPic:
             col = 8
         if row > 10:
             row = 10
-        weapon_data = [weapons[i * col:(i + 1) * col] for i in range(row)]
+        weapon_data = [weapons[i * col : (i + 1) * col] for i in range(row)]
         col_origin = col
         row_origin = row
         col = len(weapon_data[0])
@@ -1631,7 +2067,9 @@ class PlayerWeaponPic:
         output_img = Image.new("RGB", (image_width, image_height), ColorWhite)
 
         # 粘贴背景
-        background_img = await self.get_background(self.player_pid, image_width, image_height)
+        background_img = await self.get_background(
+            self.player_pid, image_width, image_height
+        )
         output_img = PilImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
@@ -1645,7 +2083,10 @@ class PlayerWeaponPic:
                 weapon_template = await self.weapon_template_handle(item)
                 weapon_templates.append(weapon_template)
         # 整理成col_origin列row_origin行的列表
-        weapon_templates = [weapon_templates[i * col_origin:(i + 1) * col_origin] for i in range(row_origin)]
+        weapon_templates = [
+            weapon_templates[i * col_origin : (i + 1) * col_origin]
+            for i in range(row_origin)
+        ]
         # 粘贴武器信息
         row_diff_distance = weapon_template_height + 25  # 行与行之间的距离
         start_row = 60 + 349 + 25  # 首行起始位置
@@ -1657,21 +2098,18 @@ class PlayerWeaponPic:
                 # 计算每个武器模板的粘贴位置
                 paste_x = start_col + col_diff_distance * col_index
                 paste_y = start_row + row_diff_distance * row_index
-                output_img.paste(
-                    weapon_template,
-                    (paste_x, paste_y),
-                    weapon_template
-                )
+                output_img.paste(weapon_template, (paste_x, paste_y), weapon_template)
 
         # 水印和时间
         output_img_draw = ImageDraw.Draw(output_img)
         # 居中
         PilImageUtils.draw_centered_text(
             output_img_draw,
-            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "Powered by XiaoMaiBot | Made by 13&&XM | "
+            + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (image_width // 2, image_height - 20),
             fill=(253, 245, 242),
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
 
         # 存为 FileTempSaveRoot / 时间戳.png
@@ -1686,15 +2124,15 @@ class PlayerVehiclePic:
     vehicle_data: list
 
     def __init__(
-            self,
-            player_name: str,
-            player_pid: Union[str, int],
-            personas: dict,
-            stat: dict,
-            vehicles: list[dict],
-            server_playing_info: dict,
-            skin_info: dict,
-            gt_id_info: Union[dict, None]
+        self,
+        player_name: str,
+        player_pid: str | int,
+        personas: dict,
+        stat: dict,
+        vehicles: list[dict],
+        server_playing_info: dict,
+        skin_info: dict,
+        gt_id_info: dict | None,
     ):
         """初始化处理数据,使用PIL绘制图片
         :param player_name: 玩家名字
@@ -1707,57 +2145,194 @@ class PlayerVehiclePic:
         :param gt_id_info: gt玩家信息
         """
         self.player_name: str = player_name
-        self.player_pid: Union[str, int] = str(player_pid)
+        self.player_pid: str | int = str(player_pid)
         self.personas: dict = personas
         self.stat: dict = stat
         self.vehicles: list[dict] = vehicles
         self.server_playing_info: dict = server_playing_info
         self.skin_info: dict = skin_info
-        self.gt_id_info: Union[dict, None] = gt_id_info
+        self.gt_id_info: dict | None = gt_id_info
 
         self.player_background_path = bg_pic.choose_bg(self.player_pid)
 
         # 玩家数据
         player_info = self.stat["result"]
-        rank = player_info.get('basicStats').get('rank')
+        rank = player_info.get("basicStats").get("rank")
         rank_list = [
-            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
-            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
-            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
-            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
-            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
-            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
-            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
-            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
-            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
-            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
-            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
-            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
-            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
-            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+            0,
+            1000,
+            5000,
+            15000,
+            25000,
+            40000,
+            55000,
+            75000,
+            95000,
+            120000,
+            145000,
+            175000,
+            205000,
+            235000,
+            265000,
+            295000,
+            325000,
+            355000,
+            395000,
+            435000,
+            475000,
+            515000,
+            555000,
+            595000,
+            635000,
+            675000,
+            715000,
+            755000,
+            795000,
+            845000,
+            895000,
+            945000,
+            995000,
+            1045000,
+            1095000,
+            1145000,
+            1195000,
+            1245000,
+            1295000,
+            1345000,
+            1405000,
+            1465000,
+            1525000,
+            1585000,
+            1645000,
+            1705000,
+            1765000,
+            1825000,
+            1885000,
+            1945000,
+            2015000,
+            2085000,
+            2155000,
+            2225000,
+            2295000,
+            2365000,
+            2435000,
+            2505000,
+            2575000,
+            2645000,
+            2745000,
+            2845000,
+            2945000,
+            3045000,
+            3145000,
+            3245000,
+            3345000,
+            3445000,
+            3545000,
+            3645000,
+            3750000,
+            3870000,
+            4000000,
+            4140000,
+            4290000,
+            4450000,
+            4630000,
+            4830000,
+            5040000,
+            5260000,
+            5510000,
+            5780000,
+            6070000,
+            6390000,
+            6730000,
+            7110000,
+            7510000,
+            7960000,
+            8430000,
+            8960000,
+            9520000,
+            10130000,
+            10800000,
+            11530000,
+            12310000,
+            13170000,
+            14090000,
+            15100000,
+            16190000,
+            17380000,
+            20000000,
+            20500000,
+            21000000,
+            21500000,
+            22000000,
+            22500000,
+            23000000,
+            23500000,
+            24000000,
+            24500000,
+            25000000,
+            25500000,
+            26000000,
+            26500000,
+            27000000,
+            27500000,
+            28000000,
+            28500000,
+            29000000,
+            29500000,
+            30000000,
+            30500000,
+            31000000,
+            31500000,
+            32000000,
+            32500000,
+            33000000,
+            33500000,
+            34000000,
+            34500000,
+            35000000,
+            35500000,
+            36000000,
+            36500000,
+            37000000,
+            37500000,
+            38000000,
+            38500000,
+            39000000,
+            39500000,
+            40000000,
+            41000000,
+            42000000,
+            43000000,
+            44000000,
+            45000000,
+            46000000,
+            47000000,
+            48000000,
+            49000000,
+            50000000,
         ]
         # 转换成xx小时xx分钟
-        time_seconds = player_info.get('basicStats').get('timePlayed')
+        time_seconds = player_info.get("basicStats").get("timePlayed")
         if time_seconds < 3600:
             self.time_played = f"{round(time_seconds // 60)}分钟"
         else:
             self.time_played = f"{round(time_seconds // 3600)}小时{round(time_seconds % 3600 // 60)}分钟"
-        kills = player_info.get('basicStats').get('kills')
+        kills = player_info.get("basicStats").get("kills")
         self.kills = kills
-        deaths = player_info.get('basicStats').get('deaths')
+        deaths = player_info.get("basicStats").get("deaths")
         self.deaths = deaths
         kd = round(kills / deaths, 2) if deaths else kills
         self.kd = kd
-        wins = player_info.get('basicStats').get('wins')
+        wins = player_info.get("basicStats").get("wins")
         self.wins = wins
-        losses = player_info.get('basicStats').get('losses')
+        losses = player_info.get("basicStats").get("losses")
         self.losses = losses
         # 百分制
         win_rate = round(wins / (wins + losses) * 100, 2) if wins + losses else 100
         self.win_rate = win_rate
-        kpm = player_info.get('basicStats').get('kpm')
+        kpm = player_info.get("basicStats").get("kpm")
         self.kpm = kpm
-        spm = player_info.get('basicStats').get('spm')
+        spm = player_info.get("basicStats").get("spm")
         self.spm = spm
         # 用spm / 60 * 游玩时间 得出经验值exp,看exp在哪个区间,可确定整数等级
         exp = spm * time_seconds / 60
@@ -1776,27 +2351,27 @@ class PlayerVehiclePic:
         vehicle_kill = sum(item["killsAs"] for item in player_info["vehicleStats"])
         vehicle_kill = int(vehicle_kill)
         self.vehicle_kill = vehicle_kill
-        infantry_kill = int(player_info['basicStats']['kills'] - vehicle_kill)
+        infantry_kill = int(player_info["basicStats"]["kills"] - vehicle_kill)
         self.infantry_kill = infantry_kill
-        skill = player_info.get('basicStats').get('skill')
+        skill = player_info.get("basicStats").get("skill")
         self.skill = skill
-        longest_headshot = player_info.get('longestHeadShot')
+        longest_headshot = player_info.get("longestHeadShot")
         self.longest_headshot = longest_headshot
-        killAssists = int(player_info.get('killAssists'))
+        killAssists = int(player_info.get("killAssists"))
         self.killAssists = killAssists
-        highestKillStreak = int(player_info.get('highestKillStreak'))
+        highestKillStreak = int(player_info.get("highestKillStreak"))
         self.highestKillStreak = highestKillStreak
-        revives = int(player_info.get('revives'))
+        revives = int(player_info.get("revives"))
         self.revives = revives
-        heals = int(player_info.get('heals'))
+        heals = int(player_info.get("heals"))
         self.heals = heals
-        repairs = int(player_info.get('repairs'))
+        repairs = int(player_info.get("repairs"))
         self.repairs = repairs
-        dogtagsTaken = int(player_info.get('dogtagsTaken'))
+        dogtagsTaken = int(player_info.get("dogtagsTaken"))
         self.dogtagsTaken = dogtagsTaken
 
     @staticmethod
-    async def get_avatar(url: str, pid: Union[str, int]) -> bytes:
+    async def get_avatar(url: str, pid: str | int) -> bytes:
         # 如果 URL 为空，直接返回默认头像
         if not url:
             return DefaultAvatarImg
@@ -1819,9 +2394,9 @@ class PlayerVehiclePic:
         local_avatar_path = AvatarPathRoot / f"{self.player_pid}.jpg"
 
         # 检查本地路径是否存在，如果存在就判断时间是否超过一天，没超过就直接读取头像
-        if local_avatar_path.is_file() and \
-                (datetime.now() - datetime.fromtimestamp(
-                    local_avatar_path.stat().st_mtime)) < timedelta(days=1):
+        if local_avatar_path.is_file() and (
+            datetime.now() - datetime.fromtimestamp(local_avatar_path.stat().st_mtime)
+        ) < timedelta(days=1):
             avatar_img_data = local_avatar_path.read_bytes()
         else:
             # 本地路径不存在，从 self.personas["result"] 或 self.gt_id_info 获取头像链接
@@ -1855,21 +2430,21 @@ class PlayerVehiclePic:
             (80, 110),
             f"名字: {self.player_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # PID
         avatar_template_draw.text(
             (80, 160),
             f"PID : {self.player_pid}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 时长
         avatar_template_draw.text(
             (80, 210),
             f"时长: {self.time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 等级
         text_position = (80, 260)
@@ -1877,7 +2452,7 @@ class PlayerVehiclePic:
         text_bbox = avatar_template_draw.textbbox(
             text_position,
             "等级: ",
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # text_bbox是一个四元组(left, top, right, bottom)，我们可以通过right - left来获取文本的宽度
         text_width = text_bbox[2] - text_bbox[0]
@@ -1887,52 +2462,74 @@ class PlayerVehiclePic:
             text_position,
             "等级: ",
             fill=ColorWhite,  # 假设等级之前的文字是白色
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         avatar_template_draw.text(
             (rank_position_x, text_position[1]),
             f"{self.rank}",
-            fill=ColorGoldAndGray if self.rank == 150 else ColorBlueAndGray if self.rank >= 100 else ColorWhiteAndGray,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGoldAndGray
+            if self.rank == 150
+            else ColorBlueAndGray
+            if self.rank >= 100
+            else ColorWhiteAndGray,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         return avatar_template
 
-    async def get_background(self, pid: Union[str, int], target_width, target_height) -> Image:
+    async def get_background(
+        self, pid: str | int, target_width, target_height
+    ) -> Image:
         """根据pid查找路径是否存在，如果存在尝试随机选择一张图"""
         background_path = BackgroundPathRoot / f"{pid}"
         player_background_path = self.player_background_path
         if not player_background_path:
             if background_path.exists():
-                background = random.choice(list(background_path.iterdir())).open("rb").read()
+                background = (
+                    random.choice(list(background_path.iterdir())).open("rb").read()
+                )
             else:
-                background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+                background = (
+                    random.choice(list(DefaultBackgroundPath.iterdir()))
+                    .open("rb")
+                    .read()
+                )
         else:
             background = player_background_path.open("rb").read()
         # 默认背景，直接放大填充
         if not player_background_path:
-            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = PilImageUtils.resize_and_crop_to_center(
+                background, target_width, target_height
+            )
             # 加一点高斯模糊
             # background_img = background_img.filter(ImageFilter.GaussianBlur(radius=5))
         # 自定义背景，先放大填充全部+高斯模糊 然后再放大保留原图自适应全部内容
         else:
-            background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+            background_img = PilImageUtils.resize_and_crop_to_center(
+                background, target_width, target_height
+            )
             background_img = background_img.filter(ImageFilter.GaussianBlur(radius=30))
-            background_img_top = PilImageUtils.scale_image_to_dimension(background, target_width, target_height)
+            background_img_top = PilImageUtils.scale_image_to_dimension(
+                background, target_width, target_height
+            )
             # 将background_img_top粘贴到background_img上
-            background_img = PilImageUtils.paste_center(background_img, background_img_top)
+            background_img = PilImageUtils.paste_center(
+                background_img, background_img_top
+            )
         return background_img
 
     async def vehicle_template_handle(self, vehicle: dict) -> Image:
-        vehicle_name = zhconv.convert(vehicle.get('name'), 'zh-hans')
+        vehicle_name = zhconv.convert(vehicle.get("name"), "zh-hans")
         kills = int(vehicle["stats"]["values"]["kills"])
         stars = kills // 100
         seconds = vehicle["stats"]["values"]["seconds"]
-        kpm = "{:.2f}".format(kills / seconds * 60) if seconds != 0 else kills
+        kpm = f"{kills / seconds * 60:.2f}" if seconds != 0 else kills
         destroyed = int(vehicle["stats"]["values"]["destroyed"])
         if seconds < 3600:
             time_played = f"{round(seconds // 60)}分钟"
         else:
-            time_played = f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            time_played = (
+                f"{round(seconds // 3600)}小时{round(seconds % 3600 // 60)}分钟"
+            )
         if kills >= 10000:
             vehicle_template = Image.open(BytesIO(WeaponGoldImg)).convert("RGBA")
         elif kills >= 6000:
@@ -1941,7 +2538,7 @@ class PlayerVehiclePic:
             vehicle_template = Image.open(BytesIO(WeaponWhiteImg)).convert("RGBA")
         vehicle_template_draw = ImageDraw.Draw(vehicle_template)
         # 粘贴载具图片/皮肤图片
-        vehicle_guid = vehicle["guid"]
+        # vehicle_guid = vehicle["guid"]
         skin_guids = self.skin_info["result"]["kits"].get(f"{vehicle['sortOrder']}")
         if skin_guids:
             skin_guids = skin_guids[0]
@@ -1951,10 +2548,16 @@ class PlayerVehiclePic:
         if skin_guids:
             for k in skin_guids.keys():
                 skin_guid = skin_guids[k]
-                skin_all_info = json.loads(open(SkinAllPathRoot, "r", encoding="utf-8").read())
+                skin_all_info = json.loads(
+                    open(SkinAllPathRoot, encoding="utf-8").read()
+                )
                 if skin_all_info.get(skin_guid):
-                    skin_url = skin_all_info[skin_guid]["images"]["Png1024xANY"].replace("[BB_PREFIX]", BB_PREFIX)
-                    skin_name = zhconv.convert(skin_all_info[skin_guid]["name"], 'zh-hans')
+                    skin_url = skin_all_info[skin_guid]["images"][
+                        "Png1024xANY"
+                    ].replace("[BB_PREFIX]", BB_PREFIX)
+                    skin_name = zhconv.convert(
+                        skin_all_info[skin_guid]["name"], "zh-hans"
+                    )
                     skin_level = skin_all_info[skin_guid]["rarenessLevel"]["name"]
                     skin_file_name = skin_url.split("/")[-1]
                     skin_file_path = SkinRootPath / skin_file_name
@@ -1964,7 +2567,9 @@ class PlayerVehiclePic:
                     else:
                         vehicle_img = await PilImageUtils.read_img_by_url(skin_url)
                         if vehicle_img:
-                            vehicle_img = Image.open(BytesIO(vehicle_img)).convert("RGBA")
+                            vehicle_img = Image.open(BytesIO(vehicle_img)).convert(
+                                "RGBA"
+                            )
                             vehicle_img.save(skin_file_path)
                             break
                         else:
@@ -1981,8 +2586,12 @@ class PlayerVehiclePic:
         vehicle_template_draw.text(
             (54, 97),
             f"{stars}",
-            fill=ColorGold if stars >= 100 else ColorBlue if stars >= 60 else ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize)
+            fill=ColorGold
+            if stars >= 100
+            else ColorBlue
+            if stars >= 60
+            else ColorWhite,
+            font=ImageFont.truetype(str(GlobalFontPath), NormalFontSize),
         )
         # 载具名字 55 160  列1:击杀、摧毁 列2:kpm、时长
         start_row = 150
@@ -1993,48 +2602,50 @@ class PlayerVehiclePic:
             (col1_x, start_row + row_diff_distance * 0),
             f"{vehicle_name}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         if skin_name:
             vehicle_template_draw.text(
                 (20, 65),
                 f"{skin_name}",
-                fill=ColorGoldAndGray if skin_level == "Superior"
-                else ColorBlueAndGray if skin_level == "Enhanced"
+                fill=ColorGoldAndGray
+                if skin_level == "Superior"
+                else ColorBlueAndGray
+                if skin_level == "Enhanced"
                 else ColorWhiteAndGray,
-                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), SkinFontSize),
             )
         vehicle_template_draw.text(
             (col1_x, start_row + row_diff_distance * 1),
             f"击杀: {kills}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col1_x, start_row + row_diff_distance * 2),
             f"摧毁: {destroyed}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col2_x, start_row + row_diff_distance * 1),
             f"KPM: {kpm}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         vehicle_template_draw.text(
             (col2_x, start_row + row_diff_distance * 2),
             f"时长: {time_played}",
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
         return vehicle_template
 
     async def draw(
-            self,
-            col: int = 2,
-            row: int = 6,
-    ) -> Union[bytes, Path, None]:
+        self,
+        col: int = 2,
+        row: int = 6,
+    ) -> bytes | Path | None:
         """绘制载具数据图片
         与生涯不同，载具只绘制头像框+载具数据，默认为两列四行
         这里是动态计算,每个载具框距离左边边界间距:90,列间距:43,行间距:25,右边边界间距:90，
@@ -2049,7 +2660,7 @@ class PlayerVehiclePic:
             return None
         else:
             for vehicle in self.vehicles:
-                if not vehicle.get("stats").get('values'):
+                if not vehicle.get("stats").get("values"):
                     continue
                 vehicles.append(vehicle)
         # 整理成col列row行的列表
@@ -2057,7 +2668,7 @@ class PlayerVehiclePic:
             col = 8
         if row > 10:
             row = 10
-        vehicle_data = [vehicles[i * col:(i + 1) * col] for i in range(row)]
+        vehicle_data = [vehicles[i * col : (i + 1) * col] for i in range(row)]
         col_origin = col
         row_origin = row
         col = len(vehicle_data[0])
@@ -2073,7 +2684,9 @@ class PlayerVehiclePic:
         output_img = Image.new("RGB", (image_width, image_height), ColorWhite)
 
         # 粘贴背景
-        background_img = await self.get_background(self.player_pid, image_width, image_height)
+        background_img = await self.get_background(
+            self.player_pid, image_width, image_height
+        )
         output_img = PilImageUtils.paste_center(output_img, background_img)
 
         # 粘贴头像框
@@ -2087,7 +2700,10 @@ class PlayerVehiclePic:
                 vehicle_template = await self.vehicle_template_handle(item)
                 vehicle_templates.append(vehicle_template)
         # 整理成col_origin列row_origin行的列表
-        vehicle_templates = [vehicle_templates[i * col_origin:(i + 1) * col_origin] for i in range(row_origin)]
+        vehicle_templates = [
+            vehicle_templates[i * col_origin : (i + 1) * col_origin]
+            for i in range(row_origin)
+        ]
         # 粘贴载具信息
         row_diff_distance = vehicle_template_height + 25
         start_row = 60 + 349 + 25
@@ -2099,21 +2715,18 @@ class PlayerVehiclePic:
                 # 计算每个载具模板的粘贴位置
                 paste_x = start_col + col_diff_distance * col_index
                 paste_y = start_row + row_diff_distance * row_index
-                output_img.paste(
-                    vehicle_template,
-                    (paste_x, paste_y),
-                    vehicle_template
-                )
+                output_img.paste(vehicle_template, (paste_x, paste_y), vehicle_template)
 
         # 水印和时间
         output_img_draw = ImageDraw.Draw(output_img)
         # 居中
         PilImageUtils.draw_centered_text(
             output_img_draw,
-            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "Powered by XiaoMaiBot | Made by 13&&XM | "
+            + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (image_width // 2, image_height - 20),
             fill=(253, 245, 242),
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
 
         # 存为 FileTempSaveRoot / 时间戳.png
@@ -2130,41 +2743,97 @@ class Exchange:
         :param data: 兑换数据
         """
         self.data: dict = data
-        self.img: bytes = bytes()
+        self.img: bytes = b""
         self.now_date = f"{datetime.today().strftime('%Y-%m-%d')}"
         SE_data_list = self.data["result"]["items"]
         # 创建一个交换物件的列表列表，元素列表的元素有价格，皮肤名字，武器名字，品质，武器图片
         self.exchange_item_list = []
         for item in SE_data_list:
-            temp_list = [item["price"], zhconv.convert(item["item"]["name"], 'zh-cn')]
+            temp_list = [item["price"], zhconv.convert(item["item"]["name"], "zh-cn")]
             # 处理成简体
-            parentName = item["item"]["parentName"] if item["item"]["parentName"] is not None else ""
-            temp_list.append(zhconv.convert(f"{parentName}外观", 'zh-cn') if parentName != "" else "")
+            parentName = (
+                item["item"]["parentName"]
+                if item["item"]["parentName"] is not None
+                else ""
+            )
             temp_list.append(
-                item["item"]["rarenessLevel"]["name"].replace(
-                    "Superior", "传奇").replace(
-                    "Enhanced", "精英").replace(
-                    "Standard", "特殊")
+                zhconv.convert(f"{parentName}外观", "zh-cn") if parentName != "" else ""
+            )
+            temp_list.append(
+                item["item"]["rarenessLevel"]["name"]
+                .replace("Superior", "传奇")
+                .replace("Enhanced", "精英")
+                .replace("Standard", "特殊")
             )
             temp_list.append(
                 item["item"]["images"]["Png1024xANY"].replace(
-                    "[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
+                    "[BB_PREFIX]",
+                    "https://eaassets-a.akamaihd.net/battlelog/battlebinary",
                 )
             )
             self.exchange_item_list.append(temp_list)
         self.XD_skin_list = [
-            "菲姆", "菲姆特", "索得格雷",
-            "巴赫馬奇", "菲力克斯穆勒", "狼人", "黑貓",
-            "苟白克", "比利‧米契尔", "在那边", "飞蛾扑火", "佛伦",
-            "默勒谢什蒂", "奥伊图兹", "埃丹", "滨海努瓦耶勒", "唐登空袭",
-            "青春誓言", "德塞夫勒", "克拉奥讷之歌", "芙萝山德斯", "死去的君王",
-            "波佐洛", "奧提加拉山", "奧托‧迪克斯", "保罗‧克利", "阿莫斯‧怀德",
-            "集合点", "法兰兹‧马克", "风暴", "我的机枪", "加利格拉姆", "多贝尔多",
-            "茨纳河", "莫纳斯提尔", "科巴丁", "德•奇里诃", "若宫丸", "波珀灵厄",
-            "K连", "玛德蓉", "巨马", "罗曼诺卡夫", "薩利卡米什", "贝利库尔隧道",
-            "史特拉姆", "阿道戴", "克里夫兰", "家乡套件", "夏日套件", "监禁者",
-            "罗曼诺夫卡", "阿涅森", "波珀灵厄", "威玛猎犬", "齐格飞防线",
-            "华盛顿", "泰罗林猎犬", "怪奇之物", "法兰兹‧马克", "风暴"
+            "菲姆",
+            "菲姆特",
+            "索得格雷",
+            "巴赫馬奇",
+            "菲力克斯穆勒",
+            "狼人",
+            "黑貓",
+            "苟白克",
+            "比利‧米契尔",
+            "在那边",
+            "飞蛾扑火",
+            "佛伦",
+            "默勒谢什蒂",
+            "奥伊图兹",
+            "埃丹",
+            "滨海努瓦耶勒",
+            "唐登空袭",
+            "青春誓言",
+            "德塞夫勒",
+            "克拉奥讷之歌",
+            "芙萝山德斯",
+            "死去的君王",
+            "波佐洛",
+            "奧提加拉山",
+            "奧托‧迪克斯",
+            "保罗‧克利",
+            "阿莫斯‧怀德",
+            "集合点",
+            "法兰兹‧马克",
+            "风暴",
+            "我的机枪",
+            "加利格拉姆",
+            "多贝尔多",
+            "茨纳河",
+            "莫纳斯提尔",
+            "科巴丁",
+            "德•奇里诃",
+            "若宫丸",
+            "波珀灵厄",
+            "K连",
+            "玛德蓉",
+            "巨马",
+            "罗曼诺卡夫",
+            "薩利卡米什",
+            "贝利库尔隧道",
+            "史特拉姆",
+            "阿道戴",
+            "克里夫兰",
+            "家乡套件",
+            "夏日套件",
+            "监禁者",
+            "罗曼诺夫卡",
+            "阿涅森",
+            "波珀灵厄",
+            "威玛猎犬",
+            "齐格飞防线",
+            "华盛顿",
+            "泰罗林猎犬",
+            "怪奇之物",
+            "法兰兹‧马克",
+            "风暴",
         ]
 
     # 重构
@@ -2182,8 +2851,12 @@ class Exchange:
 
     @staticmethod
     async def get_background(target_width, target_height) -> Image:
-        background = random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
-        background_img = PilImageUtils.resize_and_crop_to_center(background, target_width, target_height)
+        background = (
+            random.choice(list(DefaultBackgroundPath.iterdir())).open("rb").read()
+        )
+        background_img = PilImageUtils.resize_and_crop_to_center(
+            background, target_width, target_height
+        )
         return background_img
 
     async def item_template_handle(self, item: list) -> Image:
@@ -2211,14 +2884,14 @@ class Exchange:
             (19, 167),
             item_name,
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), ExchangeNameFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangeNameFontSize),
         )
         # 皮肤名字, 115 +79
         output_img_draw.text(
             (19, 194),
             item_skin_name,
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), ExchangeSkinNameFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangeSkinNameFontSize),
         )
         # 品质, 115 + 110
         if item_rareness == "传奇":
@@ -2227,47 +2900,47 @@ class Exchange:
                     (19, 225),
                     f"{item_rareness}(限定)",
                     fill=ColorGold,
-                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
                 )
             elif item_skin_name in self.XD_skin_list:
                 output_img_draw.text(
                     (19, 225),
                     f"{item_rareness}(限定)",
                     fill=ColorGold,
-                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
                 )
             else:
                 output_img_draw.text(
                     (19, 225),
                     item_rareness,
                     fill=ColorGold,
-                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                    font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
                 )
-            tx_png = Image.open('./data/battlefield/pic/tx/1.png').convert('RGBA')
+            tx_png = Image.open("./data/battlefield/pic/tx/1.png").convert("RGBA")
         elif item_skin_name in self.XD_skin_list:
             output_img_draw.text(
                 (19, 225),
                 f"{item_rareness}(限定)",
                 fill=ColorGold,
-                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
             )
-            tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
+            tx_png = Image.open("./data/battlefield/pic/tx/2.png").convert("RGBA")
         elif item_rareness == "精英":
             output_img_draw.text(
                 (19, 225),
                 item_rareness,
                 fill=ColorBlue,
-                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
             )
-            tx_png = Image.open('./data/battlefield/pic/tx/2.png').convert('RGBA')
+            tx_png = Image.open("./data/battlefield/pic/tx/2.png").convert("RGBA")
         else:
             output_img_draw.text(
                 (19, 225),
                 item_rareness,
                 fill=ColorWhite,
-                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+                font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
             )
-            tx_png = Image.open('./data/battlefield/pic/tx/3.png').convert('RGBA')
+            tx_png = Image.open("./data/battlefield/pic/tx/3.png").convert("RGBA")
         # 特效图片拉伸
         tx_png = tx_png.resize((100, 153), Image.Resampling.LANCZOS)
         # 特效图片拼接 55, 10
@@ -2277,7 +2950,7 @@ class Exchange:
             (43, 249),
             str(item_price),
             fill=ColorWhite,
-            font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), ExchangePriceFontSize),
         )
         # 价格的图片
         price_img = Image.open(ExchangePricePath).convert("RGBA")
@@ -2287,7 +2960,7 @@ class Exchange:
         output_img.paste(price_img, (17, 247), price_img)
         return output_img
 
-    async def draw(self) -> Union[bytes, Path, None]:
+    async def draw(self) -> bytes | Path | None:
         if not self.data or not self.exchange_item_list:
             return None
         # 每行10个，即10列
@@ -2317,10 +2990,11 @@ class Exchange:
         # 居中
         PilImageUtils.draw_centered_text(
             output_img_draw,
-            "Powered by XiaoMaiBot | Made by 13&&XM | " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "Powered by XiaoMaiBot | Made by 13&&XM | "
+            + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
             (total_width // 2, total_height - 20),
             fill=(253, 245, 242),
-            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize)
+            font=ImageFont.truetype(str(GlobalFontPath), StatFontSize),
         )
 
         # 交换更新频率比较低，所以直接存png原图
@@ -2329,18 +3003,17 @@ class Exchange:
         save_path = f"./data/battlefield/exchange/{self.now_date}.png"
         output_img.save(save_path, format="PNG")
         output_buffer = BytesIO()
-        output_img.save(output_buffer, format='PNG')
+        output_img.save(output_buffer, format="PNG")
         return output_buffer.getvalue()
 
 
 class PlayerListPic:
-
     @staticmethod
-    async def download_serverMap_pic(url: str) -> Union[str, None]:
-        file_name = './data/battlefield/pic/map/' + url[url.rfind('/') + 1:]
+    async def download_serverMap_pic(url: str) -> str | None:
+        file_name = "./data/battlefield/pic/map/" + url[url.rfind("/") + 1 :]
         # noinspection PyBroadException
         try:
-            fp = open(file_name, 'rb')
+            fp = open(file_name, "rb")
             fp.close()
             return file_name
         except Exception as e:
@@ -2350,9 +3023,11 @@ class PlayerListPic:
                 async with aiohttp.ClientSession() as session:
                     # noinspection PyBroadException
                     try:
-                        async with session.get(url, timeout=5, verify_ssl=False, proxy=proxy) as resp:
+                        async with session.get(
+                            url, timeout=5, verify_ssl=False, proxy=proxy
+                        ) as resp:
                             pic = await resp.read()
-                            with open(file_name, 'wb') as fp:
+                            with open(file_name, "wb") as fp:
                                 fp.write(pic)
                             return file_name
                     except Exception as e:
@@ -2361,9 +3036,9 @@ class PlayerListPic:
             return None
 
     @staticmethod
-    async def get_server_map_pic(map_name: str) -> Union[str, None]:
+    async def get_server_map_pic(map_name: str) -> str | None:
         file_path = "./data/battlefield/游戏模式/data.json"
-        with open(file_path, 'r', encoding="utf-8") as file1:
+        with open(file_path, encoding="utf-8") as file1:
             data = json.load(file1)["result"]["maps"]
         for item in data:
             if item["assetName"] == map_name:
@@ -2390,23 +3065,57 @@ class PlayerListPic:
         if o in [0xE, 0xF]:
             return 0
         widths = [
-            (126, 1), (159, 0), (687, 1), (710, 0), (711, 1),
-            (727, 0), (733, 1), (879, 0), (1154, 1), (1161, 0),
-            (4347, 1), (4447, 2), (7467, 1), (7521, 0), (8369, 1),
-            (8426, 0), (9000, 1), (9002, 2), (11021, 1), (12350, 2),
-            (12351, 1), (12438, 2), (12442, 0), (19893, 2), (19967, 1),
-            (55203, 2), (63743, 1), (64106, 2), (65039, 1), (65059, 0),
-            (65131, 2), (65279, 1), (65376, 2), (65500, 1), (65510, 2),
-            (120831, 1), (262141, 2), (1114109, 1),
+            (126, 1),
+            (159, 0),
+            (687, 1),
+            (710, 0),
+            (711, 1),
+            (727, 0),
+            (733, 1),
+            (879, 0),
+            (1154, 1),
+            (1161, 0),
+            (4347, 1),
+            (4447, 2),
+            (7467, 1),
+            (7521, 0),
+            (8369, 1),
+            (8426, 0),
+            (9000, 1),
+            (9002, 2),
+            (11021, 1),
+            (12350, 2),
+            (12351, 1),
+            (12438, 2),
+            (12442, 0),
+            (19893, 2),
+            (19967, 1),
+            (55203, 2),
+            (63743, 1),
+            (64106, 2),
+            (65039, 1),
+            (65059, 0),
+            (65131, 2),
+            (65279, 1),
+            (65376, 2),
+            (65500, 1),
+            (65510, 2),
+            (120831, 1),
+            (262141, 2),
+            (1114109, 1),
         ]
         return next((wid for num, wid in widths if o <= num), 1)
 
     @staticmethod
-    async def draw(playerlist_data, server_info, bind_pid_list) -> Union[bytes, None, str]:
-        admin_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["adminList"]]
+    async def draw(playerlist_data, server_info, bind_pid_list) -> bytes | None | str:
+        admin_pid_list = [
+            str(item["personaId"]) for item in server_info["rspInfo"]["adminList"]
+        ]
         admin_counter = 0
         admin_color = (0, 255, 127)
-        vip_pid_list = [str(item['personaId']) for item in server_info["rspInfo"]["vipList"]]
+        vip_pid_list = [
+            str(item["personaId"]) for item in server_info["rspInfo"]["vipList"]
+        ]
         vip_counter = 0
         vip_color = (255, 99, 71)
         bind_color = (179, 244, 255)
@@ -2414,25 +3123,162 @@ class PlayerListPic:
         max_level_counter = 0
 
         rank_list = [
-            0, 1000, 5000, 15000, 25000, 40000, 55000, 75000, 95000, 120000, 145000, 175000, 205000, 235000,
-            265000, 295000, 325000, 355000, 395000, 435000, 475000, 515000, 555000, 595000, 635000, 675000, 715000,
-            755000, 795000, 845000, 895000, 945000, 995000, 1045000, 1095000, 1145000, 1195000, 1245000, 1295000,
-            1345000, 1405000, 1465000, 1525000, 1585000, 1645000, 1705000, 1765000, 1825000, 1885000, 1945000,
-            2015000, 2085000, 2155000, 2225000, 2295000, 2365000, 2435000, 2505000, 2575000, 2645000, 2745000,
-            2845000, 2945000, 3045000, 3145000, 3245000, 3345000, 3445000, 3545000, 3645000, 3750000, 3870000,
-            4000000, 4140000, 4290000, 4450000, 4630000, 4830000, 5040000, 5260000, 5510000, 5780000, 6070000,
-            6390000, 6730000, 7110000, 7510000, 7960000, 8430000, 8960000, 9520000, 10130000, 10800000, 11530000,
-            12310000, 13170000, 14090000, 15100000, 16190000, 17380000, 20000000, 20500000, 21000000, 21500000,
-            22000000, 22500000, 23000000, 23500000, 24000000, 24500000, 25000000, 25500000, 26000000, 26500000,
-            27000000, 27500000, 28000000, 28500000, 29000000, 29500000, 30000000, 30500000, 31000000, 31500000,
-            32000000, 32500000, 33000000, 33500000, 34000000, 34500000, 35000000, 35500000, 36000000, 36500000,
-            37000000, 37500000, 38000000, 38500000, 39000000, 39500000, 40000000, 41000000, 42000000, 43000000,
-            44000000, 45000000, 46000000, 47000000, 48000000, 49000000, 50000000
+            0,
+            1000,
+            5000,
+            15000,
+            25000,
+            40000,
+            55000,
+            75000,
+            95000,
+            120000,
+            145000,
+            175000,
+            205000,
+            235000,
+            265000,
+            295000,
+            325000,
+            355000,
+            395000,
+            435000,
+            475000,
+            515000,
+            555000,
+            595000,
+            635000,
+            675000,
+            715000,
+            755000,
+            795000,
+            845000,
+            895000,
+            945000,
+            995000,
+            1045000,
+            1095000,
+            1145000,
+            1195000,
+            1245000,
+            1295000,
+            1345000,
+            1405000,
+            1465000,
+            1525000,
+            1585000,
+            1645000,
+            1705000,
+            1765000,
+            1825000,
+            1885000,
+            1945000,
+            2015000,
+            2085000,
+            2155000,
+            2225000,
+            2295000,
+            2365000,
+            2435000,
+            2505000,
+            2575000,
+            2645000,
+            2745000,
+            2845000,
+            2945000,
+            3045000,
+            3145000,
+            3245000,
+            3345000,
+            3445000,
+            3545000,
+            3645000,
+            3750000,
+            3870000,
+            4000000,
+            4140000,
+            4290000,
+            4450000,
+            4630000,
+            4830000,
+            5040000,
+            5260000,
+            5510000,
+            5780000,
+            6070000,
+            6390000,
+            6730000,
+            7110000,
+            7510000,
+            7960000,
+            8430000,
+            8960000,
+            9520000,
+            10130000,
+            10800000,
+            11530000,
+            12310000,
+            13170000,
+            14090000,
+            15100000,
+            16190000,
+            17380000,
+            20000000,
+            20500000,
+            21000000,
+            21500000,
+            22000000,
+            22500000,
+            23000000,
+            23500000,
+            24000000,
+            24500000,
+            25000000,
+            25500000,
+            26000000,
+            26500000,
+            27000000,
+            27500000,
+            28000000,
+            28500000,
+            29000000,
+            29500000,
+            30000000,
+            30500000,
+            31000000,
+            31500000,
+            32000000,
+            32500000,
+            33000000,
+            33500000,
+            34000000,
+            34500000,
+            35000000,
+            35500000,
+            36000000,
+            36500000,
+            37000000,
+            37500000,
+            38000000,
+            38500000,
+            39000000,
+            39500000,
+            40000000,
+            41000000,
+            42000000,
+            43000000,
+            44000000,
+            45000000,
+            46000000,
+            47000000,
+            48000000,
+            49000000,
+            50000000,
         ]
 
         playerlist_data["teams"] = {
             0: [item for item in playerlist_data["players"] if item["team"] == 0],
-            1: [item for item in playerlist_data["players"] if item["team"] == 1]
+            1: [item for item in playerlist_data["players"] if item["team"] == 1],
         }
 
         # 战绩信息dict
@@ -2441,8 +3287,13 @@ class PlayerListPic:
         # 获取玩家生涯战绩
         # 队伍1
         scrape_index_tasks_t1 = [
-            asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
-            player_item in playerlist_data["teams"][0]]
+            asyncio.ensure_future(
+                (await BF1DA.get_api_instance()).detailedStatsByPersonaId(
+                    player_item["pid"]
+                )
+            )
+            for player_item in playerlist_data["teams"][0]
+        ]
         tasks = asyncio.gather(*scrape_index_tasks_t1)
         try:
             await tasks
@@ -2452,8 +3303,8 @@ class PlayerListPic:
                         continue
                     player_stat_data = scrape_index_tasks_t1[i].result()["result"]
                     # 重新计算等级
-                    time_seconds = player_stat_data.get('basicStats').get('timePlayed')
-                    spm = player_stat_data.get('basicStats').get('spm')
+                    time_seconds = player_stat_data.get("basicStats").get("timePlayed")
+                    spm = player_stat_data.get("basicStats").get("spm")
                     exp = spm * time_seconds / 60
                     rank = 0
                     for _ in range(len(rank_list)):
@@ -2473,8 +3324,13 @@ class PlayerListPic:
 
         # 队伍2
         scrape_index_tasks_t2 = [
-            asyncio.ensure_future((await BF1DA.get_api_instance()).detailedStatsByPersonaId(player_item['pid'])) for
-            player_item in playerlist_data["teams"][1]]
+            asyncio.ensure_future(
+                (await BF1DA.get_api_instance()).detailedStatsByPersonaId(
+                    player_item["pid"]
+                )
+            )
+            for player_item in playerlist_data["teams"][1]
+        ]
         tasks = asyncio.gather(*scrape_index_tasks_t2)
         try:
             await tasks
@@ -2484,8 +3340,8 @@ class PlayerListPic:
                         continue
                     player_stat_data = scrape_index_tasks_t2[i].result()["result"]
                     # 重新计算等级
-                    time_seconds = player_stat_data.get('basicStats').get('timePlayed')
-                    spm = player_stat_data.get('basicStats').get('spm')
+                    time_seconds = player_stat_data.get("basicStats").get("timePlayed")
+                    spm = player_stat_data.get("basicStats").get("spm")
                     exp = spm * time_seconds / 60
                     rank = 0
                     for _ in range(len(rank_list)):
@@ -2506,7 +3362,9 @@ class PlayerListPic:
         # 按等级排序
         playerlist_data["teams"][0].sort(key=lambda x: x["rank"], reverse=True)
         playerlist_data["teams"][1].sort(key=lambda x: x["rank"], reverse=True)
-        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"]))
+        update_time = time.strftime(
+            "%Y-%m-%d %H:%M:%S", time.localtime(playerlist_data["time"])
+        )
 
         # 服务器名
         server_name = server_info["serverInfo"]["name"]
@@ -2515,11 +3373,11 @@ class PlayerListPic:
 
         team1_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team1"]
         team1_pic = PlayerListPic.get_team_pic(team1_name)
-        team1_pic = Image.open(team1_pic).convert('RGBA')
+        team1_pic = Image.open(team1_pic).convert("RGBA")
         team1_pic = team1_pic.resize((40, 40), Image.Resampling.BILINEAR)
         team2_name = MapData.MapTeamDict[server_info["serverInfo"]["mapName"]]["Team2"]
         team2_pic = PlayerListPic.get_team_pic(team2_name)
-        team2_pic = Image.open(team2_pic).convert('RGBA')
+        team2_pic = Image.open(team2_pic).convert("RGBA")
         team2_pic = team2_pic.resize((40, 40), Image.Resampling.BILINEAR)
 
         # 地图路径
@@ -2534,24 +3392,44 @@ class PlayerListPic:
         # 调低亮度
         IMG = ImageEnhance.Brightness(IMG).enhance(0.7)
         # 裁剪至1920x1080
-        box = (0, 70, 1920, 1150)  # 将要裁剪的图片块距原图左边界距左边距离，上边界距上边距离，右边界距左边距离，下边界距上边的距离。
+        box = (
+            0,
+            70,
+            1920,
+            1150,
+        )  # 将要裁剪的图片块距原图左边界距左边距离，上边界距上边距离，右边界距左边距离，下边界距上边的距离。
         IMG = IMG.crop(box)
 
         # 延迟 5:小于50 4:50< <100 3: 150< < 100 2: 150<  <200 1: 250< <300 0:300+
-        Ping1 = Image.open("./data/battlefield/pic/ping/4.png").convert('RGBA')
-        Ping1 = Ping1.resize((int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping2 = Image.open("./data/battlefield/pic/ping/3.png").convert('RGBA')
-        Ping2 = Ping2.resize((int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping3 = Image.open("./data/battlefield/pic/ping/2.png").convert('RGBA')
-        Ping3 = Ping3.resize((int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping4 = Image.open("./data/battlefield/pic/ping/1.png").convert('RGBA')
-        Ping4 = Ping4.resize((int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)), Image.Resampling.BILINEAR)
-        Ping5 = Image.open("./data/battlefield/pic/ping/0.png").convert('RGBA')
-        Ping5 = Ping5.resize((int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)), Image.Resampling.BILINEAR)
+        Ping1 = Image.open("./data/battlefield/pic/ping/4.png").convert("RGBA")
+        Ping1 = Ping1.resize(
+            (int(Ping1.size[0] * 0.04), int(Ping1.size[1] * 0.04)),
+            Image.Resampling.BILINEAR,
+        )
+        Ping2 = Image.open("./data/battlefield/pic/ping/3.png").convert("RGBA")
+        Ping2 = Ping2.resize(
+            (int(Ping2.size[0] * 0.04), int(Ping2.size[1] * 0.04)),
+            Image.Resampling.BILINEAR,
+        )
+        Ping3 = Image.open("./data/battlefield/pic/ping/2.png").convert("RGBA")
+        Ping3 = Ping3.resize(
+            (int(Ping3.size[0] * 0.04), int(Ping3.size[1] * 0.04)),
+            Image.Resampling.BILINEAR,
+        )
+        Ping4 = Image.open("./data/battlefield/pic/ping/1.png").convert("RGBA")
+        Ping4 = Ping4.resize(
+            (int(Ping4.size[0] * 0.04), int(Ping4.size[1] * 0.04)),
+            Image.Resampling.BILINEAR,
+        )
+        Ping5 = Image.open("./data/battlefield/pic/ping/0.png").convert("RGBA")
+        Ping5 = Ping5.resize(
+            (int(Ping5.size[0] * 0.04), int(Ping5.size[1] * 0.04)),
+            Image.Resampling.BILINEAR,
+        )
 
         draw = ImageDraw.Draw(IMG)
         # 字体路径
-        font_path = './data/battlefield/font/BFText-Regular-SC-19cf572c.ttf'
+        font_path = "./data/battlefield/font/BFText-Regular-SC-19cf572c.ttf"
         title_font = ImageFont.truetype(font_path, 40)
         team_font = ImageFont.truetype(font_path, 25)
         title_font_small = ImageFont.truetype(font_path, 22)
@@ -2559,7 +3437,7 @@ class PlayerListPic:
         rank_font = ImageFont.truetype(font_path, 15)
         info_font = ImageFont.truetype(font_path, 22)
         # 服务器名字
-        draw.text((97, 30), f"服务器名:{server_name}", fill='white', font=title_font)
+        draw.text((97, 30), f"服务器名:{server_name}", fill="white", font=title_font)
         # 更新时间
         draw.text((100, 80), update_time, fill="white", font=rank_font)
         max_level_color = (255, 132, 0)
@@ -2573,13 +3451,13 @@ class PlayerListPic:
         # 队伍1图片
         IMG.paste(team1_pic, (100, 101))
         # 队伍1名
-        draw.text((152, 105), team1_name, fill='white', font=team_font)
-        draw.text((520, 113), "胜率", fill='white', font=title_font_small)
-        draw.text((600, 113), "K/D", fill='white', font=title_font_small)
-        draw.text((670, 113), "KPM", fill='white', font=title_font_small)
-        draw.text((750, 113), "时长(h)", fill='white', font=title_font_small)
-        draw.text((840, 113), "延迟", fill='white', font=title_font_small)
-        draw.text((900, 113), "语言", fill='white', font=title_font_small)
+        draw.text((152, 105), team1_name, fill="white", font=team_font)
+        draw.text((520, 113), "胜率", fill="white", font=title_font_small)
+        draw.text((600, 113), "K/D", fill="white", font=title_font_small)
+        draw.text((670, 113), "KPM", fill="white", font=title_font_small)
+        draw.text((750, 113), "时长(h)", fill="white", font=title_font_small)
+        draw.text((840, 113), "延迟", fill="white", font=title_font_small)
+        draw.text((900, 113), "语言", fill="white", font=title_font_small)
         # 队伍1横线
         draw.line([100, 141, 950, 141], fill=(114, 114, 114), width=2, joint=None)
         # 队伍1竖线
@@ -2587,22 +3465,34 @@ class PlayerListPic:
         leve_position_1 = None
         for i, player_item in enumerate(playerlist_data["teams"][0]):
             # 序号
-            draw.text((135, 156 + i * 23), f"{i + 1}", anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (135, 156 + i * 23),
+                f"{i + 1}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
 
             # 等级框 30*15  等级 居中显示
-            draw.rectangle([155, 159 + i * 23, 185, 173.5 + i * 23],
-                           fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
-            RANK_counter1 += player_item['rank']
-            if player_item['rank'] == 150:
+            draw.rectangle(
+                [155, 159 + i * 23, 185, 173.5 + i * 23],
+                fill=max_level_color if player_item["rank"] == 150 else None,
+                outline=None,
+                width=1,
+            )
+            RANK_counter1 += player_item["rank"]
+            if player_item["rank"] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(
+                f"{player_item['rank']}"
+            )
             leve_position_1 = 170 - ascent / 2, 165.5 + i * 23 - descent / 2
-            draw.text(leve_position_1, f"{player_item['rank']}",
-                      fill="white",
-                      font=rank_font)
+            draw.text(
+                leve_position_1, f"{player_item['rank']}", fill="white", font=rank_font
+            )
             # 战队 名字
-            color_temp = 'white'
+            color_temp = "white"
             if str(player_item["display_name"]).upper() in bind_pid_list:
                 color_temp = bind_color
                 bind_counter += 1
@@ -2614,28 +3504,46 @@ class PlayerListPic:
                 admin_counter += 1
             if player_item["platoon"]:
                 draw.text(
-                    (195, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
+                    (195, 155 + i * 23),
+                    f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
                     fill=color_temp,
-                    font=player_font
+                    font=player_font,
                 )
             else:
-                draw.text((195, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
+                draw.text(
+                    (195, 155 + i * 23),
+                    player_item["display_name"],
+                    fill=color_temp,
+                    font=player_font,
+                )
 
             # 延迟 靠右显示
             ping_pic = Ping5
-            if player_item['latency'] <= 50:
+            if player_item["latency"] <= 50:
                 ping_pic = Ping1
-            elif 50 < player_item['latency'] <= 100:
+            elif 50 < player_item["latency"] <= 100:
                 ping_pic = Ping2
-            elif 100 < player_item['latency'] <= 150:
+            elif 100 < player_item["latency"] <= 150:
                 ping_pic = Ping3
-            elif 150 < player_item['latency']:
+            elif 150 < player_item["latency"]:
                 ping_pic = Ping4
             IMG.paste(ping_pic, (830, 158 + i * 23), ping_pic)
-            draw.text((880, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (880, 155 + i * 23),
+                f"{player_item['latency']}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
 
             # 语言
-            draw.text((940, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (940, 155 + i * 23),
+                f"{player_item['language']}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
 
             # 生涯数据
             try:
@@ -2644,30 +3552,56 @@ class PlayerListPic:
                     continue
 
                 # 胜率
-                win_p = int(player_stat_data['basicStats']['wins'] / (
-                        player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
+                win_p = int(
+                    player_stat_data["basicStats"]["wins"]
+                    / (
+                        player_stat_data["basicStats"]["losses"]
+                        + player_stat_data["basicStats"]["wins"]
+                    )
+                    * 100
+                )
                 WIN_counter1 += win_p
-                draw.text((565, 155 + i * 23), f'{win_p}%', anchor="ra",
-                          fill=max_level_color if win_p >= 70 else 'white',
-                          font=player_font)
+                draw.text(
+                    (565, 155 + i * 23),
+                    f"{win_p}%",
+                    anchor="ra",
+                    fill=max_level_color if win_p >= 70 else "white",
+                    font=player_font,
+                )
                 # kd
-                kd = player_stat_data['kdr']
+                kd = player_stat_data["kdr"]
                 KD_counter1 += kd
-                draw.text((635, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
-                          font=player_font)
+                draw.text(
+                    (635, 155 + i * 23),
+                    f"{kd}",
+                    anchor="ra",
+                    fill=max_level_color if kd >= 3 else "white",
+                    font=player_font,
+                )
                 # kpm
-                kpm = player_stat_data['basicStats']["kpm"]
+                kpm = player_stat_data["basicStats"]["kpm"]
                 KPM_counter1 += kpm
-                draw.text((710, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
-                          font=player_font)
+                draw.text(
+                    (710, 155 + i * 23),
+                    f"{kpm}",
+                    fill=max_level_color if kpm >= 2 else "white",
+                    anchor="ra",
+                    font=player_font,
+                )
                 # 时长
-                time_played = "{:.1f}".format(player_stat_data['basicStats']["timePlayed"] / 3600)
+                time_played = "{:.1f}".format(
+                    player_stat_data["basicStats"]["timePlayed"] / 3600
+                )
                 TIME_counter1 += float(time_played)
-                draw.text((810, 155 + i * 23), f"{time_played}", anchor="ra",
-                          fill=max_level_color if float(time_played) >= 1000 else 'white',
-                          font=player_font)
-            except:
-                pass
+                draw.text(
+                    (810, 155 + i * 23),
+                    f"{time_played}",
+                    anchor="ra",
+                    fill=max_level_color if float(time_played) >= 1000 else "white",
+                    font=player_font,
+                )
+            except Exception as e:
+                logger.warning(f"Error drawing player data: {e}")
 
         # x相差860
 
@@ -2680,13 +3614,13 @@ class PlayerListPic:
         # 队伍2图片
         IMG.paste(team2_pic, (960, 101))
         # 队伍2名
-        draw.text((1012, 105), team2_name, fill='white', font=team_font)
-        draw.text((1380, 113), "胜率", fill='white', font=title_font_small)
-        draw.text((1460, 113), "K/D", fill='white', font=title_font_small)
-        draw.text((1530, 113), "KPM", fill='white', font=title_font_small)
-        draw.text((1610, 113), "时长(h)", fill='white', font=title_font_small)
-        draw.text((1700, 113), "延迟", fill='white', font=title_font_small)
-        draw.text((1760, 113), "语言", fill='white', font=title_font_small)
+        draw.text((1012, 105), team2_name, fill="white", font=team_font)
+        draw.text((1380, 113), "胜率", fill="white", font=title_font_small)
+        draw.text((1460, 113), "K/D", fill="white", font=title_font_small)
+        draw.text((1530, 113), "KPM", fill="white", font=title_font_small)
+        draw.text((1610, 113), "时长(h)", fill="white", font=title_font_small)
+        draw.text((1700, 113), "延迟", fill="white", font=title_font_small)
+        draw.text((1760, 113), "语言", fill="white", font=title_font_small)
         # 队伍2横线
         draw.line([960, 141, 1810, 141], fill=(114, 114, 114), width=2, joint=None)
         # 队伍2竖线
@@ -2694,24 +3628,33 @@ class PlayerListPic:
         leve_position_2 = None
         for i, player_item in enumerate(playerlist_data["teams"][1]):
             # 序号
-            draw.text((995, 156 + i * 23), f"{int(i + 1 + server_info['serverInfo']['slots']['Soldier']['max'] / 2)}",
-                      anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (995, 156 + i * 23),
+                f"{int(i + 1 + server_info['serverInfo']['slots']['Soldier']['max'] / 2)}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
             # 等级框 30*15 等级居中显示
-            draw.rectangle([1015, 159 + i * 23, 1045, 173.5 + i * 23],
-                           fill=max_level_color if player_item['rank'] == 150 else None, outline=None, width=1)
-            RANK_counter2 += player_item['rank']
-            if player_item['rank'] == 150:
+            draw.rectangle(
+                [1015, 159 + i * 23, 1045, 173.5 + i * 23],
+                fill=max_level_color if player_item["rank"] == 150 else None,
+                outline=None,
+                width=1,
+            )
+            RANK_counter2 += player_item["rank"]
+            if player_item["rank"] == 150:
                 max_level_counter += 1
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{player_item['rank']}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(
+                f"{player_item['rank']}"
+            )
             leve_position_2 = 1030 - ascent / 2, 165.5 + i * 23 - descent / 2
             draw.text(
-                leve_position_2, f"{player_item['rank']}",
-                fill="white",
-                font=rank_font
+                leve_position_2, f"{player_item['rank']}", fill="white", font=rank_font
             )
             # 战队 名字
-            color_temp = 'white'
+            color_temp = "white"
             if str(player_item["display_name"]).upper() in bind_pid_list:
                 color_temp = bind_color
                 bind_counter += 1
@@ -2723,27 +3666,45 @@ class PlayerListPic:
                 admin_counter += 1
             if player_item["platoon"]:
                 draw.text(
-                    (1055, 155 + i * 23), f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
+                    (1055, 155 + i * 23),
+                    f"[{player_item['platoon']['tag']}]{player_item['display_name']}",
                     fill=color_temp,
-                    font=player_font
+                    font=player_font,
                 )
             else:
-                draw.text((1055, 155 + i * 23), player_item["display_name"], fill=color_temp, font=player_font)
+                draw.text(
+                    (1055, 155 + i * 23),
+                    player_item["display_name"],
+                    fill=color_temp,
+                    font=player_font,
+                )
             # 延迟 靠右显示
             ping_pic = Ping5
-            if player_item['latency'] <= 50:
+            if player_item["latency"] <= 50:
                 ping_pic = Ping1
-            elif 50 < player_item['latency'] <= 100:
+            elif 50 < player_item["latency"] <= 100:
                 ping_pic = Ping2
-            elif 100 < player_item['latency'] <= 150:
+            elif 100 < player_item["latency"] <= 150:
                 ping_pic = Ping3
-            elif 150 < player_item['latency']:
+            elif 150 < player_item["latency"]:
                 ping_pic = Ping4
             IMG.paste(ping_pic, (1690, 158 + i * 23), ping_pic)
-            draw.text((1740, 155 + i * 23), f"{player_item['latency']}", anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (1740, 155 + i * 23),
+                f"{player_item['latency']}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
 
             # 语言
-            draw.text((1800, 155 + i * 23), f"{player_item['language']}", anchor="ra", fill='white', font=player_font)
+            draw.text(
+                (1800, 155 + i * 23),
+                f"{player_item['language']}",
+                anchor="ra",
+                fill="white",
+                font=player_font,
+            )
             # 生涯数据
             try:
                 player_stat_data = stat_dict[player_item["pid"]]
@@ -2751,142 +3712,197 @@ class PlayerListPic:
                     continue
 
                 # 胜率
-                win_p = int(player_stat_data['basicStats']['wins'] / (
-                        player_stat_data['basicStats']['losses'] + player_stat_data['basicStats']['wins']) * 100)
+                win_p = int(
+                    player_stat_data["basicStats"]["wins"]
+                    / (
+                        player_stat_data["basicStats"]["losses"]
+                        + player_stat_data["basicStats"]["wins"]
+                    )
+                    * 100
+                )
                 WIN_counter2 += win_p
-                draw.text((1425, 155 + i * 23), f'{win_p}%', anchor="ra",
-                          fill=max_level_color if win_p >= 70 else 'white',
-                          font=player_font)
+                draw.text(
+                    (1425, 155 + i * 23),
+                    f"{win_p}%",
+                    anchor="ra",
+                    fill=max_level_color if win_p >= 70 else "white",
+                    font=player_font,
+                )
                 # kd
-                kd = player_stat_data['kdr']
+                kd = player_stat_data["kdr"]
                 KD_counter2 += kd
-                draw.text((1495, 155 + i * 23), f'{kd}', anchor="ra", fill=max_level_color if kd >= 3 else 'white',
-                          font=player_font)
+                draw.text(
+                    (1495, 155 + i * 23),
+                    f"{kd}",
+                    anchor="ra",
+                    fill=max_level_color if kd >= 3 else "white",
+                    font=player_font,
+                )
                 # kpm
-                kpm = player_stat_data['basicStats']["kpm"]
+                kpm = player_stat_data["basicStats"]["kpm"]
                 KPM_counter2 += kpm
-                draw.text((1570, 155 + i * 23), f'{kpm}', fill=max_level_color if kpm >= 2 else 'white', anchor="ra",
-                          font=player_font)
+                draw.text(
+                    (1570, 155 + i * 23),
+                    f"{kpm}",
+                    fill=max_level_color if kpm >= 2 else "white",
+                    anchor="ra",
+                    font=player_font,
+                )
                 # 时长
-                time_played = "{:.1f}".format(player_stat_data['basicStats']["timePlayed"] / 3600)
+                time_played = "{:.1f}".format(
+                    player_stat_data["basicStats"]["timePlayed"] / 3600
+                )
                 TIME_counter2 += float(time_played)
-                draw.text((1670, 155 + i * 23), f"{time_played}", anchor="ra",
-                          fill=max_level_color if float(time_played) >= 1000 else 'white',
-                          font=player_font)
-            except:
-                pass
+                draw.text(
+                    (1670, 155 + i * 23),
+                    f"{time_played}",
+                    anchor="ra",
+                    fill=max_level_color if float(time_played) >= 1000 else "white",
+                    font=player_font,
+                )
+            except Exception as e:
+                logger.warning(f"Error drawing player data: {e}")
 
-        i_temp = len(playerlist_data['teams'][0]) if len(playerlist_data['teams'][0]) >= len(
-            playerlist_data['teams'][1]) else len(playerlist_data['teams'][1])
+        i_temp = (
+            len(playerlist_data["teams"][0])
+            if len(playerlist_data["teams"][0]) >= len(playerlist_data["teams"][1])
+            else len(playerlist_data["teams"][1])
+        )
         avg_color = (250, 183, 39)
         avg_1_1 = 0
         avg_1_2 = 0
         avg_1_3 = 0
         avg_1_4 = 0
         avg_1_5 = 0
-        if len(playerlist_data['teams'][0]) != 0:
-            avg_1_1 = int(RANK_counter1 / len(playerlist_data['teams'][0]))
-            avg_1_2 = KD_counter1 / len(playerlist_data['teams'][0])
-            avg_1_3 = KPM_counter1 / len(playerlist_data['teams'][0])
-            avg_1_4 = TIME_counter1 / len(playerlist_data['teams'][0])
-            avg_1_5 = int(WIN_counter1 / len(playerlist_data['teams'][0]))
+        if len(playerlist_data["teams"][0]) != 0:
+            avg_1_1 = int(RANK_counter1 / len(playerlist_data["teams"][0]))
+            avg_1_2 = KD_counter1 / len(playerlist_data["teams"][0])
+            avg_1_3 = KPM_counter1 / len(playerlist_data["teams"][0])
+            avg_1_4 = TIME_counter1 / len(playerlist_data["teams"][0])
+            avg_1_5 = int(WIN_counter1 / len(playerlist_data["teams"][0]))
         avg_2_1 = 0
         avg_2_2 = 0
         avg_2_3 = 0
         avg_2_4 = 0
         avg_2_5 = 0
-        if len(playerlist_data['teams'][1]) != 0:
-            avg_2_1 = int(RANK_counter2 / len(playerlist_data['teams'][1]))
-            avg_2_2 = KD_counter2 / len(playerlist_data['teams'][1])
-            avg_2_3 = KPM_counter2 / len(playerlist_data['teams'][1])
-            avg_2_4 = TIME_counter2 / len(playerlist_data['teams'][1])
-            avg_2_5 = int(WIN_counter2 / len(playerlist_data['teams'][1]))
+        if len(playerlist_data["teams"][1]) != 0:
+            avg_2_1 = int(RANK_counter2 / len(playerlist_data["teams"][1]))
+            avg_2_2 = KD_counter2 / len(playerlist_data["teams"][1])
+            avg_2_3 = KPM_counter2 / len(playerlist_data["teams"][1])
+            avg_2_4 = TIME_counter2 / len(playerlist_data["teams"][1])
+            avg_2_5 = int(WIN_counter2 / len(playerlist_data["teams"][1]))
 
         if leve_position_1:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(
+                f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}"
+            )
             leve_position_1 = 168 - ascent / 2, 156 + i_temp * 23
-            draw.text((115, 156 + i_temp * 23), "平均:",
-                      fill="white",
-                      font=player_font)
+            draw.text((115, 156 + i_temp * 23), "平均:", fill="white", font=player_font)
             if RANK_counter1 != 0:
-                draw.text(leve_position_1, f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}",
-                          fill=avg_color if avg_1_1 > avg_2_1 else "white",
-                          font=player_font)
+                draw.text(
+                    leve_position_1,
+                    f"{int(RANK_counter1 / len(playerlist_data['teams'][0]))}",
+                    fill=avg_color if avg_1_1 > avg_2_1 else "white",
+                    font=player_font,
+                )
             if WIN_counter1 != 0:
-                draw.text((565, 156 + i_temp * 23), f"{int(WIN_counter1 / len(playerlist_data['teams'][0]))}%",
-                          anchor="ra",
-                          fill=avg_color if avg_1_5 > avg_2_5 else "white",
-                          font=player_font)
+                draw.text(
+                    (565, 156 + i_temp * 23),
+                    f"{int(WIN_counter1 / len(playerlist_data['teams'][0]))}%",
+                    anchor="ra",
+                    fill=avg_color if avg_1_5 > avg_2_5 else "white",
+                    font=player_font,
+                )
             if KD_counter1 != 0:
-                draw.text((635, 156 + i_temp * 23),
-                          "{:.2f}".format(KD_counter1 / len(playerlist_data['teams'][0])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_2 > avg_2_2 else "white",
-                          font=player_font)
+                draw.text(
+                    (635, 156 + i_temp * 23),
+                    "{:.2f}".format(KD_counter1 / len(playerlist_data["teams"][0])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_2 > avg_2_2 else "white",
+                    font=player_font,
+                )
             if KPM_counter1 != 0:
-                draw.text((710, 156 + i_temp * 23),
-                          "{:.2f}".format(KPM_counter1 / len(playerlist_data['teams'][0])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_3 > avg_2_3 else "white",
-                          font=player_font)
+                draw.text(
+                    (710, 156 + i_temp * 23),
+                    "{:.2f}".format(KPM_counter1 / len(playerlist_data["teams"][0])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_3 > avg_2_3 else "white",
+                    font=player_font,
+                )
             if TIME_counter1 != 0:
-                draw.text((810, 156 + i_temp * 23),
-                          "{:.1f}".format(TIME_counter1 / len(playerlist_data['teams'][0])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_4 > avg_2_4 else "white",
-                          font=player_font)
+                draw.text(
+                    (810, 156 + i_temp * 23),
+                    "{:.1f}".format(TIME_counter1 / len(playerlist_data["teams"][0])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_4 > avg_2_4 else "white",
+                    font=player_font,
+                )
 
         if leve_position_2:
             rank_font_temp = ImageFont.truetype(font_path, 15)
-            left_box, top_box, ascent, descent = rank_font_temp.getbbox(f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}")
+            left_box, top_box, ascent, descent = rank_font_temp.getbbox(
+                f"{int(RANK_counter1 / len(playerlist_data['teams'][1]))}"
+            )
             leve_position_2 = 1028 - ascent / 2, 156 + i_temp * 23
-            draw.text((975, 156 + i_temp * 23), "平均:",
-                      fill="white",
-                      font=player_font)
+            draw.text((975, 156 + i_temp * 23), "平均:", fill="white", font=player_font)
             if RANK_counter2 != 0:
-                draw.text(leve_position_2, f"{int(RANK_counter2 / len(playerlist_data['teams'][1]))}",
-                          fill=avg_color if avg_1_1 < avg_2_1 else "white",
-                          font=player_font)
+                draw.text(
+                    leve_position_2,
+                    f"{int(RANK_counter2 / len(playerlist_data['teams'][1]))}",
+                    fill=avg_color if avg_1_1 < avg_2_1 else "white",
+                    font=player_font,
+                )
             if WIN_counter2 != 0:
-                draw.text((1425, 156 + i_temp * 23), f"{int(WIN_counter2 / len(playerlist_data['teams'][1]))}%",
-                          anchor="ra",
-                          fill=avg_color if avg_1_5 < avg_2_5 else "white",
-                          font=player_font)
+                draw.text(
+                    (1425, 156 + i_temp * 23),
+                    f"{int(WIN_counter2 / len(playerlist_data['teams'][1]))}%",
+                    anchor="ra",
+                    fill=avg_color if avg_1_5 < avg_2_5 else "white",
+                    font=player_font,
+                )
             if KD_counter2 != 0:
-                draw.text((1495, 156 + i_temp * 23),
-                          "{:.2f}".format(KD_counter2 / len(playerlist_data['teams'][1])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_2 < avg_2_2 else "white",
-                          font=player_font)
+                draw.text(
+                    (1495, 156 + i_temp * 23),
+                    "{:.2f}".format(KD_counter2 / len(playerlist_data["teams"][1])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_2 < avg_2_2 else "white",
+                    font=player_font,
+                )
             if KPM_counter2 != 0:
-                draw.text((1570, 156 + i_temp * 23),
-                          "{:.2f}".format(KPM_counter2 / len(playerlist_data['teams'][1])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_3 < avg_2_3 else "white",
-                          font=player_font)
+                draw.text(
+                    (1570, 156 + i_temp * 23),
+                    "{:.2f}".format(KPM_counter2 / len(playerlist_data["teams"][1])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_3 < avg_2_3 else "white",
+                    font=player_font,
+                )
             if TIME_counter2 != 0:
-                draw.text((1670, 156 + i_temp * 23),
-                          "{:.1f}".format(TIME_counter2 / len(playerlist_data['teams'][1])),
-                          anchor="ra",
-                          fill=avg_color if avg_1_4 < avg_2_4 else "white",
-                          font=player_font)
+                draw.text(
+                    (1670, 156 + i_temp * 23),
+                    "{:.1f}".format(TIME_counter2 / len(playerlist_data["teams"][1])),
+                    anchor="ra",
+                    fill=avg_color if avg_1_4 < avg_2_4 else "white",
+                    font=player_font,
+                )
 
         # 服务器信息
-        server_info_text = f'服务器状态:{server_info["serverInfo"]["mapModePretty"]}-{server_info["serverInfo"]["mapNamePretty"]}  ' \
-                           f'在线人数:{server_info["serverInfo"]["slots"]["Soldier"]["current"]}/{server_info["serverInfo"]["slots"]["Soldier"]["max"]}' \
-                           f'[{server_info["serverInfo"]["slots"]["Queue"]["current"]}]({server_info["serverInfo"]["slots"]["Spectator"]["current"]})  ' \
-                           f"收藏:{server_info['serverInfo']['serverBookmarkCount']}"
+        server_info_text = (
+            f"服务器状态:{server_info['serverInfo']['mapModePretty']}-{server_info['serverInfo']['mapNamePretty']}  "
+            f"在线人数:{server_info['serverInfo']['slots']['Soldier']['current']}/{server_info['serverInfo']['slots']['Soldier']['max']}"
+            f"[{server_info['serverInfo']['slots']['Queue']['current']}]({server_info['serverInfo']['slots']['Spectator']['current']})  "
+            f"收藏:{server_info['serverInfo']['serverBookmarkCount']}"
+        )
 
         draw.text((240, 925), server_info_text, fill="white", font=info_font)
 
         # 服务器简介
-        server_dscr = f'        {server_info["serverInfo"]["description"]}'
+        server_dscr = f"        {server_info['serverInfo']['description']}"
         test_temp = ""
         i = 0
         for letter in server_dscr:
             if i * 11 % 125 == 0 or (i + 1) * 11 % 125 == 0:
-                test_temp += '\n'
+                test_temp += "\n"
                 i = 0
             i += PlayerListPic.get_width(ord(letter))
             test_temp += letter
@@ -2895,16 +3911,24 @@ class PlayerListPic:
         # 颜色标识
         # 管理
         draw.rectangle([1100, 925, 1120, 945], fill=admin_color, outline=None, width=1)
-        draw.text((1130, 925), f"在线管理:{admin_counter}", fill="white", font=player_font)
+        draw.text(
+            (1130, 925), f"在线管理:{admin_counter}", fill="white", font=player_font
+        )
         # vip
         draw.rectangle([1250, 925, 1270, 945], fill=vip_color, outline=None, width=1)
         draw.text((1280, 925), f"在线VIP:{vip_counter}", fill="white", font=player_font)
         # 群友
         draw.rectangle([1400, 925, 1420, 945], fill=bind_color, outline=None, width=1)
-        draw.text((1430, 925), f"在线群友:{bind_counter}", fill="white", font=player_font)
+        draw.text(
+            (1430, 925), f"在线群友:{bind_counter}", fill="white", font=player_font
+        )
         # 150数量
-        draw.rectangle([1550, 925, 1570, 945], fill=max_level_color, outline=None, width=1)
-        draw.text((1580, 925), f"150数量:{max_level_counter}", fill="white", font=player_font)
+        draw.rectangle(
+            [1550, 925, 1570, 945], fill=max_level_color, outline=None, width=1
+        )
+        draw.text(
+            (1580, 925), f"150数量:{max_level_counter}", fill="white", font=player_font
+        )
 
         # 水印
         draw.text((1860, 1060), "by.13", fill=(114, 114, 114), font=player_font)
@@ -2914,12 +3938,11 @@ class PlayerListPic:
         # IMG.save(SavePic, quality=100)
         # 直接IO流发送
         img_bytes = io.BytesIO()
-        IMG.save(img_bytes, format='PNG')
+        IMG.save(img_bytes, format="PNG")
         return img_bytes.getvalue()
 
 
 class Bf1Status:
-
     def __init__(self, private_server_data, official_server_data):
         self.private_server_data = private_server_data
         self.official_server_data = official_server_data
@@ -2928,90 +3951,119 @@ class Bf1Status:
         private_server_data = self.private_server_data
         official_server_data = self.official_server_data
         sns.set_style("whitegrid")
-        font_path = './statics/fonts/simhei.ttf'
+        font_path = "./statics/fonts/simhei.ttf"
         font_prop = fm.FontProperties(fname=font_path)
 
         def plot_comparison_bar_chart_sns(data, title, rotation=0):
             official_color = "#9ebc62"
             private_color = "#e68d63"
             df = pd.DataFrame(data)
-            ax = df.plot(kind='bar', figsize=(12, 6), color=[official_color, private_color])
+            ax = df.plot(
+                kind="bar", figsize=(12, 6), color=[official_color, private_color]
+            )
             plt.title(title, fontproperties=font_prop)
-            plt.ylabel('数量', fontproperties=font_prop)
+            plt.ylabel("数量", fontproperties=font_prop)
             plt.xticks(rotation=rotation, fontproperties=font_prop)
             legend = ax.legend(prop=font_prop)
             plt.setp(legend.get_texts(), fontproperties=font_prop)
             plt.setp(legend.get_title(), fontproperties=font_prop)
             for p in ax.patches:
                 ax.annotate(
-                    str(int(p.get_height())), (p.get_x() + p.get_width() / 2., p.get_height()),
-                    ha='center', va='center', xytext=(0, 10), textcoords='offset points', fontproperties=font_prop
+                    str(int(p.get_height())),
+                    (p.get_x() + p.get_width() / 2.0, p.get_height()),
+                    ha="center",
+                    va="center",
+                    xytext=(0, 10),
+                    textcoords="offset points",
+                    fontproperties=font_prop,
                 )
             plt.tight_layout()
 
             buffer_temp = io.BytesIO()
-            plt.savefig(buffer_temp, format='png', bbox_inches='tight')
+            plt.savefig(buffer_temp, format="png", bbox_inches="tight")
             plt.close()
 
             return Image.open(buffer_temp)
 
-        region_country_comparison_data = {
-            "官服": {},
-            "私服": {}
-        }
+        region_country_comparison_data = {"官服": {}, "私服": {}}
 
         for region in set(
-                list(official_server_data["regions"].keys()) + list(private_server_data["regions"].keys())):
-            region_country_comparison_data["官服"][region] = official_server_data["regions"].get(region, 0)
-            region_country_comparison_data["私服"][region] = private_server_data["regions"].get(region, 0)
+            list(official_server_data["regions"].keys())
+            + list(private_server_data["regions"].keys())
+        ):
+            region_country_comparison_data["官服"][region] = official_server_data[
+                "regions"
+            ].get(region, 0)
+            region_country_comparison_data["私服"][region] = private_server_data[
+                "regions"
+            ].get(region, 0)
 
         plot1 = plot_comparison_bar_chart_sns(
             region_country_comparison_data,
             f"开启服务器数：{sum(region_country_comparison_data['官服'].values()) + sum(region_country_comparison_data['私服'].values())}\n"
-            f"私服：{sum(region_country_comparison_data['私服'].values())} / 官服：{sum(region_country_comparison_data['官服'].values())}"
+            f"私服：{sum(region_country_comparison_data['私服'].values())} / 官服：{sum(region_country_comparison_data['官服'].values())}",
         )
 
         plot2 = plot_comparison_bar_chart_sns(
-            {"官服": official_server_data["countries"], "私服": private_server_data["countries"]}, "")
+            {
+                "官服": official_server_data["countries"],
+                "私服": private_server_data["countries"],
+            },
+            "",
+        )
 
         plot3 = plot_comparison_bar_chart_sns(
             {"官服": official_server_data["maps"], "私服": private_server_data["maps"]},
-            "游玩地图", rotation=45)
+            "游玩地图",
+            rotation=45,
+        )
 
         plot4 = plot_comparison_bar_chart_sns(
-            {"官服": official_server_data["modes"], "私服": private_server_data["modes"]},
-            "游玩模式")
+            {
+                "官服": official_server_data["modes"],
+                "私服": private_server_data["modes"],
+            },
+            "游玩模式",
+        )
 
         # Pie chart for total players comparison
         total_players_data = {
-            '官服': official_server_data["players"],
-            '私服': private_server_data["players"]
+            "官服": official_server_data["players"],
+            "私服": private_server_data["players"],
         }
         plt.figure(figsize=(8, 8))
         plt.pie(
-            total_players_data.values(), labels=total_players_data.keys(), autopct='%1.0f%%', startangle=90,
-            colors=sns.color_palette("coolwarm"), textprops={'fontproperties': font_prop}
+            total_players_data.values(),
+            labels=total_players_data.keys(),
+            autopct="%1.0f%%",
+            startangle=90,
+            colors=sns.color_palette("coolwarm"),
+            textprops={"fontproperties": font_prop},
         )
         plt.title(
             f"BF1当前游玩总人数：{sum(total_players_data.values())}\n{datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}",
-            fontproperties=font_prop
+            fontproperties=font_prop,
         )
-        plt.axis('equal')
+        plt.axis("equal")
         buf_pie = io.BytesIO()
-        plt.savefig(buf_pie, format='png', bbox_inches='tight', transparent=True)
+        plt.savefig(buf_pie, format="png", bbox_inches="tight", transparent=True)
         plt.close()
         plot5 = Image.open(buf_pie)
 
         # 合成为一张图片
-        merged_image = Image.new('RGB', (plot1.width, plot1.height * 4 + plot5.height), (255, 255, 255))
+        merged_image = Image.new(
+            "RGB", (plot1.width, plot1.height * 4 + plot5.height), (255, 255, 255)
+        )
         merged_image.paste(plot1, (0, 0))
         merged_image.paste(plot2, (0, plot1.height))
-        merged_image.paste(plot5, (int((plot1.width - plot5.width) / 2), plot1.height * 2))
+        merged_image.paste(
+            plot5, (int((plot1.width - plot5.width) / 2), plot1.height * 2)
+        )
         merged_image.paste(plot3, (0, plot1.height * 2 + plot5.height))
         merged_image.paste(plot4, (0, plot1.height * 3 + plot5.height))
 
         buf = io.BytesIO()
-        merged_image.save(buf, format='PNG')
+        merged_image.save(buf, format="PNG")
         data_bytes = buf.getvalue()
 
         return data_bytes

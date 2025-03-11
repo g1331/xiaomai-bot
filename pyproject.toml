@@ -63,4 +63,36 @@ dependencies = [
     "mcstatus>=11.1.1",
     "restrictedpython>=8.0",
     "scipy>=1.15.1",
+    "pre-commit>=4.1.0",
 ]
+
+# 配置 Ruff 的整体行为
+[tool.ruff]
+line-length = 88  # Black 默认 88，可以改回 79 如果严格遵守 PEP 8
+
+# 配置 Ruff 的代码检查功能（Linting）
+[tool.ruff.lint]
+# 选择要启用的规则集
+select = [
+    "E", # PEP 8 代码格式错误（空格、缩进、换行）
+    "F", # Pyflakes 代码检查（未使用变量、重复导入、变量未定义等）
+    "W", # 一般代码风格警告（行尾空格、缩进警告）
+    "UP"  # Python 版本升级检查（建议 Python 3 代码优化）
+]
+
+# 忽略特定规则
+ignore = [
+    "E266", # 过多的 `#` 号用于注释（通常用于代码分割）
+    "E501", # 行长度超过限制（Ruff 已经使用 `line-length` 处理）
+    # "F401", # 导入未使用的模块（有时用于动态导入），应该使用 # noqa: F401 或 if TYPE_CHECKING 方式更精准地控制 Ruff 规则。
+]
+
+# 代码格式化配置（类似于 Black）
+[tool.ruff.format]
+quote-style = "double"  # 统一使用双引号
+indent-style = "space"  # 统一使用空格缩进，而不是 Tab
+docstring-code-format = true  # 启用 docstring 代码片段格式化
+
+# 配置 Ruff 的 PyUpgrade 功能（Python 版本兼容性优化）
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true  # 保留 `from __future__ import annotations`，避免影响运行时类型检查

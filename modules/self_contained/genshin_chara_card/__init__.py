@@ -12,27 +12,29 @@ from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Source, Image
 from graia.ariadne.message.parser.twilight import RegexResult
-from graia.ariadne.message.parser.twilight import Twilight, FullMatch, SpacePolicy, ParamMatch
+from graia.ariadne.message.parser.twilight import (
+    Twilight,
+    FullMatch,
+    SpacePolicy,
+    ParamMatch,
+)
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from graiax.playwright import PlaywrightBrowser
 from loguru import logger
 from playwright.sync_api import TimeoutError
 
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 
 channel = Channel.current()
-channel.meta["name"] = ("GenshinCharaCard")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("一个原神角色卡查询插件，在群中发送 `/原神角色卡 UID 角色名` 即可")
+channel.meta["name"] = "GenshinCharaCard"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["description"] = (
+    "一个原神角色卡查询插件，在群中发送 `/原神角色卡 UID 角色名` 即可"
+)
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 characters = {}
@@ -42,11 +44,13 @@ characters = {}
     ListenerSchema(
         listening_events=[GroupMessage],
         inline_dispatchers=[
-            Twilight([
-                FullMatch("-原神角色卡"),
-                "uid" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
-                "chara" @ ParamMatch(optional=False)
-            ])
+            Twilight(
+                [
+                    FullMatch("-原神角色卡"),
+                    "uid" @ ParamMatch(optional=False).space(SpacePolicy.FORCE),
+                    "chara" @ ParamMatch(optional=False),
+                ]
+            )
         ],
         decorators=[
             Distribute.require(),
@@ -57,7 +61,9 @@ characters = {}
         ],
     )
 )
-async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: RegexResult, chara: RegexResult):
+async def genshin_chara_card(
+    app: Ariadne, group: Group, source: Source, uid: RegexResult, chara: RegexResult
+):
     start_time = time.time()
     uid = uid.result.display
     chara = chara.result.display.strip()
@@ -70,7 +76,11 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
         await app.send_message(group, MessageChain("初始化完成"), quote=source)
     await app.send_message(group, MessageChain("查询ing"), quote=source)
     if chara_pinyin not in characters:
-        return await app.send_message(group, MessageChain(f"角色列表中未找到角色：{chara}，请检查拼写"), quote=source)
+        return await app.send_message(
+            group,
+            MessageChain(f"角色列表中未找到角色：{chara}，请检查拼写"),
+            quote=source,
+        )
     url = f"https://enka.shinshin.moe/u/{uid}"
     browser = Ariadne.current().launch_manager.get_interface(PlaywrightBrowser)
     async with browser.page() as page:
@@ -100,29 +110,41 @@ async def genshin_chara_card(app: Ariadne, group: Group, source: Source, uid: Re
                     chara_src = style
                     break
             if index == -1 or not chara_src:
-                return await app.send_message(group, MessageChain("获取角色头像div失败！"), quote=source)
+                return await app.send_message(
+                    group, MessageChain("获取角色头像div失败！"), quote=source
+                )
             await page.locator(f"div.avatar.svelte-jlfv30 >> nth={index}").click()
             await asyncio.sleep(1)
-            await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click()
-            await page.evaluate("document.getElementsByClassName('toolbar')[0].remove()")
+            await page.get_by_role(
+                "button", name=re.compile("下载", re.IGNORECASE)
+            ).click()
+            await page.evaluate(
+                "document.getElementsByClassName('toolbar')[0].remove()"
+            )
             async with page.expect_download() as download_info:
                 for _ in range(3):
                     try:
-                        await page.get_by_role("button", name=re.compile("下载", re.IGNORECASE)).click(timeout=10000)
+                        await page.get_by_role(
+                            "button", name=re.compile("下载", re.IGNORECASE)
+                        ).click(timeout=10000)
                     except TimeoutError:
                         pass
             path = await (await download_info.value).path()
             await app.send_message(
                 group,
-                MessageChain([
-                    f"耗时:{round(time.time() - start_time, 2)}秒\n",
-                    Image(path=path),
-                ]),
+                MessageChain(
+                    [
+                        f"耗时:{round(time.time() - start_time, 2)}秒\n",
+                        Image(path=path),
+                    ]
+                ),
                 quote=source,
             )
         except Exception as e:
             logger.error(e)
-            await app.send_message(group, MessageChain("没有查询到数据哦qwq"), quote=source)
+            await app.send_message(
+                group, MessageChain("没有查询到数据哦qwq"), quote=source
+            )
 
 
 async def init_chara_list():

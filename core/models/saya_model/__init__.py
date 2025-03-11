@@ -4,7 +4,6 @@ from abc import ABC
 from enum import Enum
 from json.decoder import JSONDecodeError
 from pathlib import Path
-from typing import Type, List
 
 from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
 from graia.ariadne.model import Group
@@ -23,10 +22,10 @@ class Metadata(BaseModel):
     name: str = ""
     display_name: str = ""
     version: str = "0.1"
-    authors: List[str] = []
+    authors: list[str] = []
     description: str = ""
-    usage: List[str] = []
-    example: List[str] = []
+    usage: list[str] = []
+    example: list[str] = []
     default_switch: bool = True
     default_notice: bool = False
 
@@ -53,7 +52,7 @@ class ModulesController:
         "module2": {}
     }
 
-    
+
     插件元数据
     module.metadata=
     {
@@ -95,25 +94,27 @@ class ModulesController:
         """
         # 如果是文件夹就找文件夹内的metadata.json
         if module_path.is_dir():
-            metadata_path = module_path / 'metadata.json'
+            metadata_path = module_path / "metadata.json"
             if metadata_path.is_file():
-                with open(metadata_path, "r", encoding="utf-8") as r:
+                with open(metadata_path, encoding="utf-8") as r:
                     data = json.load(r)
                 return Metadata(**data)
         else:
             # 如果是metadata.json就直接读取
-            if module_path.name == 'metadata.json':
-                with open(module_path, "r", encoding="utf-8") as r:
+            if module_path.name == "metadata.json":
+                with open(module_path, encoding="utf-8") as r:
                     data = json.load(r)
                 return Metadata(**data)
             # 不是的话就找同级文件夹内的metadata.json
             else:
-                metadata_path = module_path.parent / 'metadata.json'
+                metadata_path = module_path.parent / "metadata.json"
                 if metadata_path.is_file():
-                    with open(metadata_path, "r", encoding="utf-8") as r:
+                    with open(metadata_path, encoding="utf-8") as r:
                         data = json.load(r)
                     return Metadata(**data)
-        with open(Path(__file__).parent / "Metadata_templates.json", "r", encoding="utf-8") as r:
+        with open(
+            Path(__file__).parent / "Metadata_templates.json", encoding="utf-8"
+        ) as r:
             data = json.load(r)
         return Metadata(**data)
 
@@ -122,7 +123,7 @@ class ModulesController:
         """
         传入插件名
         """
-        paths = module_name.split('.')
+        paths = module_name.split(".")
         base_path = Path().cwd()
         for path in paths:
             base_path = base_path / path
@@ -141,7 +142,7 @@ class ModulesController:
             if group_id not in self.modules[key]:
                 self.modules[key][group_id] = {
                     "switch": module.default_switch,
-                    "notice": module.default_notice
+                    "notice": module.default_notice,
                 }
         self.save()
 
@@ -164,8 +165,9 @@ class ModulesController:
             self.modules[module_name] = {
                 group: {
                     "switch": module.default_switch,
-                    "notice": module.default_notice
-                } for group in self.groups
+                    "notice": module.default_notice,
+                }
+                for group in self.groups
             }
             self.modules[module_name]["available"] = True
         self.save()
@@ -176,7 +178,9 @@ class ModulesController:
             del self.modules[module_name]
         self.save()
 
-    def change_group_module(self, module_name: str, group: Group or int or str, key: str, value: bool):
+    def change_group_module(
+        self, module_name: str, group: Group or int or str, key: str, value: bool
+    ):
         """群插件状态变更"""
         if isinstance(group, Group):
             group = group.id
@@ -275,32 +279,33 @@ class ModulesController:
             else:
                 return False
 
-    def save(self, path: str = str(Path(__file__).parent.joinpath("modules_data.json"))):
+    def save(
+        self, path: str = str(Path(__file__).parent.joinpath("modules_data.json"))
+    ):
         with open(path, "w") as w:
             w.write(
-                json.dumps(
-                    {"modules": self.modules, "groups": self.groups}, indent=4
-                )
+                json.dumps({"modules": self.modules, "groups": self.groups}, indent=4)
             )
 
-    def load(self, path: str = str(Path(__file__).parent.joinpath("modules_data.json"))) -> "ModulesController":
+    def load(
+        self, path: str = str(Path(__file__).parent.joinpath("modules_data.json"))
+    ) -> "ModulesController":
         with contextlib.suppress(FileNotFoundError, JSONDecodeError):
-            with open(path, "r") as r:
+            with open(path) as r:
                 data = json.load(r)
                 self.modules = data.get("modules", {})
                 self.groups = data.get("groups", {})
         return self
 
     @staticmethod
-    def module_operation(modules: str or list[str], operation_type: ModuleOperationType) -> dict[str, Exception]:
+    def module_operation(
+        modules: str or list[str], operation_type: ModuleOperationType
+    ) -> dict[str, Exception]:
         exceptions = {}
         if isinstance(modules, str):
             modules = [modules]
         if operation_type == ModuleOperationType.INSTALL:
-            op_modules = {
-                module: module
-                for module in modules
-            }
+            op_modules = {module: module for module in modules}
         else:
             loaded_channels = saya.channels
             op_modules = {
@@ -347,17 +352,35 @@ class ModulesController:
 
     @staticmethod
     def get_not_installed_channels() -> list[str]:
-        return sorted([c for c in ModulesController.get_all_channels() if c not in saya.channels])
+        return sorted(
+            [c for c in ModulesController.get_all_channels() if c not in saya.channels]
+        )
 
     @staticmethod
     def get_required_modules() -> list[str]:
-        return sorted([c for c in saya.channels.keys() if c.startswith("modules.required")])
+        return sorted(
+            [c for c in saya.channels.keys() if c.startswith("modules.required")]
+        )
 
     def get_available_modules(self) -> list[str]:
-        return sorted([module for module in self.modules if self.if_module_available(module) and module not in self.get_required_modules()])
+        return sorted(
+            [
+                module
+                for module in self.modules
+                if self.if_module_available(module)
+                and module not in self.get_required_modules()
+            ]
+        )
 
     def get_unavailable_modules(self) -> list[str]:
-        return sorted([module for module in self.get_all_channels() if not self.if_module_available(module) and module not in self.get_not_installed_channels()])
+        return sorted(
+            [
+                module
+                for module in self.get_all_channels()
+                if not self.if_module_available(module)
+                and module not in self.get_not_installed_channels()
+            ]
+        )
 
     def get_all_modules(self) -> list[str]:
         required_module_list = self.get_required_modules()
@@ -382,7 +405,7 @@ class ModulesControllerClassCreator(AbstractCreator, ABC):
         return exists_module("core.models.saya_model")
 
     @staticmethod
-    def create(create_type: Type[ModulesController]) -> ModulesController:
+    def create(create_type: type[ModulesController]) -> ModulesController:
         return ModulesController().load()
 
 

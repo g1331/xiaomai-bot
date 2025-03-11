@@ -2,9 +2,10 @@
 """
 配置处理
 """
+
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -81,7 +82,7 @@ class ConfigLoader:
         self._update_plugins_config()
         self._migrate_old_config_if_needed()
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         if not self.config_path.exists():
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.config_path, "w") as f:
@@ -96,7 +97,7 @@ class ConfigLoader:
             logger.info(f"[AIChat]Config loaded from: {self.config_path}")
             return config
 
-    def load_user_preferences(self) -> Dict[str, Any]:
+    def load_user_preferences(self) -> dict[str, Any]:
         """加载用户偏好设置文件"""
         if not self.user_prefs_path.exists():
             self.user_prefs_path.parent.mkdir(parents=True, exist_ok=True)
@@ -229,7 +230,7 @@ class ConfigLoader:
         if config_modified:
             self.save_config()
 
-    def get_user_preference(self, user_id: str) -> Dict[str, str]:
+    def get_user_preference(self, user_id: str) -> dict[str, str]:
         """获取用户偏好设置，包括提供商和模型"""
         if not user_id:
             return self._user_prefs["default"]
@@ -245,8 +246,8 @@ class ConfigLoader:
         return self.get_user_preference(user_id)["provider"]
 
     def get_user_model(
-        self, user_id: str, provider_name: Optional[str] = None
-    ) -> Optional[str]:
+        self, user_id: str, provider_name: str | None = None
+    ) -> str | None:
         """获取用户偏好的模型名称，并验证与提供商的兼容性"""
         preference = self.get_user_preference(user_id)
         provider = provider_name or preference["provider"]
@@ -262,7 +263,7 @@ class ConfigLoader:
         return model
 
     def set_user_preference(
-        self, user_id: str, provider: str, model: Optional[str] = None
+        self, user_id: str, provider: str, model: str | None = None
     ):
         """设置用户的提供商和模型偏好"""
         if provider not in self._config["providers"]:
@@ -314,11 +315,11 @@ class ConfigLoader:
         self.save_user_preferences()
         logger.info(f"已设置用户 {user_id} 的模型为 {provider_name}:{model_name}")
 
-    def get_default_preference(self) -> Dict[str, str]:
+    def get_default_preference(self) -> dict[str, str]:
         """获取默认的提供商和模型偏好"""
         return self._user_prefs["default"]
 
-    def set_default_preference(self, provider: str, model: Optional[str] = None):
+    def set_default_preference(self, provider: str, model: str | None = None):
         """设置默认的提供商和模型偏好"""
         if provider not in self._config["providers"]:
             raise ValueError(f"Unknown provider: {provider}")
@@ -341,7 +342,7 @@ class ConfigLoader:
         }
         self.save_user_preferences()
 
-    def get_provider_config(self, provider_name: str) -> Dict[str, Any]:
+    def get_provider_config(self, provider_name: str) -> dict[str, Any]:
         """获取提供商配置"""
         if provider_name not in self._config["providers"]:
             raise ValueError(f"Unknown provider: {provider_name}")
@@ -377,8 +378,8 @@ class ConfigLoader:
         return config
 
     def get_model_config(
-        self, provider_name: str, model_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, provider_name: str, model_name: str | None = None
+    ) -> dict[str, Any]:
         """获取模型配置，如果未指定模型名则使用提供商默认模型"""
         provider_config = self.get_provider_config(provider_name)
 

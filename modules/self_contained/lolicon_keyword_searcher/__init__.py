@@ -12,7 +12,13 @@ from graia.ariadne.event.message import Group, GroupMessage
 from graia.ariadne.exception import UnknownTarget
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, Image, Source
-from graia.ariadne.message.parser.twilight import FullMatch, RegexMatch, RegexResult, ArgumentMatch, ArgResult
+from graia.ariadne.message.parser.twilight import (
+    FullMatch,
+    RegexMatch,
+    RegexResult,
+    ArgumentMatch,
+    ArgResult,
+)
 from graia.ariadne.message.parser.twilight import Twilight
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
@@ -24,9 +30,11 @@ from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.meta["name"] = ("LoliconKeywordSearcher")
-channel.meta["author"] = ("SAGIRI-kawaii")
-channel.meta["description"] = ("一个接入lolicon api的插件，在群中发送 `来点{keyword}[色涩瑟]图` 即可")
+channel.meta["name"] = "LoliconKeywordSearcher"
+channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["description"] = (
+    "一个接入lolicon api的插件，在群中发送 `来点{keyword}[色涩瑟]图` 即可"
+)
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 config = create(GlobalConfig)
@@ -41,13 +49,18 @@ cache18_path = Path(config.functions.get("lolicon", {}).get("cache18_path", ""))
     ListenerSchema(
         listening_events=[GroupMessage],
         inline_dispatchers=[
-            Twilight([
-                FullMatch("来点"),
-                RegexMatch(r"[^\s]+") @ "keyword",
-                RegexMatch(r"[色涩瑟]图$"),
-                ArgumentMatch("-r", optional=True, type=int, default=0) @ "age",
-                ArgumentMatch("-m", "-mode", optional=True, type=str, default="revoke") @ "mode"
-            ])
+            Twilight(
+                [
+                    FullMatch("来点"),
+                    RegexMatch(r"[^\s]+") @ "keyword",
+                    RegexMatch(r"[色涩瑟]图$"),
+                    ArgumentMatch("-r", optional=True, type=int, default=0) @ "age",
+                    ArgumentMatch(
+                        "-m", "-mode", optional=True, type=str, default="revoke"
+                    )
+                    @ "mode",
+                ]
+            )
         ],
         decorators=[
             Distribute.require(),
@@ -59,8 +72,12 @@ cache18_path = Path(config.functions.get("lolicon", {}).get("cache18_path", ""))
     )
 )
 async def lolicon_keyword_searcher(
-        app: Ariadne, group: Group, source: Source,
-        keyword: RegexResult, age: ArgResult, mode: ArgResult
+    app: Ariadne,
+    group: Group,
+    source: Source,
+    keyword: RegexResult,
+    age: ArgResult,
+    mode: ArgResult,
 ):
     keyword = keyword.result.display
     age = age.result
@@ -73,7 +90,9 @@ async def lolicon_keyword_searcher(
         return await app.send_message(group, msg_chain, quote=source)
     if mode == "flash":
         await app.send_message(group, msg_chain.exclude(Image), quote=source)
-        msg = await app.send_message(group, MessageChain(msg_chain.get_first(Image).to_flash_image()))
+        msg = await app.send_message(
+            group, MessageChain(msg_chain.get_first(Image).to_flash_image())
+        )
         if msg.id <= 0:
             return await app.send_message(group, EroMsg, quote=source)
     elif mode == "revoke":
@@ -91,9 +110,7 @@ async def lolicon_keyword_searcher(
 
 async def send_lolicon_request(keyword, age) -> dict:
     url = "https://api.lolicon.app/setu/v2"
-    headers = {
-        "Content-Type": "application/json"
-    }
+    headers = {"Content-Type": "application/json"}
     payload = {
         "r18": age,
         "num": 1,
@@ -105,7 +122,7 @@ async def send_lolicon_request(keyword, age) -> dict:
         "dateAfter": 0,
         "dateBefore": 0,
         "dsc": False,
-        "excludeAI": False
+        "excludeAI": False,
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=payload) as response:
@@ -124,7 +141,9 @@ async def get_image(keyword: str, age: int) -> MessageChain:
     if result["data"]:
         result = result["data"][0]
     else:
-        return MessageChain(f"没有搜到有关{keyword}的图哦～有没有一种可能，你的xp太怪了？")
+        return MessageChain(
+            f"没有搜到有关{keyword}的图哦～有没有一种可能，你的xp太怪了？"
+        )
 
     # if data_cache:
     #     await orm.insert_or_update(
@@ -154,19 +173,25 @@ async def get_image(keyword: str, age: int) -> MessageChain:
     file_path = base_path / file_name
 
     if file_path.exists():
-        return MessageChain([
-            Plain(text=f"你要的{keyword}涩图来辣！\n"),
-            Image(path=file_path),
-            Plain(text=f"\n{info}"),
-        ])
-    async with aiohttp.ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
+        return MessageChain(
+            [
+                Plain(text=f"你要的{keyword}涩图来辣！\n"),
+                Image(path=file_path),
+                Plain(text=f"\n{info}"),
+            ]
+        )
+    async with aiohttp.ClientSession(
+        connector=TCPConnector(verify_ssl=False)
+    ) as session:
         async with session.get(url=result["urls"]["original"], proxy=proxy) as resp:
             img_content = await resp.read()
     if image_cache and base_path.exists():
         image = PIL.Image.open(BytesIO(img_content))
         image.save(file_path)
-    return MessageChain([
-        Plain(text=f"你要的{keyword}涩图来辣！\n"),
-        Image(data_bytes=img_content),
-        Plain(text=f"\n{info}"),
-    ])
+    return MessageChain(
+        [
+            Plain(text=f"你要的{keyword}涩图来辣！\n"),
+            Image(data_bytes=img_content),
+            Plain(text=f"\n{info}"),
+        ]
+    )

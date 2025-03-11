@@ -1,7 +1,6 @@
 import datetime
 import re
 import time
-from typing import Union
 
 from bs4 import BeautifulSoup
 from loguru import logger
@@ -72,7 +71,9 @@ class WeaponData:
                 if weapon.get("category") == "近戰武器":
                     weapon_list.append(weapon)
             elif rule in ["突击兵", "土鸡兵", "土鸡", "突击"]:
-                if weapon.get("category") in ["衝鋒槍", "霰彈槍"] or weapon.get("guid") in [
+                if weapon.get("category") in ["衝鋒槍", "霰彈槍"] or weapon.get(
+                    "guid"
+                ) in [
                     "245A23B1-53BA-4AB2-A416-224794F15FCB",  # M1911
                     "D8AEB334-58E2-4A52-83BA-F3C2107196F0",
                     "7085A5B9-6A77-4766-83CD-3666DA3EDF28",
@@ -120,7 +121,7 @@ class WeaponData:
                     "F59AA727-6618-4C1D-A5E2-007044CA3B89",
                     "95A5E9D8-E949-46C2-B5CA-36B3CA4C2E9D",
                     "60D24A79-BFD6-4C8F-B54F-D1AA6D2620DE",
-                    "02D4481F-FBC3-4C57-AAAC-1B37DC92751E"
+                    "02D4481F-FBC3-4C57-AAAC-1B37DC92751E",
                 ]:
                     weapon_list.append(weapon)
             else:
@@ -136,28 +137,45 @@ class WeaponData:
         if sort_type.upper() in ["爆头率", "爆头", "HS"]:
             weapon_list.sort(
                 key=lambda x: round(
-                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("kills", 0) * 100, 2
-                ) if x["stats"]["values"].get("kills", 0) != 0 else 0,
-                reverse=True
+                    x["stats"]["values"].get("headshots", 0)
+                    / x["stats"]["values"].get("kills", 0)
+                    * 100,
+                    2,
+                )
+                if x["stats"]["values"].get("kills", 0) != 0
+                else 0,
+                reverse=True,
             )
         elif sort_type.upper() in ["命中率", "命中", "ACC"]:
             weapon_list.sort(
                 key=lambda x: round(
-                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
-                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
-                reverse=True
+                    x["stats"]["values"].get("hits", 0)
+                    / x["stats"]["values"].get("shots", 0)
+                    * 100,
+                    2,
+                )
+                if x["stats"]["values"].get("shots", 0) != 0
+                else 0,
+                reverse=True,
             )
         elif sort_type.upper() in ["KPM"]:
             weapon_list.sort(
                 key=lambda x: round(
-                    x["stats"]["values"].get("kills", 0) / x["stats"]["values"].get("seconds", 0) * 60, 2
-                ) if x["stats"]["values"].get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
-                reverse=True
+                    x["stats"]["values"].get("kills", 0)
+                    / x["stats"]["values"].get("seconds", 0)
+                    * 60,
+                    2,
+                )
+                if x["stats"]["values"].get("seconds", 0) != 0
+                else x["stats"]["values"].get("kills", 0),
+                reverse=True,
             )
         else:
             weapon_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
-                reverse=True
+                key=lambda x: x.get("stats")
+                .get("values")
+                .get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True,
             )
         return weapon_list
 
@@ -168,9 +186,13 @@ class WeaponData:
         weapon_list = []
         for weapon in self.weapon_item_list:
             # 先将武器名转换为简体中文，再进行模糊匹配
-            weapon_name = zhconv.convert(weapon.get("name"), 'zh-hans').upper().replace("-", "")
+            weapon_name = (
+                zhconv.convert(weapon.get("name"), "zh-hans").upper().replace("-", "")
+            )
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if (target_weapon_name in weapon_name) or (fuzz.partial_ratio(target_weapon_name, weapon_name) > 90):
+            if (target_weapon_name in weapon_name) or (
+                fuzz.partial_ratio(target_weapon_name, weapon_name) > 90
+            ):
                 weapon_list.append(weapon)
         # 按照击杀/爆头率/命中率/时长排序
         sort_type_dict = {
@@ -183,21 +205,33 @@ class WeaponData:
         if sort_type.upper() in ["爆头率", "爆头", "HS"]:
             weapon_list.sort(
                 key=lambda x: round(
-                    x["stats"]["values"].get("headshots", 0) / x["stats"]["values"].get("hits", 0) * 100, 2
-                ) if x["stats"]["values"].get("hits", 0) != 0 else 0,
-                reverse=True
+                    x["stats"]["values"].get("headshots", 0)
+                    / x["stats"]["values"].get("hits", 0)
+                    * 100,
+                    2,
+                )
+                if x["stats"]["values"].get("hits", 0) != 0
+                else 0,
+                reverse=True,
             )
         elif sort_type.upper() in ["命中率", "命中", "ACC"]:
             weapon_list.sort(
                 key=lambda x: round(
-                    x["stats"]["values"].get("hits", 0) / x["stats"]["values"].get("shots", 0) * 100, 2
-                ) if x["stats"]["values"].get("shots", 0) != 0 else 0,
-                reverse=True
+                    x["stats"]["values"].get("hits", 0)
+                    / x["stats"]["values"].get("shots", 0)
+                    * 100,
+                    2,
+                )
+                if x["stats"]["values"].get("shots", 0) != 0
+                else 0,
+                reverse=True,
             )
         else:
             weapon_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
-                reverse=True
+                key=lambda x: x.get("stats")
+                .get("values")
+                .get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True,
             )
         return weapon_list
 
@@ -273,19 +307,37 @@ class VehicleData:
         # 按照载具类别、击杀数来过滤
         for vehicle in self.vehicle_item_list:
             if rule in ["坦克"]:
-                if vehicle.get("category") in ["重型坦克", "巡航坦克", "輕型坦克", "攻擊坦克", "突擊裝甲車"]:
+                if vehicle.get("category") in [
+                    "重型坦克",
+                    "巡航坦克",
+                    "輕型坦克",
+                    "攻擊坦克",
+                    "突擊裝甲車",
+                ]:
                     vehicle_list.append(vehicle)
             elif rule in ["地面"]:
                 if vehicle.get("category") in [
-                    "重型坦克", "巡航坦克", "輕型坦克", "火砲裝甲車", "攻擊坦克", "突擊裝甲車", "地面載具", "馬匹",
-                    "定點武器"
+                    "重型坦克",
+                    "巡航坦克",
+                    "輕型坦克",
+                    "火砲裝甲車",
+                    "攻擊坦克",
+                    "突擊裝甲車",
+                    "地面載具",
+                    "馬匹",
+                    "定點武器",
                 ] or vehicle.get("guid") in [
                     "A3ED808E-1525-412B-8E77-9EB6902A55D2",  # 装甲列车
-                    "BBFC5A91-B2FC-48D2-8913-658C08072E6E"  # Char 2C
+                    "BBFC5A91-B2FC-48D2-8913-658C08072E6E",  # Char 2C
                 ]:
                     vehicle_list.append(vehicle)
             elif rule in ["飞机"]:
-                if vehicle.get("category") in ["攻擊機", "轟炸機", "戰鬥機", "重型轟炸機"]:
+                if vehicle.get("category") in [
+                    "攻擊機",
+                    "轟炸機",
+                    "戰鬥機",
+                    "重型轟炸機",
+                ]:
                     vehicle_list.append(vehicle)
             elif rule in ["飞船", "飞艇"]:
                 if vehicle.get("category") in ["飛船"] or vehicle.get("guid") in [
@@ -293,13 +345,20 @@ class VehicleData:
                 ]:
                     vehicle_list.append(vehicle)
             elif rule in ["空中"]:
-                if vehicle.get("category") in ["攻擊機", "轟炸機", "戰鬥機", "重型轟炸機", "飛船"] or vehicle.get(
-                        "guid") in [
+                if vehicle.get("category") in [
+                    "攻擊機",
+                    "轟炸機",
+                    "戰鬥機",
+                    "重型轟炸機",
+                    "飛船",
+                ] or vehicle.get("guid") in [
                     "1A7DEECF-4F0E-E343-9644-D6D91DCAEC12",  # 飞艇
                 ]:
                     vehicle_list.append(vehicle)
             elif rule in ["海上"]:
-                if vehicle.get("category") in ["船隻", "驅逐艦"] or vehicle.get("guid") in [
+                if vehicle.get("category") in ["船隻", "驅逐艦"] or vehicle.get(
+                    "guid"
+                ) in [
                     "003FCC0A-2758-8508-4774-78E66FA1B5E3",  # 无畏舰
                 ]:
                     vehicle_list.append(vehicle)
@@ -321,15 +380,18 @@ class VehicleData:
         }
         if sort_type.upper() in ["KPM"]:
             vehicle_list.sort(
-                key=lambda x: x.get("stats").get("values").get("kills", 0) / x.get("stats").get("values").get("seconds",
-                                                                                                              0)
-                if x.get("stats").get("values").get("seconds", 0) != 0 else x["stats"]["values"].get("kills", 0),
-                reverse=True
+                key=lambda x: x.get("stats").get("values").get("kills", 0)
+                / x.get("stats").get("values").get("seconds", 0)
+                if x.get("stats").get("values").get("seconds", 0) != 0
+                else x["stats"]["values"].get("kills", 0),
+                reverse=True,
             )
         else:
             vehicle_list.sort(
-                key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
-                reverse=True
+                key=lambda x: x.get("stats")
+                .get("values")
+                .get(sort_type_dict.get(sort_type.upper(), "kills"), 0),
+                reverse=True,
             )
         return vehicle_list
 
@@ -340,19 +402,21 @@ class VehicleData:
         vehicle_list = []
         for vehicle in self.vehicle_item_list:
             # 先将载具名转换为简体中文，再进行模糊匹配
-            vehicle_name = zhconv.convert(vehicle.get("name"), 'zh-hans').upper().replace("-", "")
+            vehicle_name = (
+                zhconv.convert(vehicle.get("name"), "zh-hans").upper().replace("-", "")
+            )
             # 非完全匹配，基于最佳的子串（substrings）进行匹配
-            if (target_vehicle_name in vehicle_name) or (fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 90):
+            if (target_vehicle_name in vehicle_name) or (
+                fuzz.partial_ratio(target_vehicle_name, vehicle_name) > 90
+            ):
                 vehicle_list.append(vehicle)
         # 按照击杀/时长/摧毁数
-        sort_type_dict = {
-            "击杀": "kills",
-            "时长": "seconds",
-            "摧毁": "destroyed"
-        }
+        sort_type_dict = {"击杀": "kills", "时长": "seconds", "摧毁": "destroyed"}
         vehicle_list.sort(
-            key=lambda x: x.get("stats").get("values").get(sort_type_dict.get(sort_type, "kills"), 0),
-            reverse=True
+            key=lambda x: x.get("stats")
+            .get("values")
+            .get(sort_type_dict.get(sort_type, "kills"), 0),
+            reverse=True,
         )
         return vehicle_list
 
@@ -369,7 +433,7 @@ class BTRMatchesData:
         for i, match in enumerate(self.btr_matches_data):
             result_temp = {}
             # 获取详细数据
-            soup = BeautifulSoup(match, 'lxml')
+            soup = BeautifulSoup(match, "lxml")
             # 游戏地图、模式、时间在 <div class="match-info">标签,如下所示
             """
             <div class="match-info">
@@ -383,39 +447,73 @@ class BTRMatchesData:
             # 获取地图名并将地图名字翻译成中文
             # <h2 class="map-name">地图名<small class="hidden-sm hidden-xs">服务器名</small></h2>
             try:
-                map_name = re.findall(re.compile(r'<h2 class="map-name">(.*?)<small'), str(match))[0]
+                map_name = re.findall(
+                    re.compile(r'<h2 class="map-name">(.*?)<small'), str(match)
+                )[0]
             except IndexError:
                 try:
                     map_name = soup.select("div.match-info h2.map-name")[0].text
                 except IndexError:
                     continue
-            map_name = map_name \
-                .replace("Galicia", "加利西亚").replace("Giant's Shadow", "庞然暗影") \
-                .replace("Brusilov Keep", "勃鲁希洛夫关口").replace("Rupture", "决裂") \
-                .replace("Soissons", "苏瓦松").replace("Amiens", "亚眠") \
-                .replace("St. Quentin Scar", "圣康坦的伤痕").replace("Argonne Forest", "阿尔贡森林") \
-                .replace("Ballroom Blitz", "流血宴厅").replace("MP_Harbor", "泽布吕赫") \
-                .replace("River Somme", "索姆河").replace("Prise de Tahure", "攻占托尔") \
-                .replace("Fao Fortress", "法欧堡").replace("Achi Baba", "阿奇巴巴") \
-                .replace("Cape Helles", "海丽丝岬").replace("Tsaritsyn", "察里津").replace("Volga River", "窝瓦河") \
-                .replace("Empire's Edge", "帝国边境").replace("ŁUPKÓW PASS", "武普库夫山口") \
-                .replace("Verdun Heights", "凡尔登高地").replace("Fort De Vaux", "法乌克斯要塞") \
-                .replace("Sinai Desert", "西奈沙漠").replace("Monte Grappa", "格拉巴山").replace("Suez", "苏伊士") \
-                .replace("Albion", "阿尔比恩").replace("Caporetto", "卡波雷托").replace("Passchendaele", "帕斯尚尔") \
-                .replace("Nivelle Nights", "尼维尔之夜").replace("MP_Naval", "黑尔戈兰湾").strip()
+            map_name = (
+                map_name.replace("Galicia", "加利西亚")
+                .replace("Giant's Shadow", "庞然暗影")
+                .replace("Brusilov Keep", "勃鲁希洛夫关口")
+                .replace("Rupture", "决裂")
+                .replace("Soissons", "苏瓦松")
+                .replace("Amiens", "亚眠")
+                .replace("St. Quentin Scar", "圣康坦的伤痕")
+                .replace("Argonne Forest", "阿尔贡森林")
+                .replace("Ballroom Blitz", "流血宴厅")
+                .replace("MP_Harbor", "泽布吕赫")
+                .replace("River Somme", "索姆河")
+                .replace("Prise de Tahure", "攻占托尔")
+                .replace("Fao Fortress", "法欧堡")
+                .replace("Achi Baba", "阿奇巴巴")
+                .replace("Cape Helles", "海丽丝岬")
+                .replace("Tsaritsyn", "察里津")
+                .replace("Volga River", "窝瓦河")
+                .replace("Empire's Edge", "帝国边境")
+                .replace("ŁUPKÓW PASS", "武普库夫山口")
+                .replace("Verdun Heights", "凡尔登高地")
+                .replace("Fort De Vaux", "法乌克斯要塞")
+                .replace("Sinai Desert", "西奈沙漠")
+                .replace("Monte Grappa", "格拉巴山")
+                .replace("Suez", "苏伊士")
+                .replace("Albion", "阿尔比恩")
+                .replace("Caporetto", "卡波雷托")
+                .replace("Passchendaele", "帕斯尚尔")
+                .replace("Nivelle Nights", "尼维尔之夜")
+                .replace("MP_Naval", "黑尔戈兰湾")
+                .strip()
+            )
             # 游戏模式,并将模式名字翻译成中文
-            mode_name = soup.select('div.match-info')[0].select('span.type')[0].text \
-                .replace("BreakthroughLarge0", "行动模式").replace("Frontlines", "前线") \
-                .replace("Domination", "抢攻").replace("Team Deathmatch", "团队死斗") \
-                .replace("War Pigeons", "战争信鸽").replace("Conquest", "征服") \
-                .replace("AirAssault0", "空中突袭").replace("Rush", "突袭") \
-                .replace("Breakthrough", "闪击行动").strip()
+            mode_name = (
+                soup.select("div.match-info")[0]
+                .select("span.type")[0]
+                .text.replace("BreakthroughLarge0", "行动模式")
+                .replace("Frontlines", "前线")
+                .replace("Domination", "抢攻")
+                .replace("Team Deathmatch", "团队死斗")
+                .replace("War Pigeons", "战争信鸽")
+                .replace("Conquest", "征服")
+                .replace("AirAssault0", "空中突袭")
+                .replace("Rush", "突袭")
+                .replace("Breakthrough", "闪击行动")
+                .strip()
+            )
             # 游戏发生时间,转换成时间戳
-            game_time = soup.select('div.match-info')[0].select('span.date')[0].text
-            game_time = int(time.mktime(time.strptime(game_time, "%m/%d/%Y %I:%M:%S %p")))
+            game_time = soup.select("div.match-info")[0].select("span.date")[0].text
+            game_time = int(
+                time.mktime(time.strptime(game_time, "%m/%d/%Y %I:%M:%S %p"))
+            )
             game_time = datetime.datetime.fromtimestamp(game_time)
             # 服务器名
-            server_name = soup.select('div.match-info')[0].select('small.hidden-sm.hidden-xs')[0].text
+            server_name = (
+                soup.select("div.match-info")[0]
+                .select("small.hidden-sm.hidden-xs")[0]
+                .text
+            )
             result_temp["game_info"] = {
                 "server_name": server_name,
                 "map_name": map_name,
@@ -430,38 +528,61 @@ class BTRMatchesData:
             #             <div class="additional-info">Lost</div>
             #         </div>
             # 循环获取team1和team2的胜负情况
-            for team_item in soup.select('div.match-teams')[0].select('div.team'):
+            for team_item in soup.select("div.match-teams")[0].select("div.team"):
                 # 获取team1和team2的胜负情况，如果赢了转换为True，否则为False
-                team_name = team_item.select('div.card-heading')[0].select('h3.card-title')[0].text.strip().replace(" ",
-                                                                                                                    "")
+                team_name = (
+                    team_item.select("div.card-heading")[0]
+                    .select("h3.card-title")[0]
+                    .text.strip()
+                    .replace(" ", "")
+                )
                 # team1命名为1，team2命名为2，NO TEAM命名为0
-                if team_name == 'Team1':
+                if team_name == "Team1":
                     team_name = 1
-                elif team_name == 'Team2':
+                elif team_name == "Team2":
                     team_name = 2
                 else:
                     team_name = 0
-                team_win = team_item.select('div.card-heading')[0].select('div.additional-info')[0].text
-                if team_win == 'Won':
+                team_win = (
+                    team_item.select("div.card-heading")[0]
+                    .select("div.additional-info")[0]
+                    .text
+                )
+                if team_win == "Won":
                     team_win = True
                 else:
                     team_win = False
                 # 在每个team的card下包含card-player-container,team-players
                 # team-player下包含整个队伍的player
                 # 获取玩家列表
-                players = team_item.select('div.card')[0].select('div.card-player-container')[0].select(
-                    'div.player')
+                players = (
+                    team_item.select("div.card")[0]
+                    .select("div.card-player-container")[0]
+                    .select("div.player")
+                )
                 # 循环获取每个玩家的详细信息
                 for player in players:
                     # 玩家名字在div player-header->div player-info->div->a player-name
-                    player_name_item = player.select('div.player-header')[0].select('div.player-info')[0].select(
-                        'div')[0].select('a.player-name')[0].text.replace('"', "").strip()
+                    player_name_item = (
+                        player.select("div.player-header")[0]
+                        .select("div.player-info")[0]
+                        .select("div")[0]
+                        .select("a.player-name")[0]
+                        .text.replace('"', "")
+                        .strip()
+                    )
                     # 得分在div player-header->div quick-stats->div stat name=Score
                     player_score = 0
-                    for value in player.select('div.player-header')[0].select('div.quick-stats')[0].select('div.stat'):
-                        value_name = value.select('.name')[0].text.strip()
+                    for value in (
+                        player.select("div.player-header")[0]
+                        .select("div.quick-stats")[0]
+                        .select("div.stat")
+                    ):
+                        value_name = value.select(".name")[0].text.strip()
                         if value_name == "Score":
-                            player_score = value.select('.value')[0].text.strip().replace(",", "")
+                            player_score = (
+                                value.select(".value")[0].text.strip().replace(",", "")
+                            )
                             if player_score.isdigit():
                                 player_score = int(player_score)
                             else:
@@ -470,29 +591,48 @@ class BTRMatchesData:
                     if player_score == 0:
                         continue
                     # 获取玩家的详细信息,路径在player->player-details-container->player-details->row->col-md-7->stats
-                    player_stats = player.select('div.player-details-container')[0].select(
-                        'div.player-details')[0].select('div.row')[0].select('div.col-md-7')[0].select('div.stats')
+                    player_stats = (
+                        player.select("div.player-details-container")[0]
+                        .select("div.player-details")[0]
+                        .select("div.row")[0]
+                        .select("div.col-md-7")[0]
+                        .select("div.stats")
+                    )
                     # 获取击杀、死亡、爆头数、命中率、时间
-                    player_kills = player_stats[0].select('div.stat')[0].select('div.value')[0].text
+                    player_kills = (
+                        player_stats[0]
+                        .select("div.stat")[0]
+                        .select("div.value")[0]
+                        .text
+                    )
                     if player_kills.isdigit():
                         player_kills = int(player_kills)
                     else:
                         player_kills = 0
-                    player_deaths = player_stats[0].select('div.stat')[1].select('div.value')[0].text
+                    player_deaths = (
+                        player_stats[0]
+                        .select("div.stat")[1]
+                        .select("div.value")[0]
+                        .text
+                    )
                     if player_deaths.isdigit():
                         player_deaths = int(player_deaths)
                     else:
                         player_deaths = 0
                     if player_kills == 0 and player_deaths == 0:
                         continue
-                    kd = round(player_kills / player_deaths, 2) if player_deaths != 0 else 0
+                    kd = (
+                        round(player_kills / player_deaths, 2)
+                        if player_deaths != 0
+                        else 0
+                    )
                     # 爆头率序号不定
                     # 通过value来确定
                     player_headshots = "0"
-                    for value in player_stats[0].select('div.stat'):
-                        value_name = value.select('.name')[0].text.strip()
+                    for value in player_stats[0].select("div.stat"):
+                        value_name = value.select(".name")[0].text.strip()
                         if value_name == "Headshots":
-                            player_headshots = value.select('.value')[0].text.strip()
+                            player_headshots = value.select(".value")[0].text.strip()
                             break
                     if player_headshots.isdigit():
                         player_headshots = int(player_headshots) * 100
@@ -502,16 +642,16 @@ class BTRMatchesData:
                     # 命中率序号不定
                     # 通过value来确定
                     player_accuracy = "0%"
-                    for value in player_stats[0].select('div.stat'):
-                        if value.select('.name')[0].text.strip() == "Accuracy":
-                            player_accuracy = value.select('.value')[0].text.strip()
+                    for value in player_stats[0].select("div.stat"):
+                        if value.select(".name")[0].text.strip() == "Accuracy":
+                            player_accuracy = value.select(".value")[0].text.strip()
                             break
                     # 时间序号不定
                     # 通过value来确定
                     player_time = "0s"
-                    for value in player_stats[0].select('div.stat'):
-                        if value.select('.name')[0].text.strip() == "Time Played":
-                            player_time = value.select('.value')[0].text.strip()
+                    for value in player_stats[0].select("div.stat"):
+                        if value.select(".name")[0].text.strip() == "Time Played":
+                            player_time = value.select(".value")[0].text.strip()
                             break
                     # 时间都是  xh xm xs 的形式
                     # 转换成秒
@@ -580,22 +720,25 @@ class ServerData:
             map_name = server.get("mapNamePretty")
             mode_name = server.get("mapModePretty")
             mapImageUrl = server.get("mapImageUrl").replace(
-                "[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary")
-            server_list.append({
-                "game_id": game_id,
-                "guid": guid,
-                "name": name,
-                "description": description,
-                "SoldierCurrent": SoldierCurrent,
-                "SoldierMax": SoldierMax,
-                "QueueCurrent": QueueCurrent,
-                "QueueMax": QueueMax,
-                "SpectatorCurrent": SpectatorCurrent,
-                "SpectatorMax": SpectatorMax,
-                "map_name": map_name,
-                "mode_name": mode_name,
-                "mapImageUrl": mapImageUrl,
-            })
+                "[BB_PREFIX]", "https://eaassets-a.akamaihd.net/battlelog/battlebinary"
+            )
+            server_list.append(
+                {
+                    "game_id": game_id,
+                    "guid": guid,
+                    "name": name,
+                    "description": description,
+                    "SoldierCurrent": SoldierCurrent,
+                    "SoldierMax": SoldierMax,
+                    "QueueCurrent": QueueCurrent,
+                    "QueueMax": QueueMax,
+                    "SpectatorCurrent": SpectatorCurrent,
+                    "SpectatorMax": SpectatorMax,
+                    "map_name": map_name,
+                    "mode_name": mode_name,
+                    "mapImageUrl": mapImageUrl,
+                }
+            )
 
         # 排序
         if sort_type == "player":
@@ -633,7 +776,7 @@ class BlazeData:
     }
 
     @staticmethod
-    def player_list_handle(data: dict) -> Union[dict, str]:
+    def player_list_handle(data: dict) -> dict | str:
         """
         处理玩家列表数据
         origin:
@@ -710,7 +853,9 @@ class BlazeData:
                     pid = player["PID"]
                     uid = player["EXID"]
                     team = player["TIDX"]
-                    language = player["LOC"].to_bytes(4, byteorder="big").decode("ascii")
+                    language = (
+                        player["LOC"].to_bytes(4, byteorder="big").decode("ascii")
+                    )
                     language = BlazeData.language_dict.get(language[:2], language[:2])
                     if team == 65535 and rank == 0:
                         role = "queue"
@@ -740,6 +885,6 @@ class BlazeData:
                 "spectators": spectators,
                 "max_player": max_player,
                 "time": time.time(),
-                "operation_info": operation_info
+                "operation_info": operation_info,
             }
         return result

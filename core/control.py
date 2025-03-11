@@ -1,5 +1,4 @@
 import contextlib
-from typing import Union
 
 import sqlalchemy.exc
 from creart import create
@@ -15,18 +14,14 @@ from loguru import logger
 from sqlalchemy import select
 
 from core.config import GlobalConfig
-from core.models import (
-    saya_model,
-    frequency_model,
-    response_model
-)
+from core.models import saya_model, frequency_model, response_model
 from core.orm import orm
 from core.orm.tables import MemberPerm, GroupPerm, GroupSetting
 
 global_config = create(GlobalConfig)
 
 
-class Permission(object):
+class Permission:
     """权限判断
 
     成员权限:
@@ -44,6 +39,7 @@ class Permission(object):
     2       vip群组
     3       测试群组
     """
+
     Master = 256
     BotAdmin = 128
     GroupOwner = 64
@@ -64,7 +60,7 @@ class Permission(object):
     member_permStr_dict = {
         "Member": 16,  # 普通成员
         "Administrator": 32,  # 管理员
-        "Owner": 64  # 群主
+        "Owner": 64,  # 群主
     }
 
     user_str_dict = {
@@ -74,20 +70,22 @@ class Permission(object):
         32: "GroupAdmin",
         16: "User",
         0: "GroupBlack",
-        -1: "GlobalBlack"
+        -1: "GlobalBlack",
     }
 
     group_str_dict = {
         0: "InactiveGroup",
         1: "ActiveGroup",
         2: "VipGroup",
-        3: "TestGroup"
+        3: "TestGroup",
     }
 
     @staticmethod
     async def get_user_perm_byID(group_id: int, member_id: int) -> int:
         if result := await orm.fetch_one(
-                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == member_id)
+            select(MemberPerm.perm).where(
+                MemberPerm.group_id == group_id, MemberPerm.qq == member_id
+            )
         ):
             return result[0]
         else:
@@ -96,16 +94,18 @@ class Permission(object):
     @staticmethod
     async def get_users_perm_byID(group_id: int) -> list[int]:
         return await orm.fetch_all(
-            select(MemberPerm.perm, MemberPerm.qq).where(MemberPerm.group_id == group_id)
+            select(MemberPerm.perm, MemberPerm.qq).where(
+                MemberPerm.group_id == group_id
+            )
         )
 
     @staticmethod
     async def get_BotAdminsList() -> list[int]:
         admin_list = []
         if result := await orm.fetch_all(
-                select(MemberPerm.qq).where(
-                    MemberPerm.perm == Permission.BotAdmin,
-                )
+            select(MemberPerm.qq).where(
+                MemberPerm.perm == Permission.BotAdmin,
+            )
         ):
             for item in result:
                 if item[0] not in admin_list:
@@ -116,10 +116,9 @@ class Permission(object):
     async def get_GlobalBlackList() -> list[int]:
         global_black_list = []
         if result := await orm.fetch_all(
-                select(MemberPerm.qq).where(
-                    MemberPerm.perm == Permission.GlobalBlack,
-                    MemberPerm.group_id == 0
-                )
+            select(MemberPerm.qq).where(
+                MemberPerm.perm == Permission.GlobalBlack, MemberPerm.group_id == 0
+            )
         ):
             for item in result:
                 if item[0] not in global_black_list:
@@ -129,7 +128,9 @@ class Permission(object):
     @staticmethod
     async def get_group_perm_type(group_id: int) -> str:
         if result := await orm.fetch_one(
-                select(GroupSetting.permission_type).where(GroupSetting.group_id == group_id)
+            select(GroupSetting.permission_type).where(
+                GroupSetting.group_id == group_id
+            )
         ):
             return result[0]
         else:
@@ -138,7 +139,9 @@ class Permission(object):
     @staticmethod
     async def require_user_perm(group_id: int, member_id: int, perm: int) -> bool:
         if result := await orm.fetch_one(
-                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == member_id)
+            select(MemberPerm.perm).where(
+                MemberPerm.group_id == group_id, MemberPerm.qq == member_id
+            )
         ):
             return result[0] >= perm
         else:
@@ -146,14 +149,15 @@ class Permission(object):
 
     @staticmethod
     async def require_group_perm(group_id: int, perm: int) -> bool:
-        if result := await orm.fetch_one(select(GroupPerm.perm).where(
-                GroupPerm.group_id == group_id)):
+        if result := await orm.fetch_one(
+            select(GroupPerm.perm).where(GroupPerm.group_id == group_id)
+        ):
             return result[0] >= perm
         else:
             return Permission.ActiveGroup >= perm
 
     @classmethod
-    async def get_user_perm(cls, event: Union[GroupMessage, FriendMessage]) -> int:
+    async def get_user_perm(cls, event: GroupMessage | FriendMessage) -> int:
         """
         根据传入的消息事件(群消息事件/好友消息事件)
         :return: 查询到的权限
@@ -165,10 +169,9 @@ class Permission(object):
             # 查询是否在全局黑当中
             # 如果有查询到数据，则返回用户的权限等级
             if result := await orm.fetch_one(
-                    select(MemberPerm.perm).where(
-                        MemberPerm.qq == sender.id,
-                        MemberPerm.group_id == 0
-                    )
+                select(MemberPerm.perm).where(
+                    MemberPerm.qq == sender.id, MemberPerm.group_id == 0
+                )
             ):
                 return result[0]
             else:
@@ -180,7 +183,9 @@ class Permission(object):
                     return Permission.User
         # 如果有查询到数据，则返回用户的权限等级
         if result := await orm.fetch_one(
-                select(MemberPerm.perm).where(MemberPerm.group_id == group_id, MemberPerm.qq == sender.id)
+            select(MemberPerm.perm).where(
+                MemberPerm.group_id == group_id, MemberPerm.qq == sender.id
+            )
         ):
             return result[0]
         # 如果没有查询到数据，则写入初始权限
@@ -191,13 +196,9 @@ class Permission(object):
                     table=MemberPerm,
                     condition=[
                         MemberPerm.qq == sender.id,
-                        MemberPerm.group_id == group_id
+                        MemberPerm.group_id == group_id,
                     ],
-                    data={
-                        "group_id": group_id,
-                        "qq": sender.id,
-                        "perm": perm
-                    }
+                    data={"group_id": group_id, "qq": sender.id, "perm": perm},
                 )
             return perm
 
@@ -209,7 +210,11 @@ class Permission(object):
         :param if_noticed: 是否发送权限不足的消息通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], source: Source or None = None):
+        async def wrapper(
+            app: Ariadne,
+            event: GroupMessage | FriendMessage,
+            source: Source or None = None,
+        ):
             # 获取并判断用户的权限等级
             user_level = await cls.get_user_perm(event)
             if user_level < perm:
@@ -217,13 +222,21 @@ class Permission(object):
                     raise ExecutionStop
                 if if_noticed:
                     if isinstance(event, GroupMessage):
-                        await app.send_message(event.sender.group, MessageChain(
-                            f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
-                        ), quote=source)
+                        await app.send_message(
+                            event.sender.group,
+                            MessageChain(
+                                f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+                            ),
+                            quote=source,
+                        )
                     else:
-                        await app.send_message(event.sender, MessageChain(
-                            f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
-                        ), quote=source)
+                        await app.send_message(
+                            event.sender,
+                            MessageChain(
+                                f"权限不足!(你的权限:{user_level}/需要权限:{perm})"
+                            ),
+                            quote=source,
+                        )
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -237,8 +250,9 @@ class Permission(object):
         """
         # 查询数据库
         # 如果有查询到数据，则返回群的权限等级
-        if result := await orm.fetch_one(select(GroupPerm.perm).where(
-                GroupPerm.group_id == group.id)):
+        if result := await orm.fetch_one(
+            select(GroupPerm.perm).where(GroupPerm.group_id == group.id)
+        ):
             return result[0]
         # 如果没有查询到数据，则返回1（活跃群）,并写入初始权限1
         else:
@@ -249,10 +263,13 @@ class Permission(object):
             with contextlib.suppress(sqlalchemy.exc.IntegrityError):
                 await orm.insert_or_update(
                     GroupPerm,
-                    {"group_id": group.id, "group_name": group.name, "active": True, "perm": perm},
-                    [
-                        GroupPerm.group_id == group.id
-                    ]
+                    {
+                        "group_id": group.id,
+                        "group_name": group.name,
+                        "active": True,
+                        "perm": perm,
+                    },
+                    [GroupPerm.group_id == group.id],
                 )
                 return Permission.ActiveGroup
 
@@ -264,7 +281,9 @@ class Permission(object):
         :param if_noticed: 是否通知
         """
 
-        async def wrapper(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
+        async def wrapper(
+            app: Ariadne, event: GroupMessage | FriendMessage, src: Source
+        ):
             if isinstance(event, FriendMessage):
                 return Depend(wrapper)
             # 获取并判断群的权限等级
@@ -272,21 +291,27 @@ class Permission(object):
             group_perm = await cls.get_group_perm(group)
             if group_perm < perm:
                 if if_noticed and group_perm != 0:
-                    await app.send_message(group, MessageChain(
-                        f"权限不足!(当前群权限:{group_perm}/需要权限:{perm})"
-                    ), quote=src)
+                    await app.send_message(
+                        group,
+                        MessageChain(
+                            f"权限不足!(当前群权限:{group_perm}/需要权限:{perm})"
+                        ),
+                        quote=src,
+                    )
                 raise ExecutionStop
             return Depend(wrapper)
 
         return Depend(wrapper)
 
 
-class Function(object):
+class Function:
     """功能判断"""
 
     @classmethod
     def require(cls, module_name: str, notice: bool = True):
-        async def judge(app: Ariadne, group: Union[Group, Friend], source: Source or None = None):
+        async def judge(
+            app: Ariadne, group: Group | Friend, source: Source or None = None
+        ):
             if isinstance(group, Friend):
                 return Depend(judge)
             # 如果module_name不在modules_list里面就添加
@@ -302,24 +327,34 @@ class Function(object):
             # 如果在维护就停止
             if not module_controller.if_module_available(module_name):
                 if notice and module_controller.if_module_notice_on(module_name, group):
-                    await app.send_message(group, MessageChain(
-                        f"{module_meta.display_name or module_name}插件正在维护~"
-                    ), quote=source)
+                    await app.send_message(
+                        group,
+                        MessageChain(
+                            f"{module_meta.display_name or module_name}插件正在维护~"
+                        ),
+                        quote=source,
+                    )
                 raise ExecutionStop
             else:
                 # 如果群未打开开关就停止
                 if not module_controller.if_module_switch_on(module_name, group):
-                    if notice and module_controller.if_module_notice_on(module_name, group):
-                        await app.send_message(group, MessageChain(
-                            f"{module_meta.display_name or module_name}插件已关闭\n请使用‘-开启 插件编号’来打开插件\n插件编号请使用‘帮助’获取"
-                        ), quote=source)
+                    if notice and module_controller.if_module_notice_on(
+                        module_name, group
+                    ):
+                        await app.send_message(
+                            group,
+                            MessageChain(
+                                f"{module_meta.display_name or module_name}插件已关闭\n请使用‘-开启 插件编号’来打开插件\n插件编号请使用‘帮助’获取"
+                            ),
+                            quote=source,
+                        )
                     raise ExecutionStop
             return
 
         return Depend(judge)
 
 
-class Distribute(object):
+class Distribute:
     initialization_completed = False
 
     @classmethod
@@ -330,9 +365,10 @@ class Distribute(object):
         """
 
         async def wrapper(
-                group: Union[Group, Friend], app: Ariadne,
-                event: Union[GroupMessage, FriendMessage],
-                source: Source
+            group: Group | Friend,
+            app: Ariadne,
+            event: GroupMessage | FriendMessage,
+            source: Source,
         ):
             if not cls.initialization_completed:
                 raise ExecutionStop
@@ -351,13 +387,17 @@ class Distribute(object):
             if bot_account not in account_controller.initialized_bot_list:
                 await account_controller.init_account(bot_account)
             if not account_controller.check_initialization(group_id, bot_account):
-                await account_controller.init_group(group_id, await app.get_member_list(group_id), bot_account)
+                await account_controller.init_group(
+                    group_id, await app.get_member_list(group_id), bot_account
+                )
                 raise ExecutionStop
             res_acc = await account_controller.get_response_account(group_id, source.id)
             if not Ariadne.current(res_acc).connection.status.available:
                 account_controller.account_dict.pop(group_id)
                 raise ExecutionStop
-            if bot_account != await account_controller.get_response_account(group_id, source.id):
+            if bot_account != await account_controller.get_response_account(
+                group_id, source.id
+            ):
                 raise ExecutionStop
             return Depend(wrapper)
 
@@ -368,16 +408,16 @@ class Distribute(object):
         setattr(cls, "initialization_completed", True)
 
 
-class FrequencyLimitation(object):
+class FrequencyLimitation:
     """频率限制"""
 
     @classmethod
     def require(
-            cls,
-            module_name: str,
-            weight: int = 2,
-            total_weights: int = 12,
-            override_perm: int = Permission.GroupAdmin
+        cls,
+        module_name: str,
+        weight: int = 2,
+        total_weights: int = 12,
+        override_perm: int = Permission.GroupAdmin,
     ):
         """
         :param module_name:插件名字
@@ -386,14 +426,16 @@ class FrequencyLimitation(object):
         :param override_perm:越级权限
         """
 
-        async def judge(app: Ariadne, event: Union[GroupMessage, FriendMessage], src: Source):
+        async def judge(app: Ariadne, event: GroupMessage | FriendMessage, src: Source):
             if isinstance(event, FriendMessage):
                 return Depend(judge)
             group_id = event.sender.group.id
             sender_id = event.sender.id
             # 是否开启频率限制
             if frequency_limitation_switch := await orm.fetch_one(
-                    select(GroupSetting.frequency_limitation).where(GroupSetting.group_id == group_id)
+                select(GroupSetting.frequency_limitation).where(
+                    GroupSetting.group_id == group_id
+                )
             ):
                 frequency_limitation_switch = frequency_limitation_switch[0]
             if not frequency_limitation_switch:
@@ -406,20 +448,26 @@ class FrequencyLimitation(object):
             frequency_controller.add_weight(module_name, group_id, sender_id, weight)
             # 如果已经在黑名单则返回
             if frequency_controller.blacklist_judge(group_id, sender_id):
-                if not frequency_controller.blacklist_noticed_judge(group_id, sender_id):
+                if not frequency_controller.blacklist_noticed_judge(
+                    group_id, sender_id
+                ):
                     await app.send_message(
                         event.sender.group,
                         MessageChain("检测到大量请求,加入黑名单5分钟!"),
-                        quote=src
+                        quote=src,
                     )
                     frequency_controller.blacklist_notice(group_id, sender_id)
                 raise ExecutionStop
-            current_weight = frequency_controller.get_weight(module_name, group_id, sender_id)
+            current_weight = frequency_controller.get_weight(
+                module_name, group_id, sender_id
+            )
             if (current_weight + weight) >= total_weights:
                 await app.send_message(
                     event.sender.group,
-                    MessageChain(f"超过频率调用限制!({current_weight + weight}/{total_weights})\n"
-                                 f"休息一会儿吧~继续高频访问会被加入临时全局黑名单哦~"),
+                    MessageChain(
+                        f"超过频率调用限制!({current_weight + weight}/{total_weights})\n"
+                        f"休息一会儿吧~继续高频访问会被加入临时全局黑名单哦~"
+                    ),
                     quote=src,
                 )
                 raise ExecutionStop
@@ -427,7 +475,7 @@ class FrequencyLimitation(object):
         return Depend(judge)
 
 
-class Config(object):
+class Config:
     """配置检查"""
 
     @classmethod
@@ -438,8 +486,16 @@ class Config(object):
             config_instance = global_config
             paths = config.split(".")
             send_msg = "缺少配置{config}"
-            msg = MessageChain(send_msg.format(config=config)) if isinstance(send_msg, str) else send_msg
-            if len(paths) == 1 and hasattr(config_instance, paths[0]) and not getattr(config_instance, paths[0]):
+            msg = (
+                MessageChain(send_msg.format(config=config))
+                if isinstance(send_msg, str)
+                else send_msg
+            )
+            if (
+                len(paths) == 1
+                and hasattr(config_instance, paths[0])
+                and not getattr(config_instance, paths[0])
+            ):
                 await app.send_group_message(event.sender.group, msg)
                 raise ExecutionStop()
             current = config_instance
@@ -472,7 +528,7 @@ class Config(object):
         return Depend(config_available)
 
 
-class QuoteReply(object):
+class QuoteReply:
     @classmethod
     def require(cls):
         async def wrapper(event: GroupMessage):
@@ -491,7 +547,7 @@ class QuoteReply(object):
         return Depend(wrapper)
 
 
-class AtBotReply(object):
+class AtBotReply:
     @classmethod
     def require(cls):
         async def wrapper(event: GroupMessage):

@@ -1,13 +1,15 @@
 from pathlib import Path
 
-from utils.UI.models import *
 from utils.text2img import template2img
+from utils.UI.models import *  # noqa: F403
 
 
-async def gen(form: GenForm) -> bytes:
+async def gen(form: GenForm) -> bytes:  # noqa: F405
     template = Path(__file__).parent / "template.html"
     width = form.calc_body_width()
-    return await template2img(template, form.dict(), page_option={"viewport": {"width": width, "height": 10}})
+    return await template2img(
+        template, form.dict(), page_option={"viewport": {"width": width, "height": 10}}
+    )
 
 
 # example

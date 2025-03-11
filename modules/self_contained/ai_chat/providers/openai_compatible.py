@@ -1,6 +1,7 @@
 import base64
 from abc import abstractmethod
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from typing import Any
+from collections.abc import AsyncGenerator
 
 from loguru import logger
 from openai import AsyncOpenAI, AsyncStream
@@ -12,7 +13,6 @@ from ..core.provider import (
     BaseAIProvider,
     FileContent,
     FileType,
-    ModelConfig,
     ProviderConfig,
 )
 
@@ -28,9 +28,7 @@ class OpenAICompatibleConfig(ProviderConfig):
 class OpenAICompatibleProvider(BaseAIProvider):
     """OpenAI 接口兼容的提供者基类"""
 
-    def __init__(
-            self, config: OpenAICompatibleConfig, model_name: Optional[str] = None
-    ):
+    def __init__(self, config: OpenAICompatibleConfig, model_name: str | None = None):
         super().__init__(config, model_name)
         self.client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)
         self.usage: CompletionUsage = CompletionUsage(
@@ -38,7 +36,7 @@ class OpenAICompatibleProvider(BaseAIProvider):
         )
 
     @abstractmethod
-    def calculate_tokens(self, messages: List[Dict[str, Any]]) -> int:
+    def calculate_tokens(self, messages: list[dict[str, Any]]) -> int:
         pass
 
     def set_total_tokens(self, total_tokens: int):
@@ -64,7 +62,7 @@ class OpenAICompatibleProvider(BaseAIProvider):
         self.usage.completion_tokens_details = usage.completion_tokens_details
         self.usage.prompt_tokens_details = usage.prompt_tokens_details
 
-    def _process_file_content(self, file: FileContent) -> Dict[str, Any]:
+    def _process_file_content(self, file: FileContent) -> dict[str, Any]:
         """处理文件内容，转换为OpenAI API可接受的格式"""
         if file.file_type == FileType.IMAGE:
             # 处理图片文件
@@ -86,8 +84,8 @@ class OpenAICompatibleProvider(BaseAIProvider):
         return None
 
     def _prepare_messages_with_files(
-            self, messages: List[Dict[str, Any]], files: List[FileContent] = None
-    ) -> List[Dict[str, Any]]:
+        self, messages: list[dict[str, Any]], files: list[FileContent] = None
+    ) -> list[dict[str, Any]]:
         """准备包含文件的消息"""
         if not files or not self.supports_multimodal:
             return messages
@@ -144,13 +142,13 @@ class OpenAICompatibleProvider(BaseAIProvider):
         return new_messages
 
     async def ask(
-            self,
-            messages: List[Dict[str, Any]],
-            files: List[FileContent] = None,
-            tools: List[Dict[str, Any]] = None,
-            stream: bool = False,
-            **kwargs,
-    ) -> AsyncGenerator[Union[ChoiceDelta, ChatCompletionMessage], None]:
+        self,
+        messages: list[dict[str, Any]],
+        files: list[FileContent] = None,
+        tools: list[dict[str, Any]] = None,
+        stream: bool = False,
+        **kwargs,
+    ) -> AsyncGenerator[ChoiceDelta | ChatCompletionMessage, None]:
         try:
             # 处理多模态消息
             processed_messages = self._prepare_messages_with_files(messages, files)
@@ -184,15 +182,15 @@ class OpenAICompatibleProvider(BaseAIProvider):
                 # 通用对话	1.3
                 # 翻译	1.3
                 # 创意类写作/诗歌创作	1.5
-                response: ChatCompletion | AsyncStream[ChatCompletionChunk] = (
-                    await self.client.chat.completions.create(
-                        model=self.model_name,
-                        messages=processed_messages,
-                        tools=tools or None,
-                        max_tokens=self.model_config.max_tokens,
-                        temperature=1.3,
-                        stream=False if use_tools else stream,
-                    )
+                response: (
+                    ChatCompletion | AsyncStream[ChatCompletionChunk]
+                ) = await self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=processed_messages,
+                    tools=tools or None,
+                    max_tokens=self.model_config.max_tokens,
+                    temperature=1.3,
+                    stream=False if use_tools else stream,
                 )
 
                 if use_tools:

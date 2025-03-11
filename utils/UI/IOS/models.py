@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel
 
 from utils.UI.models import ColumnListItemIcon
@@ -22,6 +21,6 @@ class IOSColumnListItem(BaseModel):
 
 
 class IOSColumnList(BaseModel):
-    rows: List[IOSColumnListItem]
+    rows: list[IOSColumnListItem]
     style: str = ""
     el_name: str = "IOSColumnList"

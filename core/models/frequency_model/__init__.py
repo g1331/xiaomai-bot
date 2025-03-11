@@ -1,14 +1,13 @@
 import time
 from abc import ABC
 from collections import deque
-from typing import Type
 
-from creart import create, AbstractCreator, CreateTargetInfo, exists_module, add_creator
+from creart import AbstractCreator, CreateTargetInfo, add_creator, create, exists_module
 
 frequency_controller_instance = None
 
 
-class FrequencyController(object):
+class FrequencyController:
     """频率控制器
     frequency_dict = {
         module_name: {
@@ -54,15 +53,21 @@ class FrequencyController(object):
             self.frequency_dict[module_name][group_id][sender_id] = deque()
 
         # 移除早于（当前时间 - 15秒）的元组
-        while (len(self.frequency_dict[module_name][group_id][sender_id]) > 0) and \
-                (self.frequency_dict[module_name][group_id][sender_id][0][0] < current_time - 15):
+        while (len(self.frequency_dict[module_name][group_id][sender_id]) > 0) and (
+            self.frequency_dict[module_name][group_id][sender_id][0][0]
+            < current_time - 15
+        ):
             self.frequency_dict[module_name][group_id][sender_id].popleft()
 
         # 添加新的权重和时间戳
-        self.frequency_dict[module_name][group_id][sender_id].append((current_time, weight))
+        self.frequency_dict[module_name][group_id][sender_id].append(
+            (current_time, weight)
+        )
 
         # 计算总权重
-        total_weight = sum(w for _, w in self.frequency_dict[module_name][group_id][sender_id])
+        total_weight = sum(
+            w for _, w in self.frequency_dict[module_name][group_id][sender_id]
+        )
 
         if total_weight >= 12:
             if self.blacklist_judge(group_id, sender_id):
@@ -79,8 +84,10 @@ class FrequencyController(object):
             return 0
 
         # 移除早于（当前时间 - 15秒）的元组
-        while (len(self.frequency_dict[module_name][group_id][sender_id]) > 0) and \
-                (self.frequency_dict[module_name][group_id][sender_id][0][0] < current_time - 15):
+        while (len(self.frequency_dict[module_name][group_id][sender_id]) > 0) and (
+            self.frequency_dict[module_name][group_id][sender_id][0][0]
+            < current_time - 15
+        ):
             self.frequency_dict[module_name][group_id][sender_id].popleft()
 
         # 计算并返回总权重
@@ -106,7 +113,7 @@ class FrequencyController(object):
         self.init_blacklist(group_id, sender_id)
         self.blacklist[group_id][sender_id] = {
             "time": time.time() + 300,  # 5分钟
-            "noticed": False
+            "noticed": False,
         }
 
 
@@ -125,7 +132,7 @@ class FrequencyControllerClassCreator(AbstractCreator, ABC):
         return exists_module("core.models.frequency_model")
 
     @staticmethod
-    def create(create_type: Type[FrequencyController]) -> FrequencyController:
+    def create(create_type: type[FrequencyController]) -> FrequencyController:
         return FrequencyController()
 
 

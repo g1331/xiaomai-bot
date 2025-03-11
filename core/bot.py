@@ -1,21 +1,15 @@
 import asyncio
 import datetime
 import os
-import shutil
 import time
 from abc import ABC
 from pathlib import Path
-from typing import Dict, List, Type
 
 from alembic.autogenerate import compare_metadata
 from alembic.runtime.migration import MigrationContext
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from alembic.command import revision, upgrade
-from alembic.config import Config
-from alembic.script.revision import ResolutionError
-from alembic.util.exc import CommandError
 from creart import create, add_creator, exists_module
 from creart.creator import AbstractCreator, CreateTargetInfo
 from graia.ariadne import Ariadne
@@ -48,10 +42,7 @@ from sqlalchemy import select, create_engine
 from core.config import GlobalConfig
 from core.models import response_model
 from core.orm import orm, Base
-from core.orm.tables import (
-    GroupPerm,
-    MemberPerm
-)
+from core.orm.tables import GroupPerm, MemberPerm
 from utils.launch_time import LaunchTimeService, add_launch_time
 from utils.self_upgrade import UpdaterService
 
@@ -62,20 +53,20 @@ non_log = {
     StrangerMessage,
     ActiveMessage,
     ActiveGroupMessage,
-    ActiveFriendMessage
+    ActiveFriendMessage,
 }
 UMARU_BOT_LOGO = r"""
 ██╗   ██╗███╗   ███╗ █████╗ ██████╗ ██╗   ██╗    ██████╗  ██████╗ ████████╗
 ██║   ██║████╗ ████║██╔══██╗██╔══██╗██║   ██║    ██╔══██╗██╔═══██╗╚══██╔══╝
-██║   ██║██╔████╔██║███████║██████╔╝██║   ██║    ██████╔╝██║   ██║   ██║   
-██║   ██║██║╚██╔╝██║██╔══██║██╔══██╗██║   ██║    ██╔══██╗██║   ██║   ██║   
-╚██████╔╝██║ ╚═╝ ██║██║  ██║██║  ██║╚██████╔╝    ██████╔╝╚██████╔╝   ██║   
- ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝                         
+██║   ██║██╔████╔██║███████║██████╔╝██║   ██║    ██████╔╝██║   ██║   ██║
+██║   ██║██║╚██╔╝██║██╔══██║██╔══██╗██║   ██║    ██╔══██╗██║   ██║   ██║
+╚██████╔╝██║ ╚═╝ ██║██║  ██║██║  ██║╚██████╔╝    ██████╔╝╚██████╔╝   ██║
+ ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝     ╚═════╝  ╚═════╝    ╚═╝
 """
 
 
-class Umaru(object):
-    apps: List[Ariadne]
+class Umaru:
+    apps: list[Ariadne]
     config: GlobalConfig
     base_path: str | Path
     launch_time: datetime.datetime
@@ -95,21 +86,26 @@ class Umaru(object):
         self.launch_time = datetime.datetime.now()
         self.config = create(GlobalConfig)
         self.base_path = base_path if isinstance(base_path, Path) else Path(base_path)
-        self.apps = [Ariadne(
-            config(
-                bot_account,
-                str(g_config.verify_key),
-                HttpClientConfig(host=g_config.mirai_host),
-                WebsocketClientConfig(host=g_config.mirai_host),
-            ),
-            log_config=LogConfig(lambda x: None if type(x) in non_log else "INFO"),
-        ) for bot_account in self.config.bot_accounts]
+        self.apps = [
+            Ariadne(
+                config(
+                    bot_account,
+                    str(g_config.verify_key),
+                    HttpClientConfig(host=g_config.mirai_host),
+                    WebsocketClientConfig(host=g_config.mirai_host),
+                ),
+                log_config=LogConfig(lambda x: None if type(x) in non_log else "INFO"),
+            )
+            for bot_account in self.config.bot_accounts
+        ]
         if self.config.default_account:
             Ariadne.config(default_account=self.config.default_account)
         Ariadne.launch_manager.add_service(
             PlaywrightService(
                 "chromium",
-                proxy={"server": self.config.proxy} if self.config.proxy != "proxy" else None
+                proxy={"server": self.config.proxy}
+                if self.config.proxy != "proxy"
+                else None,
             )
         )
         if self.config.web_manager_api:
@@ -131,6 +127,7 @@ class Umaru(object):
             Ariadne.launch_manager.add_service(FastAPIService(fastapi))
         # 推后导入，避免循环导入
         from utils.alembic import AlembicService
+
         Ariadne.launch_manager.add_service(AlembicService())
         Ariadne.launch_manager.add_service(UpdaterService())
         Ariadne.launch_manager.add_service(LaunchTimeService())
@@ -143,7 +140,7 @@ class Umaru(object):
             return
         self.initialized = True
         self.set_logger()
-        logger.debug(f"等待账号初始化")
+        logger.debug("等待账号初始化")
         await asyncio.sleep(len(self.apps) if len(self.apps) <= 5 else 5)
         logger.debug("BOT初始化开始...")
         logger.debug(f"预计初始化{len(self.apps)}个账号")
@@ -154,21 +151,25 @@ class Umaru(object):
         await orm.update(GroupPerm, {"active": False}, [])
         admin_list = []
         if result := await orm.fetch_all(
-                select(MemberPerm.qq).where(
-                    MemberPerm.perm == 128,
-                )
+            select(MemberPerm.qq).where(
+                MemberPerm.perm == 128,
+            )
         ):
             for item in result:
                 if item[0] not in admin_list:
                     admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
         Timeout = 60
-        while ((time.time() - time_start) < Timeout) and (len(self.initialized_app_list) != len(self.apps)):
+        while ((time.time() - time_start) < Timeout) and (
+            len(self.initialized_app_list) != len(self.apps)
+        ):
             tasks = []
             for app in self.apps:
                 tasks.append(self.init_app(app))
             await asyncio.gather(*tasks)
-            logger.debug(f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}")
+            logger.debug(
+                f"已初始化账号{len(self.initialized_app_list)}/{len(self.config.bot_accounts)}"
+            )
             if len(self.initialized_app_list) != len(self.apps):
                 await asyncio.sleep(3)
         # 更新多账户响应
@@ -180,24 +181,28 @@ class Umaru(object):
         await self.update_admins_permission(admin_list)
         logger.success("成功更新admins权限!")
         from core.control import Distribute
+
         Distribute.distribute_initialize()
         if self.initialized_app_list:
             logger.info("本次启动活动群组如下：")
             for account, group_list in self.total_groups.items():
                 for group in group_list:
-                    logger.info(f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}")
-            init_result = f"BOT账号初始化完成!\n" \
-                          f"耗时:{(time.time() - time_start):.2f}秒\n" \
-                          f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
+                    logger.info(
+                        f"Bot账号: {str(account).ljust(14)}群ID: {str(group.id).ljust(14)}群名: {group.name}"
+                    )
+            init_result = (
+                f"BOT账号初始化完成!\n"
+                f"耗时:{(time.time() - time_start):.2f}秒\n"
+                f"成功初始化{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
+            )
             logger.success(init_result.replace("\n", "\\n"))
             # 向主人发送启动完成的信息
             if Ariadne.current(self.config.default_account).connection.status.available:
                 try:
-                    await Ariadne.current(self.config.default_account).send_friend_message(
-                        self.config.Master,
-                        MessageChain(init_result)
-                    )
-                except:
+                    await Ariadne.current(
+                        self.config.default_account
+                    ).send_friend_message(self.config.Master, MessageChain(init_result))
+                except Exception:
                     pass
         else:
             logger.critical(
@@ -213,7 +218,11 @@ class Umaru(object):
         if app.account in self.initialized_app_list:
             return
         logger.debug(f"账号{app.account}初始化ing")
-        group_list = [group for group in await app.get_group_list() if group.id not in self.initialized_group_list]
+        group_list = [
+            group
+            for group in await app.get_group_list()
+            if group.id not in self.initialized_group_list
+        ]
         self.total_groups[app.account] = group_list
         # 更新群组权限
         group_init_counter = 0
@@ -224,26 +233,30 @@ class Umaru(object):
                 active = await self.get_init_group_active(group)
                 await orm.insert_or_update(
                     GroupPerm,
-                    {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
-                    [
-                        GroupPerm.group_id == group.id
-                    ]
+                    {
+                        "group_id": group.id,
+                        "group_name": group.name,
+                        "active": active,
+                        "perm": perm,
+                    },
+                    [GroupPerm.group_id == group.id],
                 )
                 self.initialized_group_list.append(group.id)
                 group_init_counter += 1
         if app.account not in self.initialized_app_list:
             self.initialized_app_list.append(app.account)
-            logger.debug(f"账号{app.account}初始化完成,初始化群组{group_init_counter}个")
+            logger.debug(
+                f"账号{app.account}初始化完成,初始化群组{group_init_counter}个"
+            )
 
     async def get_init_group_perm(self, group: Group) -> int:
         # 更新群组权限
         if group.id == self.config.test_group:
             perm = 3
         elif await orm.fetch_one(
-                select(GroupPerm.group_id).where(
-                    GroupPerm.perm == 2,
-                    GroupPerm.group_id == group.id
-                )
+            select(GroupPerm.group_id).where(
+                GroupPerm.perm == 2, GroupPerm.group_id == group.id
+            )
         ):
             perm = 2
         else:
@@ -253,18 +266,14 @@ class Umaru(object):
     @staticmethod
     async def get_init_group_active(group: Group) -> bool:
         if result := await orm.fetch_one(
-                select(GroupPerm.active).where(
-                    GroupPerm.group_id == group.id
-                )
+            select(GroupPerm.active).where(GroupPerm.group_id == group.id)
         ):
             return result[0]
         else:
             await orm.insert_or_update(
                 GroupPerm,
                 {"group_id": group.id, "group_name": group.name, "active": True},
-                [
-                    GroupPerm.group_id == group.id
-                ]
+                [GroupPerm.group_id == group.id],
             )
             return True
 
@@ -278,10 +287,13 @@ class Umaru(object):
         active = await self.get_init_group_active(group)
         await orm.insert_or_update(
             GroupPerm,
-            {"group_id": group.id, "group_name": group.name, "active": active, "perm": perm},
-            [
-                GroupPerm.group_id == group.id
-            ]
+            {
+                "group_id": group.id,
+                "group_name": group.name,
+                "active": active,
+                "perm": perm,
+            },
+            [GroupPerm.group_id == group.id],
         )
         self.initialized_app_list.append(app.account)
         # 更新成员权限
@@ -292,13 +304,13 @@ class Umaru(object):
                 data={"qq": self.config.Master, "group_id": group.id, "perm": 256},
                 condition=[
                     MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group.id
-                ]
+                    MemberPerm.group_id == group.id,
+                ],
             )
         if result := await orm.fetch_all(
-                select(MemberPerm.qq).where(
-                    MemberPerm.perm == 128,
-                )
+            select(MemberPerm.qq).where(
+                MemberPerm.perm == 128,
+            )
         ):
             admin_list = [item[0] for item in result]
             for admin in admin_list:
@@ -308,21 +320,31 @@ class Umaru(object):
                     condition=[
                         MemberPerm.qq == admin,
                         MemberPerm.group_id == group.id,
-                    ]
+                    ],
                 )
-        await response_model.get_acc_controller().init_group(group.id, member_list, app.account)
+        await response_model.get_acc_controller().init_group(
+            group.id, member_list, app.account
+        )
         if group.id not in self.initialized_group_list:
             self.initialized_group_list.append(group.id)
         if Ariadne.current(self.config.default_account).connection.status.available:
             await Ariadne.current(self.config.default_account).send_message(
-                await Ariadne.current(self.config.default_account).get_group(self.config.test_group),
-                MessageChain(f"账号:{app.account}成功初始化群:{group.name}({group.id})")
+                await Ariadne.current(self.config.default_account).get_group(
+                    self.config.test_group
+                ),
+                MessageChain(
+                    f"账号:{app.account}成功初始化群:{group.name}({group.id})"
+                ),
             )
         logger.success(f"成功初始化群:{group.name}({group.id})")
 
     # 更新master权限
     async def update_master_permission(self):
-        group_id_list = [group.id for bot_account in self.total_groups for group in self.total_groups[bot_account]]
+        group_id_list = [
+            group.id
+            for bot_account in self.total_groups
+            for group in self.total_groups[bot_account]
+        ]
         group_id_list = list(set(group_id_list))
         await orm.insert_or_update_batch(
             table=MemberPerm,
@@ -331,26 +353,27 @@ class Umaru(object):
                 for group_id in group_id_list
             ],
             conditions_list=[
-                [
-                    MemberPerm.qq == self.config.Master,
-                    MemberPerm.group_id == group_id
-                ]
+                [MemberPerm.qq == self.config.Master, MemberPerm.group_id == group_id]
                 for group_id in group_id_list
-            ]
+            ],
         )
 
     # 更新admins权限
     async def update_admins_permission(self, admin_list: list[int] = None):
         if not admin_list:
             if result := await orm.fetch_all(
-                    select(MemberPerm.qq).where(
-                        MemberPerm.perm == 128,
-                    )
+                select(MemberPerm.qq).where(
+                    MemberPerm.perm == 128,
+                )
             ):
                 admin_list = [item[0] for item in result]
             else:
                 return
-        group_id_list = [group.id for bot_account in self.total_groups for group in self.total_groups[bot_account]]
+        group_id_list = [
+            group.id
+            for bot_account in self.total_groups
+            for group in self.total_groups[bot_account]
+        ]
         # 去重
         admin_list = list(set(admin_list))
         group_id_list = list(set(group_id_list))
@@ -368,7 +391,7 @@ class Umaru(object):
                 ]
                 for group_id in group_id_list
                 for admin in admin_list
-            ]
+            ],
         )
 
     def set_log(self, log_str: str):
@@ -393,7 +416,13 @@ class Umaru(object):
 
     def config_check(self) -> None:
         """配置检查"""
-        required_key = ("bot_accounts", "default_account", "host_qq", "mirai_host", "verify_key")
+        required_key = (
+            "bot_accounts",
+            "default_account",
+            "host_qq",
+            "mirai_host",
+            "verify_key",
+        )
         logger.info("开始检测配置\n" + "-" * 50)
         father_properties = tuple(dir(BaseModel))
         properties = [
@@ -404,7 +433,9 @@ class Umaru(object):
         for key in properties:
             value = self.config.__getattribute__(key)
             if key in required_key and key == value:
-                logger.error(f"Required initial value not changed detected: {key} - {value}")
+                logger.error(
+                    f"Required initial value not changed detected: {key} - {value}"
+                )
                 exit(0)
             elif isinstance(value, dict):
                 logger.success(f"{key}:")
@@ -422,12 +453,16 @@ class Umaru(object):
                 logger.success(f"{' ' * indent}{key}:")
                 Umaru.dict_check(dictionary[key], indent + 4)
             elif dictionary[key] == key:
-                logger.warning(f"{' ' * indent}Unchanged initial value detected: {key} - {dictionary[key]}")
+                logger.warning(
+                    f"{' ' * indent}Unchanged initial value detected: {key} - {dictionary[key]}"
+                )
             else:
                 logger.success(f"{' ' * indent}{key} - {dictionary[key]}")
 
     @staticmethod
-    def install_modules(base_path: str | Path, recursion_install: bool = False) -> Dict[str, Exception]:
+    def install_modules(
+        base_path: str | Path, recursion_install: bool = False
+    ) -> dict[str, Exception]:
         """加载 base_path 中的模块
 
         Args:
@@ -464,7 +499,7 @@ class Umaru(object):
                     )
                 except Exception as e:
                     logger.exception("")
-                    exceptions[str(base_path / module.split('.')[0])] = e
+                    exceptions[str(base_path / module.split(".")[0])] = e
                     add_launch_time(
                         f"{module_base_path}.{module}",
                         (datetime.datetime.now() - start).total_seconds(),
@@ -481,20 +516,28 @@ class Umaru(object):
             os.system("alembic init alembic")
 
             # 从statics目录复制alembic环境内容
-            with open(Path.cwd() / "statics" / "alembic_env_py_content.txt", "r") as r:
+            with open(Path.cwd() / "statics" / "alembic_env_py_content.txt") as r:
                 alembic_env_py_content = r.read()
             with open(alembic_path / "env.py", "w") as w:
                 w.write(alembic_env_py_content)
 
             # 在alembic.ini中更新数据库链接
             db_link = self.config.db_link
-            formatted_db_link = db_link.split(":")[0].split("+")[0] + ":" + ":".join(db_link.split(":")[1:])
-            logger.warning(f"尝试自动更改 sqlalchemy.url 为 {formatted_db_link}，若出现报错请自行修改")
+            formatted_db_link = (
+                db_link.split(":")[0].split("+")[0]
+                + ":"
+                + ":".join(db_link.split(":")[1:])
+            )
+            logger.warning(
+                f"尝试自动更改 sqlalchemy.url 为 {formatted_db_link}，若出现报错请自行修改"
+            )
             alembic_ini_path = Path.cwd() / "alembic.ini"
             lines = alembic_ini_path.read_text(encoding="utf-8").split("\n")
             for i, line in enumerate(lines):
                 if line.startswith("sqlalchemy.url"):
-                    lines[i] = line.replace("driver://user:pass@localhost/dbname", formatted_db_link)
+                    lines[i] = line.replace(
+                        "driver://user:pass@localhost/dbname", formatted_db_link
+                    )
                     break
             alembic_ini_path.write_text("\n".join(lines))
 
@@ -505,7 +548,9 @@ class Umaru(object):
             alembic_version_path.mkdir()
 
         # 检查当前模型与数据库之间是否存在差异
-        sync_db_link = orm.get_sync_db_link(self.config.db_link)  # 异步驱动映射为同步驱动,因为alembic不支持异步驱动
+        sync_db_link = orm.get_sync_db_link(
+            self.config.db_link
+        )  # 异步驱动映射为同步驱动,因为alembic不支持异步驱动
         sync_engine = create_engine(sync_db_link)
         conn = sync_engine.connect()
         context = MigrationContext.configure(conn)
@@ -546,7 +591,7 @@ class UmaruClassCreator(AbstractCreator, ABC):
         return exists_module("core.bot")
 
     @staticmethod
-    def create(create_type: Type[Umaru]) -> Umaru:
+    def create(create_type: type[Umaru]) -> Umaru:
         return Umaru(create(GlobalConfig), Path.cwd())
 
 

@@ -24,7 +24,7 @@ QType = {
     "Message": 64,
     "Error": 96,
     "Ping": 128,
-    "Pong": 160
+    "Pong": 160,
 }
 # TYPE = {
 #     "0": "Integer",
@@ -69,21 +69,21 @@ class Blaze:
         byte_data = self.packet
         Blaze.readable = readable
         offset = 16
-        length = int.from_bytes(byte_data[:4], byteorder='big') + int.from_bytes(
-            byte_data[4:6], byteorder='big'
+        length = int.from_bytes(byte_data[:4], byteorder="big") + int.from_bytes(
+            byte_data[4:6], byteorder="big"
         )
         q_type = byte_data[13]
         type_ = QType.get(str(q_type), q_type)
-        component = int.from_bytes(byte_data[6:8], byteorder='big')
-        command = int.from_bytes(byte_data[8:10], byteorder='big')
-        id_ = int.from_bytes(byte_data[11:13], byteorder='big')
+        component = int.from_bytes(byte_data[6:8], byteorder="big")
+        command = int.from_bytes(byte_data[8:10], byteorder="big")
+        id_ = int.from_bytes(byte_data[11:13], byteorder="big")
         method = (
             type_
             if type_ in ["KeepAlive", "Pong"]
             else f"{Components.get(component, str(component))}."
-                 + Commands[Components.get(component)][
-                     QType.get(q_type, "Command")
-                 ].get(str(command), str(command))
+            + Commands[Components.get(component)][QType.get(q_type, "Command")].get(
+                str(command), str(command)
+            )
         )
 
         # if QType.get(str(type_)):
@@ -114,8 +114,14 @@ class Blaze:
         if offset < len(byte_data):
             data = self.parse_struct(byte_data, offset, Blaze.readable)
         else:
-            data = {'struct': {}}
-        return {'method': method, 'type': type_, 'id': id_, 'length': length, 'data': data['struct']}
+            data = {"struct": {}}
+        return {
+            "method": method,
+            "type": type_,
+            "id": id_,
+            "length": length,
+            "data": data["struct"],
+        }
 
     @staticmethod
     def decode_tag(hex_str):
@@ -125,7 +131,7 @@ class Blaze:
         tag_buffer[1] = ((tag_int >> 12) & 63) + 32
         tag_buffer[2] = ((tag_int >> 6) & 63) + 32
         tag_buffer[3] = (tag_int & 63) + 32
-        return tag_buffer.decode('ascii')
+        return tag_buffer.decode("ascii")
 
     @staticmethod
     def parse_integer(byte_data, offset):
@@ -134,11 +140,11 @@ class Blaze:
         """
         i, n = 1, byte_data[offset]
         negative = n & 0x40
-        if n > 0x7f:
-            n &= 0x7f
-            while byte_data[offset] > 0x7f:
+        if n > 0x7F:
+            n &= 0x7F
+            while byte_data[offset] > 0x7F:
                 offset += 1
-                n += (byte_data[offset] & 0x7f) * (128 ** i * 0.5)
+                n += (byte_data[offset] & 0x7F) * (128**i * 0.5)
                 i += 1
         offset += 1
         n = int(n)
@@ -154,13 +160,13 @@ class Blaze:
         offset += length
         end = offset - 1
         try:
-            return byte_data[start:end].decode('utf-8'), offset
+            return byte_data[start:end].decode("utf-8"), offset
         except UnicodeDecodeError:
             # logger.error(f"开始: {start}, 结束: {end}, 长度: {length}, offset: {offset}")
             data = None
             for i in range(length):
                 with contextlib.suppress(UnicodeDecodeError):
-                    data = byte_data[start:start + i].decode()
+                    data = byte_data[start : start + i].decode()
             return ("", offset) if data is None else (data, offset)
 
     @staticmethod
@@ -168,7 +174,7 @@ class Blaze:
         """Blob 二进制
         Blob数据与String相似，也由两部分组成：第一部分是一个整数（Integer，0x00），第二部分是一个长度等于该整数值的二进制数据。"""
         length, offset = Blaze.parse_integer(byte_data, offset)
-        value = byte_data[offset:offset + length - 1].hex()
+        value = byte_data[offset : offset + length - 1].hex()
         offset += length
         return value, offset
 
@@ -186,7 +192,9 @@ class Blaze:
             offset += 1
             header["type"] += "2"
         for _ in range(size):
-            item_value, offset = Blaze.parse_block(byte_data, {"type": str(type_)}, offset, Blaze.readable)
+            item_value, offset = Blaze.parse_block(
+                byte_data, {"type": str(type_)}, offset, Blaze.readable
+            )
             data.append(item_value)
         return data, offset
 
@@ -203,15 +211,18 @@ class Blaze:
         size, offset = Blaze.parse_integer(byte_data, offset)
         data = {}
         for _ in range(size):
-            key_value, offset = Blaze.parse_block(byte_data, {"type": key_type}, offset, Blaze.readable)
-            val_value, offset = Blaze.parse_block(byte_data, {"type": val_type}, offset, Blaze.readable)
+            key_value, offset = Blaze.parse_block(
+                byte_data, {"type": key_type}, offset, Blaze.readable
+            )
+            val_value, offset = Blaze.parse_block(
+                byte_data, {"type": val_type}, offset, Blaze.readable
+            )
             data[key_value] = val_value
         return data, offset
 
     @staticmethod
     def parse_union(byte_data, header, offset):
-        """Union 联合体
-        """
+        """Union 联合体"""
         data = {}
         union_type = byte_data[offset]
         header["type"] += str(union_type)
@@ -219,8 +230,8 @@ class Blaze:
         if union_type == 127:
             return data, offset
         u_header = {
-            'tag': Blaze.decode_tag(byte_data[offset:offset + 3].hex()),
-            'type': str(byte_data[offset + 3])
+            "tag": Blaze.decode_tag(byte_data[offset : offset + 3].hex()),
+            "type": str(byte_data[offset + 3]),
         }
         offset += 4
         result, offset = Blaze.parse_block(byte_data, u_header, offset, Blaze.readable)
@@ -232,7 +243,7 @@ class Blaze:
         """Double 双精度浮点数
         8字节，IEEE 754 标准的双精度浮点数
         """
-        double_value = struct.unpack('>d', buffer[offset:offset + 8])[0]
+        double_value = struct.unpack(">d", buffer[offset : offset + 8])[0]
         offset += 8
         return double_value, offset
 
@@ -280,7 +291,7 @@ class Blaze:
 
     @staticmethod
     def parse_float(buffer, offset):
-        float_value = struct.unpack_from('>f', buffer, offset)[0]
+        float_value = struct.unpack_from(">f", buffer, offset)[0]
         offset += 4
         return float_value, offset
 
@@ -323,9 +334,9 @@ class Blaze:
     def parse_struct(byte_data, offset, readable: bool = False) -> dict:
         data = {}
         while byte_data[offset]:
-            tag = Blaze.decode_tag(byte_data[offset:offset + 3].hex())
+            tag = Blaze.decode_tag(byte_data[offset : offset + 3].hex())
             type_ = str(byte_data[offset + 3])
-            header = {'tag': tag, 'type': type_}
+            header = {"tag": tag, "type": type_}
             offset += 4
             result, offset = Blaze.parse_block(byte_data, header, offset, readable)
             if readable:
@@ -335,10 +346,10 @@ class Blaze:
             if offset >= len(byte_data):
                 break
         offset += 1
-        return {'struct': data, 'offset': offset}
+        return {"struct": data, "offset": offset}
 
     def encode(self) -> bytes:
-        hex_str = self.write_struct(self.packet.get('data'), end=False)
+        hex_str = self.write_struct(self.packet.get("data"), end=False)
 
         header = ""
         length = len(hex_str) // 2
@@ -350,11 +361,15 @@ class Blaze:
             header += length.to_bytes(4, byteorder="big").hex()
             header += "0000"
 
-        if Methods.get(self.packet.get('method')):
-            header += Methods[self.packet.get('method')][0].to_bytes(2, byteorder="big").hex()
-            header += Methods[self.packet.get('method')][1].to_bytes(2, byteorder="big").hex()
+        if Methods.get(self.packet.get("method")):
+            header += (
+                Methods[self.packet.get("method")][0].to_bytes(2, byteorder="big").hex()
+            )
+            header += (
+                Methods[self.packet.get("method")][1].to_bytes(2, byteorder="big").hex()
+            )
         else:
-            method_split = self.packet.get('method').split(".")
+            method_split = self.packet.get("method").split(".")
             header += int(method_split[0]).to_bytes(2, byteorder="big").hex()
             header += int(method_split[1]).to_bytes(2, byteorder="big").hex()
 
@@ -381,7 +396,7 @@ class Blaze:
         if tag in Tags:
             return Tags[tag]
         buffer = sum(
-            ((int.from_bytes(c.encode(), byteorder='big') - 32) << (18 - 6 * i))
+            ((int.from_bytes(c.encode(), byteorder="big") - 32) << (18 - 6 * i))
             for i, c in enumerate(tag)
         )
         hex_str += hex(buffer)[2:]

@@ -4,7 +4,7 @@
 支持实时天气和天气预报。
 """
 
-from typing import Any, Dict, Set
+from typing import Any
 
 import aiohttp
 
@@ -28,7 +28,7 @@ class WeatherConfig(PluginConfig):
     daily_url: str = "https://api.seniverse.com/v3/weather/daily.json"
 
     @property
-    def required_fields(self) -> Set[str]:
+    def required_fields(self) -> set[str]:
         return {"api_key"}
 
 
@@ -59,7 +59,7 @@ class WeatherPlugin(BasePlugin):
             example="{'location': 'beijing', 'query_type': 'forecast', 'days': 3}",
         )
 
-    async def execute(self, parameters: Dict[str, Any]) -> str:
+    async def execute(self, parameters: dict[str, Any]) -> str:
         """执行天气查询。
 
         Args:
@@ -78,7 +78,7 @@ class WeatherPlugin(BasePlugin):
             return await self.get_weather_forecast(parameters)
         return "错误：无效的查询类型，支持的类型包括：now、forecast"
 
-    async def get_weather_forecast(self, parameters: Dict[str, Any]) -> str:
+    async def get_weather_forecast(self, parameters: dict[str, Any]) -> str:
         """获取天气预报。"""
         location = parameters.get("location")
         if not location:
@@ -120,7 +120,7 @@ class WeatherPlugin(BasePlugin):
                     )
                 return forecast
 
-    async def get_current_weather(self, parameters: Dict[str, Any]) -> str:
+    async def get_current_weather(self, parameters: dict[str, Any]) -> str:
         """获取实时天气。"""
         location = parameters.get("location")
         if not location:

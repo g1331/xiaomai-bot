@@ -44,22 +44,20 @@ def get_github_repo(repo: "Repo") -> str:
     remote_url += "" if remote_url.endswith(".git") else ".git"
     if github_match := re.search(r"(?<=github.com[/:]).+?(?=\.git)", remote_url):
         return github_match.group()
-    raise RuntimeError("无法获取 GitHub 仓库地址，请检查当前目录是否为克隆自 GitHub 的 Git 仓库")
+    raise RuntimeError(
+        "无法获取 GitHub 仓库地址，请检查当前目录是否为克隆自 GitHub 的 Git 仓库"
+    )
 
 
 async def get_remote_commit_sha(repo: str, branch: str) -> str:
     link = f"https://api.github.com/repos/{repo}/commits/{branch}"
-    async with ClientSession() as session, session.get(
-            link, proxy=proxy
-    ) as resp:
+    async with ClientSession() as session, session.get(link, proxy=proxy) as resp:
         return (await resp.json()).get("sha", "")
 
 
 async def compare_commits(repo: str, base: str, head: str) -> list[dict]:
     link = f"https://api.github.com/repos/{repo}/compare/{base}...{head}"
-    async with ClientSession() as session, session.get(
-            link, proxy=proxy
-    ) as resp:
+    async with ClientSession() as session, session.get(link, proxy=proxy) as resp:
         return (await resp.json()).get("commits", [])
 
 
@@ -109,13 +107,17 @@ class UpdaterService(Launchable):
         logger.debug("【自动更新】正在检查更新...")
         try:
             if not (update := await check_update()):
-                logger.opt(colors=True).success("<green>【自动更新】当前版本已是最新</green>")
+                logger.opt(colors=True).success(
+                    "<green>【自动更新】当前版本已是最新</green>"
+                )
                 return
         except ClientError:
             logger.opt(colors=True).error("<red>【自动更新】无法连接到 GitHub</red>")
             return
         except RuntimeError:
-            logger.warning("【自动更新】未检测到 .git 文件夹，只有使用 git 时才检测更新！")
+            logger.warning(
+                "【自动更新】未检测到 .git 文件夹，只有使用 git 时才检测更新！"
+            )
             return
         else:
             output = []
@@ -125,4 +127,6 @@ class UpdaterService(Launchable):
                 message = message.replace("<", r"\<").splitlines()[0]
                 output.append(f"<red>{sha}</red> <yellow>{message}</yellow>")
             history = "\n".join(["", *output, ""])
-            logger.opt(colors=True).warning(f"<yellow>【自动更新】发现新版本</yellow>\n{history}")
+            logger.opt(colors=True).warning(
+                f"<yellow>【自动更新】发现新版本</yellow>\n{history}"
+            )

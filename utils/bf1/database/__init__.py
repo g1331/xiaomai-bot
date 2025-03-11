@@ -1,24 +1,27 @@
 import datetime
-from typing import Union, List, Tuple, Dict, Any
+from typing import Any
 
 from loguru import logger
-from sqlalchemy import select, func, delete
+from sqlalchemy import delete, func, select
 
 from utils.bf1.database.tables import (
-    orm,
-    Bf1PlayerBind,
     Bf1Account,
-    Bf1Server,
     Bf1Group,
+    Bf1GroupBind,
+    Bf1ManagerLog,
     Bf1MatchCache,
-    Bf1ServerVip,
-    Bf1ServerBan,
+    Bf1MatchIdCache,
+    Bf1PermGroupBind,
+    Bf1PermMemberInfo,
+    Bf1PlayerBind,
+    Bf1Server,
     Bf1ServerAdmin,
+    Bf1ServerBan,
+    Bf1ServerManagerVip,
     Bf1ServerOwner,
     Bf1ServerPlayerCount,
-    Bf1GroupBind,
-    Bf1PermGroupBind,
-    Bf1PermMemberInfo, Bf1ManagerLog, Bf1ServerManagerVip, Bf1MatchIdCache,
+    Bf1ServerVip,
+    orm,
 )
 
 
@@ -33,7 +36,6 @@ class bf1_db:
     #  根据pid写入remid和sid
     #  根据pid写入session
     class bf1account:
-
         @staticmethod
         async def get_bf1account_by_pid(pid: int) -> dict:
             """
@@ -43,15 +45,15 @@ class bf1_db:
             """
             # 获取玩家persona_id、user_id、name、display_name
             if account := await orm.fetch_one(
-                    select(
-                        Bf1Account.persona_id,
-                        Bf1Account.user_id,
-                        Bf1Account.name,
-                        Bf1Account.display_name,
-                        Bf1Account.remid,
-                        Bf1Account.sid,
-                        Bf1Account.session,
-                    ).where(Bf1Account.persona_id == pid)
+                select(
+                    Bf1Account.persona_id,
+                    Bf1Account.user_id,
+                    Bf1Account.name,
+                    Bf1Account.display_name,
+                    Bf1Account.remid,
+                    Bf1Account.sid,
+                    Bf1Account.session,
+                ).where(Bf1Account.persona_id == pid)
             ):
                 return {
                     "pid": account[0],
@@ -68,7 +70,7 @@ class bf1_db:
         @staticmethod
         async def get_session_by_pid(pid: int) -> str:
             if account := await orm.fetch_one(
-                    select(Bf1Account.session).where(Bf1Account.persona_id == pid)
+                select(Bf1Account.session).where(Bf1Account.persona_id == pid)
             ):
                 return account[0]
             else:
@@ -76,13 +78,13 @@ class bf1_db:
 
         @staticmethod
         async def update_bf1account(
-                pid: int,
-                display_name: str = None,
-                uid: int = None,
-                name: str = None,
-                remid: str = None,
-                sid: str = None,
-                session: str = None,
+            pid: int,
+            display_name: str = None,
+            uid: int = None,
+            name: str = None,
+            remid: str = None,
+            sid: str = None,
+            session: str = None,
         ) -> bool:
             if not pid:
                 logger.error("pid不能为空!")
@@ -109,7 +111,7 @@ class bf1_db:
 
         @staticmethod
         async def update_bf1account_loginInfo(
-                pid: int, remid: str = None, sid: str = None, session: str = None
+            pid: int, remid: str = None, sid: str = None, session: str = None
         ) -> bool:
             """
             根据pid写入remid和sid、session
@@ -132,24 +134,22 @@ class bf1_db:
             return True
 
         @staticmethod
-        async def get_manager_account_info(pid=None) -> Union[List[dict], None]:
+        async def get_manager_account_info(pid=None) -> list[dict] | None:
             """
             获取所有session非空的即服管帐号
             :return: 有结果时,返回list,无结果时返回None,每个元素为dict,包含pid,uid,name,display_name,remid,sid,session
             """
             if not pid:
-                if (
-                        accounts := await orm.fetch_all(
-                            select(
-                                Bf1Account.persona_id,
-                                Bf1Account.user_id,
-                                Bf1Account.name,
-                                Bf1Account.display_name,
-                                Bf1Account.remid,
-                                Bf1Account.sid,
-                                Bf1Account.session,
-                            ).where(Bf1Account.session is not None)
-                        )
+                if accounts := await orm.fetch_all(
+                    select(
+                        Bf1Account.persona_id,
+                        Bf1Account.user_id,
+                        Bf1Account.name,
+                        Bf1Account.display_name,
+                        Bf1Account.remid,
+                        Bf1Account.sid,
+                        Bf1Account.session,
+                    ).where(Bf1Account.session is not None)
                 ):
                     return [
                         {
@@ -165,17 +165,17 @@ class bf1_db:
                         if account[6]
                     ]
             if not (
-                    account := await orm.fetch_one(
-                        select(
-                            Bf1Account.persona_id,
-                            Bf1Account.user_id,
-                            Bf1Account.name,
-                            Bf1Account.display_name,
-                            Bf1Account.remid,
-                            Bf1Account.sid,
-                            Bf1Account.session,
-                        ).where((Bf1Account.persona_id == pid))
-                    )
+                account := await orm.fetch_one(
+                    select(
+                        Bf1Account.persona_id,
+                        Bf1Account.user_id,
+                        Bf1Account.name,
+                        Bf1Account.display_name,
+                        Bf1Account.remid,
+                        Bf1Account.sid,
+                        Bf1Account.session,
+                    ).where(Bf1Account.persona_id == pid)
+                )
             ):
                 return None
             if account[6]:
@@ -207,7 +207,7 @@ class bf1_db:
             :return: 绑定的pid,没有绑定时返回None
             """
             if bind := await orm.fetch_one(
-                    select(Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq == qq)
+                select(Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq == qq)
             ):
                 return bind[0]
             else:
@@ -221,7 +221,7 @@ class bf1_db:
             :return: 返回一个list,里面是绑定的qq号,没有绑定时返回[]
             """
             if bind := await orm.fetch_all(
-                    select(Bf1PlayerBind.qq).where(Bf1PlayerBind.persona_id == pid)
+                select(Bf1PlayerBind.qq).where(Bf1PlayerBind.persona_id == pid)
             ):
                 return [i[0] for i in bind]
             else:
@@ -258,13 +258,20 @@ class bf1_db:
             players_info = {}
             # 批量查询
             for bind in await orm.fetch_all(
-                    select(Bf1PlayerBind.qq, Bf1PlayerBind.persona_id).where(Bf1PlayerBind.qq.in_(qqs))
+                select(Bf1PlayerBind.qq, Bf1PlayerBind.persona_id).where(
+                    Bf1PlayerBind.qq.in_(qqs)
+                )
             ):
                 if result := await orm.fetch_one(
-                        select(
-                            Bf1Account.persona_id, Bf1Account.user_id, Bf1Account.name,
-                            Bf1Account.display_name, Bf1Account.remid, Bf1Account.sid, Bf1Account.session
-                        ).where(Bf1Account.persona_id == bind[1])
+                    select(
+                        Bf1Account.persona_id,
+                        Bf1Account.user_id,
+                        Bf1Account.name,
+                        Bf1Account.display_name,
+                        Bf1Account.remid,
+                        Bf1Account.sid,
+                        Bf1Account.session,
+                    ).where(Bf1Account.persona_id == bind[1])
                 ):
                     players_info[bind[0]] = {
                         "pid": result[0],
@@ -285,16 +292,15 @@ class bf1_db:
     #  从getFullServerDetails获取并写入服务器信息
 
     class server:
-
         @staticmethod
         async def update_serverInfo(
-                serverName: str,
-                serverId: str,
-                guid: str,
-                gameId: int,
-                createdDate: datetime.datetime,
-                expirationDate: datetime.datetime,
-                updatedDate: datetime.datetime,
+            serverName: str,
+            serverId: str,
+            guid: str,
+            gameId: int,
+            createdDate: datetime.datetime,
+            expirationDate: datetime.datetime,
+            updatedDate: datetime.datetime,
         ) -> bool:
             await orm.insert_or_update(
                 table=Bf1Server,
@@ -314,34 +320,34 @@ class bf1_db:
 
         @staticmethod
         async def update_serverInfoList(
-                server_info_list: List[
-                    Tuple[
-                        str,
-                        str,
-                        str,
-                        int,
-                        datetime.datetime,
-                        datetime.datetime,
-                        datetime.datetime,
-                    ]
+            server_info_list: list[
+                tuple[
+                    str,
+                    str,
+                    str,
+                    int,
+                    datetime.datetime,
+                    datetime.datetime,
+                    datetime.datetime,
                 ]
+            ],
         ) -> bool:
             # 构造要插入或更新的记录列表
             info_records = []
             player_records = []
             for (
-                    serverName,
-                    serverId,
-                    guid,
-                    gameId,
-                    serverBookmarkCount,
-                    createdDate,
-                    expirationDate,
-                    updatedDate,
-                    playerCurrent,
-                    playerMax,
-                    playerQueue,
-                    playerSpectator,
+                serverName,
+                serverId,
+                guid,
+                gameId,
+                serverBookmarkCount,
+                createdDate,
+                expirationDate,
+                updatedDate,
+                playerCurrent,
+                playerMax,
+                playerQueue,
+                playerSpectator,
             ) in server_info_list:
                 record = {
                     "serverName": serverName,
@@ -370,20 +376,21 @@ class bf1_db:
                 table=Bf1Server,
                 data_list=info_records,
                 conditions_list=[
-                    (Bf1Server.serverId == record["serverId"],) for record in info_records
+                    (Bf1Server.serverId == record["serverId"],)
+                    for record in info_records
                 ],
             )
             await orm.add_batch(table=Bf1ServerPlayerCount, data_list=player_records)
 
         @staticmethod
-        async def get_serverInfo_byServerId(serverId: str) -> Union[dict, None]:
+        async def get_serverInfo_byServerId(serverId: str) -> dict | None:
             if server := await orm.fetch_one(
-                    select(
-                        Bf1Server.serverName,
-                        Bf1Server.serverId,
-                        Bf1Server.persistedGameId,
-                        Bf1Server.gameId,
-                    ).where(Bf1Server.serverId == serverId)
+                select(
+                    Bf1Server.serverName,
+                    Bf1Server.serverId,
+                    Bf1Server.persistedGameId,
+                    Bf1Server.gameId,
+                ).where(Bf1Server.serverId == serverId)
             ):
                 return {
                     "serverName": server[0],
@@ -397,10 +404,10 @@ class bf1_db:
         @staticmethod
         async def get_all_serverInfo() -> list:
             if servers := await orm.fetch_all(
-                    select(
-                        Bf1Server.serverId,
-                        Bf1Server.expirationDate,
-                    )
+                select(
+                    Bf1Server.serverId,
+                    Bf1Server.expirationDate,
+                )
             ):
                 return [{} for _ in servers]
             else:
@@ -408,7 +415,7 @@ class bf1_db:
 
         @staticmethod
         async def update_serverVip(
-                serverId: str, persona_id: int, display_name: str
+            serverId: str, persona_id: int, display_name: str
         ) -> bool:
             await orm.insert_or_update(
                 table=Bf1ServerVip,
@@ -433,7 +440,9 @@ class bf1_db:
             :return: VIP数量
             """
             if result := await orm.fetch_all(
-                    select(Bf1ServerVip.serverId).where(Bf1ServerVip.personaId == persona_id)
+                select(Bf1ServerVip.serverId).where(
+                    Bf1ServerVip.personaId == persona_id
+                )
             ):
                 return len([i[0] for i in result])
             else:
@@ -447,11 +456,11 @@ class bf1_db:
             :return: VIP服务器列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(Bf1ServerVip.serverId).where(
-                            Bf1ServerVip.personaId == persona_id
-                        )
+                result := await orm.fetch_all(
+                    select(Bf1ServerVip.serverId).where(
+                        Bf1ServerVip.personaId == persona_id
                     )
+                )
             ):
                 return []
             server_list = []
@@ -459,7 +468,7 @@ class bf1_db:
             for item in result:
                 serverId = item[0]
                 if server := await orm.fetch_one(
-                        select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
+                    select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
                 ):
                     server_list.append(server[0])
             return server_list
@@ -472,13 +481,13 @@ class bf1_db:
             """
             # 查询整个表
             if not (
-                    result := await orm.fetch_all(
-                        select(
-                            Bf1ServerVip.serverId,
-                            Bf1ServerVip.personaId,
-                            Bf1ServerVip.displayName,
-                        )
+                result := await orm.fetch_all(
+                    select(
+                        Bf1ServerVip.serverId,
+                        Bf1ServerVip.personaId,
+                        Bf1ServerVip.displayName,
                     )
+                )
             ):
                 return []
             # 挑选出所有的pid和对应dName,放在list中,然后按照server_list的数量排序
@@ -508,16 +517,20 @@ class bf1_db:
             return data
 
         @staticmethod
-        async def update_serverVipList(vip_dict: Dict[int, Dict[str, Any]]) -> bool:
+        async def update_serverVipList(vip_dict: dict[int, dict[str, Any]]) -> bool:
             update_list = []
             delete_list = []
             # 查询所有记录
             all_records = await orm.fetch_all(
                 select(
-                    Bf1ServerVip.serverId, Bf1ServerVip.personaId, Bf1ServerVip.displayName
+                    Bf1ServerVip.serverId,
+                    Bf1ServerVip.personaId,
+                    Bf1ServerVip.displayName,
                 ).where(Bf1ServerVip.serverId.in_(vip_dict.keys()))
             )
-            all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+            all_records = {
+                f"{record[0]}-{record[1]}": record[2] for record in all_records
+            }
             now_records = {
                 f"{serverId}-{record['personaId']}": record["displayName"]
                 for serverId, records in vip_dict.items()
@@ -579,7 +592,7 @@ class bf1_db:
 
         @staticmethod
         async def update_serverBan(
-                serverId: str, persona_id: int, display_name: str
+            serverId: str, persona_id: int, display_name: str
         ) -> bool:
             await orm.insert_or_update(
                 table=Bf1ServerBan,
@@ -604,7 +617,9 @@ class bf1_db:
             :return: Ban数量
             """
             if result := await orm.fetch_all(
-                    select(Bf1ServerBan.serverId).where(Bf1ServerBan.personaId == persona_id)
+                select(Bf1ServerBan.serverId).where(
+                    Bf1ServerBan.personaId == persona_id
+                )
             ):
                 return len([i[0] for i in result])
             else:
@@ -618,11 +633,11 @@ class bf1_db:
             :return: Ban服务器列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(Bf1ServerBan.serverId).where(
-                            Bf1ServerBan.personaId == persona_id
-                        )
+                result := await orm.fetch_all(
+                    select(Bf1ServerBan.serverId).where(
+                        Bf1ServerBan.personaId == persona_id
                     )
+                )
             ):
                 return []
             server_list = []
@@ -630,7 +645,7 @@ class bf1_db:
             for item in result:
                 serverId = item[0]
                 if server := await orm.fetch_one(
-                        select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
+                    select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
                 ):
                     server_list.append(server[0])
             return server_list
@@ -642,13 +657,13 @@ class bf1_db:
             :return: {"pid": pid, "displayName": displayName, "server_list": [serverId, serverId]}
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(
-                            Bf1ServerBan.serverId,
-                            Bf1ServerBan.personaId,
-                            Bf1ServerBan.displayName,
-                        )
+                result := await orm.fetch_all(
+                    select(
+                        Bf1ServerBan.serverId,
+                        Bf1ServerBan.personaId,
+                        Bf1ServerBan.displayName,
                     )
+                )
             ):
                 return []
             data = {}
@@ -666,16 +681,20 @@ class bf1_db:
             return data
 
         @staticmethod
-        async def update_serverBanList(ban_dict: Dict[int, Dict[str, Any]]) -> bool:
+        async def update_serverBanList(ban_dict: dict[int, dict[str, Any]]) -> bool:
             update_list = []
             delete_list = []
             # 查询所有记录
             all_records = await orm.fetch_all(
                 select(
-                    Bf1ServerBan.serverId, Bf1ServerBan.personaId, Bf1ServerBan.displayName
+                    Bf1ServerBan.serverId,
+                    Bf1ServerBan.personaId,
+                    Bf1ServerBan.displayName,
                 )
             )
-            all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+            all_records = {
+                f"{record[0]}-{record[1]}": record[2] for record in all_records
+            }
             now_records = {
                 f"{serverId}-{record['personaId']}": record["displayName"]
                 for serverId, records in ban_dict.items()
@@ -737,7 +756,7 @@ class bf1_db:
 
         @staticmethod
         async def update_serverAdmin(
-                serverId: str, persona_id: int, display_name: str
+            serverId: str, persona_id: int, display_name: str
         ) -> bool:
             await orm.insert_or_update(
                 table=Bf1ServerAdmin,
@@ -762,9 +781,9 @@ class bf1_db:
             :return: Admin数量
             """
             if result := await orm.fetch_all(
-                    select(Bf1ServerAdmin.serverId).where(
-                        Bf1ServerAdmin.personaId == persona_id
-                    )
+                select(Bf1ServerAdmin.serverId).where(
+                    Bf1ServerAdmin.personaId == persona_id
+                )
             ):
                 return len([i[0] for i in result])
             else:
@@ -778,11 +797,11 @@ class bf1_db:
             :return: Admin服务器列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(Bf1ServerAdmin.serverId).where(
-                            Bf1ServerAdmin.personaId == persona_id
-                        )
+                result := await orm.fetch_all(
+                    select(Bf1ServerAdmin.serverId).where(
+                        Bf1ServerAdmin.personaId == persona_id
                     )
+                )
             ):
                 return []
             server_list = []
@@ -790,7 +809,7 @@ class bf1_db:
             for item in result:
                 serverId = item[0]
                 if server := await orm.fetch_one(
-                        select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
+                    select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
                 ):
                     server_list.append(server[0])
             return server_list
@@ -802,13 +821,13 @@ class bf1_db:
             :return: 所有服务器的玩家Admin列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(
-                            Bf1ServerAdmin.serverId,
-                            Bf1ServerAdmin.personaId,
-                            Bf1ServerAdmin.displayName,
-                        )
+                result := await orm.fetch_all(
+                    select(
+                        Bf1ServerAdmin.serverId,
+                        Bf1ServerAdmin.personaId,
+                        Bf1ServerAdmin.displayName,
                     )
+                )
             ):
                 return []
             data = []
@@ -830,7 +849,7 @@ class bf1_db:
             return data
 
         @staticmethod
-        async def update_serverAdminList(admin_dict: Dict[int, Dict[str, Any]]) -> bool:
+        async def update_serverAdminList(admin_dict: dict[int, dict[str, Any]]) -> bool:
             update_list = []
             delete_list = []
             # 查询所有记录
@@ -841,7 +860,9 @@ class bf1_db:
                     Bf1ServerAdmin.displayName,
                 )
             )
-            all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+            all_records = {
+                f"{record[0]}-{record[1]}": record[2] for record in all_records
+            }
             now_records = {
                 f"{serverId}-{record['personaId']}": record["displayName"]
                 for serverId, records in admin_dict.items()
@@ -903,7 +924,7 @@ class bf1_db:
 
         @staticmethod
         async def update_serverOwner(
-                serverId: str, persona_id: int, display_name: str
+            serverId: str, persona_id: int, display_name: str
         ) -> bool:
             await orm.insert_or_update(
                 table=Bf1ServerOwner,
@@ -928,9 +949,9 @@ class bf1_db:
             :return: Owner数量
             """
             if result := await orm.fetch_all(
-                    select(Bf1ServerOwner.serverId).where(
-                        Bf1ServerOwner.personaId == persona_id
-                    )
+                select(Bf1ServerOwner.serverId).where(
+                    Bf1ServerOwner.personaId == persona_id
+                )
             ):
                 return len([i[0] for i in result])
             else:
@@ -944,11 +965,11 @@ class bf1_db:
             :return: Owner服务器列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(Bf1ServerOwner.serverId).where(
-                            Bf1ServerOwner.personaId == persona_id
-                        )
+                result := await orm.fetch_all(
+                    select(Bf1ServerOwner.serverId).where(
+                        Bf1ServerOwner.personaId == persona_id
                     )
+                )
             ):
                 return []
             server_list = []
@@ -956,7 +977,7 @@ class bf1_db:
             for item in result:
                 serverId = item[0]
                 if server := await orm.fetch_one(
-                        select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
+                    select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
                 ):
                     server_list.append(server[0])
             return server_list
@@ -968,13 +989,13 @@ class bf1_db:
             :return: 所有服务器的Owner列表
             """
             if not (
-                    result := await orm.fetch_all(
-                        select(
-                            Bf1ServerOwner.serverId,
-                            Bf1ServerOwner.personaId,
-                            Bf1ServerOwner.displayName,
-                        )
+                result := await orm.fetch_all(
+                    select(
+                        Bf1ServerOwner.serverId,
+                        Bf1ServerOwner.personaId,
+                        Bf1ServerOwner.displayName,
                     )
+                )
             ):
                 return []
             data = []
@@ -996,7 +1017,7 @@ class bf1_db:
             return data
 
         @staticmethod
-        async def update_serverOwnerList(owner_dict: Dict[int, Dict[str, Any]]) -> bool:
+        async def update_serverOwnerList(owner_dict: dict[int, dict[str, Any]]) -> bool:
             update_list = []
             delete_list = []
             # 查询所有记录
@@ -1007,7 +1028,9 @@ class bf1_db:
                     Bf1ServerOwner.displayName,
                 )
             )
-            all_records = {f"{record[0]}-{record[1]}": record[2] for record in all_records}
+            all_records = {
+                f"{record[0]}-{record[1]}": record[2] for record in all_records
+            }
             now_records = {
                 f"{serverId}-{record['personaId']}": record["displayName"]
                 for serverId, records in owner_dict.items()
@@ -1079,12 +1102,12 @@ class bf1_db:
             if not time_temp:
                 return []
             if not (
-                    result := await orm.fetch_all(
-                        select(
-                            Bf1ServerPlayerCount.serverId,
-                            Bf1ServerPlayerCount.serverBookmarkCount,
-                        ).where(Bf1ServerPlayerCount.time >= time_temp)
-                    )
+                result := await orm.fetch_all(
+                    select(
+                        Bf1ServerPlayerCount.serverId,
+                        Bf1ServerPlayerCount.serverBookmarkCount,
+                    ).where(Bf1ServerPlayerCount.time >= time_temp)
+                )
             ):
                 return []
             # 根据serverId查询serverName
@@ -1092,7 +1115,7 @@ class bf1_db:
             for item in result:
                 serverId = item[0]
                 if server := await orm.fetch_one(
-                        select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
+                    select(Bf1Server.serverName).where(Bf1Server.serverId == serverId)
                 ):
                     server_list.append({"serverName": server[0], "bookmark": item[1]})
             # 按bookmark降序排序
@@ -1129,51 +1152,66 @@ class bf1_db:
             vipList = rsp_info["vipList"]
             serverId = rsp_info["server"]["serverId"]
 
-            vip_cache = await bf1_db.server_manager.get_server_vip_list(serverId=serverId)
+            vip_cache = await bf1_db.server_manager.get_server_vip_list(
+                serverId=serverId
+            )
             vip_cache_dict = {str(item["personaId"]): item for item in vip_cache}
             pid_cache = [str(item["personaId"]) for item in vip_cache]
 
             pid_list = [str(item["personaId"]) for item in vipList]
-            displayName_dict = {item["personaId"]: item["displayName"] for item in vipList}
+            displayName_dict = {
+                item["personaId"]: item["displayName"] for item in vipList
+            }
             update_task = []
             delete_task = []
             for vip in vipList:
                 # 如果玩家不在表中则添加到表中
                 if str(vip["personaId"]) not in pid_cache:
-                    update_task.append({
-                        "serverId": serverId,
-                        "personaId": vip["personaId"],
-                        "displayName": vip["displayName"],
-                        "expire_time": None,
-                        "valid": True
-                    })
-                    logger.debug(f"服务器{serverId}新增vip源{vip['displayName']}({vip['personaId']})")
+                    update_task.append(
+                        {
+                            "serverId": serverId,
+                            "personaId": vip["personaId"],
+                            "displayName": vip["displayName"],
+                            "expire_time": None,
+                            "valid": True,
+                        }
+                    )
+                    logger.debug(
+                        f"服务器{serverId}新增vip源{vip['displayName']}({vip['personaId']})"
+                    )
                 # 如果玩家在表中且缓存中的valid为False(未生效)则更新为True(已生效),不更新expire_time
                 elif vip_cache_dict[str(vip["personaId"])]["valid"] is False:
-                    update_task.append({
-                        "serverId": serverId,
-                        "personaId": vip["personaId"],
-                        "displayName": vip["displayName"],
-                        "expire_time": vip_cache_dict[str(vip["personaId"])]["expire_time"],
-                        "valid": True
-                    })
+                    update_task.append(
+                        {
+                            "serverId": serverId,
+                            "personaId": vip["personaId"],
+                            "displayName": vip["displayName"],
+                            "expire_time": vip_cache_dict[str(vip["personaId"])][
+                                "expire_time"
+                            ],
+                            "valid": True,
+                        }
+                    )
             for vip in vip_cache:
                 # 如果玩家在表中但是不在服务器则考虑valid,如果valid为True则删除
                 if (str(vip["personaId"]) not in pid_list) and vip["valid"]:
-                    delete_task.append({
-                        "serverId": serverId,
-                        "personaId": vip["personaId"]
-                    })
-                    logger.debug(f"服务器{serverId}删除vip源{vip['displayName']}({vip['personaId']})")
+                    delete_task.append(
+                        {"serverId": serverId, "personaId": vip["personaId"]}
+                    )
+                    logger.debug(
+                        f"服务器{serverId}删除vip源{vip['displayName']}({vip['personaId']})"
+                    )
                 # 更新displayName
                 if str(vip["personaId"]) in displayName_dict:
-                    update_task.append({
-                        "serverId": serverId,
-                        "personaId": vip["personaId"],
-                        "displayName": displayName_dict[str(vip["personaId"])],
-                        "expire_time": vip["expire_time"],
-                        "valid": vip["valid"],
-                    })
+                    update_task.append(
+                        {
+                            "serverId": serverId,
+                            "personaId": vip["personaId"],
+                            "displayName": displayName_dict[str(vip["personaId"])],
+                            "expire_time": vip["expire_time"],
+                            "valid": vip["valid"],
+                        }
+                    )
             await bf1_db.server_manager.update_vip_batch(update_task)
             await bf1_db.server_manager.delete_vip_batch(delete_task)
 
@@ -1187,7 +1225,8 @@ class bf1_db:
             [{serverId: serverId, personaId: personaId, displayName: displayName, expire_time: expire_time, valid: bool},...]
             expire_time为None表示永久,否则为过期时间,datetime类型
             """
-            if not (query_result := await orm.fetch_all(
+            if not (
+                query_result := await orm.fetch_all(
                     select(
                         Bf1ServerManagerVip.serverId,
                         Bf1ServerManagerVip.personaId,
@@ -1196,7 +1235,8 @@ class bf1_db:
                         Bf1ServerManagerVip.valid,
                         Bf1ServerManagerVip.time,
                     ).where(Bf1ServerManagerVip.serverId == serverId)
-            )):
+                )
+            ):
                 return []
             return [
                 {
@@ -1213,9 +1253,12 @@ class bf1_db:
         # 修改vip信息
         @staticmethod
         async def update_vip(
-                serverId: int, personaId: int, displayName: str,
-                expire_time: Union[datetime.datetime, None] = None, valid: bool = True,
-                should_update_time: bool = True
+            serverId: int,
+            personaId: int,
+            displayName: str,
+            expire_time: datetime.datetime | None = None,
+            valid: bool = True,
+            should_update_time: bool = True,
         ) -> bool:
             """
             修改vip信息
@@ -1249,9 +1292,7 @@ class bf1_db:
             return True
 
         @staticmethod
-        async def update_vip_batch(
-                vip_list: list
-        ) -> bool:
+        async def update_vip_batch(vip_list: list) -> bool:
             """
             批量修改vip信息
             :param vip_list: [{personaId: personaId, displayName: displayName, expire_time: expire_time, valid: bool},...]
@@ -1324,7 +1365,6 @@ class bf1_db:
     #   绑定qq群和群组名
 
     class bf1group:
-
         @staticmethod
         async def get_bf1_group_by_qq(qq_group_id: int):
             """根据qq群号获取对应绑定的bf1群组"""
@@ -1388,20 +1428,22 @@ class bf1_db:
         @staticmethod
         async def delete_bf1_group(group_name: str) -> bool:
             """删除bf1群组"""
-            stmt = delete(Bf1Group).where(func.lower(Bf1Group.group_name) == group_name.lower())
-            stmt = stmt.execution_options(synchronize_session='fetch')
+            stmt = delete(Bf1Group).where(
+                func.lower(Bf1Group.group_name) == group_name.lower()
+            )
+            stmt = stmt.execution_options(synchronize_session="fetch")
             await orm.execute(stmt)
             return True
 
         # 绑定群组信息
         @staticmethod
         async def bind_bf1_group_id(
-                group_name: str,
-                index: int,
-                guid: str,
-                gameId: str,
-                serverId: str,
-                account_pid: str = None,
+            group_name: str,
+            index: int,
+            guid: str,
+            gameId: str,
+            serverId: str,
+            account_pid: str = None,
         ) -> bool:
             """绑定bf1群组和guid
             index为下标,从0开始,最大为29
@@ -1441,7 +1483,9 @@ class bf1_db:
 
         # 更新指定下标的gameId
         @staticmethod
-        async def update_bf1_group_id_gameId(group_name: str, index: int, gameId: str) -> bool:
+        async def update_bf1_group_id_gameId(
+            group_name: str, index: int, gameId: str
+        ) -> bool:
             """更新指定下标的gameId"""
             bf1_group = await orm.fetch_one(
                 select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
@@ -1480,7 +1524,9 @@ class bf1_db:
 
         # 修改某个群组的名字
         @staticmethod
-        async def modify_bf1_group_name(old_group_name: str, new_group_name: str) -> bool:
+        async def modify_bf1_group_name(
+            old_group_name: str, new_group_name: str
+        ) -> bool:
             """修改bf1群组的名字"""
             await orm.insert_or_update(
                 table=Bf1Group,
@@ -1517,7 +1563,9 @@ class bf1_db:
             一个群只能绑定一个群组
             """
             group_id = await orm.fetch_one(
-                select(Bf1Group.id).where(func.lower(Bf1Group.group_name) == group_name.lower())
+                select(Bf1Group.id).where(
+                    func.lower(Bf1Group.group_name) == group_name.lower()
+                )
             )
             if not group_id:
                 return False
@@ -1533,23 +1581,29 @@ class bf1_db:
         async def unbind_bf1_group_qq_group(qq_group_id: int) -> bool:
             """解绑bf1群组和QQ群"""
             if result := await orm.fetch_one(
-                    select(Bf1GroupBind.id).where(Bf1GroupBind.qq_group == qq_group_id)
+                select(Bf1GroupBind.id).where(Bf1GroupBind.qq_group == qq_group_id)
             ):
-                await orm.delete(table=Bf1GroupBind, condition=[Bf1GroupBind.id == result[0]])
+                await orm.delete(
+                    table=Bf1GroupBind, condition=[Bf1GroupBind.id == result[0]]
+                )
                 return True
             return False
 
         @staticmethod
-        async def get_bf1_group_by_qq_group(qq_group_id: int) -> Union[dict, None]:
+        async def get_bf1_group_by_qq_group(qq_group_id: int) -> dict | None:
             """获取bf1群组绑定的QQ群"""
             group_id = await orm.fetch_one(
-                select(Bf1GroupBind.group_id).where(Bf1GroupBind.qq_group == qq_group_id)
+                select(Bf1GroupBind.group_id).where(
+                    Bf1GroupBind.qq_group == qq_group_id
+                )
             )
             if not group_id:
                 return None
             group_id = group_id[0]
             group_name = await orm.fetch_one(
-                select(Bf1Group.group_name, Bf1Group.bind_ids).where(Bf1Group.id == group_id)
+                select(Bf1Group.group_name, Bf1Group.bind_ids).where(
+                    Bf1Group.id == group_id
+                )
             )
             return (
                 {
@@ -1561,11 +1615,12 @@ class bf1_db:
             )
 
         @staticmethod
-        async def get_bf1_group_by_name(group_name: str) -> Union[dict, None]:
+        async def get_bf1_group_by_name(group_name: str) -> dict | None:
             """获取bf1群组绑定的QQ群"""
             group_name = await orm.fetch_one(
                 select(Bf1Group.group_name, Bf1Group.bind_ids).where(
-                    func.lower(Bf1Group.group_name) == group_name.lower())
+                    func.lower(Bf1Group.group_name) == group_name.lower()
+                )
             )
             return (
                 {
@@ -1577,7 +1632,9 @@ class bf1_db:
             )
 
         @staticmethod
-        async def get_bf1_group_bindInfo_byIndex(group_name: str, index: int) -> Union[dict, None]:
+        async def get_bf1_group_bindInfo_byIndex(
+            group_name: str, index: int
+        ) -> dict | None:
             """根据群组名和index获取绑定信息"""
             bf1_group = await orm.fetch_one(
                 select(Bf1Group.id, Bf1Group.group_name, Bf1Group.bind_ids).where(
@@ -1597,32 +1654,36 @@ class bf1_db:
     #   写入btr对局信息
 
     class bf1_match_cache:
-
         @staticmethod
-        async def get_btr_match_by_displayName(display_name: str, limit=10) -> Union[list, None]:
+        async def get_btr_match_by_displayName(
+            display_name: str, limit=10
+        ) -> list | None:
             """根据pid获取对应的btr对局信息"""
             # 根据时间获取该display_name最新的10条记录
             if match := await orm.fetch_all(
-                    select(
-                        Bf1MatchCache.match_id,
-                        Bf1MatchCache.server_name,
-                        Bf1MatchCache.map_name,
-                        Bf1MatchCache.mode_name,
-                        Bf1MatchCache.time,
-                        Bf1MatchCache.team_name,
-                        Bf1MatchCache.team_win,
-                        Bf1MatchCache.persona_id,
-                        Bf1MatchCache.display_name,
-                        Bf1MatchCache.kills,
-                        Bf1MatchCache.deaths,
-                        Bf1MatchCache.kd,
-                        Bf1MatchCache.kpm,
-                        Bf1MatchCache.score,
-                        Bf1MatchCache.spm,
-                        Bf1MatchCache.accuracy,
-                        Bf1MatchCache.headshots,
-                        Bf1MatchCache.time_played,
-                    ).where(Bf1MatchCache.display_name == display_name).order_by(-Bf1MatchCache.time).limit(limit)
+                select(
+                    Bf1MatchCache.match_id,
+                    Bf1MatchCache.server_name,
+                    Bf1MatchCache.map_name,
+                    Bf1MatchCache.mode_name,
+                    Bf1MatchCache.time,
+                    Bf1MatchCache.team_name,
+                    Bf1MatchCache.team_win,
+                    Bf1MatchCache.persona_id,
+                    Bf1MatchCache.display_name,
+                    Bf1MatchCache.kills,
+                    Bf1MatchCache.deaths,
+                    Bf1MatchCache.kd,
+                    Bf1MatchCache.kpm,
+                    Bf1MatchCache.score,
+                    Bf1MatchCache.spm,
+                    Bf1MatchCache.accuracy,
+                    Bf1MatchCache.headshots,
+                    Bf1MatchCache.time_played,
+                )
+                .where(Bf1MatchCache.display_name == display_name)
+                .order_by(-Bf1MatchCache.time)
+                .limit(limit)
             ):
                 result = []
                 for match_item in match:
@@ -1651,7 +1712,9 @@ class bf1_db:
             return None
 
         @staticmethod
-        async def get_btr_match_by_pid(persona_id: int, limit: int = None) -> Union[list, None]:
+        async def get_btr_match_by_pid(
+            persona_id: int, limit: int = None
+        ) -> list | None:
             """根据pid获取对应的btr对局信息"""
             if limit:
                 match = await orm.fetch_all(
@@ -1674,7 +1737,10 @@ class bf1_db:
                         Bf1MatchCache.accuracy,
                         Bf1MatchCache.headshots,
                         Bf1MatchCache.time_played,
-                    ).where(Bf1MatchCache.persona_id == persona_id).order_by(-Bf1MatchCache.time).limit(limit)
+                    )
+                    .where(Bf1MatchCache.persona_id == persona_id)
+                    .order_by(-Bf1MatchCache.time)
+                    .limit(limit)
                 )
             else:
                 match = await orm.fetch_all(
@@ -1697,7 +1763,9 @@ class bf1_db:
                         Bf1MatchCache.accuracy,
                         Bf1MatchCache.headshots,
                         Bf1MatchCache.time_played,
-                    ).where(Bf1MatchCache.persona_id == persona_id).order_by(-Bf1MatchCache.time)
+                    )
+                    .where(Bf1MatchCache.persona_id == persona_id)
+                    .order_by(-Bf1MatchCache.time)
                 )
             if match:
                 result = []
@@ -1728,24 +1796,24 @@ class bf1_db:
 
         @staticmethod
         async def update_btr_match_cache(
-                match_id: int,
-                server_name: str,
-                map_name: str,
-                mode_name: str,
-                time: datetime.datetime,
-                team_name: str,
-                team_win: int,
-                display_name: str,
-                kills: int,
-                deaths: int,
-                kd: float,
-                kpm: float,
-                score: int,
-                spm: float,
-                accuracy: str,
-                headshots: str,
-                time_played: int,
-                persona_id: int,
+            match_id: int,
+            server_name: str,
+            map_name: str,
+            mode_name: str,
+            time: datetime.datetime,
+            team_name: str,
+            team_win: int,
+            display_name: str,
+            kills: int,
+            deaths: int,
+            kd: float,
+            kpm: float,
+            score: int,
+            spm: float,
+            accuracy: str,
+            headshots: str,
+            time_played: int,
+            persona_id: int,
         ) -> bool:
             await orm.insert_or_ignore(
                 table=Bf1MatchCache,
@@ -1805,19 +1873,23 @@ class bf1_db:
         @staticmethod
         async def check_bf1_match_id_cache(match_id: str) -> bool:
             if _ := await orm.fetch_one(
-                    select(Bf1MatchIdCache.match_id).where(Bf1MatchIdCache.match_id == match_id)
+                select(Bf1MatchIdCache.match_id).where(
+                    Bf1MatchIdCache.match_id == match_id
+                )
             ):
                 return True
             return False
 
         # 检查玩家的对局id是否在Bf1MatchIdCache表中
         @staticmethod
-        async def check_bf1_match_id_cache_by_pid(persona_id: int, match_id: str) -> bool:
+        async def check_bf1_match_id_cache_by_pid(
+            persona_id: int, match_id: str
+        ) -> bool:
             if _ := await orm.fetch_one(
-                    select(Bf1MatchCache.match_id).where(
-                        Bf1MatchCache.persona_id == persona_id,
-                        Bf1MatchCache.match_id == match_id,
-                    )
+                select(Bf1MatchCache.match_id).where(
+                    Bf1MatchCache.persona_id == persona_id,
+                    Bf1MatchCache.match_id == match_id,
+                )
             ):
                 return True
             return False
@@ -1851,7 +1923,10 @@ class bf1_db:
             :return:
             """
             if not await orm.fetch_one(
-                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == group_name.lower())):
+                select(Bf1Group.group_name).where(
+                    func.lower(Bf1Group.group_name) == group_name.lower()
+                )
+            ):
                 return False
             await orm.insert_or_update(
                 table=Bf1PermGroupBind,
@@ -1869,9 +1944,15 @@ class bf1_db:
         @staticmethod
         async def unbind_permission_group(qq_group_id: int) -> bool:
             if not await orm.fetch_one(
-                    select(Bf1PermGroupBind.qq_group_id).where(Bf1PermGroupBind.qq_group_id == qq_group_id)):
+                select(Bf1PermGroupBind.qq_group_id).where(
+                    Bf1PermGroupBind.qq_group_id == qq_group_id
+                )
+            ):
                 return False
-            await orm.delete(table=Bf1PermGroupBind, condition=[Bf1PermGroupBind.qq_group_id == qq_group_id])
+            await orm.delete(
+                table=Bf1PermGroupBind,
+                condition=[Bf1PermGroupBind.qq_group_id == qq_group_id],
+            )
             return True
 
         # 获取QQ群绑定的权限组
@@ -1883,14 +1964,20 @@ class bf1_db:
             :return: 权限组名称
             """
             result = await orm.fetch_one(
-                select(Bf1PermGroupBind.group_name).where(Bf1PermGroupBind.qq_group_id == qq_group_id))
+                select(Bf1PermGroupBind.group_name).where(
+                    Bf1PermGroupBind.qq_group_id == qq_group_id
+                )
+            )
             return result[0] if result else None
 
         # 获取权限组绑定的QQ群
         @staticmethod
         async def get_permission_group_bind(group_name: str) -> list:
             result = await orm.fetch_all(
-                select(Bf1PermGroupBind.qq_group_id).where(Bf1PermGroupBind.group_name == group_name))
+                select(Bf1PermGroupBind.qq_group_id).where(
+                    Bf1PermGroupBind.group_name == group_name
+                )
+            )
             return [item[0] for item in result] if result else None
 
         # 获取权限组列表
@@ -1901,9 +1988,14 @@ class bf1_db:
 
         # 添加/修改QQ号到权限组
         @staticmethod
-        async def update_qq_to_permission_group(bf1_group_name: str, qq_id: int, perm: int) -> bool:
+        async def update_qq_to_permission_group(
+            bf1_group_name: str, qq_id: int, perm: int
+        ) -> bool:
             if result := await orm.fetch_one(
-                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
+                select(Bf1Group.group_name).where(
+                    func.lower(Bf1Group.group_name) == bf1_group_name.lower()
+                )
+            ):
                 await orm.insert_or_update(
                     table=Bf1PermMemberInfo,
                     data={
@@ -1921,9 +2013,14 @@ class bf1_db:
 
         # 从权限组删除QQ号
         @staticmethod
-        async def delete_qq_from_permission_group(bf1_group_name: str, qq_id: int) -> bool:
+        async def delete_qq_from_permission_group(
+            bf1_group_name: str, qq_id: int
+        ) -> bool:
             if result := await orm.fetch_one(
-                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
+                select(Bf1Group.group_name).where(
+                    func.lower(Bf1Group.group_name) == bf1_group_name.lower()
+                )
+            ):
                 await orm.delete(
                     table=Bf1PermMemberInfo,
                     condition=[
@@ -1935,9 +2032,14 @@ class bf1_db:
             return False
 
         @staticmethod
-        async def delete_qq_from_permission_group_batch(bf1_group_name: str, qq_id_list: list) -> bool:
+        async def delete_qq_from_permission_group_batch(
+            bf1_group_name: str, qq_id_list: list
+        ) -> bool:
             if result := await orm.fetch_one(
-                    select(Bf1Group.group_name).where(func.lower(Bf1Group.group_name) == bf1_group_name.lower())):
+                select(Bf1Group.group_name).where(
+                    func.lower(Bf1Group.group_name) == bf1_group_name.lower()
+                )
+            ):
                 await orm.delete(
                     table=Bf1PermMemberInfo,
                     condition=[
@@ -1950,18 +2052,26 @@ class bf1_db:
 
         # 获取权限组内的QQ号和权限
         @staticmethod
-        async def get_qq_from_permission_group(bf1_group_name: str) -> Union[dict, None]:
-            query = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
-                func.lower(Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower()))
+        async def get_qq_from_permission_group(bf1_group_name: str) -> dict | None:
+            query = await orm.fetch_all(
+                select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
+                    func.lower(Bf1PermMemberInfo.bf1_group_name)
+                    == bf1_group_name.lower()
+                )
+            )
             result = {item[0]: item[1] for item in query}
             return result or None
 
         # 判断QQ号是否在权限组内
         @staticmethod
         async def is_qq_in_permission_group(bf1_group_name: str, qq_id: int) -> bool:
-            result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id).where(
-                func.lower(
-                    Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
+            result = await orm.fetch_all(
+                select(Bf1PermMemberInfo.qq_id).where(
+                    func.lower(Bf1PermMemberInfo.bf1_group_name)
+                    == bf1_group_name.lower()
+                    and Bf1PermMemberInfo.qq_id == qq_id
+                )
+            )
             if result:
                 for item in result:
                     if item[0] == qq_id:
@@ -1970,24 +2080,42 @@ class bf1_db:
 
         # 获取QQ号在权限组内的权限
         @staticmethod
-        async def get_qq_perm_in_permission_group(bf1_group_name: str, qq_id: int) -> int:
-            result = await orm.fetch_all(select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
-                func.lower(
-                    Bf1PermMemberInfo.bf1_group_name) == bf1_group_name.lower() and Bf1PermMemberInfo.qq_id == qq_id))
+        async def get_qq_perm_in_permission_group(
+            bf1_group_name: str, qq_id: int
+        ) -> int:
+            result = await orm.fetch_all(
+                select(Bf1PermMemberInfo.qq_id, Bf1PermMemberInfo.perm).where(
+                    func.lower(Bf1PermMemberInfo.bf1_group_name)
+                    == bf1_group_name.lower()
+                    and Bf1PermMemberInfo.qq_id == qq_id
+                )
+            )
             return next((item[1] for item in result if item[0] == qq_id), -1)
 
         @staticmethod
         async def delete_permission_group(group_name: str) -> bool:
-            if not await orm.fetch_one(select(Bf1PermMemberInfo.bf1_group_name).where(
-                    func.lower(Bf1PermMemberInfo.bf1_group_name) == group_name.lower())):
+            if not await orm.fetch_one(
+                select(Bf1PermMemberInfo.bf1_group_name).where(
+                    func.lower(Bf1PermMemberInfo.bf1_group_name) == group_name.lower()
+                )
+            ):
                 return False
-            await orm.delete(table=Bf1PermMemberInfo, condition=[Bf1PermMemberInfo.bf1_group_name == group_name])
+            await orm.delete(
+                table=Bf1PermMemberInfo,
+                condition=[Bf1PermMemberInfo.bf1_group_name == group_name],
+            )
             return True
 
         @staticmethod
-        async def rename_permission_group(old_group_name: str, new_group_name: str) -> bool:
-            if not await orm.fetch_one(select(Bf1PermMemberInfo.bf1_group_name).where(
-                    func.lower(Bf1PermMemberInfo.bf1_group_name) == old_group_name.lower())):
+        async def rename_permission_group(
+            old_group_name: str, new_group_name: str
+        ) -> bool:
+            if not await orm.fetch_one(
+                select(Bf1PermMemberInfo.bf1_group_name).where(
+                    func.lower(Bf1PermMemberInfo.bf1_group_name)
+                    == old_group_name.lower()
+                )
+            ):
                 return False
             await orm.update(
                 table=Bf1PermMemberInfo,
@@ -2025,8 +2153,14 @@ class bf1_db:
     class manager_log:
         @staticmethod
         async def record(
-                serverId: int, persistedGameId: str, gameId: int,
-                operator_qq: int, pid: int, display_name: str, action: str, info: str = None
+            serverId: int,
+            persistedGameId: str,
+            gameId: int,
+            operator_qq: int,
+            pid: int,
+            display_name: str,
+            action: str,
+            info: str = None,
         ):
             await orm.add(
                 table=Bf1ManagerLog,
@@ -2057,22 +2191,28 @@ class bf1_db:
                     Bf1ManagerLog.action,
                     Bf1ManagerLog.info,
                     Bf1ManagerLog.time,
-                ).where(Bf1ManagerLog.serverId.in_(server_id_list)).order_by(-Bf1ManagerLog.time)
+                )
+                .where(Bf1ManagerLog.serverId.in_(server_id_list))
+                .order_by(-Bf1ManagerLog.time)
             )
-            return [
-                {
-                    "operator_qq": item[0],
-                    "serverId": item[1],
-                    "persistedGameId": item[2],
-                    "gameId": item[3],
-                    "persona_id": item[4],
-                    "display_name": item[5],
-                    "action": item[6],
-                    "info": item[7],
-                    "time": item[8],
-                }
-                for item in result
-            ] if result else []
+            return (
+                [
+                    {
+                        "operator_qq": item[0],
+                        "serverId": item[1],
+                        "persistedGameId": item[2],
+                        "gameId": item[3],
+                        "persona_id": item[4],
+                        "display_name": item[5],
+                        "action": item[6],
+                        "info": item[7],
+                        "time": item[8],
+                    }
+                    for item in result
+                ]
+                if result
+                else []
+            )
 
 
 BF1DB = bf1_db()

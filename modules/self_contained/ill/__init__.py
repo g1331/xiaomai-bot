@@ -12,24 +12,23 @@ from graia.ariadne.message.parser.twilight import (
     ElementMatch,
     ParamMatch,
     ElementResult,
-    RegexResult, UnionMatch, SpacePolicy,
+    RegexResult,
+    UnionMatch,
+    SpacePolicy,
 )
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel
 
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 
 module_controller = saya_model.get_module_controller()
 channel = Channel.current()
-channel.meta["name"] = ("发病")
-channel.meta["description"] = ("生成对特定对象的发病文\n在群中发送 `-[发病|发癫] [@target] 内容` 即可，target 未填时默认对自己发病")
-channel.meta["author"] = ("nullqwertyuiop")
+channel.meta["name"] = "发病"
+channel.meta["description"] = (
+    "生成对特定对象的发病文\n在群中发送 `-[发病|发癫] [@target] 内容` 即可，target 未填时默认对自己发病"
+)
+channel.meta["author"] = "nullqwertyuiop"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 
@@ -54,7 +53,13 @@ with Path(Path(__file__).parent, "ill_templates.json").open("r", encoding="UTF-8
     Permission.group_require(channel.metadata.level, if_noticed=True),
     Permission.user_require(Permission.User, if_noticed=True),
 )
-async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexResult, source: Source):
+async def ill(
+    app: Ariadne,
+    event: MessageEvent,
+    at: ElementResult,
+    text: RegexResult,
+    source: Source,
+):
     if at.matched:
         _target: At = at.result
         _target = _target.target
@@ -69,5 +74,5 @@ async def ill(app: Ariadne, event: MessageEvent, at: ElementResult, text: RegexR
     await app.send_message(
         event.sender.group if isinstance(event, GroupMessage) else event.sender,
         MessageChain(random.choice(TEMPLATES).format(target=target)),
-        quote=source
+        quote=source,
     )

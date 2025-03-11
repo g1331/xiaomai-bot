@@ -11,21 +11,44 @@ def calculate_text_size(font: ImageFont.FreeTypeFont, text: str) -> tuple[int, i
 
 
 ENG_FONT = ImageFont.truetype(
-    str(Path.cwd() / "statics" / "fonts" / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"), 36
+    str(
+        Path.cwd()
+        / "statics"
+        / "fonts"
+        / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"
+    ),
+    36,
 )
 CHN_FONT = ImageFont.truetype(
     str(Path.cwd() / "statics" / "fonts" / "字魂59号-创粗黑.ttf"), 36
 )
 COUNTING_FONT = ImageFont.truetype(
-    str(Path.cwd() / "statics" / "fonts" / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"), 110
+    str(
+        Path.cwd()
+        / "statics"
+        / "fonts"
+        / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"
+    ),
+    110,
 )
 BOTTOM_FONT = ImageFont.truetype(
-    str(Path.cwd() / "statics" / "fonts" / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"), 18
+    str(
+        Path.cwd()
+        / "statics"
+        / "fonts"
+        / "Alte DIN 1451 Mittelschrift gepraegt Regular.ttf"
+    ),
+    18,
 )
 
 
 def gen_counting_down(
-        top_text: str, start_text: str, counting: str, end_text: str, bottom_text: str, rgba: bool = False
+    top_text: str,
+    start_text: str,
+    counting: str,
+    end_text: str,
+    bottom_text: str,
+    rgba: bool = False,
 ) -> bytes:
     top_size = calculate_text_size(CHN_FONT, top_text)
     start_size = calculate_text_size(CHN_FONT, start_text)
@@ -39,11 +62,18 @@ def gen_counting_down(
     top_over_width = top_size[0] - start_size[0] - 20
     if top_over_width < 0:
         top_over_width = 0
-    start_over_width = start_size[0] - top_size[0] if start_size[0] >= top_size[0] else 0
-    width = max([
-        max(top_size[0], start_size[0]) + 20 + counting_size[0] + end_size[0],
-        top_over_width + bottom_size[0]
-    ]) + 60
+    start_over_width = (
+        start_size[0] - top_size[0] if start_size[0] >= top_size[0] else 0
+    )
+    width = (
+        max(
+            [
+                max(top_size[0], start_size[0]) + 20 + counting_size[0] + end_size[0],
+                top_over_width + bottom_size[0],
+            ]
+        )
+        + 60
+    )
     height = 104 + 46 * len(bottom_texts) + 40
 
     if rgba:
@@ -55,12 +85,20 @@ def gen_counting_down(
     rec_start = 20 if start_over_width > 0 else top_over_width
     rec_box = (rec_start + 30, 70, rec_start + 34, 150)
     start_start = rec_start + 40
-    count_start = rec_start + 46 + start_size[0] if start_over_width > 0 else start_over_width + top_size[0] + 30
+    count_start = (
+        rec_start + 46 + start_size[0]
+        if start_over_width > 0
+        else start_over_width + top_size[0] + 30
+    )
     top_start = count_start - top_size[0] - 6 if start_over_width > 0 else 20
     if start_over_width == 0 and top_over_width == 0:
         count_start = start_start + 6 + start_size[0]
         top_start = start_start
-    end_start = count_start + counting_size[0] + 6 if start_over_width > 0 else top_size[0] + 40 + counting_size[0]
+    end_start = (
+        count_start + counting_size[0] + 6
+        if start_over_width > 0
+        else top_size[0] + 40 + counting_size[0]
+    )
     if start_over_width == 0 and top_over_width == 0:
         end_start += 8
 
@@ -78,7 +116,12 @@ def gen_counting_down(
 
 
 def gen_gif(
-        top_text: str, start_text: str, counting: str, end_text: str, bottom_text: str, rgba: bool = False
+    top_text: str,
+    start_text: str,
+    counting: str,
+    end_text: str,
+    bottom_text: str,
+    rgba: bool = False,
 ) -> bytes:
     counting_int = int(counting)
     frames = [

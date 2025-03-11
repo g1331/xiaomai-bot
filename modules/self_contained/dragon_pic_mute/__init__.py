@@ -11,20 +11,16 @@ from graia.saya import Channel
 from loguru import logger
 
 from core.config import GlobalConfig
-from core.control import (
-    Permission,
-    Function,
-    Distribute
-)
+from core.control import Permission, Function, Distribute
 from core.models import saya_model, response_model
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 config = create(GlobalConfig)
 channel = Channel.current()
-channel.meta["name"] = ("龙图经验")
-channel.meta["description"] = ("自动禁言发送龙图的用户")
-channel.meta["author"] = ("13")
+channel.meta["name"] = "龙图经验"
+channel.meta["description"] = "自动禁言发送龙图的用户"
+channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
 api_url = config.functions.get("dragon_detect", {}).get("api_url", "")
@@ -37,7 +33,9 @@ api_url = config.functions.get("dragon_detect", {}).get("api_url", "")
     Permission.group_require(channel.metadata.level, if_noticed=True),
 )
 async def dragon_mute(group: Group, event: MessageEvent, source: Source):
-    target_app, target_group = await account_controller.get_app_from_total_groups(group.id, ["Administrator", "Owner"])
+    target_app, target_group = await account_controller.get_app_from_total_groups(
+        group.id, ["Administrator", "Owner"]
+    )
     if not (target_app and target_group):
         return
     app = target_app
@@ -48,7 +46,7 @@ async def dragon_mute(group: Group, event: MessageEvent, source: Source):
         try:
             img_bytes = await event.message_chain.get(Image)[0].get_bytes()
             async with aiohttp.ClientSession() as session:
-                async with session.post(api_url, data={'file': img_bytes}) as resp:
+                async with session.post(api_url, data={"file": img_bytes}) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         if data.get("is_dragon", False):
@@ -59,4 +57,6 @@ async def dragon_mute(group: Group, event: MessageEvent, source: Source):
                                 f"禁言了 {event.sender.name}({event.sender.id})"
                             )
         except Exception as e:
-            logger.error(f"[Function: {channel.module}] [Group: {group.id}] [Error: {e}]")
+            logger.error(
+                f"[Function: {channel.module}] [Group: {group.id}] [Error: {e}]"
+            )

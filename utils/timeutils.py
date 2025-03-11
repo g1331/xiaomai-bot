@@ -38,7 +38,9 @@ class DateTimeUtils:
         Raises:
         ValueError: 如果 date1 或 date2 不是 datetime.datetime 对象。
         """
-        if not isinstance(date1, datetime.datetime) or not isinstance(date2, datetime.datetime):
+        if not isinstance(date1, datetime.datetime) or not isinstance(
+            date2, datetime.datetime
+        ):
             raise ValueError("Both date1 and date2 must be datetime.datetime objects")
 
         # 将datetime对象转换为date对象
@@ -46,5 +48,3 @@ class DateTimeUtils:
         date2 = date2.date()
 
         return (date1 - date2).days
-
-

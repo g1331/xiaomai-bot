@@ -2,16 +2,28 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 
-from PicImageSearch import Network, SauceNAO, TraceMoe, Ascii2D, Iqdb, Google, EHentai, BaiDu
+from PicImageSearch import (
+    Network,
+    SauceNAO,
+    TraceMoe,
+    Ascii2D,
+    Iqdb,
+    Google,
+    EHentai,
+    BaiDu,
+)
 from creart import create
 from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Image, At, ForwardNode, Forward, Source
 from graia.ariadne.message.parser.twilight import (
-    Twilight, FullMatch,
-    ElementMatch, ElementResult,
-    SpacePolicy, UnionMatch
+    Twilight,
+    FullMatch,
+    ElementMatch,
+    ElementResult,
+    SpacePolicy,
+    UnionMatch,
 )
 from graia.ariadne.model import Group, Member
 from graia.ariadne.util.saya import listen, decorate, dispatch
@@ -21,12 +33,7 @@ from graia.saya import Channel, Saya
 from loguru import logger
 
 from core.config import GlobalConfig
-from core.control import (
-    Permission,
-    Function,
-    FrequencyLimitation,
-    Distribute
-)
+from core.control import Permission, Function, FrequencyLimitation, Distribute
 from core.models import saya_model
 from utils.waiter import ImageWaiter
 
@@ -56,8 +63,12 @@ channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
         "img" @ ElementMatch(Image, optional=False),
     ),
 )
-async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, source: Source):
-    await app.send_group_message(group, MessageChain("正在搜索，请稍后"), quote=source.id)
+async def shiTu(
+    app: Ariadne, group: Group, sender: Member, img: ElementResult, source: Source
+):
+    await app.send_group_message(
+        group, MessageChain("正在搜索，请稍后"), quote=source.id
+    )
     # 获取搜索的图片地址
     img: Image = img.result
     img_url = img.url
@@ -68,28 +79,34 @@ async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, 
         asyncio.ensure_future(fun_iqdb(img_url)),
         asyncio.ensure_future(fun_google(img_url)),
         asyncio.ensure_future(fun_ehentai(img_url)),
-        asyncio.ensure_future(fun_baidu(img_url))
+        asyncio.ensure_future(fun_baidu(img_url)),
     ]
     tasks = asyncio.gather(*scrape_index_tasks, return_exceptions=False)
     try:
         await tasks
     except Exception as e:
-        return await app.send_message(group, MessageChain(At(sender.id), f"搜索时出现一个错误!{e}"), quote=source)
+        return await app.send_message(
+            group, MessageChain(At(sender.id), f"搜索时出现一个错误!{e}"), quote=source
+        )
     fwd_nodeList = [
-        ForwardNode(
-            target=sender,
-            time=datetime.now(),
-            message=item.result()
-        ) for item in scrape_index_tasks if item
+        ForwardNode(target=sender, time=datetime.now(), message=item.result())
+        for item in scrape_index_tasks
+        if item
     ]
     try:
-        bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
+        bot_msg = await app.send_message(
+            group, MessageChain(Forward(nodeList=fwd_nodeList))
+        )
         if bot_msg.id < 0:
             raise Exception("消息风控!")
     except Exception as e:
         logger.warning(e)
-        return await app.send_message(group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source)
-    return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
+        return await app.send_message(
+            group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source
+        )
+    return await app.send_message(
+        group, MessageChain(At(sender.id), "请点击转发信息查看!")
+    )
 
 
 @listen(GroupMessage)
@@ -106,18 +123,24 @@ async def shiTu(app: Ariadne, group: Group, sender: Member, img: ElementResult, 
     )
 )
 async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Source):
-    await app.send_message(group, MessageChain('请在30秒内发送要搜索的图片!'), quote=source)
+    await app.send_message(
+        group, MessageChain("请在30秒内发送要搜索的图片!"), quote=source
+    )
 
     try:
-        result: Image = await asyncio.wait_for(InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30)
+        result: Image = await asyncio.wait_for(
+            InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30
+        )
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(group, MessageChain('操作超时,已自动退出!'), quote=source)
+        return await app.send_message(
+            group, MessageChain("操作超时,已自动退出!"), quote=source
+        )
 
     if result:
-        await app.send_message(group, MessageChain('搜索ing'), quote=source)
+        await app.send_message(group, MessageChain("搜索ing"), quote=source)
     else:
         return await app.send_message(
-            group, MessageChain('未识别到图片,已自动退出!'), quote=source
+            group, MessageChain("未识别到图片,已自动退出!"), quote=source
         )
     # 获取搜索的图片地址
     img_url = result.url
@@ -128,7 +151,7 @@ async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Sourc
         asyncio.ensure_future(fun_iqdb(img_url)),
         asyncio.ensure_future(fun_google(img_url)),
         asyncio.ensure_future(fun_ehentai(img_url)),
-        asyncio.ensure_future(fun_baidu(img_url))
+        asyncio.ensure_future(fun_baidu(img_url)),
     ]
     tasks = asyncio.gather(*scrape_index_tasks, return_exceptions=False)
     await tasks
@@ -137,16 +160,24 @@ async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Sourc
             target=sender,
             time=datetime.now(),
             message=item.result(),
-        ) for item in scrape_index_tasks if item
+        )
+        for item in scrape_index_tasks
+        if item
     ]
     try:
-        bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
+        bot_msg = await app.send_message(
+            group, MessageChain(Forward(nodeList=fwd_nodeList))
+        )
         if bot_msg.id < 0:
             raise Exception("消息风控!")
     except Exception as e:
         logger.warning(e)
-        return await app.send_message(group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source)
-    return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
+        return await app.send_message(
+            group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source
+        )
+    return await app.send_message(
+        group, MessageChain(At(sender.id), "请点击转发信息查看!")
+    )
 
 
 @listen(GroupMessage)
@@ -164,30 +195,40 @@ async def shiTu_waiter(app: Ariadne, group: Group, sender: Member, source: Sourc
         "img" @ ElementMatch(Image, optional=False),
     )
 )
-async def souFan(app: Ariadne, group: Group, sender: Member, img: ElementResult, source: Source):
-    await app.send_group_message(group, MessageChain("正在搜索，请稍后"), quote=source.id)
+async def souFan(
+    app: Ariadne, group: Group, sender: Member, img: ElementResult, source: Source
+):
+    await app.send_group_message(
+        group, MessageChain("正在搜索，请稍后"), quote=source.id
+    )
     # 获取搜索的图片地址
     img: Image = img.result
     img_url = img.url
     # 使用方法搜索
-    scrape_index_tasks = [asyncio.ensure_future(fun_tracemoe(img_url)), ]
+    scrape_index_tasks = [
+        asyncio.ensure_future(fun_tracemoe(img_url)),
+    ]
     tasks = asyncio.gather(*scrape_index_tasks, return_exceptions=False)
     await tasks
     fwd_nodeList = [
-        ForwardNode(
-            target=sender,
-            time=datetime.now(),
-            message=item.result()
-        ) for item in scrape_index_tasks if item
+        ForwardNode(target=sender, time=datetime.now(), message=item.result())
+        for item in scrape_index_tasks
+        if item
     ]
     try:
-        bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
+        bot_msg = await app.send_message(
+            group, MessageChain(Forward(nodeList=fwd_nodeList))
+        )
         if bot_msg.id < 0:
             raise Exception("消息风控!")
     except Exception as e:
         logger.warning(e)
-        return await app.send_message(group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source)
-    return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
+        return await app.send_message(
+            group, MessageChain(At(sender.id), "ERROR:工口发生~"), quote=source
+        )
+    return await app.send_message(
+        group, MessageChain(At(sender.id), "请点击转发信息查看!")
+    )
 
 
 # 指令和图片分开
@@ -205,18 +246,24 @@ async def souFan(app: Ariadne, group: Group, sender: Member, img: ElementResult,
     )
 )
 async def souFan_waiter(app: Ariadne, group: Group, sender: Member, source: Source):
-    await app.send_message(group, MessageChain('请在30秒内发送要搜索的图片!'), quote=source)
+    await app.send_message(
+        group, MessageChain("请在30秒内发送要搜索的图片!"), quote=source
+    )
 
     try:
-        result: Image = await asyncio.wait_for(InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30)
+        result: Image = await asyncio.wait_for(
+            InterruptControl(create(Broadcast)).wait(ImageWaiter(group, sender)), 30
+        )
     except asyncio.exceptions.TimeoutError:
-        return await app.send_message(group, MessageChain('操作超时,已自动退出!'), quote=source)
+        return await app.send_message(
+            group, MessageChain("操作超时,已自动退出!"), quote=source
+        )
 
     if result:
-        await app.send_message(group, MessageChain('搜索ing'), quote=source)
+        await app.send_message(group, MessageChain("搜索ing"), quote=source)
     else:
         return await app.send_message(
-            group, MessageChain('未识别到图片,已自动退出!'), quote=source
+            group, MessageChain("未识别到图片,已自动退出!"), quote=source
         )
     # 获取搜索的图片地址
     img_url = result.url
@@ -227,16 +274,20 @@ async def souFan_waiter(app: Ariadne, group: Group, sender: Member, source: Sour
     tasks = asyncio.gather(*scrape_index_tasks, return_exceptions=False)
     await tasks
     fwd_nodeList = [
-        ForwardNode(
-            target=sender,
-            time=datetime.now(),
-            message=item.result()
-        ) for item in scrape_index_tasks if item
+        ForwardNode(target=sender, time=datetime.now(), message=item.result())
+        for item in scrape_index_tasks
+        if item
     ]
-    bot_msg = await app.send_message(group, MessageChain(Forward(nodeList=fwd_nodeList)))
+    bot_msg = await app.send_message(
+        group, MessageChain(Forward(nodeList=fwd_nodeList))
+    )
     if bot_msg.id < 0:
-        return await app.send_message(group, MessageChain(At(sender.id), "错误!可能消息内容被控!"), quote=source)
-    return await app.send_message(group, MessageChain(At(sender.id), "请点击转发信息查看!"))
+        return await app.send_message(
+            group, MessageChain(At(sender.id), "错误!可能消息内容被控!"), quote=source
+        )
+    return await app.send_message(
+        group, MessageChain(At(sender.id), "请点击转发信息查看!")
+    )
 
 
 async def fun_saucenao(file_url: str) -> MessageChain | None:
@@ -261,7 +312,8 @@ async def fun_saucenao(file_url: str) -> MessageChain | None:
                 f"地址:{resp.raw[0].url}\n"
                 f"作者: {resp.raw[0].author}\n"
                 f"作者地址: {resp.raw[0].author_url}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+                f"缩略图:\n",
+                Image(url=resp.raw[0].thumbnail),
             )
 
 
@@ -319,7 +371,8 @@ async def fun_ascii2d(file_url: str) -> MessageChain | None:
                 f"作者地址: {resp.raw[0].author_url}\n"
                 f"作品地址: {resp.raw[0].url}\n"
                 f"原图长宽，类型，大小: {resp.raw[0].detail}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+                f"缩略图:\n",
+                Image(url=resp.raw[0].thumbnail),
             )
 
 
@@ -348,7 +401,8 @@ async def fun_iqdb(file_url: str) -> MessageChain | None:
                 f"TinEye搜图链接: {resp.tineye_url}\n"
                 f"Google搜图链接: {resp.google_url}\n"
                 f"相似度低的结果个数: {len(resp.more)}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+                f"缩略图:\n",
+                Image(url=resp.raw[0].thumbnail),
             )
         except Exception as e:
             logger.error(e)
@@ -392,10 +446,7 @@ async def fun_ehentai(file_url: str) -> MessageChain | None:
             logger.error(e)
             return MessageChain("ehentai搜索出错!")
         if len(resp.raw) == 0:
-            return MessageChain(
-                f"ehentai结果:\n"
-                f"未搜索到!"
-            )
+            return MessageChain("ehentai结果:\n未搜索到!")
         try:
             return MessageChain(
                 f"ehentai结果:\n"
@@ -405,7 +456,8 @@ async def fun_ehentai(file_url: str) -> MessageChain | None:
                 f"分类: {resp.raw[0].type}\n"
                 f"日期: {resp.raw[0].date}\n"
                 f"标签: {resp.raw[0].tags}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+                f"缩略图:\n",
+                Image(url=resp.raw[0].thumbnail),
             )
         except Exception as e:
             logger.error(e)
@@ -422,15 +474,11 @@ async def fun_baidu(file_url: str) -> MessageChain | None:
             logger.error(e)
             return MessageChain("baidu搜索出错!")
         if len(resp.raw) == 0:
-            return MessageChain(
-                f"baidu结果:\n"
-                f"未搜索到!"
-            )
+            return MessageChain("baidu结果:\n未搜索到!")
         try:
             return MessageChain(
-                f"baidu结果:\n"
-                f"图片所在网页地址: {resp.raw[0].url}\n"
-                f"缩略图:\n", Image(url=resp.raw[0].thumbnail)
+                f"baidu结果:\n图片所在网页地址: {resp.raw[0].url}\n缩略图:\n",
+                Image(url=resp.raw[0].thumbnail),
             )
         except Exception as e:
             logger.error(e)

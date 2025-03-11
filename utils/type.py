@@ -1,8 +1,7 @@
-from typing import Type, TypeVar, Optional
+from typing import TypeVar
 
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.parser.twilight import MatchResult
-
 
 T = TypeVar("T")
 
@@ -21,11 +20,13 @@ def parse_bool(message: str, default_value: bool | None = None) -> bool | None:
     return default_value
 
 
-def parse_type(message: MessageChain | str, res_type: Type[T], default_value: Optional[T] = None) -> T:
+def parse_type(
+    message: MessageChain | str, res_type: type[T], default_value: T | None = None
+) -> T:
     if isinstance(message, MessageChain):
         message = message.display.strip()
     message = message.strip()
-    if res_type == bool:
+    if res_type is bool:
         return parse_bool(message, default_value)
     try:
         return res_type(message)
@@ -33,5 +34,11 @@ def parse_type(message: MessageChain | str, res_type: Type[T], default_value: Op
         return default_value
 
 
-def parse_match_type(match: MatchResult, res_type: Type[T], default_value: Optional[T] = None) -> T:
-    return parse_type(match.result, res_type, default_value) if match.matched else default_value
+def parse_match_type(
+    match: MatchResult, res_type: type[T], default_value: T | None = None
+) -> T:
+    return (
+        parse_type(match.result, res_type, default_value)
+        if match.matched
+        else default_value
+    )

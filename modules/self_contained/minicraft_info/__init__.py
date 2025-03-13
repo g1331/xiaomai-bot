@@ -154,6 +154,13 @@ async def get_minecraft_server_info(server_host: str) -> dict | str:
         logger.error(f"[MC查询]连接服务器 {server_host} 出现错误, {e}")
         return f"连接服务器 {server_host} 出现错误"
 
+    try:
+        query_result = await JavaServer.async_query(server)
+        players = query_result.players.names
+    except Exception as e:
+        logger.error(f"[MC查询]查询服务器 {server_host} 出现错误, {e}")
+        players = []
+
     return {
         "server_host": server_host,
         "description": "".join(
@@ -164,6 +171,8 @@ async def get_minecraft_server_info(server_host: str) -> dict | str:
         "online_players": status.players.online,
         "max_players": status.players.max,
         "ping": round(status.latency, 2),
-        "players": [item.name for item in status.players.sample],
+        "players": [item.name for item in status.players.sample]
+        if status.players.sample
+        else players,
         "favicon": status.icon,
     }

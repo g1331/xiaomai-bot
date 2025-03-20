@@ -8,7 +8,7 @@ from graia.broadcast.builtin.event import ExceptionThrowed
 from graia.saya import Channel, Saya
 from graia.saya.builtins.broadcast.schema import ListenerSchema
 from unwind import ReportFlag, get_report
-from collections import defaultdict
+from collections import defaultdict, deque
 import asyncio
 from datetime import datetime, timedelta
 import hashlib
@@ -34,6 +34,14 @@ error_cooldown = timedelta(seconds=30)  # 同类错误的冷却时间
 batch_wait_time = 5  # 等待收集批量错误的时间（秒）
 MAX_BATCH_SIZE = 10  # 单次报告最大错误数
 
+# 添加全局错误控制
+error_window = deque(maxlen=20)  # 最近20个错误的时间窗口
+ERROR_THRESHOLD = 10  # 10秒内最多处理10个不同错误
+WINDOW_SIZE = 10  # 时间窗口大小(秒)
+GLOBAL_COOLDOWN = 60  # 全局冷却时间(秒)
+is_cooling_down = False
+global_error_count = 0
+
 
 def get_error_hash(exception: BaseException) -> str:
     """生成错误的唯一标识"""
@@ -44,8 +52,26 @@ def get_error_hash(exception: BaseException) -> str:
 
 async def process_error_queue():
     """处理错误队列的后台任务"""
+    global is_cooling_down, global_error_count
     while True:
         try:
+            # 检查是否需要退出冷却状态
+            if (
+                is_cooling_down
+                and (datetime.now() - max(error_window)).total_seconds()
+                >= GLOBAL_COOLDOWN
+            ):
+                is_cooling_down = False
+                if global_error_count > 0:
+                    app = Ariadne.current(config.default_account)
+                    await app.send_friend_message(
+                        config.Master,
+                        MessageChain(
+                            f"结束全局冷却，期间共抑制了{global_error_count}个错误"
+                        ),
+                    )
+                    global_error_count = 0
+
             errors = []
             # 获取第一个错误
             first_error = await error_queue.get()
@@ -80,12 +106,37 @@ async def process_error_queue():
 
 @channel.use(ListenerSchema(listening_events=[ExceptionThrowed]))
 async def except_handle(event: ExceptionThrowed):
+    global is_cooling_down, global_error_count
+
     if isinstance(event.event, ExceptionThrowed):
         return
     if isinstance(event.exception, AccountMuted | UnknownTarget):
         return
 
-    # 获取错误哈希
+    now = datetime.now()
+
+    # 清理过期的错误记录
+    while error_window and (now - error_window[0]).total_seconds() > WINDOW_SIZE:
+        error_window.popleft()
+
+    # 检查是否处于全局冷却
+    if is_cooling_down:
+        global_error_count += 1
+        return
+
+    # 检查是否需要进入全局冷却
+    if len(error_window) >= ERROR_THRESHOLD:
+        is_cooling_down = True
+        app = Ariadne.current(config.default_account)
+        await app.send_friend_message(
+            config.Master,
+            MessageChain(f"检测到错误风暴！已启动{GLOBAL_COOLDOWN}秒全局冷却..."),
+        )
+        return
+
+    error_window.append(now)
+
+    # 获取错误哈希并继续原有的错误处理逻辑
     error_hash = get_error_hash(event.exception)
     now = datetime.now()
 

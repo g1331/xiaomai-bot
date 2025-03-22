@@ -78,7 +78,16 @@ def create_provider(provider_name: str, user_id: str = None) -> BaseAIProvider:
         g_config_loader.get_user_model(user_id, provider_name) if user_id else None
     )
 
-    if provider_name == "deepseek":
+    # 检查是否是通用OpenAI兼容提供者
+    if provider_config.get("type") == "generic_openai_compatible":
+        from .providers.generic_openai_compatible import (
+            GenericOpenAICompatibleConfig,
+            GenericOpenAICompatibleProvider,
+        )
+
+        _config = GenericOpenAICompatibleConfig(**provider_config)
+        return GenericOpenAICompatibleProvider(_config, model_name=user_model)
+    elif provider_name == "deepseek":
         _config = DeepSeekConfig(**provider_config)
         return DeepSeekProvider(_config, model_name=user_model)
     elif provider_name == "openai":
@@ -113,7 +122,17 @@ def get_provider_models(provider_name: str) -> list[str]:
 
     provider_config = g_config_loader.get_provider_config(provider_name)
 
-    if provider_name == "deepseek":
+    # 检查是否是通用OpenAI兼容提供者
+    if provider_config.get("type") == "generic_openai_compatible":
+        from .providers.generic_openai_compatible import (
+            GenericOpenAICompatibleConfig,
+            GenericOpenAICompatibleProvider,
+        )
+
+        _config = GenericOpenAICompatibleConfig(**provider_config)
+        provider = GenericOpenAICompatibleProvider(_config)
+        return provider.get_available_models()
+    elif provider_name == "deepseek":
         _config = DeepSeekConfig(**provider_config)
         provider = DeepSeekProvider(_config)
         return provider.get_available_models()

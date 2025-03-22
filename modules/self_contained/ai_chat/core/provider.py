@@ -170,6 +170,7 @@ class BaseAIProvider(ABC):
 
         return [f for f in files if self.supports_file_type(f.file_type)]
 
+    @abstractmethod
     def get_available_models(self) -> list[str]:
         """获取当前提供商可用的模型列表"""
         # 默认实现返回当前模型

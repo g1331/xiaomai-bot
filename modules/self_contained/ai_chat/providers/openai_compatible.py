@@ -4,15 +4,16 @@ from typing import Any
 from collections.abc import AsyncGenerator
 
 from loguru import logger
-from openai import AsyncOpenAI, AsyncStream
+from openai import AsyncOpenAI
 from openai.types import CompletionUsage
-from openai.types.chat import ChatCompletion, ChatCompletionMessage
-from openai.types.chat.chat_completion_chunk import ChatCompletionChunk, ChoiceDelta
+from openai.types.chat import ChatCompletionMessage
+from openai.types.chat.chat_completion_chunk import ChoiceDelta
 
 from ..core.provider import (
     BaseAIProvider,
     FileContent,
     FileType,
+    ModelConfig,
     ProviderConfig,
 )
 
@@ -22,7 +23,78 @@ class OpenAICompatibleConfig(ProviderConfig):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # OpenAI兼容的提供者可能有其他特殊配置项
+
+        # API配置
+        self.api_version = kwargs.get("api_version", "v1")
+        self.organization = kwargs.get("organization", None)
+        self.headers = kwargs.get("headers", {})
+
+        # 请求配置
+        self.request_timeout = kwargs.get("request_timeout", 60)
+        self.max_retries = kwargs.get("max_retries", 2)
+
+        # 响应格式配置
+        self.response_format = kwargs.get("response_format", {"type": "text"})
+
+        # 模型行为配置
+        self.supports_functions = kwargs.get("supports_functions", True)
+        self.supports_tools = kwargs.get("supports_tools", True)
+        self.supports_json_mode = kwargs.get("supports_json_mode", False)
+        self.supports_vision = kwargs.get("supports_vision", False)
+
+        # 令牌计数配置
+        self.token_encoding = kwargs.get(
+            "token_encoding", "cl100k_base"
+        )  # 使用的分词器
+        self.token_multiplier = kwargs.get(
+            "token_multiplier", 1.0
+        )  # 令牌估算的乘数因子
+
+        # 请求参数映射，允许自定义参数名称
+        self.param_mapping = kwargs.get(
+            "param_mapping",
+            {
+                "model": "model",
+                "messages": "messages",
+                "temperature": "temperature",
+                "max_tokens": "max_tokens",
+                "stream": "stream",
+                "tools": "tools",
+                "tool_choice": "tool_choice",
+            },
+        )
+
+        # 响应格式映射，允许适配不同的返回格式
+        self.response_mapping = kwargs.get(
+            "response_mapping",
+            {
+                "choices": "choices",
+                "message": "message",
+                "content": "content",
+                "role": "role",
+                "delta": "delta",
+                "tool_calls": "tool_calls",
+            },
+        )
+
+        # 确保models字典的每个值都是ModelConfig对象
+        if self.models:
+            self.models = {
+                name: (
+                    config
+                    if isinstance(config, ModelConfig)
+                    else ModelConfig(
+                        name=name,
+                        max_tokens=config.get("max_tokens", 4096),
+                        max_total_tokens=config.get("max_total_tokens", 32768),
+                        supports_vision=config.get("supports_vision", False),
+                        supports_audio=config.get("supports_audio", False),
+                        supports_document=config.get("supports_document", False),
+                        supports_tool_calls=config.get("supports_tool_calls", False),
+                    )
+                )
+                for name, config in self.models.items()
+            }
 
 
 class OpenAICompatibleProvider(BaseAIProvider):
@@ -30,14 +102,69 @@ class OpenAICompatibleProvider(BaseAIProvider):
 
     def __init__(self, config: OpenAICompatibleConfig, model_name: str | None = None):
         super().__init__(config, model_name)
-        self.client = AsyncOpenAI(api_key=config.api_key, base_url=config.base_url)
+        self.config = config
+        # 创建带有自定义配置的客户端
+        self.client = AsyncOpenAI(
+            api_key=config.api_key,
+            base_url=config.base_url,
+            organization=config.organization,
+            default_headers=config.headers,
+            timeout=config.request_timeout,
+            max_retries=config.max_retries,
+        )
         self.usage: CompletionUsage = CompletionUsage(
             **{"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
         )
 
+    def _map_request_params(self, **params) -> dict:
+        """根据配置映射请求参数"""
+        mapped_params = {}
+        for key, value in params.items():
+            if key in self.config.param_mapping:
+                mapped_key = self.config.param_mapping[key]
+                mapped_params[mapped_key] = value
+        return mapped_params
+
+    def _map_response_data(self, response_data: dict) -> dict:
+        """根据配置映射响应数据"""
+        mapped_data = {}
+        for key, value in self.config.response_mapping.items():
+            if value in response_data:
+                mapped_data[key] = response_data[value]
+        return mapped_data
+
     @abstractmethod
     def calculate_tokens(self, messages: list[dict[str, Any]]) -> int:
-        pass
+        """使用配置的编码器和乘数因子估算token数量"""
+        try:
+            import tiktoken
+
+            encoding = tiktoken.get_encoding(self.config.token_encoding)
+            total_tokens = 0
+
+            for message in messages:
+                content = message.get("content", "")
+                if isinstance(content, str):
+                    tokens = len(encoding.encode(content))
+                elif isinstance(content, list):  # 多模态内容
+                    for item in content:
+                        if item.get("type") == "text":
+                            tokens = len(encoding.encode(item.get("text", "")))
+                            total_tokens += tokens
+                        elif item.get("type") == "image_url":
+                            # 图片token估算（根据不同模型可能需要调整）
+                            total_tokens += 1000  # 默认估算值
+                else:
+                    continue
+
+                total_tokens += tokens
+
+            # 应用配置的乘数因子
+            return int(total_tokens * self.config.token_multiplier)
+        except Exception as e:
+            logger.warning(f"Token计算失败，使用字符长度估算: {str(e)}")
+            # 降级方案：使用字符长度粗略估算
+            return sum(len(str(msg.get("content", ""))) for msg in messages)
 
     def set_total_tokens(self, total_tokens: int):
         self.usage.total_tokens = total_tokens
@@ -153,45 +280,28 @@ class OpenAICompatibleProvider(BaseAIProvider):
             # 处理多模态消息
             processed_messages = self._prepare_messages_with_files(messages, files)
 
-            # 处理工具调用支持
-            use_tools = tools and self.supports_tools
-            if tools and not self.supports_tools:
+            # 检查并应用工具支持
+            use_tools = tools and self.config.supports_tools
+            if tools and not self.config.supports_tools:
                 logger.warning(f"模型 {self.model_name} 不支持工具调用，已忽略工具配置")
                 tools = None
 
-            # 在API请求前记录日志，帮助调试
-            if logger.level == "DEBUG":
-                # 只输出重要字段，避免日志过大
-                log_messages = []
-                for msg in processed_messages:
-                    log_msg = {"role": msg.get("role")}
-                    content = msg.get("content")
-                    if isinstance(content, str):
-                        log_msg["content"] = (
-                            content[:100] + "..." if len(content) > 100 else content
-                        )
-                    elif isinstance(content, list):
-                        log_msg["content"] = f"[多模态内容，包含 {len(content)} 项]"
-                    log_messages.append(log_msg)
-                logger.debug(f"发送给API的消息: {log_messages}")
+            # 准备请求参数
+            request_params = self._map_request_params(
+                model=self.model_name,
+                messages=processed_messages,
+                tools=tools,
+                max_tokens=self.model_config.max_tokens,
+                temperature=kwargs.get("temperature", 1.3),
+                stream=False if use_tools else stream,
+                response_format=self.config.response_format
+                if self.config.supports_json_mode
+                else None,
+            )
 
             try:
-                # temperature 设置
-                # 代码生成/数学解题 0.0
-                # 数据抽取/分析	1.0
-                # 通用对话	1.3
-                # 翻译	1.3
-                # 创意类写作/诗歌创作	1.5
-                response: (
-                    ChatCompletion | AsyncStream[ChatCompletionChunk]
-                ) = await self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=processed_messages,
-                    tools=tools or None,
-                    max_tokens=self.model_config.max_tokens,
-                    temperature=1.3,
-                    stream=False if use_tools else stream,
-                )
+                # 发送请求
+                response = await self.client.chat.completions.create(**request_params)
 
                 if use_tools:
                     self.update_usage(response.usage)
@@ -204,16 +314,14 @@ class OpenAICompatibleProvider(BaseAIProvider):
                     else:
                         self.update_usage(response.usage)
                         yield response.choices[0].message
+
             except Exception as e:
-                # 提供更详细的错误信息
                 error_message = f"{self.__class__.__name__} API error: {str(e)}"
                 logger.error(error_message)
-                # 创建一个包含错误信息的消息对象返回给调用者
-                error_response = ChatCompletionMessage(
+                yield ChatCompletionMessage(
                     role="assistant",
                     content=f"与AI服务通信时发生错误: {str(e)}",
                 )
-                yield error_response
 
         except Exception as e:
             logger.error(f"{self.__class__.__name__} ASK方法错误: {e}")

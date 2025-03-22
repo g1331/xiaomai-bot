@@ -78,13 +78,31 @@ def create_provider(provider_name: str, user_id: str = None) -> BaseAIProvider:
         g_config_loader.get_user_model(user_id, provider_name) if user_id else None
     )
 
-    if provider_name == "deepseek":
+    # 检查是否是通用OpenAI兼容提供者
+    if provider_config.get("type") == "generic_openai_compatible":
+        from .providers.generic_openai_compatible import (
+            GenericOpenAICompatibleConfig,
+            GenericOpenAICompatibleProvider,
+        )
+
+        _config = GenericOpenAICompatibleConfig(**provider_config)
+        return GenericOpenAICompatibleProvider(_config, model_name=user_model)
+    elif provider_name == "deepseek":
         _config = DeepSeekConfig(**provider_config)
         return DeepSeekProvider(_config, model_name=user_model)
     elif provider_name == "openai":
         _config = OpenAIConfig(**provider_config)
         return OpenAIProvider(_config, model_name=user_model)
     raise ValueError(f"Unknown provider: {provider_name}")
+
+
+def get_available_providers() -> list[str]:
+    """获取所有可用的AI提供商列表"""
+    global g_config_loader
+    if not g_config_loader:
+        raise ValueError("ConfigLoader not initialized")
+
+    return list(g_config_loader.config.get("providers", {}).keys())
 
 
 def provider_factory(key: str):
@@ -113,7 +131,17 @@ def get_provider_models(provider_name: str) -> list[str]:
 
     provider_config = g_config_loader.get_provider_config(provider_name)
 
-    if provider_name == "deepseek":
+    # 检查是否是通用OpenAI兼容提供者
+    if provider_config.get("type") == "generic_openai_compatible":
+        from .providers.generic_openai_compatible import (
+            GenericOpenAICompatibleConfig,
+            GenericOpenAICompatibleProvider,
+        )
+
+        _config = GenericOpenAICompatibleConfig(**provider_config)
+        provider = GenericOpenAICompatibleProvider(_config)
+        return provider.get_available_models()
+    elif provider_name == "deepseek":
         _config = DeepSeekConfig(**provider_config)
         provider = DeepSeekProvider(_config)
         return provider.get_available_models()
@@ -302,6 +330,9 @@ async def init():
                     @ "show_model_info",
                     # 切换模型
                     ArgumentMatch("-m", "--model", optional=True) @ "switch_model",
+                    # 添加切换提供商参数
+                    ArgumentMatch("-v", "--provider", optional=True)
+                    @ "switch_provider",
                     # 重试指令
                     ArgumentMatch("-r", "--retry", action="store_true", optional=True)
                     @ "retry",
@@ -340,6 +371,7 @@ async def ai_chat(
     show_model_info: ArgResult,
     switch_model: ArgResult,
     retry: ArgResult,
+    switch_provider: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -392,6 +424,59 @@ async def ai_chat(
         return await app.send_group_message(
             group, MessageChain("已重新加载AI对话模块配置"), quote=source
         )
+
+    if switch_provider.matched:
+        provider_name = switch_provider.result.display.strip()
+        if not provider_name:
+            available_providers = get_available_providers()
+            providers_list = "\n".join(
+                [f"- {provider}" for provider in available_providers]
+            )
+            return await app.send_group_message(
+                group,
+                MessageChain(
+                    f"请指定要切换的提供商名称。\n\n可用的提供商列表：\n{providers_list}"
+                ),
+                quote=source,
+            )
+
+        try:
+            # 检查提供商是否存在
+            if provider_name not in get_available_providers():
+                available_providers = get_available_providers()
+                providers_list = "\n".join(
+                    [f"- {provider}" for provider in available_providers]
+                )
+                return await app.send_group_message(
+                    group,
+                    MessageChain(
+                        f"提供商 '{provider_name}' 不存在。\n\n可用的提供商列表：\n{providers_list}"
+                    ),
+                    quote=source,
+                )
+
+            # 尝试切换提供商
+            success, message = switch_provider_for_conversation(
+                group_id_str, member_id_str, provider_name
+            )
+
+            if success:
+                return await app.send_group_message(
+                    group,
+                    MessageChain(message),
+                    quote=source,
+                )
+            else:
+                return await app.send_group_message(
+                    group,
+                    MessageChain(f"切换提供商失败: {message}"),
+                    quote=source,
+                )
+        except Exception as e:
+            logger.error(f"切换提供商时出错: {str(e)}")
+            return await app.send_group_message(
+                group, MessageChain(f"切换提供商时出错: {str(e)}"), quote=source
+            )
 
     if switch_model.matched:
         model_name = switch_model.result.display.strip()
@@ -538,22 +623,40 @@ async def ai_chat(
         except Exception as e:
             models_info = f"\n\n## 可用模型\n获取模型列表失败: {str(e)}"
 
+        # 获取所有提供商及其配置状态
+        all_providers = get_available_providers()
+        provider_status = []
+        for p in all_providers:
+            is_configured, error_msg = g_config_loader.is_provider_configured(p)
+            status = "✅ 已配置" if is_configured else f"❌ 未配置 ({error_msg})"
+            current = (
+                "（当前）"
+                if p == g_config_loader.get_user_provider(member_id_str)
+                else ""
+            )
+            provider_status.append(f"- **{p}** {current}: {status}")
+
+        providers_info = (
+            "\n\n## 可用提供商\n可以使用 `-v / --provider <提供商名称>` 切换提供商\n\n"
+            + "\n".join(provider_status)
+        )
+
         # 构建信息字符串
         info_md = f"""
 # AI模型信息
 
-## 基本信息
+## 当前信息
 - **提供商**: {provider_name}
 - **模型名称**: {model_name}
 - **单次输出上限**: {max_tokens} tokens
 - **上下文窗口**: {max_total_tokens} tokens
-{models_info}
 
 ## 多模态支持
 - **图片**: {supports_vision}
 - **音频**: {supports_audio}
 - **文档**: {supports_document}
 - **工具调用**: {supports_tools}
+{models_info}{providers_info}
 
 ## 会话状态
 - **当前状态**: {conversation_status}
@@ -741,3 +844,71 @@ async def ai_chat(
         return await app.send_group_message(
             group, MessageChain(GraiaImage(data_bytes=img_bytes)), quote=source
         )
+
+
+def switch_provider_for_conversation(
+    group_id: str, member_id: str, provider_name: str, model_name: str = None
+) -> tuple[bool, str]:
+    """
+    为指定会话切换提供商
+
+    Args:
+        group_id: 群组ID
+        member_id: 用户ID
+        provider_name: 要切换的提供商名称
+        model_name: 可选的模型名称，如果不提供，将使用提供商的默认模型
+
+    Returns:
+        tuple: (是否成功, 成功/失败消息)
+    """
+    global g_config_loader, g_manager
+
+    # 验证提供商是否存在
+    if provider_name not in get_available_providers():
+        return False, f"提供商 '{provider_name}' 不存在"
+
+    # 验证提供商配置是否完整
+    is_configured, error_msg = g_config_loader.is_provider_configured(provider_name)
+    if not is_configured:
+        return False, error_msg
+
+    try:
+        # 尝试获取当前会话
+        current_conversation = g_manager.get_conversation(group_id, member_id)
+
+        # 如果当前提供商与目标提供商相同，只需返回信息
+        if provider_name == g_config_loader.get_user_provider(member_id):
+            return True, f"已经在使用提供商：{provider_name}"
+
+        # 如果目标模型未指定，使用提供商默认模型
+        if not model_name:
+            provider_config = g_config_loader.get_provider_config(provider_name)
+            model_name = provider_config.get("default_model")
+
+        # 创建新的提供商实例
+        new_provider = create_provider(provider_name, member_id)
+
+        # 如果指定了模型，切换到该模型
+        if model_name:
+            try:
+                new_provider.switch_model(model_name)
+            except ValueError:
+                # 模型切换失败，使用提供商默认模型
+                provider_config = g_config_loader.get_provider_config(provider_name)
+                model_name = provider_config.get("default_model")
+                new_provider.switch_model(model_name)
+
+        # 更新用户偏好配置
+        g_config_loader.set_user_preference(member_id, provider_name, model_name)
+
+        # 创建新会话并保留预设
+        preset = current_conversation.preset
+        new_conversation = g_manager.new(group_id, member_id)
+        if preset:
+            new_conversation.set_preset(preset)
+
+        return True, f"已切换到提供商：{provider_name}，使用模型：{model_name}"
+
+    except Exception as e:
+        logger.error(f"切换提供商时出错: {str(e)}")
+        return False, f"切换提供商时出错: {str(e)}"

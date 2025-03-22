@@ -393,6 +393,37 @@ class ConfigLoader:
 
         return provider_config["models"][model_name]
 
+    def is_provider_configured(self, provider_name: str) -> tuple[bool, str]:
+        """
+        检查提供商配置是否完整有效
+
+        Args:
+            provider_name: 提供商名称
+
+        Returns:
+            tuple[bool, str]: (是否配置完整, 错误信息)
+        """
+        if not self.config:
+            return False, "配置未加载"
+
+        providers = self.config.get("providers", {})
+        if provider_name not in providers:
+            return False, f"未找到提供商 {provider_name} 的配置"
+
+        provider_config = providers[provider_name]
+
+        # 检查通用配置项
+        if "api_key" not in provider_config or not provider_config["api_key"]:
+            return False, f"{provider_name} 缺少 API key 配置"
+
+        # 针对特定提供商的配置检查
+        if provider_name == "openai":
+            if "api_base" not in provider_config or not provider_config["api_base"]:
+                return False, f"{provider_name} 缺少 API Base URL 配置"
+        # 可以在这里添加其他供应商的特定配置检查
+
+        return True, "配置完整"
+
     @property
     def config(self):
         return self._config

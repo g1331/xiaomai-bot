@@ -68,6 +68,9 @@ dependencies = [
     "tomli>=2.2.1",
 ]
 
+[tool.uv]
+package = false        # ⚠️ 禁用“本项目安装”以便只安装第三方依赖
+
 # 配置 Ruff 的整体行为
 [tool.ruff]
 line-length = 88  # Black 默认 88，可以改回 79 如果严格遵守 PEP 8

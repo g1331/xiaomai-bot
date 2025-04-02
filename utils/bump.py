@@ -64,25 +64,31 @@ def update_uv_lock():
 
 
 def get_current_version():
+    # 优先尝试从 core.__version__ 获取
     try:
-        from core import __version__
+        import core
 
-        return __version__
+        importlib.reload(core)
+        return core.__version__
     except ImportError:
+        # 从 .bumpversion.cfg 获取
         try:
             with open(".bumpversion.cfg") as f:
                 for line in f:
                     if line.startswith("current_version"):
                         return line.split("=")[1].strip()
-        except Exception:
+        except Exception as e:
+            print(f"❌ 读取 .bumpversion.cfg 失败: {e}")
             pass
+        # 从 pyproject.toml 获取
         try:
             import tomli
 
             with open("pyproject.toml", "rb") as f:
                 data = tomli.load(f)
                 return data.get("project", {}).get("version", "未知")
-        except Exception:
+        except Exception as e:
+            print(f"❌ 读取 pyproject.toml 失败: {e}")
             return "未知"
 
 
@@ -104,7 +110,7 @@ def generate_changelog(version: str):
         sys.exit(1)
 
 
-def git_commit_and_tag(version: str, tag: bool):
+def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
     files = ["pyproject.toml", "uv.lock", ".bumpversion.cfg"]
     if os.path.exists("core/__init__.py"):
         files.append("core/__init__.py")
@@ -112,11 +118,12 @@ def git_commit_and_tag(version: str, tag: bool):
         files.append("CHANGELOG.md")
 
     subprocess.run(["git", "add"] + files, check=True)
-    subprocess.run(["git", "commit", "-m", f"bump: v{version}"], check=True)
+    message = f"chore(release): 版本更新 v{prev_version} → v{new_version}"
+    subprocess.run(["git", "commit", "-m", message], check=True)
 
     if tag:
-        subprocess.run(["git", "tag", f"v{version}"], check=True)
-        print(f"✅ Git tag v{version} 已创建")
+        subprocess.run(["git", "tag", f"v{new_version}"], check=True)
+        print(f"✅ Git tag v{new_version} 已创建")
 
 
 def main():
@@ -171,29 +178,30 @@ def main():
 
     check_bumpversion()
 
-    # 决定是预发布标志还是版本升级
+    prev_version = get_current_version()
+
+    # 预发布标签处理
     pre_types = ["dev", "alpha", "beta", "rc", "release"]
     if args.command in pre_types:
-        current = get_current_version()
-        base = get_base_version(current)
+        base = get_base_version(prev_version)
         new_version = base if args.command == "release" else f"{base}-{args.command}"
         run_bumpversion("patch", new_version=new_version)
     else:
         run_bumpversion(args.command)
 
-    # 更新 uv.lock 中的 version
+    # bump 完成后重新获取新版本号
+    new_version = get_current_version()
+
+    # 更新 uv.lock
     update_uv_lock()
 
-    # 获取最新版本号
-    version = get_current_version()
-
-    # 生成 changelog（可选）
+    # 生成 changelog（如指定）
     if args.changelog:
-        generate_changelog(version)
+        generate_changelog(new_version)
 
-    # 手动提交（如果指定 --commit）
+    # 提交和打 tag（如指定）
     if args.commit:
-        git_commit_and_tag(version, tag=args.tag)
+        git_commit_and_tag(prev_version, new_version, tag=args.tag)
 
 
 if __name__ == "__main__":

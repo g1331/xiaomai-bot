@@ -20,6 +20,7 @@ from core.bot import Umaru
 from core.config import GlobalConfig
 from core.control import Distribute, FrequencyLimitation, Function, Permission
 from core.models import response_model, saya_model
+from utils.version_info import get_full_version_info
 
 config = create(GlobalConfig)
 core = create(Umaru)
@@ -121,6 +122,9 @@ async def message_counter():
 )
 @dispatch(Twilight([FullMatch("-bot").space(SpacePolicy.PRESERVE)]))
 async def status(app: Ariadne, src_place: Group | Friend, source: Source):
+    # 获取版本信息
+    version, git_info, b2v_info = get_full_version_info()
+
     # 运行时长
     time_start = int(time.mktime(core.launch_time.timetuple()))
     m, s = divmod(int(time.time()) - time_start, 60)
@@ -145,6 +149,24 @@ async def status(app: Ariadne, src_place: Group | Friend, source: Source):
     )
     real_time_received_message_count = message_count.get_receive_count()
     real_time_sent_message_count = message_count.get_send_count()
+
+    # 版本信息块
+    version_info = f"版本信息：v{version}\n"
+    if git_info["commit_short"] != "未知":
+        version_info += f"Git分支：{git_info['branch']}\n"
+        version_info += (
+            f"最新提交：{git_info['commit_short']} ({git_info['commit_author']})\n"
+        )
+        version_info += f"提交信息：{git_info['commit_message']}\n"
+
+    # 构建信息块
+    build_info = ""
+    if b2v_info["build_number"] != "开发环境":
+        build_info = f"构建编号：{b2v_info['build_number']}\n"
+        if b2v_info["build_date"]:
+            build_info += f"构建日期：{b2v_info['build_date']}\n"
+        build_info += f"构建类型：{b2v_info['build_type']}\n"
+
     await app.send_message(
         src_place,
         MessageChain(
@@ -158,6 +180,8 @@ async def status(app: Ariadne, src_place: Group | Friend, source: Source):
             f"在线bot数量：{len([app_item for app_item in core.apps if Ariadne.current(app_item.account).connection.status.available])}/"
             f"{len(core.apps)}\n",
             f"活动群组数量：{len(account_controller.total_groups.keys())}\n",
+            version_info,
+            build_info,
             "项目地址：https://github.com/g1331/xiaomai-bot",
         ),
         quote=source,

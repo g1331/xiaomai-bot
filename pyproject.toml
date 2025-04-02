@@ -1,6 +1,6 @@
 [project]
 name = "bot-xiaomai-open"
-version = "0.3.0"
+version = "3.0.0"
 description = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -64,6 +64,8 @@ dependencies = [
     "restrictedpython>=8.0",
     "scipy>=1.15.1",
     "pre-commit>=4.1.0",
+    "bump2version>=1.0.1",
+    "tomli>=2.2.1",
 ]
 
 # 配置 Ruff 的整体行为

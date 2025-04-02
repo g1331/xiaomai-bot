@@ -46,7 +46,7 @@ postprocessors = [
 # render_always = true
 
 # 输出文件路径（默认写入 stdout）
-output = "CHANGELOG.md"
+# output = "CHANGELOG.md"
 
 [git]
 # 使用 conventional commits 规范解析提交日志

@@ -98,13 +98,21 @@ def get_base_version(version: str) -> str:
 
 
 def generate_changelog(version: str):
-    cmd = ["git-cliff", "--tag", f"v{version}", "-o", "CHANGELOG.md"]
+    # 使用 --unreleased 和 --prepend 直接更新现有的 CHANGELOG.md
+    cmd = [
+        "git-cliff",
+        "--tag",
+        f"v{version}",
+        "--unreleased",
+        "--prepend",
+        "CHANGELOG.md",
+    ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"❌ changelog 生成失败: {result.stderr}")
             sys.exit(1)
-        print("✅ changelog 已生成")
+        print("✅ changelog 已更新并追加到 CHANGELOG.md")
     except Exception as e:
         print(f"❌ 执行 git-cliff 出错: {e}")
         sys.exit(1)

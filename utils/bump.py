@@ -31,6 +31,7 @@ bump.py - 版本号更新工具
 
 import argparse
 import importlib.util
+import re
 import subprocess
 import sys
 
@@ -121,6 +122,11 @@ def show_version_info():
         print(f"当前版本: v{get_current_version()}")
 
 
+def get_base_version(version: str) -> str:
+    """去掉预发布标签，返回基本版本号（如 3.0.0-alpha -> 3.0.0）"""
+    return re.match(r"\d+\.\d+\.\d+", version).group(0)
+
+
 def main():
     parser = argparse.ArgumentParser(description="版本号更新工具")
     parser.add_argument(
@@ -152,10 +158,32 @@ def main():
     prerelease_types = ["dev", "alpha", "beta", "rc", "release"]
 
     if args.command in prerelease_types:
+        current = get_current_version()
+        base = get_base_version(current)
+
         if args.command == "release":
-            run_bumpversion("release", args.tag, args.commit)
+            # 去掉预发布后缀，回到正式版
+            new_version = base
         else:
-            run_bumpversion(f"pre{args.command}", args.tag, args.commit)
+            # 加上新的 pre 标签
+            new_version = f"{base}-{args.command}"
+
+        cmd = ["bump2version", "--new-version", new_version]
+        if args.tag:
+            cmd.append("--tag")
+        if args.commit:
+            cmd.append("--commit")
+        cmd.append("patch")  # 需要指定一个 part，这里用 patch 表示只变 pre 部分
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"执行bump2version失败: {result.stderr}")
+                sys.exit(1)
+            print(result.stdout or "版本已更新")
+        except Exception as e:
+            print(f"执行bump2version时出错: {e}")
+            sys.exit(1)
     else:
         run_bumpversion(args.command, args.tag, args.commit)
 

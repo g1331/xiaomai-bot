@@ -105,7 +105,7 @@ def generate_changelog(version: str):
 
 
 def git_commit_and_tag(version: str, tag: bool):
-    files = ["pyproject.toml", "uv.lock"]
+    files = ["pyproject.toml", "uv.lock", ".bumpversion.cfg"]
     if os.path.exists("core/__init__.py"):
         files.append("core/__init__.py")
     if os.path.exists("CHANGELOG.md"):

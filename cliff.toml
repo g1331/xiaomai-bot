@@ -1,0 +1,95 @@
+# git-cliff 默认配置文件
+# 官方文档：https://git-cliff.org/docs/configuration
+#
+# 以下配置以表（table）和键（key）的形式组织
+# 所有以 "#" 开头的行为注释行，不会被执行
+
+[changelog]
+# changelog 文件头部模板
+header = """
+# 更新日志\n
+本文件记录了该项目的所有重要变更。\n
+"""
+
+# changelog 主体模板（使用 Tera 模板语法）
+# Tera 模板语法文档：https://keats.github.io/tera/docs/
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [未发布版本]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**破坏性修改**] {% endif %}\
+            {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+
+# changelog 尾部模板
+footer = """
+<!-- 本文件由 git-cliff 自动生成 -->
+"""
+
+# 是否裁剪头尾空白字符
+trim = true
+
+# 后处理器（例如替换链接）
+postprocessors = [
+  # { pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" }, # 替换仓库地址
+]
+
+# 即使没有版本也强制渲染 changelog 主体
+# render_always = true
+
+# 输出文件路径（默认写入 stdout）
+output = "CHANGELOG.md"
+
+[git]
+# 使用 conventional commits 规范解析提交日志
+conventional_commits = true
+
+# 只保留符合规范的提交
+filter_unconventional = true
+
+# 是否将每一行作为独立提交解析
+split_commits = false
+
+# 提交消息预处理器（支持正则替换）
+commit_preprocessors = [
+  # 示例：将 issue 编号替换为链接
+  # { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" },
+  # 示例：拼写检查并自动修复（需安装 typos 工具）
+  # { pattern = '.*', replace_command = 'typos --write-changes -' },
+]
+
+# 提交分类器，根据提交内容划分分组
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->🚀 新特性" },
+  { message = "^fix", group = "<!-- 1 -->🐛 修复问题" },
+  { message = "^doc", group = "<!-- 3 -->📚 文档相关" },
+  { message = "^perf", group = "<!-- 4 -->⚡ 性能优化" },
+  { message = "^refactor", group = "<!-- 2 -->🚜 代码重构" },
+  { message = "^style", group = "<!-- 5 -->🎨 代码格式" },
+  { message = "^test", group = "<!-- 6 -->🧪 测试相关" },
+  { message = "^chore\\(release\\): prepare for", skip = true },  # 忽略发布准备类提交
+  { message = "^chore\\(deps.*\\)", skip = true },               # 忽略依赖类提交
+  { message = "^chore\\(pr\\)", skip = true },
+  { message = "^chore\\(pull\\)", skip = true },
+  { message = "^chore|^ci", group = "<!-- 7 -->⚙️ 其他任务" },
+  { body = ".*security", group = "<!-- 8 -->🛡️ 安全相关" },
+  { message = "^revert", group = "<!-- 9 -->◀️ 回滚提交" },
+  { message = ".*", group = "<!-- 10 -->💼 其他修改" },
+]
+
+# 是否过滤掉未被上述规则匹配的提交（false 表示保留）
+filter_commits = false
+
+# 是否按 Git 拓扑顺序排序标签
+topo_order = false
+
+# 每个分类组内的提交排序方式（newest/oldest）
+sort_commits = "oldest"

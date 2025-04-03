@@ -56,6 +56,12 @@ python -m utils.bump rc --commit --tag
 
 # 发布正式版（移除预发布标签）
 python -m utils.bump release --commit --tag --changelog
+
+# 直接指定目标版本号（跨版本升级，如从预发布版本直接升级到正式版）
+python -m utils.bump patch --new-version 0.2.0 --commit --tag --changelog
+
+# 强制更新版本号（当 bump-my-version 自动更新失败时）
+python -m utils.bump patch --new-version 0.2.0 --force --commit --tag
 ```
 
 ---
@@ -149,22 +155,44 @@ git push origin main --tags
 python -m utils.bump patch --no-pre --commit --tag --changelog
 ```
 
+### 何时使用 `--new-version` 和 `--force` 选项
+
+使用 `--new-version` 选项在以下情况下特别有用：
+
+- 从预发布版本直接升级到指定的正式版本（如 `0.1.1-dev1` → `0.2.0`）
+- 跳过多个版本进行升级（如 `1.0.0` → `2.0.0`），不遵循常规版本增量
+- 当需要进行版本号规范化调整时
+
+```bash
+# 直接指定目标版本号
+python -m utils.bump patch --new-version 0.2.0 --commit --tag
+```
+
+当 bump-my-version 自动更新版本号失败时（特别是从预发布版本升级时），可以使用 `--force` 选项强制更新：
+
+```bash
+# 强制更新版本号
+python -m utils.bump patch --new-version 0.2.0 --force --commit --tag
+```
+
 ---
 
 ## ✅ 参考命令速查表
 
-| 操作              | 封装脚本方式                                | 直接命令方式                                                             |
-|-----------------|---------------------------------------|--------------------------------------------------------------------|
-| 增加补丁版本（不带预发布标签） | `python -m utils.bump patch --no-pre` | `bump-my-version bump patch --serialize "{major}.{minor}.{patch}"` |
-| 增加补丁版本（添加预发布标签） | `python -m utils.bump patch`          | `bump-my-version bump patch`                                       |
-| 增加次版本（不带预发布标签）  | `python -m utils.bump minor --no-pre` | `bump-my-version bump minor --serialize "{major}.{minor}.{patch}"` |
-| 增加主版本（不带预发布标签）  | `python -m utils.bump major --no-pre` | `bump-my-version bump major --serialize "{major}.{minor}.{patch}"` |
-| 设为 alpha 预发布版本  | `python -m utils.bump alpha`          | `bump-my-version bump pre alpha`                                   |
-| 设为 beta 预发布版本   | `python -m utils.bump beta`           | `bump-my-version bump pre beta`                                    |
-| 设为 rc 预发布版本     | `python -m utils.bump rc`             | `bump-my-version bump pre rc`                                      |
-| 发布正式版（移除预发布标签）  | `python -m utils.bump release`        | `bump-my-version bump pre final`                                   |
-| 指定具体版本号         | 不支持，请直接使用命令                           | `bump-my-version bump --new-version X.Y.Z`                         |
-| 查看当前版本          | `python -m utils.bump info`           | `bump-my-version show current_version`                             |
+| 操作                       | 封装脚本方式                                                   | 直接命令方式                                                              |
+|--------------------------|----------------------------------------------------------|---------------------------------------------------------------------|
+| 增加补丁版本（不带预发布标签）          | `python -m utils.bump patch --no-pre`                    | `bump-my-version bump patch --serialize "{major}.{minor}.{patch}"`  |
+| 增加补丁版本（添加预发布标签）          | `python -m utils.bump patch`                             | `bump-my-version bump patch`                                        |
+| 增加次版本（不带预发布标签）           | `python -m utils.bump minor --no-pre`                    | `bump-my-version bump minor --serialize "{major}.{minor}.{patch}"`  |
+| 增加主版本（不带预发布标签）           | `python -m utils.bump major --no-pre`                    | `bump-my-version bump major --serialize "{major}.{minor}.{patch}"`  |
+| 设为 alpha 预发布版本           | `python -m utils.bump alpha`                             | `bump-my-version bump pre alpha`                                    |
+| 设为 beta 预发布版本            | `python -m utils.bump beta`                              | `bump-my-version bump pre beta`                                     |
+| 设为 rc 预发布版本              | `python -m utils.bump rc`                                | `bump-my-version bump pre rc`                                       |
+| 发布正式版（移除预发布标签）           | `python -m utils.bump release`                           | `bump-my-version bump pre final`                                    |
+| 指定具体版本号                  | `python -m utils.bump patch --new-version X.Y.Z`         | `bump-my-version bump --new-version X.Y.Z`                          |
+| 强制更新版本号（当自动更新失败时）        | `python -m utils.bump patch --new-version X.Y.Z --force` | 不支持，需使用脚本                                                           |
+| 从预发布版本直接升级到正式版本（如 0.2.0） | `python -m utils.bump patch --new-version 0.2.0`         | `bump-my-version bump --new-version 0.2.0 --current-version "当前版本"` |
+| 查看当前版本                   | `python -m utils.bump info`                              | `bump-my-version show current_version`                              |
 
 ---
 

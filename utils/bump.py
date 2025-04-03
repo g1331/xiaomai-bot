@@ -200,7 +200,7 @@ def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
         files.append("CHANGELOG.md")
 
     subprocess.run(["git", "add"] + files, check=True)
-    message = f"chore(release): 版本更新 v{prev_version} → v{new_version}"
+    message = f"chore(release): bump version v{prev_version} → v{new_version}"
     subprocess.run(["git", "commit", "-m", message], check=True)
 
     if tag:

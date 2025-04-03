@@ -12,6 +12,7 @@ bump.py - 项目版本号自动管理脚本
     python -m utils.bump patch --commit --tag --changelog
     python -m utils.bump alpha
     python -m utils.bump release --commit
+    python -m utils.bump patch --no-pre  # 直接更新补丁版本，不添加预发布标签
 """
 
 import argparse
@@ -36,11 +37,17 @@ def check_bumpmyversion():
         sys.exit(1)
 
 
-def run_bumpmyversion(part, new_version=None):
+def run_bumpmyversion(part, new_version=None, no_pre=False):
     """执行 bump-my-version，不自动 commit 或 tag"""
     cmd = ["bump-my-version", "bump"]  # 添加 'bump' 子命令
     if new_version:
         cmd += ["--new-version", new_version]
+
+    # 如果指定 no_pre=True，直接使用第二种序列化格式（不带预发布标签）
+    if no_pre:
+        # bump-my-version 默认使用第一种序列化格式，添加 --serialize 指定使用第二种格式
+        cmd += ["--serialize", "{major}.{minor}.{patch}"]
+
     cmd.append(part)
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -192,6 +199,9 @@ def main():
     parser.add_argument(
         "--changelog", action="store_true", help="生成 changelog（依赖 git-cliff）"
     )
+    parser.add_argument(
+        "--no-pre", action="store_true", help="直接更新版本号，不添加预发布标签"
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -215,7 +225,7 @@ def main():
         new_version = base if args.command == "release" else f"{base}-{args.command}"
         run_bumpmyversion("patch", new_version=new_version)
     else:
-        run_bumpmyversion(args.command)
+        run_bumpmyversion(args.command, no_pre=args.no_pre)
 
     # bump 完成后重新获取新版本号
     new_version = get_current_version()

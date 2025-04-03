@@ -75,8 +75,20 @@ package = false # ⚠️ 禁用“本项目安装”以便只安装第三方依�
 current_version = "3.0.0"
 commit = false
 tag = false
-parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)(-(?P<pre>[a-zA-Z0-9]+))?"
-serialize = ["{major}.{minor}.{patch}-{pre}", "{major}.{minor}.{patch}"]
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
@@ -88,9 +100,13 @@ filename = "core/__init__.py"
 search = "__version__ = \"{current_version}\""
 replace = "__version__ = \"{new_version}\""
 
-[tool.bumpversion.parts.pre]
-optional_value = "release"
-values = ["dev", "alpha", "beta", "rc", "release"]
+[tool.bumpversion.parts.pre_l]
+optional_value = "final"
+first_value = "dev"
+values = ["dev", "alpha", "beta", "rc", "final"]
+
+[tool.bumpversion.parts.pre_n]
+first_value = "1"
 
 # 配置 Ruff 的整体行为
 [tool.ruff]

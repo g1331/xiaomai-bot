@@ -45,7 +45,7 @@ trim = true
 
 # 后处理器（例如替换链接）
 postprocessors = [
-  { pattern = '<REPO>', replace = "https://github.com/g1331/xiaomai-bot/" }, # 替换仓库地址
+  { pattern = '<REPO>', replace = "https://github.com/g1331/xiaomai-bot" }, # 替换仓库地址
 ]
 
 # 即使没有版本也强制渲染 changelog 主体

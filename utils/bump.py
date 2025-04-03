@@ -170,12 +170,10 @@ def get_base_version(version: str) -> str:
 
 
 def generate_changelog(version: str):
-    # 使用 --unreleased: 仅扫描从最新 Git 标签（版本）到当前提交之间的变更，生成这部分未纳入任何版本的日志内容。
     cmd = [
         "git-cliff",
         "--tag",
         f"v{version}",
-        "--unreleased",
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)

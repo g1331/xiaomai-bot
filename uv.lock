@@ -257,7 +257,6 @@ dependencies = [
     { name = "arclet-alconna-graia" },
     { name = "bilireq" },
     { name = "bs4" },
-    { name = "bump2version" },
     { name = "creart" },
     { name = "curl-cffi" },
     { name = "duckduckgo-search" },
@@ -321,7 +320,6 @@ requires-dist = [
     { name = "arclet-alconna-graia", specifier = ">=0.18.2" },
     { name = "bilireq", specifier = ">=0.2.13" },
     { name = "bs4", specifier = ">=0.0.2" },
-    { name = "bump2version", specifier = ">=1.0.1" },
     { name = "creart", specifier = ">=0.3.0" },
     { name = "curl-cffi", specifier = ">=0.7.1" },
     { name = "duckduckgo-search", specifier = ">=7.3.1" },
@@ -387,15 +385,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/aa/4acaf814ff901145da37332e05bb510452ebed97bc9602695059dd46ef39/bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925", size = 698 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/bb/bf7aab772a159614954d84aa832c129624ba6c32faa559dfb200a534e50b/bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc", size = 1189 },
-]
-
-[[package]]
-name = "bump2version"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/29/2a/688aca6eeebfe8941235be53f4da780c6edee05dbbea5d7abaa3aab6fad2/bump2version-1.0.1.tar.gz", hash = "sha256:762cb2bfad61f4ec8e2bdf452c7c267416f8c70dd9ecb1653fd0bbb01fa936e6", size = 36236 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/e3/fa60c47d7c344533142eb3af0b73234ef8ea3fb2da742ab976b947e717df/bump2version-1.0.1-py2.py3-none-any.whl", hash = "sha256:37f927ea17cde7ae2d7baf832f8e80ce3777624554a653006c9144f8017fe410", size = 22030 },
 ]
 
 [[package]]

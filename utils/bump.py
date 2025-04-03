@@ -3,7 +3,7 @@
 bump.py - 项目版本号自动管理脚本
 
 支持：
-- 使用 bump2version 修改版本
+- 使用 bump-my-version 修改版本
 - 自动同步 uv.lock
 - 可选生成 changelog（需安装 git-cliff）
 - 可选自动 commit 和打 Git tag
@@ -15,36 +15,42 @@ bump.py - 项目版本号自动管理脚本
 """
 
 import argparse
-import importlib.util
+import importlib
+import os
+import re
+import shutil
 import subprocess
 import sys
-import re
-import os
-
-HAS_BUMPVERSION = importlib.util.find_spec("bumpversion") is not None
 
 
-def check_bumpversion():
-    if not HAS_BUMPVERSION:
-        print("错误: 未安装 bump2version，请先运行: uv add bump2version")
+# 检查是否安装了 bump-my-version 作为 uv 工具
+def is_bumpmyversion_installed():
+    """检查 bump-my-version 是否已作为 uv 工具安装"""
+    return shutil.which("bump-my-version") is not None
+
+
+def check_bumpmyversion():
+    """检查 bump-my-version 是否已安装"""
+    if not is_bumpmyversion_installed():
+        print("错误: 未安装 bump-my-version，请先运行: uv tool install bump-my-version")
         sys.exit(1)
 
 
-def run_bumpversion(part, new_version=None):
-    """执行 bump2version，不自动 commit 或 tag"""
-    cmd = ["bump2version"]
+def run_bumpmyversion(part, new_version=None):
+    """执行 bump-my-version，不自动 commit 或 tag"""
+    cmd = ["bump-my-version", "bump"]  # 添加 'bump' 子命令
     if new_version:
         cmd += ["--new-version", new_version]
     cmd.append(part)
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"❌ bump2version 执行失败: {result.stderr}")
+            print(f"❌ bump-my-version 执行失败: {result.stderr}")
             sys.exit(1)
         print(result.stdout or "✅ 版本号已更新")
         return True
     except Exception as e:
-        print(f"❌ bump2version 出错: {e}")
+        print(f"❌ bump-my-version 出错: {e}")
         sys.exit(1)
 
 
@@ -71,25 +77,37 @@ def get_current_version():
         importlib.reload(core)
         return core.__version__
     except ImportError:
-        # 从 .bumpversion.cfg 获取
-        try:
-            with open(".bumpversion.cfg") as f:
-                for line in f:
-                    if line.startswith("current_version"):
-                        return line.split("=")[1].strip()
-        except Exception as e:
-            print(f"❌ 读取 .bumpversion.cfg 失败: {e}")
-            pass
-        # 从 pyproject.toml 获取
-        try:
-            import tomli
+        pass
 
-            with open("pyproject.toml", "rb") as f:
-                data = tomli.load(f)
-                return data.get("project", {}).get("version", "未知")
-        except Exception as e:
-            print(f"❌ 读取 pyproject.toml 失败: {e}")
-            return "未知"
+    # 从 pyproject.toml 获取
+    try:
+        import tomli
+
+        with open("pyproject.toml", "rb") as f:
+            data = tomli.load(f)
+            # 先检查 tool.bumpversion.current_version
+            version = data.get("tool", {}).get("bumpversion", {}).get("current_version")
+            if version:
+                return version.strip("\"'")
+            # 再检查 project.version
+            version = data.get("project", {}).get("version")
+            if version:
+                return version.strip("\"'")
+    except Exception as e:
+        print(f"❌ 读取 pyproject.toml 失败: {e}")
+        pass
+
+    # 从 .bumpversion.cfg 获取
+    try:
+        with open(".bumpversion.cfg") as f:
+            for line in f:
+                if line.startswith("current_version"):
+                    return line.split("=")[1].strip()
+    except Exception as e:
+        print(f"❌ 读取 .bumpversion.cfg 失败: {e}")
+        pass
+
+    return "未知"
 
 
 def get_base_version(version: str) -> str:
@@ -119,9 +137,11 @@ def generate_changelog(version: str):
 
 
 def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
-    files = ["pyproject.toml", "uv.lock", ".bumpversion.cfg"]
+    files = ["pyproject.toml", "uv.lock"]
     if os.path.exists("core/__init__.py"):
         files.append("core/__init__.py")
+    if os.path.exists(".bumpversion.cfg"):
+        files.append(".bumpversion.cfg")
     if os.path.exists("CHANGELOG.md"):
         files.append("CHANGELOG.md")
 
@@ -136,7 +156,7 @@ def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="项目版本号自动更新脚本（基于 bump2version）",
+        description="项目版本号自动更新脚本（基于 bump-my-version）",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
@@ -184,7 +204,7 @@ def main():
         print(f"当前版本号: v{version}")
         return
 
-    check_bumpversion()
+    check_bumpmyversion()
 
     prev_version = get_current_version()
 
@@ -193,9 +213,9 @@ def main():
     if args.command in pre_types:
         base = get_base_version(prev_version)
         new_version = base if args.command == "release" else f"{base}-{args.command}"
-        run_bumpversion("patch", new_version=new_version)
+        run_bumpmyversion("patch", new_version=new_version)
     else:
-        run_bumpversion(args.command)
+        run_bumpmyversion(args.command)
 
     # bump 完成后重新获取新版本号
     new_version = get_current_version()

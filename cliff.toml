@@ -31,7 +31,13 @@ body = """
 
 # changelog 尾部模板
 footer = """
-<!-- 本文件由 git-cliff 自动生成 -->
+---
+
+### 🔍 相关链接
+- 问题反馈：[Issues](<REPO>/issues)
+- 项目主页：[g1331/xiaomai-bot](<REPO>)
+
+> 本文档由 [git-cliff](https://git-cliff.org) 根据 Git 提交记录自动生成
 """
 
 # 是否裁剪头尾空白字符
@@ -39,7 +45,7 @@ trim = true
 
 # 后处理器（例如替换链接）
 postprocessors = [
-  # { pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" }, # 替换仓库地址
+  { pattern = '<REPO>', replace = "https://github.com/g1331/xiaomai-bot/" }, # 替换仓库地址
 ]
 
 # 即使没有版本也强制渲染 changelog 主体
@@ -61,7 +67,7 @@ split_commits = false
 # 提交消息预处理器（支持正则替换）
 commit_preprocessors = [
   # 示例：将 issue 编号替换为链接
-  # { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" },
+  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" },
   # 示例：拼写检查并自动修复（需安装 typos 工具）
   # { pattern = '.*', replace_command = 'typos --write-changes -' },
 ]
@@ -92,4 +98,4 @@ filter_commits = false
 topo_order = false
 
 # 每个分类组内的提交排序方式（newest/oldest）
-sort_commits = "oldest"
+sort_commits = "newest"

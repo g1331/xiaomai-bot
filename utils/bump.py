@@ -9,15 +9,15 @@ bump.py - 项目版本号自动管理脚本
 - 可选自动 commit 和打 Git tag
 
 用法示例：
-    python -m utils.bump patch --commit --tag --changelog
-    python -m utils.bump alpha
-    python -m utils.bump release --commit
+    python -m utils.bump patch --commit --tag --changelog  # 更新补丁版本并提交、打标签
+    python -m utils.bump pre_l  # 递增预发布标签（如 dev → alpha → beta → rc）
+    python -m utils.bump pre_n  # 递增预发布版本号（如 alpha1 → alpha2）
     python -m utils.bump patch --no-pre  # 直接更新补丁版本，不添加预发布标签
     python -m utils.bump patch --new-version 0.2.0  # 直接指定目标版本号
+    python -m utils.bump release  # 移除预发布标签，发布正式版
 """
 
 import argparse
-import importlib
 import os
 import re
 import shutil
@@ -38,22 +38,81 @@ def check_bumpmyversion():
         sys.exit(1)
 
 
+def get_current_version():
+    """获取当前版本号，优先从 pyproject.toml 读取"""
+    # 从 pyproject.toml 获取
+    try:
+        import tomli
+
+        with open("pyproject.toml", "rb") as f:
+            data = tomli.load(f)
+            # 先检查 tool.bumpversion.current_version
+            version = data.get("tool", {}).get("bumpversion", {}).get("current_version")
+            if version:
+                return version.strip("\"'")
+            # 再检查 project.version
+            version = data.get("project", {}).get("version")
+            if version:
+                return version.strip("\"'")
+    except Exception:
+        pass
+
+    return "未知"
+
+
+def get_base_version(version: str) -> str:
+    """从版本号中提取基础版本（不含预发布标签）"""
+    match = re.match(r"\d+\.\d+\.\d+", version)
+    return match.group(0) if match else version
+
+
 def run_bumpmyversion(part, new_version=None, no_pre=False):
-    """执行 bump-my-version，不自动 commit 或 tag"""
+    """执行 bump-my-version，不自动 commit 或 tag
+
+    返回：
+        tuple: (bool, str) 执行成功返回 (True, 新版本号)，失败返回 (False, None)
+    """
     cmd = ["bump-my-version", "bump"]  # 添加 'bump' 子命令
 
     # 明确指定当前版本，避免从预发布版本升级时的问题
     current_version = get_current_version()
     cmd += ["--current-version", current_version]
 
+    # 初始化 result_version
+    result_version = None
+
     if new_version:
         cmd += ["--new-version", new_version]
         # 如果指定了新版本，就不需要指定要更新的部分了
         part = None
-    # 如果指定 no_pre=True，直接使用第二种序列化格式（不带预发布标签）
+        result_version = new_version  # 如果指定了新版本，直接使用该版本号
+    # 如果指定 no_pre=True，先提取基础版本号，然后根据命令增加相应的版本号部分
     elif no_pre:
-        # bump-my-version 默认使用第一种序列化格式，添加 --serialize 指定使用第二种格式
-        cmd += ["--serialize", "{major}.{minor}.{patch}"]
+        base_version = get_base_version(current_version)
+
+        # 根据命令构造新版本号
+        if part == "major":
+            parts = base_version.split(".")
+            new_ver = f"{int(parts[0]) + 1}.0.0"
+        elif part == "minor":
+            parts = base_version.split(".")
+            new_ver = f"{parts[0]}.{int(parts[1]) + 1}.0"
+        elif part == "patch":
+            parts = base_version.split(".")
+            new_ver = f"{parts[0]}.{parts[1]}.{int(parts[2]) + 1}"
+        else:
+            new_ver = base_version
+
+        cmd = [
+            "bump-my-version",
+            "bump",
+            "--current-version",
+            current_version,
+            "--new-version",
+            new_ver,
+        ]
+        result_version = new_ver
+        part = None
 
     # 仅当未指定新版本时才添加部分参数
     if part:
@@ -64,12 +123,18 @@ def run_bumpmyversion(part, new_version=None, no_pre=False):
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"❌ bump-my-version 执行失败: {result.stderr or result.stdout}")
-            sys.exit(1)
+            return False, None
+
         print(result.stdout or "✅ 版本号已更新")
-        return True
+
+        # 如果没有指定新版本号，则从文件中读取
+        if new_version is None:
+            result_version = get_current_version()
+
+        return True, result_version
     except Exception as e:
         print(f"❌ bump-my-version 出错: {e}")
-        sys.exit(1)
+        return False, None
 
 
 def update_pyproject_version_directly(new_version):
@@ -109,6 +174,7 @@ def update_pyproject_version_directly(new_version):
 
 
 def update_uv_lock():
+    """更新 uv.lock 文件"""
     if not os.path.exists("uv.lock"):
         print("⚠️ 未找到 uv.lock，跳过")
         return
@@ -123,53 +189,8 @@ def update_uv_lock():
         sys.exit(1)
 
 
-def get_current_version():
-    # 优先尝试从 core.__version__ 获取
-    try:
-        import core
-
-        importlib.reload(core)
-        return core.__version__
-    except ImportError:
-        pass
-
-    # 从 pyproject.toml 获取
-    try:
-        import tomli
-
-        with open("pyproject.toml", "rb") as f:
-            data = tomli.load(f)
-            # 先检查 tool.bumpversion.current_version
-            version = data.get("tool", {}).get("bumpversion", {}).get("current_version")
-            if version:
-                return version.strip("\"'")
-            # 再检查 project.version
-            version = data.get("project", {}).get("version")
-            if version:
-                return version.strip("\"'")
-    except Exception as e:
-        print(f"❌ 读取 pyproject.toml 失败: {e}")
-        pass
-
-    # 从 .bumpversion.cfg 获取
-    try:
-        with open(".bumpversion.cfg") as f:
-            for line in f:
-                if line.startswith("current_version"):
-                    return line.split("=")[1].strip()
-    except Exception as e:
-        print(f"❌ 读取 .bumpversion.cfg 失败: {e}")
-        pass
-
-    return "未知"
-
-
-def get_base_version(version: str) -> str:
-    match = re.match(r"\d+\.\d+\.\d+", version)
-    return match.group(0) if match else version
-
-
 def generate_changelog(version: str):
+    """生成 changelog"""
     cmd = [
         "git-cliff",
         "--tag",
@@ -187,11 +208,10 @@ def generate_changelog(version: str):
 
 
 def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
+    """提交更改并创建 Git tag"""
     files = ["pyproject.toml", "uv.lock"]
     if os.path.exists("core/__init__.py"):
         files.append("core/__init__.py")
-    if os.path.exists(".bumpversion.cfg"):
-        files.append(".bumpversion.cfg")
     if os.path.exists("CHANGELOG.md"):
         files.append("CHANGELOG.md")
 
@@ -215,10 +235,8 @@ def main():
             "major",
             "minor",
             "patch",
-            "dev",
-            "alpha",
-            "beta",
-            "rc",
+            "pre_l",
+            "pre_n",
             "release",
             "info",
         ],
@@ -227,10 +245,8 @@ def main():
             "  major     主版本号 +1，如 1.2.3 → 2.0.0\n"
             "  minor     次版本号 +1，如 1.2.3 → 1.3.0\n"
             "  patch     补丁号 +1，如 1.2.3 → 1.2.4\n"
-            "  dev       添加 -dev 预发布标签\n"
-            "  alpha     添加 -alpha 标签\n"
-            "  beta      添加 -beta 标签\n"
-            "  rc        添加 -rc 标签\n"
+            "  pre_l     递增预发布标签，如 dev → alpha → beta → rc\n"
+            "  pre_n     递增预发布版本号，如 alpha1 → alpha2\n"
             "  release   移除预发布标签，发布正式版\n"
             "  info      显示当前版本信息"
         ),
@@ -266,34 +282,64 @@ def main():
     check_bumpmyversion()
 
     prev_version = get_current_version()
+    new_version = None
 
     # 处理明确指定的新版本号
     if args.new_version:
         print(f"⚙️ 准备将版本从 {prev_version} 更新到 {args.new_version}")
-        try:
-            run_bumpmyversion(None, new_version=args.new_version)
-        except Exception as e:
-            print(f"❌ 版本更新失败: {e}")
+        success, new_version = run_bumpmyversion(None, new_version=args.new_version)
+        if not success:
+            print("❌ 版本更新失败")
             if args.force:
                 print("⚠️ bump-my-version 失败，尝试直接修改文件...")
                 update_pyproject_version_directly(args.new_version)
+                new_version = args.new_version
             else:
                 print("❌ 如果你确定要强制更新，请添加 --force 参数")
                 sys.exit(1)
     else:
-        # 预发布标签处理
-        pre_types = ["dev", "alpha", "beta", "rc", "release"]
-        if args.command in pre_types:
+        # 处理预发布版本和标准版本更新
+        if args.command == "release":
+            # 移除预发布标签，发布正式版
             base = get_base_version(prev_version)
-            new_version = (
-                base if args.command == "release" else f"{base}-{args.command}1"
-            )
-            run_bumpmyversion(None, new_version=new_version)
+            success, new_version = run_bumpmyversion(None, new_version=base)
+            if not success:
+                print("❌ 移除预发布标签失败")
+                if args.force:
+                    print("⚠️ bump-my-version 失败，尝试直接修改文件...")
+                    update_pyproject_version_directly(base)
+                    new_version = base
+                else:
+                    print("❌ 如果你确定要强制更新，请添加 --force 参数")
+                    sys.exit(1)
         else:
-            run_bumpmyversion(args.command, no_pre=args.no_pre)
+            # 直接使用 bump-my-version 的内置功能处理所有版本更新
+            # 包括 major、minor、patch、pre_l、pre_n 等
+            success, new_version = run_bumpmyversion(args.command, no_pre=args.no_pre)
+            if not success:
+                print("❌ 版本更新失败")
+                if args.force and args.command in ["major", "minor", "patch"]:
+                    print("⚠️ bump-my-version 失败，尝试直接修改文件...")
+                    # 如果是标准版本更新，可以尝试直接修改文件
+                    # 计算新版本号
+                    parts = prev_version.split(".")
+                    if args.command == "major":
+                        new_ver = f"{int(parts[0]) + 1}.0.0"
+                    elif args.command == "minor":
+                        new_ver = f"{parts[0]}.{int(parts[1]) + 1}.0"
+                    elif args.command == "patch":
+                        new_ver = (
+                            f"{parts[0]}.{parts[1]}.{int(parts[2].split('-')[0]) + 1}"
+                        )
+                    update_pyproject_version_directly(new_ver)
+                    new_version = new_ver
+                else:
+                    print("❌ 如果你确定要强制更新，请添加 --force 参数")
+                    sys.exit(1)
 
-    # bump 完成后重新获取新版本号
-    new_version = get_current_version()
+    # 如果没有获取到新版本号，则尝试从文件中读取
+    if new_version is None:
+        new_version = get_current_version()
 
     # 更新 uv.lock
     update_uv_lock()

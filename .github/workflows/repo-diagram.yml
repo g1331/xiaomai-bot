@@ -34,7 +34,7 @@ jobs:
           # 若无其他提交则终止工作流
           if [ "$RECENT_COMMITS" -eq 0 ]; then
             echo "No developer commits in past 7 days. Skipping diagram update."
-            exit 1
+            exit 0
           fi
 
       - name: Update repository structure diagram

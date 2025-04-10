@@ -1,10 +1,10 @@
 # ✅ 版本发布流程 Checklist
 
-> 本文档用于规范化版本发布流程，确保每次发布都**一致、可审计、可追溯**  
+> 本文档用于规范化版本发布流程，确保每次发布都**一致、可审计、可追溯**
 > 当前项目版本管理方案基于：
 >
 > - [`bump-my-version`](https://github.com/callowayproject/bump-my-version)：版本号控制
-> - 自定义脚本 `bump.py`：自动封装版本更新、changelog 生成、tag 创建、git 提交
+> - 自定义脚本 `scripts/bump.py`：自动封装版本更新、changelog 生成、tag 创建、git 提交
 > - [`git-cliff`](https://github.com/orhun/git-cliff)：自动生成 changelog
 > - 版本号遵循 [Semantic Versioning 2.0.0](https://semver.org/lang/zh-CN/)
 
@@ -26,7 +26,7 @@
 
 ---
 
-## 🧰 2. 运行发布脚本 bump.py
+## 🧰 2. 运行发布脚本 scripts/bump.py
 
 使用封装好的脚本自动完成以下内容：
 
@@ -40,28 +40,29 @@
 
 ```bash
 # 增加补丁版本号（默认添加预发布标签）
-python -m utils.bump patch --commit --tag --changelog
+python -m scripts.bump patch --commit --tag --changelog
 
 # 增加补丁版本号（不添加预发布标签）
-python -m utils.bump patch --no-pre --commit --tag --changelog
+python -m scripts.bump patch --no-pre --commit --tag --changelog
 
 # 使用其他版本级别
-python -m utils.bump minor --no-pre --commit --tag --changelog
-python -m utils.bump major --no-pre --commit --tag --changelog
+python -m scripts.bump minor --no-pre --commit --tag --changelog
+python -m scripts.bump major --no-pre --commit --tag --changelog
 
-# 添加预发布标签
-python -m utils.bump alpha --commit --tag
-python -m utils.bump beta --commit --tag
-python -m utils.bump rc --commit --tag
+# 递增预发布标签（如 dev → alpha → beta → rc）
+python -m scripts.bump pre_l --commit --tag
+
+# 递增预发布版本号（如 alpha1 → alpha2）
+python -m scripts.bump pre_n --commit --tag
 
 # 发布正式版（移除预发布标签）
-python -m utils.bump release --commit --tag --changelog
+python -m scripts.bump release --commit --tag --changelog
 
 # 直接指定目标版本号（跨版本升级，如从预发布版本直接升级到正式版）
-python -m utils.bump patch --new-version 0.2.0 --commit --tag --changelog
+python -m scripts.bump patch --new-version 0.2.0 --commit --tag --changelog
 
 # 强制更新版本号（当 bump-my-version 自动更新失败时）
-python -m utils.bump patch --new-version 0.2.0 --force --commit --tag
+python -m scripts.bump patch --new-version 0.2.0 --force --commit --tag
 ```
 
 ---
@@ -132,6 +133,15 @@ git push origin main --tags
 - 标准版本：`X.Y.Z`（例如 `3.0.0`）
 - 预发布版本：`X.Y.Z-labelN`（例如 `3.0.1-dev1`、`3.1.0-rc2`）
 
+### 预发布标签顺序
+
+预发布标签遵循如下顺序（由 `pre_l` 命令递增）：
+
+1. `dev`：开发版本，内部开发使用
+2. `alpha`：内部测试版本
+3. `beta`：外部测试版本
+4. `rc`：发布候选版本
+
 ### 预发布版本流程
 
 典型的版本发布流程为：
@@ -152,7 +162,22 @@ git push origin main --tags
 
 ```bash
 # 直接升级到下一个补丁版本而不添加预发布标签
-python -m utils.bump patch --no-pre --commit --tag --changelog
+python -m scripts.bump patch --no-pre --commit --tag --changelog
+```
+
+### 何时使用 `pre_l` 和 `pre_n` 命令
+
+这两个命令用于管理预发布版本：
+
+- `pre_l`（pre-label）：递增预发布标签，如 dev → alpha → beta → rc
+- `pre_n`（pre-number）：递增预发布版本号，如 alpha1 → alpha2
+
+```bash
+# 将版本从 1.0.0-dev1 升级到 1.0.0-alpha1
+python -m scripts.bump pre_l --commit --tag
+
+# 将版本从 1.0.0-alpha1 升级到 1.0.0-alpha2
+python -m scripts.bump pre_n --commit --tag
 ```
 
 ### 何时使用 `--new-version` 和 `--force` 选项
@@ -165,34 +190,33 @@ python -m utils.bump patch --no-pre --commit --tag --changelog
 
 ```bash
 # 直接指定目标版本号
-python -m utils.bump patch --new-version 0.2.0 --commit --tag
+python -m scripts.bump patch --new-version 0.2.0 --commit --tag
 ```
 
 当 bump-my-version 自动更新版本号失败时（特别是从预发布版本升级时），可以使用 `--force` 选项强制更新：
 
 ```bash
 # 强制更新版本号
-python -m utils.bump patch --new-version 0.2.0 --force --commit --tag
+python -m scripts.bump patch --new-version 0.2.0 --force --commit --tag
 ```
 
 ---
 
 ## ✅ 参考命令速查表
 
-| 操作                       | 封装脚本方式                                                   | 直接命令方式                                                              |
-|--------------------------|----------------------------------------------------------|---------------------------------------------------------------------|
-| 增加补丁版本（不带预发布标签）          | `python -m utils.bump patch --no-pre`                    | `bump-my-version bump patch --serialize "{major}.{minor}.{patch}"`  |
-| 增加补丁版本（添加预发布标签）          | `python -m utils.bump patch`                             | `bump-my-version bump patch`                                        |
-| 增加次版本（不带预发布标签）           | `python -m utils.bump minor --no-pre`                    | `bump-my-version bump minor --serialize "{major}.{minor}.{patch}"`  |
-| 增加主版本（不带预发布标签）           | `python -m utils.bump major --no-pre`                    | `bump-my-version bump major --serialize "{major}.{minor}.{patch}"`  |
-| 设为 alpha 预发布版本           | `python -m utils.bump alpha`                             | `bump-my-version bump pre alpha`                                    |
-| 设为 beta 预发布版本            | `python -m utils.bump beta`                              | `bump-my-version bump pre beta`                                     |
-| 设为 rc 预发布版本              | `python -m utils.bump rc`                                | `bump-my-version bump pre rc`                                       |
-| 发布正式版（移除预发布标签）           | `python -m utils.bump release`                           | `bump-my-version bump pre final`                                    |
-| 指定具体版本号                  | `python -m utils.bump patch --new-version X.Y.Z`         | `bump-my-version bump --new-version X.Y.Z`                          |
-| 强制更新版本号（当自动更新失败时）        | `python -m utils.bump patch --new-version X.Y.Z --force` | 不支持，需使用脚本                                                           |
-| 从预发布版本直接升级到正式版本（如 0.2.0） | `python -m utils.bump patch --new-version 0.2.0`         | `bump-my-version bump --new-version 0.2.0 --current-version "当前版本"` |
-| 查看当前版本                   | `python -m utils.bump info`                              | `bump-my-version show current_version`                              |
+| 操作                               | 封装脚本方式                                                     | 直接命令方式                                                              |
+|----------------------------------|------------------------------------------------------------|---------------------------------------------------------------------|
+| 增加补丁版本（不带预发布标签）                  | `python -m scripts.bump patch --no-pre`                    | `bump-my-version bump patch --serialize "{major}.{minor}.{patch}"`  |
+| 增加补丁版本（添加预发布标签）                  | `python -m scripts.bump patch`                             | `bump-my-version bump patch`                                        |
+| 增加次版本（不带预发布标签）                   | `python -m scripts.bump minor --no-pre`                    | `bump-my-version bump minor --serialize "{major}.{minor}.{patch}"`  |
+| 增加主版本（不带预发布标签）                   | `python -m scripts.bump major --no-pre`                    | `bump-my-version bump major --serialize "{major}.{minor}.{patch}"`  |
+| 递增预发布标签（dev → alpha → beta → rc） | `python -m scripts.bump pre_l`                             | `bump-my-version bump pre_l`                                        |
+| 递增预发布版本号（alpha1 → alpha2）        | `python -m scripts.bump pre_n`                             | `bump-my-version bump pre_n`                                        |
+| 发布正式版（移除预发布标签）                   | `python -m scripts.bump release`                           | `bump-my-version bump pre final`                                    |
+| 指定具体版本号                          | `python -m scripts.bump patch --new-version X.Y.Z`         | `bump-my-version bump --new-version X.Y.Z`                          |
+| 强制更新版本号（当自动更新失败时）                | `python -m scripts.bump patch --new-version X.Y.Z --force` | 不支持，需使用脚本                                                           |
+| 从预发布版本直接升级到正式版本（如 0.2.0）         | `python -m scripts.bump patch --new-version 0.2.0`         | `bump-my-version bump --new-version 0.2.0 --current-version "当前版本"` |
+| 查看当前版本                           | `python -m scripts.bump info`                              | `bump-my-version show current_version`                              |
 
 ---
 

@@ -1470,7 +1470,10 @@ class BF1BlazeManager:
         try:
             response = await blaze_socket.send(packet)
         except TimeoutError:
-            await blaze_socket.close()
+            try:
+                await blaze_socket.close()
+            except Exception as e:
+                logger.error(f"关闭连接时出错: {e}")
             logger.error("Blaze后端超时!")
             return "Blaze后端超时!"
         if origin:

@@ -109,8 +109,15 @@ class BlazeSocket:
     async def close(self):
         # 关闭连接
         self.connect = False
-        self.writer.close()
-        await self.writer.wait_closed()
+        if self.writer:
+            self.writer.close()
+            try:
+                await self.writer.wait_closed()
+            except ssl.SSLError as e:
+                # 处理SSL错误：APPLICATION_DATA_AFTER_CLOSE_NOTIFY
+                logger.warning(f"SSL关闭连接时出现错误 (可忽略): {e}")
+            except Exception as e:
+                logger.error(f"关闭连接时出现错误: {e}")
         logger.success(f"已断开与Blaze服务器 {self.host}:{self.port} 的连接")
 
     async def keepalive(self):

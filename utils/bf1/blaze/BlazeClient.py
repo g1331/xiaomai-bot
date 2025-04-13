@@ -1,6 +1,6 @@
 import random
 
-from utils.bf1.blaze.BlazeSocket import BlazeSocket, BlazeServerREQ
+from utils.bf1.blaze.BlazeSocket import BlazeServerREQ, BlazeSocket
 
 
 class BlazeClient:
@@ -38,7 +38,12 @@ class BlazeClientManager:
             client = self.clients_by_pid[pid]
             if client.connect:
                 return client
-            await client.close()
+            try:
+                await client.close()
+            except Exception as e:
+                from loguru import logger
+
+                logger.error(f"关闭客户端连接时出错: {e}")
             del self.clients_by_pid[pid]
 
         new_client = BlazeClient()
@@ -51,14 +56,24 @@ class BlazeClientManager:
             return None
 
     async def close_all(self):
+        from loguru import logger
+
         for client in self.clients_by_pid.values():
-            await client.close()
+            try:
+                await client.close()
+            except Exception as e:
+                logger.error(f"关闭客户端连接时出错: {e}")
         self.clients_by_pid.clear()
 
     async def remove_client(self, pid: str):
         if pid in self.clients_by_pid:
             client = self.clients_by_pid[pid]
-            await client.close()
+            try:
+                await client.close()
+            except Exception as e:
+                from loguru import logger
+
+                logger.error(f"关闭客户端连接时出错: {e}")
             del self.clients_by_pid[pid]
 
 

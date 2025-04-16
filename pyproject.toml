@@ -1,6 +1,6 @@
 [project]
 name = "bot-xiaomai-open"
-version = "0.3.0"
+version = "3.0.0"
 description = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -64,20 +64,164 @@ dependencies = [
     "restrictedpython>=8.0",
     "scipy>=1.15.1",
     "pre-commit>=4.1.0",
+    "tomli>=2.2.1",
 ]
+
+[tool.uv]
+package = false # ⚠️ 禁用“本项目安装”以便只安装第三方依赖
+
+# bump-my-version 配置
+[tool.bumpversion]
+current_version = "3.0.0"
+commit = false
+tag = false
+parse = """(?x)
+    (?P<major>0|[1-9]\\d*)\\.
+    (?P<minor>0|[1-9]\\d*)\\.
+    (?P<patch>0|[1-9]\\d*)
+    (?:
+        -                             # dash separator for pre-release section
+        (?P<pre_l>[a-zA-Z-]+)         # pre-release label
+        (?P<pre_n>0|[1-9]\\d*)        # pre-release version number
+    )?                                # pre-release section is optional
+"""
+serialize = [
+    "{major}.{minor}.{patch}-{pre_l}{pre_n}",
+    "{major}.{minor}.{patch}",
+]
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "core/__init__.py"
+search = "__version__ = \"{current_version}\""
+replace = "__version__ = \"{new_version}\""
+
+[tool.bumpversion.parts.pre_l]
+optional_value = "final"
+first_value = "dev"
+values = ["dev", "alpha", "beta", "rc", "final"]
+
+[tool.bumpversion.parts.pre_n]
+first_value = "1"
+
+# git-cliff 默认配置文件
+# 官方文档：https://git-cliff.org/docs/configuration
+#
+# 以下配置以表（table）和键（key）的形式组织
+# 所有以 "#" 开头的行为注释行，不会被执行
+
+[tool.git-cliff.changelog]
+# changelog 文件头部模板
+header = """
+# 更新日志\n
+本文件记录了该项目的所有重要变更。\n
+"""
+
+# changelog 主体模板（使用 Tera 模板语法）
+# Tera 模板语法文档：https://keats.github.io/tera/docs/
+body = """
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [未发布版本]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**破坏性修改**] {% endif %}\
+            {{ commit.message | upper_first }}\
+    {% endfor %}
+{% endfor %}\n
+"""
+
+# changelog 尾部模板
+footer = """
+---
+
+### 🔍 相关链接
+- 问题反馈：[Issues](<REPO>/issues)
+- 项目主页：[g1331/xiaomai-bot](<REPO>)
+
+> 本文档由 [git-cliff](https://git-cliff.org) 根据 Git 提交记录自动生成
+"""
+
+# 是否裁剪头尾空白字符
+trim = true
+
+# 后处理器（例如替换链接）
+postprocessors = [
+    { pattern = '<REPO>', replace = "https://github.com/g1331/xiaomai-bot" }, # 替换仓库地址
+]
+
+# 即使没有版本也强制渲染 changelog 主体
+# render_always = true
+
+# 输出文件路径（默认写入 stdout）
+output = "CHANGELOG.md"
+
+[tool.git-cliff.git]
+# 使用 conventional commits 规范解析提交日志
+conventional_commits = true
+
+# 只保留符合规范的提交
+filter_unconventional = true
+
+# 是否将每一行作为独立提交解析
+split_commits = false
+
+# 提交消息预处理器（支持正则替换）
+commit_preprocessors = [
+    # 示例：将 issue 编号替换为链接
+    { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" },
+    # 示例：拼写检查并自动修复（需安装 typos 工具）
+    # { pattern = '.*', replace_command = 'typos --write-changes -' },
+]
+
+# 提交分类器，根据提交内容划分分组
+commit_parsers = [
+    { message = "^feat", group = "<!-- 0 -->🚀 新特性" },
+    { message = "^fix", group = "<!-- 1 -->🐛 修复问题" },
+    { message = "^doc", group = "<!-- 3 -->📚 文档相关" },
+    { message = "^perf", group = "<!-- 4 -->⚡ 性能优化" },
+    { message = "^refactor", group = "<!-- 2 -->🚜 代码重构" },
+    { message = "^style", group = "<!-- 5 -->🎨 代码格式" },
+    { message = "^test", group = "<!-- 6 -->🧪 测试相关" },
+    { message = "^chore\\(release\\): prepare for", skip = true },  # 忽略发布准备类提交
+    { message = "^chore\\(deps.*\\)", skip = true },               # 忽略依赖类提交
+    { message = "^chore\\(pr\\)", skip = true },
+    { message = "^chore\\(pull\\)", skip = true },
+    { message = "^chore|^ci", group = "<!-- 7 -->⚙️ 其他任务" },
+    { body = ".*security", group = "<!-- 8 -->🛡️ 安全相关" },
+    { message = "^revert", group = "<!-- 9 -->◀️ 回滚提交" },
+    { message = ".*", group = "<!-- 10 -->💼 其他修改" },
+]
+
+# 是否过滤掉未被上述规则匹配的提交（false 表示保留）
+filter_commits = false
+
+# 是否按 Git 拓扑顺序排序标签
+topo_order = false
+
+# 每个分类组内的提交排序方式（newest/oldest）
+sort_commits = "newest"
 
 # 配置 Ruff 的整体行为
 [tool.ruff]
-line-length = 88  # Black 默认 88，可以改回 79 如果严格遵守 PEP 8
+line-length = 88 # Black 默认 88，可以改回 79 如果严格遵守 PEP 8
 
 # 配置 Ruff 的代码检查功能（Linting）
 [tool.ruff.lint]
 # 选择要启用的规则集
 select = [
-    "E", # PEP 8 代码格式错误（空格、缩进、换行）
-    "F", # Pyflakes 代码检查（未使用变量、重复导入、变量未定义等）
-    "W", # 一般代码风格警告（行尾空格、缩进警告）
-    "UP"  # Python 版本升级检查（建议 Python 3 代码优化）
+    "E",  # PEP 8 代码格式错误（空格、缩进、换行）
+    "F",  # Pyflakes 代码检查（未使用变量、重复导入、变量未定义等）
+    "W",  # 一般代码风格警告（行尾空格、缩进警告）
+    "UP", # Python 版本升级检查（建议 Python 3 代码优化）
 ]
 
 # 忽略特定规则
@@ -89,10 +233,10 @@ ignore = [
 
 # 代码格式化配置（类似于 Black）
 [tool.ruff.format]
-quote-style = "double"  # 统一使用双引号
-indent-style = "space"  # 统一使用空格缩进，而不是 Tab
-docstring-code-format = true  # 启用 docstring 代码片段格式化
+quote-style = "double"       # 统一使用双引号
+indent-style = "space"       # 统一使用空格缩进，而不是 Tab
+docstring-code-format = true # 启用 docstring 代码片段格式化
 
 # 配置 Ruff 的 PyUpgrade 功能（Python 版本兼容性优化）
 [tool.ruff.lint.pyupgrade]
-keep-runtime-typing = true  # 保留 `from __future__ import annotations`，避免影响运行时类型检查
+keep-runtime-typing = true # 保留 `from __future__ import annotations`，避免影响运行时类型检查

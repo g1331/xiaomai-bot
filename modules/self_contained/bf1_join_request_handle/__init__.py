@@ -5,7 +5,7 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.event.mirai import MemberJoinEvent, MemberJoinRequestEvent
 from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At
+from graia.ariadne.message.element import At, Image
 from graia.ariadne.model import Group, Member, MemberInfo
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen
@@ -14,15 +14,22 @@ from loguru import logger
 
 from core.control import Permission
 from core.models import response_model, saya_model
-from utils.bf1.bf_utils import bfeac_checkBan, check_bind, get_personas_by_name
+from utils.bf1.bf_utils import (
+    bfban_checkBan,
+    bfeac_checkBan,
+    check_bind,
+    get_personas_by_name,
+    gt_get_player_id_by_pid,
+)
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
+from utils.bf1.draw import PlayerStatPic
 
 module_controller = saya_model.get_module_controller()
 account_controller = response_model.get_acc_controller()
 channel = Channel.current()
 channel.meta["name"] = "BF1入群审核"
-channel.meta["description"] = "处理群加群审核"
+channel.meta["description"] = "处理群加群审核，显示申请者战绩并在拒绝时显示理由"
 channel.meta["author"] = "13"
 channel.metadata = module_controller.get_metadata_from_path(Path(__file__))
 
@@ -98,12 +105,115 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
 
         if not player_info:
             verify = "无效ID"
+            application_answer = f"{application_message}({verify})"
         else:
             player_pid = player_info["personas"]["persona"][0]["personaId"]
             display_name = player_info["personas"]["persona"][0]["displayName"]
             verify = await check_verify(display_name, player_pid, event.supplicant)
+            application_answer = f"{application_message}({verify})"
 
-        application_answer = f"{application_message}({verify})"
+            # 如果是有效ID，获取并展示玩家战绩
+            if verify == "有效ID" or verify.startswith("有效ID,但"):
+                try:
+                    # 获取玩家数据
+                    api_instance = await BF1DA.get_api_instance()
+
+                    # 并行获取所有需要的数据
+                    player_weapon_task = api_instance.getWeaponsByPersonaId(player_pid)
+                    player_vehicle_task = api_instance.getVehiclesByPersonaId(
+                        player_pid
+                    )
+                    player_stat_task = api_instance.detailedStatsByPersonaId(player_pid)
+                    player_persona_task = api_instance.getPersonasByIds(player_pid)
+                    bfeac_info_task = bfeac_checkBan(player_pid)
+                    bfban_info_task = bfban_checkBan(player_pid)
+                    server_playing_info_task = api_instance.getServersByPersonaIds(
+                        player_pid
+                    )
+                    platoon_info_task = api_instance.getPlatoonsByPersonaId(player_pid)
+                    skin_info_task = api_instance.getPresetsByPersonaId(player_pid)
+                    gt_id_info_task = gt_get_player_id_by_pid(player_pid)
+
+                    # 等待所有任务完成
+                    tasks = await asyncio.gather(
+                        player_persona_task,
+                        player_stat_task,
+                        player_weapon_task,
+                        player_vehicle_task,
+                        bfeac_info_task,
+                        bfban_info_task,
+                        server_playing_info_task,
+                        platoon_info_task,
+                        skin_info_task,
+                        gt_id_info_task,
+                    )
+
+                    # 解包结果
+                    (
+                        player_persona,
+                        player_stat,
+                        player_weapon,
+                        player_vehicle,
+                        bfeac_info,
+                        bfban_info,
+                        server_playing_info,
+                        platoon_info,
+                        skin_info,
+                        gt_id_info,
+                    ) = tasks
+
+                    # 确保玩家名称正确
+                    player_stat["result"]["displayName"] = display_name
+
+                    # 生成战绩图片
+                    start_time = asyncio.get_event_loop().time()
+                    player_stat_img = await PlayerStatPic(
+                        player_name=display_name,
+                        player_pid=player_pid,
+                        personas=player_persona,
+                        stat=player_stat,
+                        weapons=player_weapon,
+                        vehicles=player_vehicle,
+                        bfeac_info=bfeac_info,
+                        bfban_info=bfban_info,
+                        server_playing_info=server_playing_info,
+                        platoon_info=platoon_info,
+                        skin_info=skin_info,
+                        gt_id_info=gt_id_info,
+                    ).draw()
+
+                    # 计算耗时
+                    time_used = round(asyncio.get_event_loop().time() - start_time, 2)
+                    logger.debug(f"生成玩家战绩图片耗时: {time_used}秒")
+
+                    # 准备战绩图片和额外信息
+                    # 如果有BFEAC或BFBAN信息，添加到消息中
+                    bfeac_msg = (
+                        f"\nBFEAC状态: {bfeac_info.get('stat')}\n案件地址: {bfeac_info.get('url')}"
+                        if bfeac_info and bfeac_info.get("stat")
+                        else ""
+                    )
+
+                    bfban_msg = (
+                        f"\nBFBAN状态: {bfban_info.get('status')}\n案件地址: {bfban_info.get('url')}"
+                        if bfban_info and bfban_info.get("status") != "正常"
+                        else ""
+                    )
+
+                    # 保存战绩图片路径，稍后在申请消息中使用
+                    stats_image_path = player_stat_img
+                    stats_info = f"\n\n申请者BF1战绩数据（耗时: {time_used}秒）"
+                    ban_info = ""
+                    if bfeac_msg or bfban_msg:
+                        ban_info = (
+                            f"\n申请者BF1账号存在以下记录：{bfeac_msg}{bfban_msg}"
+                        )
+                except Exception as e:
+                    logger.error(f"获取申请者战绩时出错: {e}")
+                    await app.send_message(
+                        group,
+                        MessageChain(f"获取申请者战绩时出错: {str(e)}"),
+                    )
 
     # 如果有application_answer且verify为有效ID且开启了自动过审则自动同意
     if (
@@ -114,25 +224,53 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
         )
     ):
         await event.accept()
+
+        # 准备自动审核通过的消息内容
+        auto_accept_content = [
+            f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
+            f"{application_answer}\n"
+            f"已自动审核通过有效ID"
+        ]
+
+        # 如果有战绩图片，添加到消息中
+        if "stats_image_path" in locals():
+            auto_accept_content.append(stats_info)
+            auto_accept_content.append(Image(path=stats_image_path))
+
+            # 如果有封禁信息，也添加到消息中
+            if "ban_info" in locals() and ban_info:
+                auto_accept_content.append(ban_info)
+
         return await app.send_message(
             group,
-            MessageChain(
-                f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
-                f"{application_answer}\n"
-                f"已自动审核通过有效ID"
-            ),
+            MessageChain(auto_accept_content),
         )
 
     # 否则发送消息到群里,如果bot有群管理权限则用waiter，超时时间为20分钟，发送申请消息
+    message_content = [
+        f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
+        f"\n{application_answer if application_answer else application_message}"
+    ]
+
+    # 如果有战绩图片，添加到消息中
+    if "stats_image_path" in locals():
+        message_content.append(stats_info)
+        message_content.append(Image(path=stats_image_path))
+
+        # 如果有封禁信息，也添加到消息中
+        if "ban_info" in locals() and ban_info:
+            message_content.append(ban_info)
+
+    # 添加操作指引
+    message_content.append(
+        "\n'回复'本消息'y'可同意该申请"
+        "\n'回复'本消息其他文字可作为理由拒绝"
+        "\n请在20分钟内处理"
+    )
+
     bot_msg = await app.send_message(
         group,
-        MessageChain(
-            f"收到来自{event.nickname}({event.supplicant})的加群申请,信息如下:"
-            f"\n{application_answer if application_answer else application_message}"
-            f"\n‘回复’本消息‘y’可同意该申请"
-            f"\n‘回复’本消息其他文字可作为理由拒绝"
-            f"\n请在20分钟内处理"
-        ),
+        MessageChain(message_content),
     )
 
     async def waiter(
@@ -187,10 +325,15 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
             MessageChain(f"已同意 {event.nickname}({event.supplicant}) 的入群请求"),
         )
     elif result is False:
-        await event.reject(reason if reason else "")  # 拒绝入群
+        # 拒绝入群并显示拒绝理由
+        reject_reason = reason if reason else ""
+        await event.reject(reject_reason)  # 拒绝入群
         return await app.send_message(
             group,
-            MessageChain(f"已拒绝 {event.nickname}({event.supplicant}) 的入群请求"),
+            MessageChain(
+                f"已拒绝 {event.nickname}({event.supplicant}) 的入群请求"
+                + (f"\n拒绝理由: {reject_reason}" if reject_reason else "")
+            ),
         )
     else:
         pass
@@ -221,7 +364,8 @@ async def auto_modify(app: Ariadne, event: MemberJoinEvent):
             display_name = bind_info.get("displayName")
             await app.modify_member_info(member, MemberInfo(name=display_name))
             return await app.send_message(
-                group, MessageChain(At(member), f"已自动将你的名片修改为{display_name}")
+                group,
+                MessageChain(At(member), f" 已自动将你的名片修改为{display_name}"),
             )
         except Exception as e:
             logger.error(f"自动修改名片时出错了!错误信息:{e}")

@@ -1,0 +1,551 @@
+# 更新日志
+
+本文件记录了该项目的所有重要变更。
+
+## [3.0.1] - 2025-04-18
+
+### 🚀 新特性
+
+- *(bump)* Enhance version bumping with pre-release handling and direct version updates
+- *(bump)* Remove --unreleased option from changelog generation
+- *(changelog)* Enhance changelog generation with customizable templates
+- *(bump)* Add support for direct version specification and force update option
+- *(bump)* Add --no-pre option for direct version updates without pre-release tags
+- *(changelog)* Update changelog generation to append to existing file
+- *(uv)* Disable project installation to install only third-party dependencies
+- *(bumpversion)* Disable automatic commit and tagging in configuration
+- *(bump)* Enhance version handling for pre-release and release commands
+- *(versioning)* Add version management and display functionality
+- *(bf1_join_request_handle)* 在申请入群时显示玩家战绩
+- *(provider-switch)* Implement provider switching functionality and configuration validation
+- *(openai-compatibility)* Add support for generic OpenAI compatible providers and enhance configuration handling
+- *(exception-catcher)* Add global error control and cooldown mechanism
+- *(exception-catcher)* Implement error queue and batch reporting mechanism
+- *(repo-diagram)* Refine workflow triggers and improve recent commits check
+- *(repo-diagram)* Add debug output for recent commits in workflow
+- *(repo-diagram)* Refine workflow triggers and enhance recent commits check
+- *(repo-diagram)* Enhance workflow conditions and permissions for diagram updates
+
+### 🐛 修复问题
+
+- *(api)* Update platoon info retrieval to use active platoon method
+- 修复 BlazeSocket 连接关闭时的 SSL 错误
+- *(repo-diagram)* Change exit code to 0 for skipping diagram update when no recent commits
+- *(mc-info)* Enhance player retrieval and error handling in async query
+- *(bf1)* Improve error handling and logging for member retrieval
+- *(server-handlers)* Correct async server lookup and improve player list handling
+
+### 📚 文档相关
+
+- 更新发布 checklist 以匹配当前 scripts/bump.py 脚本
+- *(release)* Add version release checklist for consistency and traceability
+
+### ⚙️ 其他任务
+
+- 更改`bump.py`路径
+- Update repository URL in postprocessors section of cliff.toml
+- *(bump)* Update version bump message and enhance release checklist
+- Migrate from bump2version to bump-my-version for version management
+- *(changelog)* Enhance changelog footer with related links and update repository URL
+- *(bump)* Improve version handling and error reporting in bump process
+- *(bump)* Include .bumpversion.cfg in git commit and tag process
+- *(version)* Enhance version management and changelog generation
+- *(repo-diagram)* Enhance workflow triggers and add recent commits check
+
+## [3.0.0] - 2025-03-11
+
+### 🚀 新特性
+
+- *(pre-commit)* Update trigger conditions for pre-commit checks on v3 branch
+- *(pre-commit)* Update Ruff configuration to use double quotes for consistency
+- *(pre-commit)* Remove E203 rule from Ruff configuration to resolve conflict with Black
+- *(pre-commit)* Update Ruff configuration for line length and improve comments
+- *(pre-commit)* Remove diff argument from Ruff linter and formatter configurations
+- *(pre-commit)* Update Ruff configuration to separate linter and formatter hooks
+- *(pre-commit)* Enhance workflow with Python version matrix and update Ruff configuration
+- *(pre-commit)* Add pre-commit configuration for Ruff linting and formatting
+- *(ruff)* Update Ruff configuration for improved linting and formatting rules
+- *(ruff)* Enhance Ruff configuration with caching and Python setup
+- *(ruff)* Add Ruff configuration for code linting and formatting
+- *(BlazeSocket)* Add authentication state management for Blaze clients
+- *(Blaze)* 添加重新登录功能，支持检查连接状态并处理登录结果
+- *(EmojiMix)* 重构emoji处理逻辑，优化缓存机制并添加错误处理
+- *(AIChat)* 添加重试功能，允许用户重试上一次对话并更新相关参数
+- *(Conversation)* 添加模型切换功能，支持会话历史和预设保留
+- *(AIChat)* 更新版本为0.2，优化模型配置和多模态支持
+- *(AIChat)* 添加多模态支持，更新OpenAI依赖，优化文件处理逻辑
+- *(AIChat)* 优化消息处理逻辑，简化参数传递并调整图片输出条件
+- *(AIChat)* 更新群聊消息格式
+- *(AIChat)* 添加群聊消息格式化，简化消息处理逻辑
+- *(AIChat)* 更新小埋角色设定
+- *(AIChat)* 添加清除对话历史功能，支持群管理员权限控制
+- *(AIChat)* 重构群聊预设逻辑，简化条件判断并优化消息发送
+- *(AIChat)* 优化时间信息添加逻辑，简化条件判断并修复时间格式存储
+- *(AIChat)* 添加工具调用去重功能，优化处理逻辑以减少重复调用
+- *(AIChat)* 优化对话历史管理，添加时间信息逻辑并去重工具调用
+- *(AIChat)* Enhance code execution environment with PrintCollector and increase max code length
+- *(AIChat)* Add scipy dependency and enhance error handling in plugin initialization
+- *(AIChat)* Remove redundant group message sending for cleaner response handling
+- *(AIChat)* Update response format options to prioritize text and add support for --show-tokens
+- *(AIChat)* Remove commented-out code for cleaner inline dispatchers
+- *(AIChat)* Add support for --show-tokens argument to display token usage in responses
+- *(AIChat)* Enhance CodeRunner plugin with improved configuration handling and default settings
+- *(AIChat)* Add CodeRunner plugin for safe execution of Python code
+- *(AIChat)* WebSearch Enhance
+- *(AIChat)* 修改工具调用指令
+- *(core)* 新增`At`控制
+- *(AIChat)* Refactor summary instruction structure for clarity and organization
+- *(AIChat)* Enhance token management with usage tracking and history summarization
+- *(AIChat)* Implement token calculation method and history cleanup logic
+- *(AIChat)* Update command syntax and enhance message handling with @bot prefix
+- *(AIChat)* Enhance conversation management by adding time messages and improving session handling
+- *(plugins)* Add WeatherPlugin for weather queries and update WebSearchPlugin max_results
+- *(AIChat)* Refactor conversation management to streamline conversation creation with preset support
+- *(md2img)* Refactor MarkdownToImageConverter to use Playwright for rendering and improve performance
+- *(AIChat)* Add preset management with built-in presets for conversation context
+- *(AIChat)* Enhance conversation management with interrupt functionality and tool usage support
+- *(AIChat)* Enhance provider configuration and token management in conversation flow
+- *(AIChat)* 适配基础的对话
+- *(core)* 添加调试模式配置及逻辑处理
+- *(AIChat)* 重构DeepSeek和OpenAI接口，增加兼容性和预设功能
+- *(AIChat)* 添加AI对话模块初始化及用户配置管理功能
+- 优化插件支持，使用`OpenAI`规范的`Function Calling`
+- *(ui)* 添加DeepSeekProvider并优化Conversation管理
+- *(AsciiArt)* 新增字符画功能
+- *(BF1)* 新增百科查询功能
+- *(BF1WAP)* `谁在玩`功能添加回复加v
+- *(Bf1ServerManager)* 更新行动服VIP缓存逻辑
+- (BF1): 添加服管pid操作
+- *(MineCraft)* 查询MC服务器信息、玩家列表
+- *(Bf1Info)* 更新可视化生涯战绩查询
+- *(Bf1ServerManager)* 更新自动识别换边/队伍名换边
+- *(Bf1ServerManager)* 更新查询服管操作日志
+- BF1战绩
+- BF1服管 查岗
+- GithubCard
+- Claude,通过slack与Claude对话
+- *(bf1)* 添加排名查询、天眼查详细信息查询
+- *(bf1 info)* Campaign operations
+- *(bf1 info)* Exchange
+- Web manager
+- *(launch,config)* Add configuration checking and automatic configuration generation
+
+### 🐛 修复问题
+
+- *(ruff)* Update ignore rules for improved linting compatibility
+- 修改用户权限要求，将用户权限更改为群管理员
+- *(EmojiMix)* 修复emoji查询中的字符串处理错误并更新版本号至0.4
+- *(Bf1)* 移除EAC状态校验逻辑
+- *(AIChat)* Simplify DeepSeekConfig initialization by unpacking provider configuration
+- *(AIChat)* Optimize token calculation by using generator expression for ASCII character count
+- *(AIChat)* Correct interrupt method docstring for clarity
+- *(AIChat)* Improve time message handling by adding time interval check and updating last added time
+- *(AIChat)* Update preset display format to include parentheses around names for clarity
+- *(AIChat)* Disable notifications for uninitialized bots to prevent spam
+- *(AIChat)* Update ElementMatch label from 'at' to 'AtResult' for consistency
+- *(AIChat)* Correct return statements in message sending logic
+- *(AIChat)* Optimize token management by removing redundant calculation in message history
+- *(helper)* Correct string formatting in subtitle assignment
+- 修正API错误日志中的服务名称
+- *(BF1)* 错误的语法
+- *(BF1)* 还原交换更新逻辑
+- *(EmojiMix)* 修复 Emoji表情包融合 功能
+- *(ExceptionCatcher)* 修复过时语法
+- *(Bf1ServerManager)* 优化PL回复反馈
+- (BF1): 修复数据库接口
+- (BF1): 修复服管账号接口
+- *(BF1ServerManager)* 完善搜索踢出
+- *(bf1)* Bfban_checkBan
+- *(bf1)* 优化ban查询、修复交换更新bug
+- *(bf1)* 修复对局队伍、kd计算
+- *(bf1)* 提高搜索精度
+- *(dockerfile)* Allow running in interactive windows
+- *(build)* Fix login
+- Build
+- *(bf1)* 恢复未重构完的功能
+- *(self upgrade)* 删除启动时自动更新
+
+### 💼 其他修改
+
+- 更新启动脚本,优化文档
+- *(uv)* 使用`uv`替换`poetry`作为项目包管理器
+- *(AsciiArt)* 优化语法,更新功能描述
+- *(ascii_art_generator)* Fix import and metadata
+- *(doc)* 更新文档
+- Simply exchange function
+- Check directories on startup
+- Remove unnecessary things
+- *(BF1)* 添加DEBUG用于检查举报时的消息链
+- Add proxy for drawing picture ([#37](https://github.com/g1331/xiaomai-bot/issues/37))
+- Add proxy for drawing picture
+- *(BTR)* 修复BTR请求失败的问题
+- Add proxy feature ([#36](https://github.com/g1331/xiaomai-bot/issues/36))
+- *(BF1WAP)* 跳过永久V的修改
+- *(BF1WAP)* 修复VL缓存获取机制
+- *(BF1WRP)* 修复消息BUG
+- *(BF1WAP)* 修复VL缓存获取机制
+- *(SearchImg)* 暂时屏蔽`Ascii2D`的结果
+- *(SearchImg)* 暂时屏蔽`Ascii2D`的结果
+- *(SearchImg)* 更新结果索引
+- *(SearchImg)* 修复识图依赖更新后的语法BUG
+- *(BF1WAP)* 修复条件校验
+- *(BF1WAP)* 修复条件校验
+- *(RandomPic)* 删除过时功能
+- *(BF1)* 更新查询服务器输出
+- *(BF1WAP)* 修复pid类型错误
+- *(BF1WAP)* 更新输出反馈
+- *(BF1WAP)* 修复字典列表去重BUG
+- *(PIL)* 修复过旧的语法
+- *(core)* 删除风险的自动更新表操作
+- *(Bf1Blaze)* 修复ssl问题
+- *(Bf1ServerManager)* 更新服务器VIP显示内容
+- *(Bf1ServerManager)* 更新服务器VIP显示内容
+- *(Bf1ServerManager)* 修复行动服VIP缓存计算BUG
+- *(Bf1ServerManager)* 修复行动服VIP缓存
+- (BF1): 修复EAC接口调用
+- (BF1): 优化获取账号实例的逻辑
+- (BF1): 优化获取账号实例的逻辑
+- (BF1BLAZE): 添加超时主动断连
+- (DragonDetect): 添加功能日志
+- *(BF1)* 更新输出格式
+- *(BF1,ExceptionCatcher)* 修复若干问题
+- *(BF1)* 添加CloudBan功能帮助
+- *(BF1)* 添加CloudBan接口
+- *(ExceptionCatcher)* 优化报错报告格式
+- *(ExceptionCatcher)* 优化报错报告格式
+- *(MCInfo)* 添加报错catch
+- *(MCInfo)* 修复默认图片为空导致出错
+- *(Bf1ServerManager)* 优化语法
+- *(Bf1ServerManager)* 修复玩家列表指令响应结果
+- *(Bf1ServerManager)* 优化玩家列表指令响应结果
+- *(Bf1ServerManager)* 修复玩家列表回复指令
+- 更新随机图capoo
+- 更新随机图
+- 更新随机图
+- 去除多余包名
+- *(Bf1)* 优化api调用
+- *(Bf1)* 复用网络连接
+- *(Bf1)* 复用网络连接
+- *(ChatGPT)* 添加自订API_URL
+- *(MineCraft)* 添加默认开关
+- *(MineCraft)* 优化查询
+- *(MineCraft)* 优化报错
+- *(MineCraft)* 修复base64传参
+- *(MineCraft)* 修复缺少icon的key
+- *(Bf1)* 完善对局消息反馈
+- *(Bf1)* 更新对局指令参数，支持查询多个对局
+- *(Bf1)* 添加报错Catch
+- *(Bf1Info)* 修复时间格式化错误的bug
+- *(Bf1Info)* 修复战役剩余时间显示不完全的bug
+- *(Bf1Info)* 修复战役剩余时间显示不完全的bug
+- 更新行动时间显示
+- 优化语法,优化windows的启动脚本
+- *(Bf1)* 更新登录
+- *(Bf1)* 重构可视化交换查询
+- *(Bf1)* 更新自动创建父目录
+- *(Bf1)* 添加自动创建举报日志文件
+- *(Bf1)* 添加gw报错
+- *(Bf1)* 添加gw超时报错
+- *(Bf1Info)* 更新举报的退出方法
+- *(Core)* 修复响应隐含BUG
+- *(Core)* 修复响应隐含BUG
+- *(Bf1Info)* 添加手动更新服务器信息指令
+- *(Bf1Info)* 更新武器/载具查询
+- *(Bf1Info)* 更新对局
+- *(Bf1Info)* 更新对局
+- *(Bf1Info)* 修复变量错误
+- *(Bf1Info)* 更新对局获取
+- *(Bf1Info)* 删除一张丑照
+- *(Bf1Info)* 对局数据按时间排序
+- *(Bf1Info)* 修复数据处理出错
+- *(Bf1Info)* 修复变量错误
+- *(Bf1Info)* 修复若干bug
+- *(Bf1Info)* 更新BTR对局查询
+- *(Bf1ServerManager)* 修复序号换图
+- *(Bf1Info)* 修复若干BUG
+- *(BF1)* 修复若干BUG
+- *(Bf1ServerManager)* 添加回复玩家列表的指令
+- *(Bf1Info)* 修复头像缓存获取失败
+- *(Bf1ServerManager)* 修复战绩错位
+- *(Bf1ServerManager)* 修复战绩错位
+- *(Bf1ServerManager)* 更新玩家列表等级信息
+- *(Bf1ServerManager)* 更新玩家列表等级信息
+- *(Bf1ServerManager)* 更新玩家列表等级信息
+- *(Bf1Info)* 更新在线人数查询
+- *(Bf1Info)* 删除预审核
+- *(Bf1ServerManager)* 修复`-ppl`鉴权错误
+- *(Bf1Info)* 更新查询玩家信息的方式
+- *(Bf1Info)* 修复举报接口的错误
+- *(Bf1Info)* 更新预审核处理
+- *(Bf1Info)* 更新预审核处理
+- *(Bf1Info)* 更新预审核处理
+- *(Bf1Info)* 更新举报中断的反馈格式
+- *(Bf1Info)* 更新旧版的举报功能
+- *(Bf1ServerManager)* 修复服管账号登录的结果判断错误的bug
+- *(GroupManager)* 更新BOT退群功能
+- *(BF1)* 修复鉴权错误
+- *(BF1)* 更新Bf1Status数据格式
+- *(BF1)* 更新Bf1Status
+- *(BF1)* 修复头像缓存，待优化的重复逻辑判断
+- *(BF1)* 优化制图
+- *(BF1)* 删除战斗机皮肤的映射防止造成错误
+- *(BF1)* 修复获取服主信息时的错误
+- *(BF1)* 删除错误的方法调用
+- *(BF1)* 添加服管日志筛选内容
+- *(BF1)* 添加换图的确认指令
+- *(BF1)* 更新玩家信息记录
+- *(BF1)* 更新帮助信息
+- *(BF1)* 更新帮助信息
+- *(BF1)* 更新帮助信息
+- *(BF1)* 更新一键清服
+- *(BF1)* 更新一键清服
+- *(BF1)* 更新背景显示效果
+- *(group_manager)* 修复逻辑BUG
+- *(group_manager)* 修复逻辑BUG
+- *(group_manager)* 修复变量错误
+- *(core,group_manager)* 更新core与内置插件
+- *(BF1)* 修改默认武器查询为6行
+- *(BF1)* 优化可视化图片布局
+- *(BF1)* 修复可视化图片布局错误
+- *(BF1)* 修复指令匹配错误
+- *(BF1)* 更新可视化信息查询
+- *(BF1)* 更新武器图水印位置,头像缓存信息
+- *(BF1)* 修复武器背景图缩放错误
+- *(BF1)* 修复无战绩数据武器取值BUG
+- *(BF1)* 更新可视化武器查询的排版
+- *(BF1)* 更新可视化武器查询的排版
+- *(BF1)* 修复数据重复发送的BUG
+- *(BF1)* 修复粘贴位置
+- *(BF1)* 修复取值错误
+- *(BF1)* 更新可视化战绩武器查询
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 更新可视化战绩
+- *(BF1)* 修复gt接口调用
+- *(BF1)* 修复可视化战绩部分BUG
+- *(BF1)* 优化可视化战绩
+- *(BF1)* 添加背景模糊、附带的封禁信息
+- 修复映射错误、时间格式
+- 修复战排图章获取错误，添加模板替换
+- 修复小标语的换行长度
+- 修复默认底图路径
+- 修复部分接口未继承的BUG
+- 暂时性防止依赖混淆
+- *(BF1)* 更新反馈
+- *(BF1)* 更新API反馈
+- *(BF1)* 修复指定字体路径的方式
+- *(BF1)* 修复等级计算错误
+- *(BF1)* 修复字体与等级问题
+- Lock
+- *(BF1)* BF1Status可視化
+- 更新依赖
+- 更新依赖
+- 更新依赖
+- *(EmojiMix)* 修复回复转发消息无法显示
+- *(Bf1ServerManager)* 修复换边自动识别队伍时取值错误
+- *(Bf1)* 修复行动数据获取错误
+- *(Bf1)* 优化服管日志查询
+- *(Bf1)* 优化玩家列表获取数据
+- *(Core)* 修复黑名单重复声明的bug
+- *(Bf1)* 更新指令权限
+- *(Bf1ServerManager)* 修复排序bug
+- *(Bf1ServerManager)* 倒序查询日志
+- *(Bf1ServerManager)* 优化查询日志
+- *(Bf1ServerManager)* 修复查询日志bug
+- *(Bf1ServerManager)* 修复消息过长
+- *(Bf1ServerManager)* 修复消息过长
+- *(Bf1ServerManager)* 修复取值bug
+- *(Bf1ServerManager)* 修复时间取值bug
+- *(Bf1)* 修复玩家列表制图bug
+- *(Core)* 删除已经被重构优化的代码
+- *(BF1)* 更新BlazeSocket刷新机制
+- *(BF1)* 完善账密更新
+- *(BF1)* 更新自动账密更新
+- *(BF1)* 更新指令权限
+- *(BF1)* 更新gw_api和数据处理
+- *(BF1)* 修复PlayerList渲染错误
+- *(BF1)* 修复PlayerList渲染错误
+- *(BF1)* 修复PlayerList取值错误
+- *(BF1)* 修复Blaze登录错误识别
+- *(BF1)* 更新玩家列表渲染
+- *(BF1)* 优化BlazeSocket
+- *(BF1ServerManager)* 修复搜索踢出的BUG
+- *(BF1ServerManager)* 更新模糊搜索踢出
+- *(BF1)* 更新玩家列表数据
+- *(BF1)* 更新BlazeClient管理
+- *(BF1)* 取消查ban的权限限制
+- *(BF1)* 玩家列表排序为等级从高到低排序
+- *(BF1)* 修复服务器未开启时取值错误
+- *(BF1)* 修复latency取值错误
+- *(BF1)* 修复数据类型错误
+- *(BF1)* 修复取值错误
+- *(BF1)* 修复Blaze登录错误
+- *(BF1)* 更新本地Blaze查询玩家列表
+- *(BF1)* 更新查询详细服务器数据内容
+- *(BF1)* 修复部分服管指令冲突
+- *(BF1)* 修复部分服管指令冲突
+- *(AutoUpgrade)* 修复链接错误
+- *(ChatGPT)* 修复对话轮次错误
+- *(AutoUpgrade)* 更新链接图片
+- *(BF1Utils)* GatewayApi,Blaze
+- BF1服管
+- BF1
+- BF1战绩
+- BF1战绩
+- BF1服管
+- BF1API
+- BF1服管
+- BF1
+- BF1
+- BF1战绩
+- BF1战绩
+- BF1
+- BF1战绩
+- BF1战绩
+- BF1战绩
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1服管
+- BF1
+- Core
+- BF1服管
+- Bf1战绩
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1服管
+- Bf1Database
+- BF1服管
+- Poetry lock
+- 战地一服管
+- 战地一服管
+- 战地一服管
+- 战地一服管
+- 战地一服管
+- 战地一服管
+- 战地一服管
+- GithubCard
+- GithubCard
+- RevChatGPT
+- Template
+- BF1Info
+- BF1Info
+- BF1Info
+- BF1Info
+- WeaponTemplate
+- BF1InfoMeta
+- BF1Info
+- BF1Info
+- BF1INTO
+- Claude
+- Claude config
+- Claude
+- LoliconKW
+- LoliconKW
+- LoliconKW
+- *(chatGPT)* 更新修复
+- Update
+- Update
+- Update
+- 修正依赖部署方式
+- 重置依赖安装方式
+- Update
+- Bug fixed
+- Bug fixed
+- Bug fixed
+- Bug fixed
+- Update
+- Update docker-image.yml
+- Update
+- Update
+- Update
+- Update
+- Update
+- Add workflows
+- *(common)* Update
+- *(common)* 格式更新
+- *(common)* 格式更新
+- *(common)* 构建冲突合并
+- Https://github.com/SAGIRI-kawaii/sagiri-bot/tree/Ariadne-v4/modules/self_contained/genshin_chara_card
+- From [SAGIRI-BOT](https://github.com/SAGIRI-kawaii/sagiri-bot/tree/Ariadne-v4/modules/self_contained/the_wondering_earth_counting_down)
+- FrequencyLimitation
+- 完善消息分发、实现频率限制
+
+### 🚜 代码重构
+
+- Improve code formatting and consistency in relogin_blaze function
+- Standardize code formatting and improve type hints across multiple files
+- *(plugins)* 优化插件代码格式和描述，提升可读性
+- *(AIChat)* 重构manager结构
+- *(AIChat)* Simplify preset handling in conversation creation
+- Reorganize md2img module and update import paths
+- Reorganize text2img module and update import paths
+- *(AIChat)* 重构AI聊天相关功能
+- 优化服务器统计信息及热门地图显示
+- 重构BF1服务器信息查询逻辑并优化统计格式
+- Improve text size calculation and simplify image generation logic
+- Simplify image retrieval and caching logic in get_exchange function
+- *(Bf1)* 更新回复/发送消息预处理
+- *(BF1ServerManager)* 重构玩家列表制图代码结构
+- *(Core)* 重构频率限制机制以解决问题
+- *(bf1)* 优化交换的更新逻辑
+- *(bf1)* Update
+- *(bf1)* 重构搜索服务器
+- *(bf1)* 完善对局查询
+- *(bf1)* 完善对局查询
+- *(bf1)* 分支提交
+- *(bf1)* 分支提交
+
+### 📚 文档相关
+
+- 删除`poetry`相关描述
+
+### ⚡ 性能优化
+
+- *(ORM)* ORM优化
+- Bf1Database
+- *(bf1)* 只缓存查询对象的数据
+
+### 🎨 代码格式
+
+- *(AIChat)* 添加必要注释，将添加时间信息的逻辑单独封装在函数中
+- *(ChatGPT)* 格式化
+- BF1
+- BF1INFO格式化代码
+
+### ⚙️ 其他任务
+
+- *(ruff)* Enable docstring code formatting in Ruff configuration
+- *(.gitignore)* 更新忽略文件列表，添加更多常见的Python和开发环境忽略项
+- Add .gitattributes to enforce line endings for shell and batch scripts
+- 依赖更新
+- 依赖更新
+
+### ◀️ 回滚提交
+
+- *(bf1)* 冲突合并错误
+
+---
+
+### 🔍 相关链接
+- 问题反馈：[Issues](https://github.com/g1331/xiaomai-bot/issues)
+- 项目主页：[g1331/xiaomai-bot](https://github.com/g1331/xiaomai-bot)
+
+> 本文档由 [git-cliff](https://git-cliff.org) 根据 Git 提交记录自动生成

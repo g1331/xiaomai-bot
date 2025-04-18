@@ -130,7 +130,7 @@ async def join_handle(app: Ariadne, event: MemberJoinRequestEvent):
                     server_playing_info_task = api_instance.getServersByPersonaIds(
                         player_pid
                     )
-                    platoon_info_task = api_instance.getPlatoonsByPersonaId(player_pid)
+                    platoon_info_task = api_instance.getActivePlatoon(player_pid)
                     skin_info_task = api_instance.getPresetsByPersonaId(player_pid)
                     gt_id_info_task = gt_get_player_id_by_pid(player_pid)
 

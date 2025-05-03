@@ -45,6 +45,7 @@ from core.orm import orm, Base
 from core.orm.tables import GroupPerm, MemberPerm
 from utils.launch_time import LaunchTimeService, add_launch_time
 from utils.self_upgrade import UpdaterService
+from utils.timeout_manager import TimeoutManager
 
 non_log = {
     GroupMessage,
@@ -74,11 +75,11 @@ class Umaru:
     sent_count: int = 0
     received_count: int = 0
     initialized: bool = False
-    logs = []
+    logs: list[str] = []
 
     def __init__(self, g_config: GlobalConfig, base_path: str | Path):
         logger.opt(colors=True).info(f"<fg 227,122,80>{UMARU_BOT_LOGO}</>")
-        self.total_groups = {}
+        self.total_groups: dict[int, list[Group]] = {}
         """
         total_groups = {
             bot_account:[Group1, Group2]
@@ -160,10 +161,20 @@ class Umaru:
                 if item[0] not in admin_list:
                     admin_list.append(item[0])
         time_start = int(time.mktime(self.launch_time.timetuple()))
-        Timeout = 60
-        while ((time.time() - time_start) < Timeout) and (
+        timeout = TimeoutManager.calculate_timeout(len(self.apps))
+        logger.debug(f"账号初始化超时时间设置为: {timeout}秒")
+
+        last_progress = 0
+        while ((time.time() - time_start) < timeout) and (
             len(self.initialized_app_list) != len(self.apps)
         ):
+            # 记录初始化进度
+            current_progress = TimeoutManager.get_progress(
+                len(self.initialized_app_list), len(self.apps)
+            )
+            if current_progress != last_progress:
+                logger.info(f"初始化进度: {current_progress}%")
+                last_progress = current_progress
             tasks = []
             for app in self.apps:
                 tasks.append(self.init_app(app))
@@ -209,7 +220,8 @@ class Umaru:
             logger.critical(
                 f"BOT账号初始化失败!"
                 f"耗时:{(time.time() - time_start):.2f}秒\n"
-                f"初始化了{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组"
+                f"初始化了{len(self.initialized_app_list)}/{len(self.apps)}个账户、{len(self.initialized_group_list)}个群组\n"
+                f"超时时间: {timeout}秒"
             )
 
     async def init_app(self, app):
@@ -360,7 +372,7 @@ class Umaru:
         )
 
     # 更新admins权限
-    async def update_admins_permission(self, admin_list: list[int] = None):
+    async def update_admins_permission(self, admin_list: list[int] | None = None):
         if not admin_list:
             if result := await orm.fetch_all(
                 select(MemberPerm.qq).where(

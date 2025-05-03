@@ -108,6 +108,7 @@ class FrequencyController:
     def blacklist_noticed_judge(self, group_id, sender_id):
         if sender_id in self.blacklist[group_id]:
             return self.blacklist[group_id][sender_id].get("noticed", False)
+        return None
 
     def add_blacklist(self, group_id, sender_id):
         self.init_blacklist(group_id, sender_id)

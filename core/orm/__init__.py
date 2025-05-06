@@ -251,6 +251,7 @@ class AsyncORM:
         """
         if not (await self.execute(select(table).where(*condition))).all():
             return await self.execute(insert(table).values(**data))
+        return None
 
     async def select(self, el, condition=None):
         """

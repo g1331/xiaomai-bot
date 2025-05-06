@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, BIGINT, Text
+from sqlalchemy.orm import Mapped
 
 from core.orm import orm
 
@@ -16,9 +17,9 @@ class MemberPerm(orm.Base):
 
     __tablename__ = "MemberPerm"
 
-    group_id = Column(Integer, primary_key=True)
-    qq = Column(Integer, primary_key=True)
-    perm = Column(
+    group_id: Mapped[int] = Column(Integer, primary_key=True)
+    qq: Mapped[int] = Column(Integer, primary_key=True)
+    perm: Mapped[int] = Column(
         Integer,
         nullable=False,
         info={"check": [-1, 0, 16, 32, 64, 128, 256]},
@@ -36,10 +37,12 @@ class GroupPerm(orm.Base):
 
     __tablename__ = "GroupPerm"
 
-    group_id = Column(Integer, primary_key=True)
-    group_name = Column(String(length=60), nullable=False)
-    perm = Column(Integer, nullable=False, info={"check": [0, 1, 2, 3]}, default=1)
-    active = Column(Boolean, default=True)
+    group_id: Mapped[int] = Column(Integer, primary_key=True)
+    group_name: Mapped[str] = Column(String(length=60), nullable=False)
+    perm: Mapped[int] = Column(
+        Integer, nullable=False, info={"check": [0, 1, 2, 3]}, default=1
+    )
+    active: Mapped[bool] = Column(Boolean, default=True)
 
 
 class GroupSetting(orm.Base):
@@ -49,15 +52,12 @@ class GroupSetting(orm.Base):
 
     __tablename__ = "GroupSetting"
 
-    group_id = Column(Integer, primary_key=True)
-    # 频率限制
-    frequency_limitation = Column(Boolean, default=True)
-    # 多账户响应类型
-    response_type = Column(
+    group_id: Mapped[int] = Column(Integer, primary_key=True)
+    frequency_limitation: Mapped[bool] = Column(Boolean, default=True)
+    response_type: Mapped[str] = Column(
         String, info={"check": ["random", "deterministic"]}, default="random"
     )
-    # 权限组类型
-    permission_type = Column(
+    permission_type: Mapped[str] = Column(
         String, info={"check": ["default", "admin"]}, default="default"
     )
 
@@ -67,12 +67,12 @@ class ChatRecord(orm.Base):
 
     __tablename__ = "chat_record"
 
-    id = Column(Integer, primary_key=True)
-    time = Column(DateTime, nullable=False)
-    group_id = Column(BIGINT, nullable=False)
-    member_id = Column(BIGINT, nullable=False)
-    persistent_string = Column(String(length=4000), nullable=False)
-    seg = Column(String(length=4000), nullable=False)
+    id: Mapped[int] = Column(Integer, primary_key=True)
+    time: Mapped[DateTime] = Column(DateTime, nullable=False)
+    group_id: Mapped[int] = Column(BIGINT, nullable=False)
+    member_id: Mapped[int] = Column(BIGINT, nullable=False)
+    persistent_string: Mapped[str] = Column(String(length=4000), nullable=False)
+    seg: Mapped[str] = Column(String(length=4000), nullable=False)
 
 
 class KeywordReply(orm.Base):
@@ -80,8 +80,8 @@ class KeywordReply(orm.Base):
 
     __tablename__ = "keyword_reply"
 
-    keyword = Column(String(length=200), primary_key=True)
-    group = Column(BIGINT, default=-1)
-    reply_type = Column(String(length=10), nullable=False)
-    reply = Column(Text, nullable=False)
-    reply_md5 = Column(String(length=32), primary_key=True)
+    keyword: Mapped[str] = Column(String(length=200), primary_key=True)
+    group: Mapped[int] = Column(BIGINT, default=-1)
+    reply_type: Mapped[str] = Column(String(length=10), nullable=False)
+    reply: Mapped[str] = Column(Text, nullable=False)
+    reply_md5: Mapped[str] = Column(String(length=32), primary_key=True)

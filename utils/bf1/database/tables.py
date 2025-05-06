@@ -111,7 +111,7 @@ class Bf1ServerPlayerCount(orm.Base):
     playerSpectator: Mapped[int] = Column(Integer, nullable=False)
     time: Mapped[DateTime] = Column(DateTime, nullable=False)
     # 收藏
-    serverBookmarkCount: Mapped[int] = Column(BIGINT, default=False)
+    serverBookmarkCount: Mapped[int] = Column(BIGINT, default=0)
 
 
 # VIP表

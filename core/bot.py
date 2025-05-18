@@ -91,7 +91,9 @@ class Umaru:
         self.apps = [
             Ariadne(
                 config(
-                    bot_account,
+                    bot_account["account"]
+                    if isinstance(bot_account, dict)
+                    else int(bot_account),
                     str(g_config.verify_key),
                     HttpClientConfig(host=g_config.mirai_host),
                     WebsocketClientConfig(host=g_config.mirai_host),

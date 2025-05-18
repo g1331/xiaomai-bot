@@ -179,7 +179,9 @@ class AccountController:
         if self.all_initialized:
             return
         for bot_account in config.bot_accounts:
-            await self.init_account(bot_account)
+            await self.init_account(
+                bot_account["account"] if isinstance(bot_account, dict) else bot_account
+            )
         self.all_initialized = True
 
     async def init_account(self, bot_account: int):

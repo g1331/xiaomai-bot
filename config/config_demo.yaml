@@ -1,6 +1,11 @@
 ﻿# bot基本配置
 Master: Master # 填写bot主人的qq号
-bot_accounts: ["bot_accounts"] # 填写你bot的qq号,使用数组方式
+bot_accounts: # 填写你bot的qq号,支持以下格式：
+  - 123456  # 直接使用数字格式
+  - "987654"  # 字符串格式
+  - account: 112233  # 字典格式，可配置独立连接参数
+    mirai_host: "http://localhost:8081"  # 可选，覆盖全局mirai_host
+    verify_key: "bot_specific_key"  # 可选，覆盖全局verify_key
 default_account: default_account # 默认使用bot的qq账号
 GroupMsg_log: true # 是否开启群消息日志
 test_group: test_group # 填写测试群的群号,用于接收bot反馈信息等

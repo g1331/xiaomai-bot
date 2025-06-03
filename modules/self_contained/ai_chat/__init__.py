@@ -1,5 +1,6 @@
 import mimetypes
 import re
+import ssl
 from pathlib import Path
 
 import aiohttp
@@ -65,7 +66,7 @@ g_manager: ConversationManager
 g_config_loader: ConfigLoader
 
 
-def create_provider(provider_name: str, user_id: str = None) -> BaseAIProvider:
+def create_provider(provider_name: str, user_id: str | None = None) -> BaseAIProvider:
     """根据提供商名称创建对应的Provider实例，配置可由master动态修改"""
     global g_config_loader
     if not g_config_loader:
@@ -190,32 +191,66 @@ def plugins_factory(key: str):
 async def process_image(image: Image) -> FileContent | None:
     """处理图像元素，转换为FileContent对象"""
     try:
-        # 有URL，下载图片
-        if hasattr(image, "url") and image.url:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image.url) as response:
-                    if response.status == 200:
-                        image_data = await response.read()
-                        return FileContent(
-                            file_type=FileType.IMAGE,
-                            file_bytes=image_data,
-                            mime_type=response.headers.get(
-                                "Content-Type", "image/jpeg"
-                            ),
-                            file_name="image.jpg",
-                        )
+        image_data = None
+        mime_type = "image/jpeg"  # 默认MIME类型
 
-        # 如果所有方法都失败，尝试使用临时直链获取图片
+        # 优先尝试使用临时直链获取图片，因为这通常是本地获取，更稳定
         if hasattr(image, "get_bytes") and callable(image.get_bytes):
-            image_data = await image.get_bytes()
+            try:
+                image_data = await image.get_bytes()
+                logger.debug("通过 get_bytes 成功获取图片数据")
+            except Exception as e:
+                logger.warning(f"通过 get_bytes 获取图片失败: {e}")
+
+        # 如果 get_bytes 失败或没有，尝试通过URL下载图片
+        if image_data is None and hasattr(image, "url") and image.url:
+            # 创建一个不验证SSL证书的上下文，以解决SSL握手问题
+            # 注意：这会降低安全性，仅在确定目标安全且无法通过正常方式连接时使用
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            # 模拟浏览器请求头，避免被服务器拒绝
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.88 Safari/537.36",
+                "Accept": "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "Connection": "keep-alive",
+            }
+
+            try:
+                async with aiohttp.ClientSession(headers=headers) as session:
+                    # 设置超时，避免长时间等待
+                    async with session.get(
+                        image.url, ssl=ssl_context, timeout=30
+                    ) as response:
+                        if response.status == 200:
+                            image_data = await response.read()
+                            mime_type = response.headers.get(
+                                "Content-Type", "image/jpeg"
+                            )
+                            logger.debug(
+                                f"通过 URL 成功获取图片数据，MIME: {mime_type}"
+                            )
+                        else:
+                            logger.warning(
+                                f"从 URL 获取图片失败，状态码: {response.status}, URL: {image.url}"
+                            )
+            except aiohttp.ClientError as ce:
+                logger.error(f"从 URL 获取图片时发生客户端错误: {ce}, URL: {image.url}")
+            except Exception as ex:
+                logger.error(f"从 URL 获取图片时发生未知错误: {ex}, URL: {image.url}")
+
+        if image_data:
             return FileContent(
                 file_type=FileType.IMAGE,
                 file_bytes=image_data,
-                mime_type="image/jpeg",  # 假设为JPEG
+                mime_type=mime_type,
                 file_name="image.jpg",
             )
-
-        raise ValueError("无法获取图片数据")
+        else:
+            raise ValueError("无法获取图片数据")
     except Exception as e:
         logger.error(f"处理图像时出错: {e}")
         return None
@@ -847,7 +882,7 @@ async def ai_chat(
 
 
 def switch_provider_for_conversation(
-    group_id: str, member_id: str, provider_name: str, model_name: str = None
+    group_id: str, member_id: str, provider_name: str, model_name: str | None = None
 ) -> tuple[bool, str]:
     """
     为指定会话切换提供商

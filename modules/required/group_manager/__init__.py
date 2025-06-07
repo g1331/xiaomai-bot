@@ -90,7 +90,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
             await Permission.require_user_perm(
                 waiter_group.id, waiter_member.id, Permission.GroupAdmin
             )
-            and group.id == waiter_group.id
+            and (group is not None and group.id == waiter_group.id)
             and event_waiter.quote
             and event_waiter.quote.id == bot_message.id
         ):
@@ -100,7 +100,7 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
             elif saying == "n":
                 return False, waiter_member.id
             elif saying.startswith("n"):
-                saying.replace("n", "")
+                saying = saying[1:]
                 return False, waiter_member.id
 
     try:

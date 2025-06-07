@@ -3,7 +3,11 @@ from pathlib import Path
 
 from creart import create
 from graia.ariadne.app import Ariadne
-from graia.ariadne.event.message import GroupMessage, MessageEvent
+from graia.ariadne.event.message import (
+    GroupMessage,
+    FriendMessage,
+    MessageEvent,
+)
 from graia.ariadne.event.mirai import BotInvitedJoinGroupRequestEvent
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Source
@@ -19,7 +23,7 @@ from graia.ariadne.message.parser.twilight import (
     ParamMatch,
     RegexResult,
 )
-from graia.ariadne.model import Group, Member
+from graia.ariadne.model import Group, Member, Friend
 from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.util.saya import listen, decorate, dispatch
 from graia.saya import Channel, Saya
@@ -63,52 +67,52 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
         )
     group = await app.get_group(global_config.test_group)
     if group is None:
-        member = await app.get_friend(global_config.Master)
-        bot_message = await app.send_message(
-            member,
-            MessageChain(
-                f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
-                f"是否同意该申请，请在1小时内回复“y”或“n”"
-            ),
-        )
+        target = await app.get_friend(global_config.Master)
     else:
-        bot_message = await app.send_message(
-            group,
-            MessageChain(
-                f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
-                f"是否同意该申请，请在1小时内回复“y”或“n”"
-            ),
-        )
+        target = group
+    bot_message = await app.send_message(
+        target,
+        MessageChain(
+            f"成员{event.nickname}({event.supplicant})邀请bot加入群:\n{event.group_name}({event.source_group})\n"
+            f"是否同意该申请，请在1小时内回复“y”或“n”"
+        ),
+    )
 
     async def waiter(
-        waiter_member: Member,
+        waiter_member: Member | Friend,
         waiter_message: MessageChain,
-        waiter_group: Group,
-        event_waiter: GroupMessage,
+        waiter_place: Group | Friend,
+        event_waiter: MessageEvent,
     ):
-        if (
-            await Permission.require_user_perm(
-                waiter_group.id, waiter_member.id, Permission.GroupAdmin
+        place_ok = False
+        perm_ok = False
+        if isinstance(event_waiter, GroupMessage) and isinstance(waiter_place, Group):
+            perm_ok = await Permission.require_user_perm(
+                waiter_place.id, waiter_member.id, Permission.GroupAdmin
             )
-            and group.id == waiter_group.id
-            and event_waiter.quote
-            and event_waiter.quote.id == bot_message.id
-        ):
+            place_ok = group is not None and waiter_place.id == group.id
+        elif isinstance(event_waiter, FriendMessage) and isinstance(waiter_place, Friend):
+            perm_ok = waiter_member.id == global_config.Master
+            place_ok = group is None and waiter_place.id == global_config.Master
+
+        if perm_ok and place_ok and event_waiter.quote and event_waiter.quote.id == bot_message.id:
             saying = waiter_message.replace(At(app.account), "").display.strip()
             if saying == "y":
                 return True, waiter_member.id
             elif saying == "n":
                 return False, waiter_member.id
             elif saying.startswith("n"):
-                saying.replace("n", "")
+                saying = saying[1:]
                 return False, waiter_member.id
 
     try:
-        result, admin = await FunctionWaiter(waiter, [GroupMessage]).wait(timeout=3600)
+        result, admin = await FunctionWaiter(waiter, [GroupMessage, FriendMessage]).wait(
+            timeout=3600
+        )
     except asyncio.exceptions.TimeoutError:
         await event.reject("拒绝了你的入群邀请!")
         return await app.send_message(
-            group,
+            target,
             MessageChain(
                 f"处理 {event.nickname}({event.supplicant}) 的入群邀请已自动拒绝"
             ),
@@ -117,13 +121,13 @@ async def invited_event(app: Ariadne, event: BotInvitedJoinGroupRequestEvent):
     if result:
         await event.accept("已同意您的邀请~")  # 同意入群
         await app.send_message(
-            group,
+            target,
             MessageChain(f"已同意 {event.nickname}({event.supplicant}) 的入群邀请"),
         )
     else:
         await event.reject("BOT拒绝了你的入群邀请!")  # 拒绝
         await app.send_message(
-            group,
+            target,
             MessageChain(f"已拒绝 {event.nickname}({event.supplicant}) 的入群邀请"),
         )
 

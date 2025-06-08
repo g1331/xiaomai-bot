@@ -10,7 +10,7 @@
     \|_______|\|__|     \|__|\|__|\|__|\|__|\|__|\|_______|        \|_______|\|_______|    \|__|
 </pre>
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)
+![Python 3.10-3.12](https://img.shields.io/badge/python-3.10--3.12-blue.svg)
 
 一个基于 [Graia Ariadne](https://github.com/GraiaProject/Ariadne) 框架的 QQ 机器人
 
@@ -54,7 +54,7 @@
 
 ### 2. 设置 Python 环境
 
-本项目需要 `Python` 3.10 至 3.11 版本。推荐使用 `uv` 作为 Python 的依赖包管理工具，并通过 `uv` 创建虚拟环境，安装依赖包。
+本项目需要 **Python >=3.10, <3.13** (即 3.10, 3.11, 3.12) 版本。推荐使用 `uv` 作为 Python 的依赖包管理工具，并通过 `uv` 创建虚拟环境，安装依赖包。
 
 #### 2.1 安装 `uv`
 
@@ -89,8 +89,9 @@
 - **安装指定版本**（例如 3.11.10）：
 
   ```bash
-  uv python install 3.11.10
+  uv python install 3.12
   ```
+（您可以选择满足 `>=3.10,<3.13` 范围的任何兼容 Python 版本进行安装。）
 
 - **查找系统中已安装的 Python 路径**：
 
@@ -103,8 +104,9 @@
 使用指定版本的 `Python` 创建虚拟环境：
 
 ```bash
-uv venv --python 3.11
+uv venv --python 3.12
 ```
+（建议使用您计划为此项目开发和运行所对应的 Python 版本，需满足 `>=3.10,<3.13` 要求。）
 
 #### 2.4 安装依赖
 
@@ -164,25 +166,26 @@ uv run main.py
    ```
 
 3. **配置文件**
-
+   （注意：请确保您在项目的根目录下执行这些命令。）
    ```bash
-   mv config_demo.yaml config.yaml
-   sqlite3 /xiaomai-bot/config/data.db
+   cp config/config_demo.yaml config/config.yaml
+   # 手动创建数据库 (如果需要)
+   sqlite3 config/data.db
    sqlite> .database
    sqlite> .quit
    ```
 
 4. **运行容器**
-
+   （注意：请确保您在项目的根目录下执行此命令，或者将 `$(pwd)` 替换为您的项目根目录的绝对路径。）
    ```bash
    docker run -d --name xiaomai-bot \
      --net=host \
-     -v /xiaomai-bot/config/config.yaml:/xiaomai-bot/config.yaml \
-     -v /xiaomai-bot/config/data.db:/xiaomai-bot/data.db \
-     -v /xiaomai-bot/data/battlefield:/xiaomai-bot/data/battlefield/ \
-     -v /xiaomai-bot/imgs/random_picture:/xiaomai-bot/modules/self_contained/random_picture/imgs/ \
-     -v /xiaomai-bot/imgs/random_wife:/xiaomai-bot/modules/self_contained/random_wife/imgs/ \
-     -v /xiaomai-bot/imgs/random_dragon:/xiaomai-bot/modules/self_contained/random_dragon/imgs/ \
+     -v $(pwd)/config/config.yaml:/xiaomai-bot/config.yaml \
+     -v $(pwd)/config/data.db:/xiaomai-bot/data.db \
+     -v $(pwd)/data/battlefield:/xiaomai-bot/data/battlefield/ \
+     -v $(pwd)/imgs/random_picture:/xiaomai-bot/modules/self_contained/random_picture/imgs/ \
+     -v $(pwd)/imgs/random_wife:/xiaomai-bot/modules/self_contained/random_wife/imgs/ \
+     -v $(pwd)/imgs/random_dragon:/xiaomai-bot/modules/self_contained/random_dragon/imgs/ \
      xiaomai-bot
    ```
 
@@ -207,14 +210,15 @@ uv run main.py
 1. **安装 Docker 与 Docker Compose**
 
 2. **克隆项目并设置数据库**
-
+   （注意：请确保您在克隆后的项目根目录下执行这些命令。）
    ```bash
    git clone https://github.com/g1331/xiaomai-bot
    cd xiaomai-bot
-   sqlite3 /xiaomai-bot/config/data.db
+   cp config/config_demo.yaml config/config.yaml
+   # 手动创建数据库 (如果需要)
+   sqlite3 config/data.db
    sqlite> .database
    sqlite> .quit
-   mv config_demo.yaml config.yaml
    ```
 
 3. **启动服务**

@@ -55,10 +55,11 @@ async def github_card(
 
 
 async def get_github_reposity_information(url: str) -> str | None:
-    if url.startswith("https://github.com"):
-        cleaned_url = url[len("https://github.com") :]
-    elif url.startswith("http://github.com"):
-        cleaned_url = url[len("http://github.com") :]
-    else:
+    from urllib.parse import urlparse
+    
+    parsed_url = urlparse(url)
+    if parsed_url.hostname != "github.com":
         return None
+    
+    cleaned_url = parsed_url.path
     return f"https://opengraph.githubassets.com/c9f4179f4d560950b2355c82aa2b7750bffd945744f9b8ea3f93cc24779745a0{cleaned_url}"

@@ -24,6 +24,7 @@ from loguru import logger
 
 from core.control import Distribute, FrequencyLimitation, Function, Permission
 from core.models import saya_model
+from utils.type import parse_match_type
 
 # 导入数据库模型以确保表被创建
 # 导入数据库操作函数
@@ -401,10 +402,10 @@ async def mcadmin_update_server(
             await app.send_message(group, MessageChain(help_message), quote=source)
             return
 
-        # 解析参数
-        new_name = name.result if name.matched else None
-        new_address = address.result if address.matched else None
-        new_websocket_url = websocket.result if websocket.matched else None
+        # 解析参数 - 使用 parse_match_type 正确处理 MessageChain 对象
+        new_name = parse_match_type(name, str, None)
+        new_address = parse_match_type(address, str, None)
+        new_websocket_url = parse_match_type(websocket, str, None)
 
         # 检查是否至少指定了一个更新参数
         if not any([new_name, new_address, new_websocket_url]):

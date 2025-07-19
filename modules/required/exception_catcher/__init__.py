@@ -9,6 +9,7 @@ from graia.ariadne.message.element import Image
 from graia.broadcast.builtin.event import ExceptionThrowed
 from graia.saya import Channel
 from graia.saya.builtins.broadcast.schema import ListenerSchema
+from loguru import logger
 from unwind import ReportFlag, get_report
 
 from core.config import GlobalConfig
@@ -47,7 +48,7 @@ async def send_error_report(exception: BaseException) -> None:
             config.Master, MessageChain(Image(data_bytes=image))
         )
     except Exception as e:
-        print(f"发送错误报告时发生异常: {e}")
+        logger.exception(f"发送错误报告时发生异常: {e}")
 
 
 @channel.use(ListenerSchema(listening_events=[ExceptionThrowed]))
@@ -91,6 +92,7 @@ def generate_reports_md(exception: BaseException) -> str:
     try:
         reports = get_report(exception)
     except Exception as e:
+        logger.exception(f"生成异常报告时发生错误: {e}")
         return f"生成报告时发生错误: {e}"
 
     # 定义辅助函数以获取描述和原因

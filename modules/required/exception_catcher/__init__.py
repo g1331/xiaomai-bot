@@ -17,7 +17,7 @@ from utils.text2img import md2img
 channel = Channel.current()
 
 channel.meta["name"] = "ExceptionCatcher"
-channel.meta["author"] = "SAGIRI-kawaii"
+channel.meta["author"] = "13"  # Updated to reflect the original author for consistency.
 channel.meta["description"] = "一个简单高效的异常捕获插件"
 
 config = create(GlobalConfig)

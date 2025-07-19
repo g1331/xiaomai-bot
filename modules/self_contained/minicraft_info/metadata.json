@@ -20,6 +20,10 @@
     "  解绑服务器: /mcadmin unbind <服务器ID> [群号]",
     "  聊天互通: /mcadmin sync <服务器ID> <on/off> [群号]",
     "  连接状态: /mcadmin status",
+    "  WebSocket 请求头管理:",
+    "    添加请求头: /mcadmin header add <服务器ID> <key> <value>",
+    "    移除请求头: /mcadmin header remove <服务器ID> <key>",
+    "    列出请求头: /mcadmin header list <服务器ID>",
     "聊天互通功能:",
     "  MC→QQ: [服务器名] 玩家昵称: 消息内容",
     "  QQ→MC: [QQ-群名] 昵称: 消息内容",
@@ -31,7 +35,10 @@
     "/mcadmin add mc.hypixel.net Hypixel ws://localhost:8080",
     "/mcadmin bind 1",
     "/mcadmin sync 1 on",
-    "/mcadmin update 1 --name 新名称 --websocket ws://new-url:8080"
+    "/mcadmin update 1 --name 新名称 --websocket ws://new-url:8080",
+    "/mcadmin header add 1 Authorization Bearer-token-here",
+    "/mcadmin header list 1",
+    "/mcadmin header remove 1 Authorization"
   ],
   "default_switch": true,
   "default_notice": true

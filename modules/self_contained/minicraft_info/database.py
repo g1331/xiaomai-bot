@@ -517,10 +517,14 @@ async def add_server_header(server_id: int, key: str, value: str) -> tuple[bool,
             # 添加调试日志
             logger.debug(f"更新前的请求头: {server.websocket_headers}")
 
-            # 确保 x-self-name 始终存在（如果 headers 为空则初始化）
+            # 如果 headers 为空，初始化为空字典
             if not current_headers:
-                current_headers = {"x-self-name": server_name}
-            elif "x-self-name" not in current_headers:
+                current_headers = {}
+
+            # 只有在 headers 为空且不是设置 x-self-name 时，才自动添加 x-self-name
+            if not current_headers and key != "x-self-name":
+                current_headers["x-self-name"] = server_name
+            elif "x-self-name" not in current_headers and key != "x-self-name":
                 current_headers["x-self-name"] = server_name
 
             old_value = current_headers.get(key)

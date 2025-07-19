@@ -33,7 +33,26 @@ async def validate_websocket_url_format(websocket_url: str) -> tuple[bool, str]:
 
 
 async def test_websocket_connection(websocket_url: str) -> tuple[bool, str]:
-    """测试 WebSocket 连接（不使用认证header）"""
+    """
+    测试 WebSocket 连接（不使用认证header）
+
+    Args:
+        websocket_url (str): WebSocket服务器的URL。
+
+    Returns:
+        tuple[bool, str]: 
+            - 第一个值为布尔值，表示连接是否成功。
+            - 第二个值为字符串，包含状态消息。
+
+    Note:
+        连接测试的超时时间为5秒。如果连接成功，返回 (True, "WebSocket 连接测试成功")。
+        如果连接失败，返回 (False, 错误消息)，错误消息可能包括：
+            - "WebSocket 连接超时"
+            - "WebSocket URL 格式无效"
+            - "WebSocket 握手失败（可能需要认证header）"
+            - "WebSocket 连接被拒绝"
+            - 其他异常的描述信息。
+    """
     try:
 
         async def test_connection():

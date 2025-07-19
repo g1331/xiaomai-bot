@@ -40,7 +40,7 @@ async def test_websocket_connection(websocket_url: str) -> tuple[bool, str]:
         websocket_url (str): WebSocket服务器的URL。
 
     Returns:
-        tuple[bool, str]: 
+        tuple[bool, str]:
             - 第一个值为布尔值，表示连接是否成功。
             - 第二个值为字符串，包含状态消息。
 

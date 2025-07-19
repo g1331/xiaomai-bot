@@ -338,6 +338,9 @@ async def bind_server_to_group(server_id: int, group_id: int) -> tuple[bool, str
             if not server:
                 return False, f"服务器ID {server_id} 不存在"
 
+            # 在 session 上下文内获取服务器名称，避免延迟加载问题
+            server_name = server.server_name
+
             # 检查是否已经绑定
             bind_result = await session.execute(
                 select(McGroupBind).where(
@@ -345,15 +348,13 @@ async def bind_server_to_group(server_id: int, group_id: int) -> tuple[bool, str
                 )
             )
             if bind_result.scalar_one_or_none():
-                return False, f"群 {group_id} 已经绑定了服务器 {server.server_name}"
+                return False, f"群 {group_id} 已经绑定了服务器 {server_name}"
 
             # 创建绑定
             bind = McGroupBind(group_id=group_id, server_id=server_id)
             session.add(bind)
             await session.commit()
 
-            # 使用服务器名称前先获取它
-            server_name = server.server_name
             return True, f"成功将服务器 {server_name} 绑定到群 {group_id}"
 
     except Exception as e:
@@ -375,7 +376,7 @@ async def unbind_server_from_group(server_id: int, group_id: int) -> tuple[bool,
             if not bind:
                 return False, f"群 {group_id} 没有绑定服务器ID {server_id}"
 
-            # 获取服务器名称
+            # 获取服务器名称（在 session 上下文内）
             server_result = await session.execute(
                 select(McServer).where(McServer.id == server_id)
             )
@@ -390,7 +391,7 @@ async def unbind_server_from_group(server_id: int, group_id: int) -> tuple[bool,
             )
             await session.commit()
 
-        return True, f"成功从群 {group_id} 解绑服务器 {server_name}"
+            return True, f"成功从群 {group_id} 解绑服务器 {server_name}"
 
     except Exception as e:
         logger.exception(f"解绑服务器失败: {e}")
@@ -644,8 +645,11 @@ async def get_server_headers(server_id: int) -> tuple[bool, str, dict]:
             if not server:
                 return False, f"服务器ID {server_id} 不存在", {}
 
+            # 在 session 上下文内获取所需数据
+            server_name = server.server_name
             headers = server.websocket_headers or {}
-            return True, f"服务器 {server.server_name} 的请求头", headers
+
+            return True, f"服务器 {server_name} 的请求头", headers
 
     except Exception as e:
         logger.exception(f"获取服务器请求头失败: {e}")

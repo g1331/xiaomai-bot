@@ -12,8 +12,8 @@ from .models import McGroupBind, McServer
 from .utils import detect_server_type
 
 
-async def validate_websocket_url(websocket_url: str) -> tuple[bool, str]:
-    """验证 WebSocket URL 格式和连通性"""
+async def validate_websocket_url_format(websocket_url: str) -> tuple[bool, str]:
+    """验证 WebSocket URL 格式"""
     if not websocket_url:
         return True, ""  # 空 URL 是允许的
 
@@ -26,34 +26,57 @@ async def validate_websocket_url(websocket_url: str) -> tuple[bool, str]:
         if not parsed.hostname:
             return False, "WebSocket URL 格式无效，缺少主机名"
 
-        # 尝试连接测试（超时 5 秒）
-        try:
-
-            async def test_connection():
-                async with websockets.connect(
-                    websocket_url,
-                    ping_interval=None,
-                    ping_timeout=None,
-                    close_timeout=1,
-                ):
-                    pass  # 连接成功即可
-
-            await asyncio.wait_for(test_connection(), timeout=5.0)
-            return True, "WebSocket URL 验证成功"
-
-        except asyncio.TimeoutError:
-            return False, "WebSocket 连接超时，请检查 URL 和网络连接"
-        except websockets.exceptions.InvalidURI:
-            return False, "WebSocket URL 格式无效"
-        except websockets.exceptions.InvalidHandshake:
-            return False, "WebSocket 握手失败，请检查服务器配置"
-        except ConnectionRefusedError:
-            return False, "WebSocket 连接被拒绝，请检查服务器是否运行"
-        except Exception as e:
-            return False, f"WebSocket 连接测试失败: {str(e)}"
+        return True, "WebSocket URL 格式验证通过"
 
     except Exception as e:
-        return False, f"WebSocket URL 验证失败: {str(e)}"
+        return False, f"WebSocket URL 格式验证失败: {str(e)}"
+
+
+async def test_websocket_connection(websocket_url: str) -> tuple[bool, str]:
+    """
+    测试 WebSocket 连接（不使用认证header）
+
+    Args:
+        websocket_url (str): WebSocket服务器的URL。
+
+    Returns:
+        tuple[bool, str]:
+            - 第一个值为布尔值，表示连接是否成功。
+            - 第二个值为字符串，包含状态消息。
+
+    Note:
+        连接测试的超时时间为5秒。如果连接成功，返回 (True, "WebSocket 连接测试成功")。
+        如果连接失败，返回 (False, 错误消息)，错误消息可能包括：
+            - "WebSocket 连接超时"
+            - "WebSocket URL 格式无效"
+            - "WebSocket 握手失败（可能需要认证header）"
+            - "WebSocket 连接被拒绝"
+            - 其他异常的描述信息。
+    """
+    try:
+
+        async def test_connection():
+            async with websockets.connect(
+                websocket_url,
+                ping_interval=None,
+                ping_timeout=None,
+                close_timeout=1,
+            ):
+                pass  # 连接成功即可
+
+        await asyncio.wait_for(test_connection(), timeout=5.0)
+        return True, "WebSocket 连接测试成功"
+
+    except asyncio.TimeoutError:
+        return False, "WebSocket 连接超时"
+    except websockets.exceptions.InvalidURI:
+        return False, "WebSocket URL 格式无效"
+    except websockets.exceptions.InvalidHandshake:
+        return False, "WebSocket 握手失败（可能需要认证header）"
+    except ConnectionRefusedError:
+        return False, "WebSocket 连接被拒绝"
+    except Exception as e:
+        return False, f"WebSocket 连接测试失败: {str(e)}"
 
 
 async def add_mc_server(
@@ -69,12 +92,25 @@ async def add_mc_server(
             if result.scalar_one_or_none():
                 return False, f"服务器地址 {server_address} 已存在"
 
-        # 验证 WebSocket URL（如果提供）
+        # 验证 WebSocket URL 格式（如果提供）
+        warning_message = ""
         if websocket_url:
-            is_valid, validation_message = await validate_websocket_url(websocket_url)
+            # 首先验证格式
+            is_valid, format_message = await validate_websocket_url_format(
+                websocket_url
+            )
             if not is_valid:
-                return False, f"WebSocket URL 验证失败: {validation_message}"
-            logger.info(f"WebSocket URL 验证成功: {validation_message}")
+                return False, f"WebSocket URL 格式验证失败: {format_message}"
+
+            # 然后测试连接（失败时只警告，不阻止添加）
+            connection_ok, connection_message = await test_websocket_connection(
+                websocket_url
+            )
+            if not connection_ok:
+                warning_message = f"\n⚠️ 警告: {connection_message}。服务器已添加，但可能需要配置认证header才能正常连接。"
+                logger.warning(f"WebSocket 连接测试失败: {connection_message}")
+            else:
+                logger.info(f"WebSocket 连接测试成功: {connection_message}")
 
         # 检测服务器类型
         server_type = await detect_server_type(server_address)
@@ -95,7 +131,10 @@ async def add_mc_server(
 
         success_message = f"成功添加服务器 {server_name} ({server_type}版)"
         if websocket_url:
-            success_message += "，WebSocket 连接已验证"
+            success_message += "，WebSocket URL 已配置"
+
+        # 添加警告信息（如果有）
+        success_message += warning_message
 
         return True, success_message
 
@@ -191,18 +230,31 @@ async def update_mc_server(
             # 更新 WebSocket URL
             if new_websocket_url is not None:  # 允许设置为空字符串来移除 WebSocket
                 if new_websocket_url != server.websocket_url:
-                    # 验证新的 WebSocket URL（如果不为空）
+                    # 验证新的 WebSocket URL 格式（如果不为空）
                     if new_websocket_url:
-                        is_valid, validation_message = await validate_websocket_url(
+                        is_valid, format_message = await validate_websocket_url_format(
                             new_websocket_url
                         )
                         if not is_valid:
                             return (
                                 False,
-                                f"WebSocket URL 验证失败: {validation_message}",
+                                f"WebSocket URL 格式验证失败: {format_message}",
                                 False,
                             )
-                        logger.info(f"新 WebSocket URL 验证成功: {validation_message}")
+
+                        # 测试连接（失败时只警告）
+                        (
+                            connection_ok,
+                            connection_message,
+                        ) = await test_websocket_connection(new_websocket_url)
+                        if not connection_ok:
+                            logger.warning(
+                                f"新 WebSocket URL 连接测试失败: {connection_message}"
+                            )
+                        else:
+                            logger.info(
+                                f"新 WebSocket URL 连接测试成功: {connection_message}"
+                            )
 
                     server.websocket_url = (
                         new_websocket_url if new_websocket_url else None

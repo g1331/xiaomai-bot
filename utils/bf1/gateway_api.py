@@ -286,8 +286,8 @@ class bf1_api:
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
         except Exception as e:
-            logger.error(f"EA API请求异常: {e}")
-            return f"EA API请求异常: {str(e)}"
+            logger.exception(f"EA API请求异常: {e}")
+            return "EA API请求时发生未知错误"
 
     # 玩家信息相关
     async def login(self, remid: str, sid: str) -> str | None:

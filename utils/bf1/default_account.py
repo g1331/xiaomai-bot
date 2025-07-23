@@ -34,11 +34,23 @@ class DefaultAccount:
                 self.account_instance.remid = self.remid
                 self.account_instance.sid = self.sid
                 if self.remid and self.sid:
-                    # 如果session过期，自动登录覆写信息
-                    data = await self.account_instance.Companion_isLoggedIn()
-                    if isinstance(data, str) or (
-                        data.get("result").get("isLoggedIn") is None
-                    ):
+                    # 检查是否需要登录（session过期或access_token为空）
+                    need_login = False
+
+                    # 检查access_token
+                    if not self.account_instance.access_token:
+                        logger.debug("access_token为空，需要重新登录")
+                        need_login = True
+                    else:
+                        # 检查session是否有效
+                        data = await self.account_instance.Companion_isLoggedIn()
+                        if isinstance(data, str) or (
+                            data.get("result", {}).get("isLoggedIn") is None
+                        ):
+                            logger.debug("session无效，需要重新登录")
+                            need_login = True
+
+                    if need_login:
                         logger.debug("正在登录默认账号")
                         await self.account_instance.login(self.remid, self.sid)
                         if await self.account_instance.get_session():

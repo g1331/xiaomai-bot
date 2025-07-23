@@ -222,6 +222,7 @@ class bf1_api:
         self.auto_login_count = 0
         # 创建SSL上下文，禁用证书验证以解决526错误
         import ssl
+
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE

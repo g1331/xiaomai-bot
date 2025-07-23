@@ -220,7 +220,14 @@ class bf1_api:
             },
         }
         self.auto_login_count = 0
-        self.http_session = aiohttp.ClientSession()
+        # 创建SSL上下文，禁用证书验证以解决526错误
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        self.http_session = aiohttp.ClientSession(connector=connector)
 
     # api调用
     async def check_session_expire(self) -> bool:
@@ -363,7 +370,7 @@ class bf1_api:
             "X-Origin-Platform": "PCWIN",
         }
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(verify=False) as client:
                 response2 = await client.get(url2, headers=header2)
             authcode = response2.headers["location"]
             authcode = authcode[authcode.rfind("=") + 1 :]

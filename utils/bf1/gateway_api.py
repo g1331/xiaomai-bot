@@ -4,9 +4,10 @@ import time
 import uuid
 
 import aiohttp
-from creart import create
 import httpx
+from creart import create
 from loguru import logger
+
 from core.config import GlobalConfig
 
 config = create(GlobalConfig)
@@ -265,9 +266,28 @@ class bf1_api:
                 ssl=False,
                 proxy=proxy,
             ) as response:
+                # 检查HTTP状态码
+                if response.status == 403:
+                    logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
+                    return "EA API访问被拒绝，请稍后重试"
+                elif response.status != 200:
+                    logger.error(f"EA API请求失败，状态码: {response.status}")
+                    return f"EA API请求失败，状态码: {response.status}"
+
+                # 检查Content-Type是否为JSON
+                content_type = response.headers.get("content-type", "").lower()
+                if "application/json" not in content_type:
+                    logger.error(f"EA API返回非JSON响应，Content-Type: {content_type}")
+                    response_text = await response.text()
+                    logger.debug(f"响应内容: {response_text[:500]}...")
+                    return "EA API返回格式错误"
+
                 return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
+        except Exception as e:
+            logger.exception(f"EA API请求异常: {e}")
+            return "EA API请求时发生未知错误"
 
     # 玩家信息相关
     async def login(self, remid: str, sid: str) -> str | None:
@@ -424,6 +444,21 @@ class bf1_api:
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, data=data) as response:
+                # 检查HTTP状态码
+                if response.status != 200:
+                    logger.error(f"登录API请求失败，状态码: {response.status}")
+                    response_text = await response.text()
+                    logger.debug(f"响应内容: {response_text[:500]}...")
+                    return {"error": f"登录失败，状态码: {response.status}"}
+
+                # 检查Content-Type是否为JSON
+                content_type = response.headers.get("content-type", "").lower()
+                if "application/json" not in content_type:
+                    logger.error(f"登录API返回非JSON响应，Content-Type: {content_type}")
+                    response_text = await response.text()
+                    logger.debug(f"响应内容: {response_text[:500]}...")
+                    return {"error": "登录API返回格式错误"}
+
                 return await response.json()
 
     async def auto_login(self, pid):
@@ -518,9 +553,28 @@ class bf1_api:
                 ssl=False,
                 proxy=proxy,
             )
+            # 检查HTTP状态码
+            if response.status == 403:
+                logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
+                return "EA API访问被拒绝，请稍后重试"
+            elif response.status != 200:
+                logger.error(f"EA API请求失败，状态码: {response.status}")
+                return f"EA API请求失败，状态码: {response.status}"
+
+            # 检查Content-Type是否为JSON
+            content_type = response.headers.get("content-type", "").lower()
+            if "application/json" not in content_type:
+                logger.error(f"EA API返回非JSON响应，Content-Type: {content_type}")
+                response_text = await response.text()
+                logger.debug(f"响应内容: {response_text[:500]}...")
+                return "EA API返回格式错误"
+
             return await self.error_handle(await response.json())
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
+        except Exception as e:
+            logger.error(f"EA API请求异常: {e}")
+            return f"EA API请求异常: {str(e)}"
 
     async def Onboarding_welcomeMessage(self) -> dict:
         """
@@ -552,6 +606,11 @@ class bf1_api:
         :param player_name:
         :return:{'personas': {'persona': [{'personaId': 1004198901469, 'pidId': 1000331701469, 'displayName': 'SHlSAN13', 'name': 'shlsan13', 'namespaceName': 'cem_ea_id', 'isVisible': True, 'status': 'ACTIVE', 'statusReasonCode': '', 'showPersona': 'EVERYONE', 'dateCreated': '2018-11-15T2:19Z', 'lastAuthenticated': '2023-11-07T7:9Z'}]}}
         """
+        # 检查access_token是否存在
+        if not self.access_token:
+            logger.error("access_token为空，无法调用EA API")
+            return "账号未登录或access_token无效"
+
         url = f"https://gateway.ea.com/proxy/identity/personas?namespaceName=cem_ea_id&displayName={player_name}"
         # 头部信息
         header = {
@@ -566,9 +625,28 @@ class bf1_api:
             response = await self.http_session.get(
                 url=url, headers=header, timeout=10, ssl=False, proxy=proxy
             )
+            # 检查HTTP状态码
+            if response.status == 403:
+                logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
+                return "EA API访问被拒绝，请稍后重试"
+            elif response.status != 200:
+                logger.error(f"EA API请求失败，状态码: {response.status}")
+                return f"EA API请求失败，状态码: {response.status}"
+
+            # 检查Content-Type是否为JSON
+            content_type = response.headers.get("content-type", "").lower()
+            if "application/json" not in content_type:
+                logger.error(f"EA API返回非JSON响应，Content-Type: {content_type}")
+                response_text = await response.text()
+                logger.debug(f"响应内容: {response_text[:500]}...")
+                return "EA API返回格式错误"
+
             return await response.json()
         except asyncio.exceptions.TimeoutError:
             return "网络超时!"
+        except Exception as e:
+            logger.error(f"EA API请求异常: {e}")
+            return f"EA API请求异常: {str(e)}"
 
     async def getPersonasByIds(self, personaIds: list[int | str]) -> dict:
         """

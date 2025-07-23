@@ -111,6 +111,11 @@ async def check_default_account(app: Ariadne):
         )
     # 登录默认账号
     account_instance = await BF1DA.get_api_instance()
+    if account_instance is None:
+        logger.error("获取默认账号实例失败，请检查默认账号配置")
+        return await app.send_friend_message(
+            config.Master, MessageChain("BF1默认账号配置错误，请检查配置!")
+        )
     await account_instance.login(account_instance.remid, account_instance.sid)
     # 更新默认账号信息
     if account_info := await BF1DA.update_player_info():

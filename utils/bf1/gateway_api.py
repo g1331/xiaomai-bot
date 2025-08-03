@@ -274,14 +274,6 @@ class bf1_api:
                 ssl=False,
                 proxy=proxy,
             ) as response:
-                # 检查HTTP状态码
-                if response.status == 403:
-                    logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
-                    return "EA API访问被拒绝，请稍后重试"
-                elif response.status != 200:
-                    logger.error(f"EA API请求失败，状态码: {response.status}")
-                    return f"EA API请求失败，状态码: {response.status}"
-
                 # 检查Content-Type是否为JSON
                 content_type = response.headers.get("content-type", "").lower()
                 if "application/json" not in content_type:
@@ -561,14 +553,6 @@ class bf1_api:
                 ssl=False,
                 proxy=proxy,
             )
-            # 检查HTTP状态码
-            if response.status == 403:
-                logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
-                return "EA API访问被拒绝，请稍后重试"
-            elif response.status != 200:
-                logger.error(f"EA API请求失败，状态码: {response.status}")
-                return f"EA API请求失败，状态码: {response.status}"
-
             # 检查Content-Type是否为JSON
             content_type = response.headers.get("content-type", "").lower()
             if "application/json" not in content_type:
@@ -633,14 +617,6 @@ class bf1_api:
             response = await self.http_session.get(
                 url=url, headers=header, timeout=10, ssl=False, proxy=proxy
             )
-            # 检查HTTP状态码
-            if response.status == 403:
-                logger.error("EA API访问被拒绝(403)，可能是请求频率过高或权限问题")
-                return "EA API访问被拒绝，请稍后重试"
-            elif response.status != 200:
-                logger.error(f"EA API请求失败，状态码: {response.status}")
-                return f"EA API请求失败，状态码: {response.status}"
-
             # 检查Content-Type是否为JSON
             content_type = response.headers.get("content-type", "").lower()
             if "application/json" not in content_type:

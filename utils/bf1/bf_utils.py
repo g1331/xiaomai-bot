@@ -1460,45 +1460,100 @@ class BF1BlazeManager:
     async def get_player_list(
         game_ids: list[int], origin: bool = False, platoon: bool = False
     ) -> dict | None | str:
-        """获取玩家列表"""
+        """获取玩家列表，支持自动重连"""
         # 检查game_ids类型
         if not isinstance(game_ids, list):
             game_ids = [game_ids]
         game_ids = [int(game_id) for game_id in game_ids]
-        blaze_socket = await BF1BlazeManager.init_socket(
-            BF1DA.pid, BF1DA.remid, BF1DA.sid
-        )
-        if not blaze_socket:
-            return "BlazeClient初始化出错!"
-        packet = {
-            "method": "GameManager.getGameDataFromId",
-            "type": "Command",
-            "data": {
-                "DNAM 1": "csFullGameList",
-                "GLST 40": game_ids,
-            },
-        }
-        try:
-            response = await blaze_socket.send(packet)
-        except TimeoutError:
+        
+        # 定义内部函数来执行实际的查询
+        async def _perform_query(retry_attempt: bool = False) -> dict | None | str:
+            blaze_socket = await BF1BlazeManager.init_socket(
+                BF1DA.pid, BF1DA.remid, BF1DA.sid
+            )
+            if not blaze_socket:
+                return "BlazeClient初始化出错!"
+            
+            packet = {
+                "method": "GameManager.getGameDataFromId",
+                "type": "Command",
+                "data": {
+                    "DNAM 1": "csFullGameList",
+                    "GLST 40": game_ids,
+                },
+            }
+            
             try:
-                await blaze_socket.close()
+                response = await blaze_socket.send(packet)
+            except TimeoutError:
+                try:
+                    await blaze_socket.close()
+                except Exception as e:
+                    logger.error(f"关闭连接时出错: {e}")
+                logger.error("Blaze后端超时!")
+                return "Blaze后端超时!"
             except Exception as e:
-                logger.error(f"关闭连接时出错: {e}")
-            logger.error("Blaze后端超时!")
-            return "Blaze后端超时!"
-        if origin:
+                # 连接异常，可能需要重连
+                logger.warning(f"Blaze连接异常: {e}")
+                try:
+                    await blaze_socket.close()
+                except Exception:
+                    pass
+                if not retry_attempt:
+                    logger.info("检测到连接异常，尝试自动重连...")
+                    return "需要重连"
+                else:
+                    return f"连接失败: {e}"
+            
+            if origin:
+                return response
+            
+            response = BlazeData.player_list_handle(response)
+            if not isinstance(response, dict):
+                blaze_socket.authenticated = False
+                # 如果数据处理失败且不是重试，尝试重连
+                if not retry_attempt:
+                    logger.info("数据处理失败，可能连接已断开，尝试自动重连...")
+                    return "需要重连"
+                return response
+            
             return response
-        response = BlazeData.player_list_handle(response)
-        if not isinstance(response, dict):
-            blaze_socket.authenticated = False
-            return response
+        
+        # 首次尝试查询
+        result = await _perform_query(retry_attempt=False)
+        
+        # 如果需要重连，则清理连接并重试一次
+        if result == "需要重连":
+            logger.info("正在执行自动重连...")
+            # 强制清理现有连接
+            pid = int(BF1DA.pid)
+            if pid in BlazeClientManagerInstance.clients_by_pid:
+                try:
+                    old_socket = BlazeClientManagerInstance.clients_by_pid[pid]
+                    await old_socket.close()
+                except Exception as e:
+                    logger.debug(f"清理旧连接时出错: {e}")
+                finally:
+                    await BlazeClientManagerInstance.remove_client(pid)
+            
+            # 重试查询
+            result = await _perform_query(retry_attempt=True)
+            if isinstance(result, dict):
+                logger.success("自动重连成功!")
+            elif isinstance(result, str) and "出错" not in result and "失败" not in result and "超时" not in result:
+                logger.warning(f"自动重连后仍有问题: {result}")
+        
+        # 如果仍然失败，返回错误信息
+        if not isinstance(result, dict):
+            return result
+        
+        # 处理 platoon 信息
         if platoon:
             bf1_account = await BF1DA.get_api_instance()
             for game_id in game_ids:
-                if game_id in response:
+                if game_id in result:
                     pid_list = [
-                        player["pid"] for player in response[game_id]["players"]
+                        player["pid"] for player in result[game_id]["players"]
                     ]
                     platoon_task = [
                         bf1_account.getActivePlatoon(pid) for pid in pid_list
@@ -1516,11 +1571,11 @@ class BF1BlazeManager:
                                 continue
                             if platoon not in platoons:
                                 platoons.append(platoon)
-                            response[game_id]["players"][i]["platoon"] = platoon
+                            result[game_id]["players"][i]["platoon"] = platoon
                         else:
-                            response[game_id]["players"][i]["platoon"] = {}
-                    response[game_id]["platoons"] = platoons
-        return response
+                            result[game_id]["players"][i]["platoon"] = {}
+                    result[game_id]["platoons"] = platoons
+        return result
 
 
 async def perm_judge(bf_group_name: str, group: Group, sender: Member) -> bool:

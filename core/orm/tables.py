@@ -85,3 +85,21 @@ class KeywordReply(orm.Base):
     reply_type: Mapped[str] = Column(String(length=10), nullable=False)
     reply: Mapped[str] = Column(Text, nullable=False)
     reply_md5: Mapped[str] = Column(String(length=32), primary_key=True)
+
+
+class TarotRecord(orm.Base):
+    """塔罗牌占卜记录"""
+
+    __tablename__ = "tarot_record"
+
+    id: Mapped[int] = Column(Integer, primary_key=True)
+    user_id: Mapped[int] = Column(BIGINT, nullable=False)
+    group_id: Mapped[int] = Column(BIGINT, nullable=False)
+    divination_type: Mapped[str] = Column(
+        String(length=20), 
+        nullable=False, 
+        info={"check": ["daily_fortune", "three_card", "celtic_cross"]}
+    )
+    divination_time: Mapped[DateTime] = Column(DateTime, nullable=False)
+    cards_drawn: Mapped[str] = Column(Text, nullable=False)  # JSON string of card results
+    card_positions: Mapped[str] = Column(Text, nullable=True)  # JSON string of upright/reverse positions

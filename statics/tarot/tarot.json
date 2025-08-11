@@ -246,44 +246,624 @@
   "pentacles": [
     {
       "num": 1,
-      "name": "星币一",
-      "name-en": "Ace of Pentacles",
+      "num-roman": "1",
+      "name": "星币1",
+      "name-en": "1 of Pentacles",
+      "sign": "土",
       "meaning": {
-        "normal": "完美、达成、富庶、幸福、至喜、黄金、有价值的硬币或人工制品、宝物、物质上和精神上满足的结合。",
-        "reverse": "富庶但不快乐、不当使用财富、浪费的金钱、为金钱而堕落、吝啬、贪心、愚人金。"
+        "normal": "物质世界的新机会，财富的开始，事业的种子。",
+        "reverse": "错失的财务机会，物质欲望，贪婪。"
+      }
+    },
+    {
+      "num": 2,
+      "num-roman": "2",
+      "name": "星币2",
+      "name-en": "2 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "平衡与选择，合作伙伴关系，二元性，决定的时刻。",
+        "reverse": "失衡，冲突，困难的选择，缺乏合作。"
+      }
+    },
+    {
+      "num": 3,
+      "num-roman": "3",
+      "name": "星币3",
+      "name-en": "3 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "创造力的表达，团队合作，初步成功，技能的展示。",
+        "reverse": "创造力受阻，团队问题，延迟的项目，技能不足。"
+      }
+    },
+    {
+      "num": 4,
+      "num-roman": "4",
+      "name": "星币4",
+      "name-en": "4 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "稳定和基础，安全感，结构化，保守的方法。",
+        "reverse": "不稳定，缺乏基础，抗拒变化，过度保守。"
+      }
+    },
+    {
+      "num": 5,
+      "num-roman": "5",
+      "name": "星币5",
+      "name-en": "5 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "挑战和冲突，变化和困难，学习的机会。",
+        "reverse": "避免冲突，内在斗争，错失学习机会。"
+      }
+    },
+    {
+      "num": 6,
+      "num-roman": "6",
+      "name": "星币6",
+      "name-en": "6 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "和谐与慷慨，给予和接受，平衡的交换。",
+        "reverse": "不平等的交换，自私，失衡的关系。"
+      }
+    },
+    {
+      "num": 7,
+      "num-roman": "7",
+      "name": "星币7",
+      "name-en": "7 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "评估和选择，耐心和毅力，等待合适的时机。",
+        "reverse": "缺乏耐心，错误的选择，放弃得太早。"
+      }
+    },
+    {
+      "num": 8,
+      "num-roman": "8",
+      "name": "星币8",
+      "name-en": "8 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "精通和技能，努力工作，专注和奉献。",
+        "reverse": "缺乏专注，技能不足，半途而废。"
+      }
+    },
+    {
+      "num": 9,
+      "num-roman": "9",
+      "name": "星币9",
+      "name-en": "9 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "接近完成，智慧和经验，精神上的满足。",
+        "reverse": "未完成的目标，缺乏智慧，精神空虚。"
+      }
+    },
+    {
+      "num": 10,
+      "num-roman": "10",
+      "name": "星币10",
+      "name-en": "10 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "完成和满足，周期的结束，成功的顶点。",
+        "reverse": "过度负担，失败的结束，不完整的成就。"
+      }
+    },
+    {
+      "num": 11,
+      "num-roman": "侍者",
+      "name": "星币侍者",
+      "name-en": "侍者 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "侍者的积极特质，土元素的正面表达。",
+        "reverse": "侍者的消极特质，土元素的负面表达。"
+      }
+    },
+    {
+      "num": 12,
+      "num-roman": "骑士",
+      "name": "星币骑士",
+      "name-en": "骑士 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "骑士的积极特质，土元素的正面表达。",
+        "reverse": "骑士的消极特质，土元素的负面表达。"
+      }
+    },
+    {
+      "num": 13,
+      "num-roman": "王后",
+      "name": "星币王后",
+      "name-en": "王后 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "王后的积极特质，土元素的正面表达。",
+        "reverse": "王后的消极特质，土元素的负面表达。"
+      }
+    },
+    {
+      "num": 14,
+      "num-roman": "国王",
+      "name": "星币国王",
+      "name-en": "国王 of Pentacles",
+      "sign": "土",
+      "meaning": {
+        "normal": "国王的积极特质，土元素的正面表达。",
+        "reverse": "国王的消极特质，土元素的负面表达。"
       }
     }
   ],
   "wands": [
     {
       "num": 1,
-      "name": "权杖一",
-      "name-en": "Ace of Wands",
+      "num-roman": "1",
+      "name": "权杖1",
+      "name-en": "1 of Wands",
+      "sign": "火",
       "meaning": {
-        "normal": "创造、起始发源、发明、一件事的开始、幸运、事业、获得、继承、小孩出生、一段具有意义的经验开始了、一段冒险、恶搞。",
-        "reverse": "错误的开始、乌云密布的前景、未实现的目标、衰微、空虚的存在、苦恼、计画的取消。"
+        "normal": "创造力的火花，新项目的开始，灵感和动力。",
+        "reverse": "创造力受阻，缺乏方向，延迟的开始。"
+      }
+    },
+    {
+      "num": 2,
+      "num-roman": "2",
+      "name": "权杖2",
+      "name-en": "2 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "平衡与选择，合作伙伴关系，二元性，决定的时刻。",
+        "reverse": "失衡，冲突，困难的选择，缺乏合作。"
+      }
+    },
+    {
+      "num": 3,
+      "num-roman": "3",
+      "name": "权杖3",
+      "name-en": "3 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "创造力的表达，团队合作，初步成功，技能的展示。",
+        "reverse": "创造力受阻，团队问题，延迟的项目，技能不足。"
+      }
+    },
+    {
+      "num": 4,
+      "num-roman": "4",
+      "name": "权杖4",
+      "name-en": "4 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "稳定和基础，安全感，结构化，保守的方法。",
+        "reverse": "不稳定，缺乏基础，抗拒变化，过度保守。"
+      }
+    },
+    {
+      "num": 5,
+      "num-roman": "5",
+      "name": "权杖5",
+      "name-en": "5 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "挑战和冲突，变化和困难，学习的机会。",
+        "reverse": "避免冲突，内在斗争，错失学习机会。"
+      }
+    },
+    {
+      "num": 6,
+      "num-roman": "6",
+      "name": "权杖6",
+      "name-en": "6 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "和谐与慷慨，给予和接受，平衡的交换。",
+        "reverse": "不平等的交换，自私，失衡的关系。"
+      }
+    },
+    {
+      "num": 7,
+      "num-roman": "7",
+      "name": "权杖7",
+      "name-en": "7 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "评估和选择，耐心和毅力，等待合适的时机。",
+        "reverse": "缺乏耐心，错误的选择，放弃得太早。"
+      }
+    },
+    {
+      "num": 8,
+      "num-roman": "8",
+      "name": "权杖8",
+      "name-en": "8 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "精通和技能，努力工作，专注和奉献。",
+        "reverse": "缺乏专注，技能不足，半途而废。"
+      }
+    },
+    {
+      "num": 9,
+      "num-roman": "9",
+      "name": "权杖9",
+      "name-en": "9 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "接近完成，智慧和经验，精神上的满足。",
+        "reverse": "未完成的目标，缺乏智慧，精神空虚。"
+      }
+    },
+    {
+      "num": 10,
+      "num-roman": "10",
+      "name": "权杖10",
+      "name-en": "10 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "完成和满足，周期的结束，成功的顶点。",
+        "reverse": "过度负担，失败的结束，不完整的成就。"
+      }
+    },
+    {
+      "num": 11,
+      "num-roman": "侍者",
+      "name": "权杖侍者",
+      "name-en": "侍者 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "侍者的积极特质，火元素的正面表达。",
+        "reverse": "侍者的消极特质，火元素的负面表达。"
+      }
+    },
+    {
+      "num": 12,
+      "num-roman": "骑士",
+      "name": "权杖骑士",
+      "name-en": "骑士 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "骑士的积极特质，火元素的正面表达。",
+        "reverse": "骑士的消极特质，火元素的负面表达。"
+      }
+    },
+    {
+      "num": 13,
+      "num-roman": "王后",
+      "name": "权杖王后",
+      "name-en": "王后 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "王后的积极特质，火元素的正面表达。",
+        "reverse": "王后的消极特质，火元素的负面表达。"
+      }
+    },
+    {
+      "num": 14,
+      "num-roman": "国王",
+      "name": "权杖国王",
+      "name-en": "国王 of Wands",
+      "sign": "火",
+      "meaning": {
+        "normal": "国王的积极特质，火元素的正面表达。",
+        "reverse": "国王的消极特质，火元素的负面表达。"
       }
     }
   ],
   "cups": [
     {
       "num": 1,
-      "name": "圣杯一",
-      "name-en": "Ace of Cups",
+      "num-roman": "1",
+      "name": "圣杯1",
+      "name-en": "1 of Cups",
+      "sign": "水",
       "meaning": {
-        "normal": "充沛丰富、满足、完美、欢喜、丰腴、财富、丰饶多产、美丽和愉悦、满溢着良善、美好的远景。",
-        "reverse": "转变、侵蚀、不安稳、贫乏、无回报的爱、不尽情的欢乐、虚假的心、矛盾不一致。"
+        "normal": "情感的新开始，爱情的种子，精神上的满足。",
+        "reverse": "情感空虚，爱情受阻，精神上的干涸。"
+      }
+    },
+    {
+      "num": 2,
+      "num-roman": "2",
+      "name": "圣杯2",
+      "name-en": "2 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "平衡与选择，合作伙伴关系，二元性，决定的时刻。",
+        "reverse": "失衡，冲突，困难的选择，缺乏合作。"
+      }
+    },
+    {
+      "num": 3,
+      "num-roman": "3",
+      "name": "圣杯3",
+      "name-en": "3 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "创造力的表达，团队合作，初步成功，技能的展示。",
+        "reverse": "创造力受阻，团队问题，延迟的项目，技能不足。"
+      }
+    },
+    {
+      "num": 4,
+      "num-roman": "4",
+      "name": "圣杯4",
+      "name-en": "4 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "稳定和基础，安全感，结构化，保守的方法。",
+        "reverse": "不稳定，缺乏基础，抗拒变化，过度保守。"
+      }
+    },
+    {
+      "num": 5,
+      "num-roman": "5",
+      "name": "圣杯5",
+      "name-en": "5 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "挑战和冲突，变化和困难，学习的机会。",
+        "reverse": "避免冲突，内在斗争，错失学习机会。"
+      }
+    },
+    {
+      "num": 6,
+      "num-roman": "6",
+      "name": "圣杯6",
+      "name-en": "6 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "和谐与慷慨，给予和接受，平衡的交换。",
+        "reverse": "不平等的交换，自私，失衡的关系。"
+      }
+    },
+    {
+      "num": 7,
+      "num-roman": "7",
+      "name": "圣杯7",
+      "name-en": "7 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "评估和选择，耐心和毅力，等待合适的时机。",
+        "reverse": "缺乏耐心，错误的选择，放弃得太早。"
+      }
+    },
+    {
+      "num": 8,
+      "num-roman": "8",
+      "name": "圣杯8",
+      "name-en": "8 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "精通和技能，努力工作，专注和奉献。",
+        "reverse": "缺乏专注，技能不足，半途而废。"
+      }
+    },
+    {
+      "num": 9,
+      "num-roman": "9",
+      "name": "圣杯9",
+      "name-en": "9 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "接近完成，智慧和经验，精神上的满足。",
+        "reverse": "未完成的目标，缺乏智慧，精神空虚。"
+      }
+    },
+    {
+      "num": 10,
+      "num-roman": "10",
+      "name": "圣杯10",
+      "name-en": "10 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "完成和满足，周期的结束，成功的顶点。",
+        "reverse": "过度负担，失败的结束，不完整的成就。"
+      }
+    },
+    {
+      "num": 11,
+      "num-roman": "侍者",
+      "name": "圣杯侍者",
+      "name-en": "侍者 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "侍者的积极特质，水元素的正面表达。",
+        "reverse": "侍者的消极特质，水元素的负面表达。"
+      }
+    },
+    {
+      "num": 12,
+      "num-roman": "骑士",
+      "name": "圣杯骑士",
+      "name-en": "骑士 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "骑士的积极特质，水元素的正面表达。",
+        "reverse": "骑士的消极特质，水元素的负面表达。"
+      }
+    },
+    {
+      "num": 13,
+      "num-roman": "王后",
+      "name": "圣杯王后",
+      "name-en": "王后 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "王后的积极特质，水元素的正面表达。",
+        "reverse": "王后的消极特质，水元素的负面表达。"
+      }
+    },
+    {
+      "num": 14,
+      "num-roman": "国王",
+      "name": "圣杯国王",
+      "name-en": "国王 of Cups",
+      "sign": "水",
+      "meaning": {
+        "normal": "国王的积极特质，水元素的正面表达。",
+        "reverse": "国王的消极特质，水元素的负面表达。"
       }
     }
   ],
   "swords": [
     {
       "num": 1,
-      "name": "宝剑一",
-      "name-en": "Ace of Swords",
+      "num-roman": "1",
+      "name": "宝剑1",
+      "name-en": "1 of Swords",
+      "sign": "风",
       "meaning": {
-        "normal": "强大的决心、开创、力量、力气、行动、极度、胜利、权力、成功、丰腴、兴旺、深层的情感、爱情、优胜、征服。",
-        "reverse": "灾害、专制暴政、不幸、自我毁灭、火爆的脾气、难堪、障碍、贫瘠。"
+        "normal": "新的想法，智力上的突破，真理的力量。",
+        "reverse": "思维混乱，误解，恶意的想法。"
+      }
+    },
+    {
+      "num": 2,
+      "num-roman": "2",
+      "name": "宝剑2",
+      "name-en": "2 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "平衡与选择，合作伙伴关系，二元性，决定的时刻。",
+        "reverse": "失衡，冲突，困难的选择，缺乏合作。"
+      }
+    },
+    {
+      "num": 3,
+      "num-roman": "3",
+      "name": "宝剑3",
+      "name-en": "3 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "创造力的表达，团队合作，初步成功，技能的展示。",
+        "reverse": "创造力受阻，团队问题，延迟的项目，技能不足。"
+      }
+    },
+    {
+      "num": 4,
+      "num-roman": "4",
+      "name": "宝剑4",
+      "name-en": "4 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "稳定和基础，安全感，结构化，保守的方法。",
+        "reverse": "不稳定，缺乏基础，抗拒变化，过度保守。"
+      }
+    },
+    {
+      "num": 5,
+      "num-roman": "5",
+      "name": "宝剑5",
+      "name-en": "5 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "挑战和冲突，变化和困难，学习的机会。",
+        "reverse": "避免冲突，内在斗争，错失学习机会。"
+      }
+    },
+    {
+      "num": 6,
+      "num-roman": "6",
+      "name": "宝剑6",
+      "name-en": "6 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "和谐与慷慨，给予和接受，平衡的交换。",
+        "reverse": "不平等的交换，自私，失衡的关系。"
+      }
+    },
+    {
+      "num": 7,
+      "num-roman": "7",
+      "name": "宝剑7",
+      "name-en": "7 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "评估和选择，耐心和毅力，等待合适的时机。",
+        "reverse": "缺乏耐心，错误的选择，放弃得太早。"
+      }
+    },
+    {
+      "num": 8,
+      "num-roman": "8",
+      "name": "宝剑8",
+      "name-en": "8 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "精通和技能，努力工作，专注和奉献。",
+        "reverse": "缺乏专注，技能不足，半途而废。"
+      }
+    },
+    {
+      "num": 9,
+      "num-roman": "9",
+      "name": "宝剑9",
+      "name-en": "9 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "接近完成，智慧和经验，精神上的满足。",
+        "reverse": "未完成的目标，缺乏智慧，精神空虚。"
+      }
+    },
+    {
+      "num": 10,
+      "num-roman": "10",
+      "name": "宝剑10",
+      "name-en": "10 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "完成和满足，周期的结束，成功的顶点。",
+        "reverse": "过度负担，失败的结束，不完整的成就。"
+      }
+    },
+    {
+      "num": 11,
+      "num-roman": "侍者",
+      "name": "宝剑侍者",
+      "name-en": "侍者 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "侍者的积极特质，风元素的正面表达。",
+        "reverse": "侍者的消极特质，风元素的负面表达。"
+      }
+    },
+    {
+      "num": 12,
+      "num-roman": "骑士",
+      "name": "宝剑骑士",
+      "name-en": "骑士 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "骑士的积极特质，风元素的正面表达。",
+        "reverse": "骑士的消极特质，风元素的负面表达。"
+      }
+    },
+    {
+      "num": 13,
+      "num-roman": "王后",
+      "name": "宝剑王后",
+      "name-en": "王后 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "王后的积极特质，风元素的正面表达。",
+        "reverse": "王后的消极特质，风元素的负面表达。"
+      }
+    },
+    {
+      "num": 14,
+      "num-roman": "国王",
+      "name": "宝剑国王",
+      "name-en": "国王 of Swords",
+      "sign": "风",
+      "meaning": {
+        "normal": "国王的积极特质，风元素的正面表达。",
+        "reverse": "国王的消极特质，风元素的负面表达。"
       }
     }
   ]

@@ -1773,6 +1773,7 @@ async def get_server_playerList(
 
 
 # 重新登录blaze，需要先检查是否断开了，如果断开了则重登，命令为 /blaze relogin
+# 注意：现在系统已支持自动重连，大多数情况下不需要手动重连
 @listen(GroupMessage)
 @decorate(
     Distribute.require(),
@@ -1795,16 +1796,28 @@ async def relogin_blaze(app: Ariadne, group: Group, source: Source):
         return await app.send_message(
             group, MessageChain("获取默认账号失败"), quote=source
         )
-    # 重新初始化blaze socket
-    blaze_socket = await BF1BlazeManager.init_socket(
-        gateway_instance.pid, gateway_instance.remid, gateway_instance.sid
+    
+    # 使用新的重试机制进行重新初始化
+    blaze_socket = await BF1BlazeManager.init_socket_with_retry(
+        gateway_instance.pid, gateway_instance.remid, gateway_instance.sid, max_retries=2
     )
+    
     if not blaze_socket:
         return await app.send_message(
-            group, MessageChain("Blaze重新登录失败"), quote=source
+            group, MessageChain("Blaze重新登录失败，请检查网络连接或稍后再试"), quote=source
         )
+    
+    # 测试连接是否健康
+    is_healthy = await blaze_socket.test_connection() if hasattr(blaze_socket, 'test_connection') else blaze_socket.is_connection_healthy()
+    
+    status_msg = "Blaze重新登录成功"
+    if is_healthy:
+        status_msg += "，连接状态良好"
+    else:
+        status_msg += "，但连接测试失败"
+    
     return await app.send_message(
-        group, MessageChain("Blaze重新登录成功"), quote=source
+        group, MessageChain(f"{status_msg}\n💡 提示：系统现已支持自动重连，大多数情况下无需手动重连"), quote=source
     )
 
 

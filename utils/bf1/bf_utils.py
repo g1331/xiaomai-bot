@@ -1407,7 +1407,7 @@ class BF1BlazeManager:
         pid = int(pid)
         if pid in BlazeClientManagerInstance.clients_by_pid:
             blaze_socket = BlazeClientManagerInstance.clients_by_pid[pid]
-            if blaze_socket.authenticated:
+            if blaze_socket.authenticated and blaze_socket.is_connection_healthy():
                 return await BlazeClientManagerInstance.get_socket_for_pid(pid)
             else:
                 await BlazeClientManagerInstance.remove_client(pid)
@@ -1457,19 +1457,34 @@ class BF1BlazeManager:
             return None
 
     @staticmethod
+    async def init_socket_with_retry(pid: str | int, remid: str, sid: str, max_retries: int = 2) -> BlazeSocket | None:
+        """带重试机制的Socket初始化"""
+        for attempt in range(max_retries + 1):
+            try:
+                socket = await BF1BlazeManager.init_socket(pid, remid, sid)
+                if socket and socket.is_connection_healthy():
+                    return socket
+            except Exception as e:
+                logger.warning(f"Blaze Socket初始化失败 (第{attempt + 1}次): {e}")
+            
+            if attempt < max_retries:
+                logger.info(f"等待后重试... (第{attempt + 1}/{max_retries}次)")
+                await asyncio.sleep(2)
+        
+        logger.error("Blaze Socket初始化失败，已达到最大重试次数")
+        return None
+
+    @staticmethod
     async def get_player_list(
         game_ids: list[int], origin: bool = False, platoon: bool = False
     ) -> dict | None | str:
-        """获取玩家列表"""
+        """获取玩家列表 - 带自动重连机制"""
         # 检查game_ids类型
         if not isinstance(game_ids, list):
             game_ids = [game_ids]
         game_ids = [int(game_id) for game_id in game_ids]
-        blaze_socket = await BF1BlazeManager.init_socket(
-            BF1DA.pid, BF1DA.remid, BF1DA.sid
-        )
-        if not blaze_socket:
-            return "BlazeClient初始化出错!"
+        
+        # 构建请求包
         packet = {
             "method": "GameManager.getGameDataFromId",
             "type": "Command",
@@ -1478,49 +1493,83 @@ class BF1BlazeManager:
                 "GLST 40": game_ids,
             },
         }
-        try:
-            response = await blaze_socket.send(packet)
-        except TimeoutError:
+        
+        # 自动重连机制 - 最多重试2次
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            blaze_socket = await BF1BlazeManager.init_socket_with_retry(
+                BF1DA.pid, BF1DA.remid, BF1DA.sid, max_retries=1
+            )
+            if not blaze_socket:
+                if attempt == max_retries:
+                    return "BlazeClient初始化出错!"
+                logger.warning(f"BlazeClient初始化失败，第{attempt + 1}次重试...")
+                await asyncio.sleep(1)
+                continue
+                
             try:
-                await blaze_socket.close()
-            except Exception as e:
-                logger.error(f"关闭连接时出错: {e}")
-            logger.error("Blaze后端超时!")
-            return "Blaze后端超时!"
-        if origin:
-            return response
-        response = BlazeData.player_list_handle(response)
-        if not isinstance(response, dict):
-            blaze_socket.authenticated = False
-            return response
-        if platoon:
-            bf1_account = await BF1DA.get_api_instance()
-            for game_id in game_ids:
-                if game_id in response:
-                    pid_list = [
-                        player["pid"] for player in response[game_id]["players"]
-                    ]
-                    platoon_task = [
-                        bf1_account.getActivePlatoon(pid) for pid in pid_list
-                    ]
-                    try:
-                        platoon_list = await asyncio.gather(*platoon_task)
-                    except Exception as e:
-                        logger.error(f"获取玩家战排信息失败: {e}")
-                        platoon_list = []
-                    platoons = []
-                    for i, platoon in enumerate(platoon_list):
-                        if isinstance(platoon, dict):
-                            platoon = platoon["result"]
-                            if not platoon:
-                                continue
-                            if platoon not in platoons:
-                                platoons.append(platoon)
-                            response[game_id]["players"][i]["platoon"] = platoon
-                        else:
-                            response[game_id]["players"][i]["platoon"] = {}
-                    response[game_id]["platoons"] = platoons
-        return response
+                response = await blaze_socket.send(packet)
+                
+                if origin:
+                    return response
+                    
+                response = BlazeData.player_list_handle(response)
+                if not isinstance(response, dict):
+                    # 检查是否为认证失败
+                    if attempt < max_retries and any(
+                        indicator in str(response).lower() 
+                        for indicator in ["登录", "认证", "authentication", "login"]
+                    ):
+                        logger.warning(f"检测到认证失败，清理连接并重试 (第{attempt + 1}次)")
+                        blaze_socket.authenticated = False
+                        await asyncio.sleep(1)
+                        continue
+                    blaze_socket.authenticated = False
+                    return response
+                    
+                if platoon:
+                    bf1_account = await BF1DA.get_api_instance()
+                    for game_id in game_ids:
+                        if game_id in response:
+                            pid_list = [
+                                player["pid"] for player in response[game_id]["players"]
+                            ]
+                            platoon_tasks = [
+                                bf1_account.getActivePlatoon(pid) for pid in pid_list
+                            ]
+                            platoon_results = await asyncio.gather(
+                                *platoon_tasks, return_exceptions=True
+                            )
+                            platoons = []
+                            for i, result in enumerate(platoon_results):
+                                pid = pid_list[i]
+                                if isinstance(result, dict) and "result" in result:
+                                    platoon_data = (
+                                        result["result"] if result["result"] else {}
+                                    )
+                                    if platoon_data and platoon_data not in platoons:
+                                        platoons.append(platoon_data)
+                                else:
+                                    platoon_data = {}
+                                response[game_id]["players"][i]["platoon"] = platoon_data
+                            response[game_id]["platoons"] = platoons
+                return response
+                
+            except (TimeoutError, ConnectionError, OSError) as e:
+                logger.warning(f"Blaze连接异常: {e}")
+                try:
+                    await blaze_socket.close()
+                except Exception as close_e:
+                    logger.error(f"关闭连接时出错: {close_e}")
+                
+                if attempt == max_retries:
+                    logger.error("Blaze后端连接失败，已达到最大重试次数!")
+                    return "Blaze后端连接失败!"
+                else:
+                    logger.info(f"Blaze连接失败，正在重试... (第{attempt + 1}/{max_retries}次)")
+                    await asyncio.sleep(2)
+                    
+        return "Blaze后端连接失败!"
 
 
 async def perm_judge(bf_group_name: str, group: Group, sender: Member) -> bool:

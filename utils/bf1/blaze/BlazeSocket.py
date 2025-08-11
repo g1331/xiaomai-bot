@@ -289,6 +289,8 @@ class BlazeSocket:
             del self.map[packet["id"]]
         elif packet["method"] == "UserSessions.getPermissions":
             logger.error(f"用户登录信息已过期，请重新登录/连接！\n{packet}")
+            # 标记需要重新认证
+            self.authenticated = False
             await self.close()
         elif packet["type"] in ["Message", "Result"]:
             logger.info(f"Message received:\n{packet}")
@@ -301,6 +303,24 @@ class BlazeSocket:
             )
         if self.callback:
             self.callback(packet)
+
+    def is_connection_healthy(self) -> bool:
+        """检查连接是否健康"""
+        return self.connect and self.authenticated and self._is_writer_valid()
+
+    async def test_connection(self) -> bool:
+        """测试连接是否可用"""
+        if not self.is_connection_healthy():
+            return False
+        
+        try:
+            # 发送一个轻量级的ping包来测试连接
+            ping_packet = {"method": "Ping", "type": "Request"}
+            await asyncio.wait_for(self.send(ping_packet), timeout=5.0)
+            return True
+        except Exception as e:
+            logger.debug(f"连接测试失败: {e}")
+            return False
 
     @staticmethod
     def callback(packet):

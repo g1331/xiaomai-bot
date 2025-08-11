@@ -55,16 +55,12 @@ class OptimizedBlazeManager:
         1. 降低超时时间
         2. 集成Platoon缓存
         3. 为后续战绩缓存做准备
+        4. 自动重连机制
         """
         # 检查game_ids类型
         if not isinstance(game_ids, list):
             game_ids = [game_ids]
         game_ids = [int(game_id) for game_id in game_ids]
-
-        # 获取Blaze连接
-        blaze_socket = await self._get_optimized_connection()
-        if not blaze_socket:
-            return "BlazeClient初始化出错!"
 
         # 构建请求包
         packet = {
@@ -76,33 +72,63 @@ class OptimizedBlazeManager:
             },
         }
 
-        try:
-            # 使用优化的超时时间
-            response = await asyncio.wait_for(
-                blaze_socket.send(packet), timeout=self.CONNECTION_TIMEOUT
-            )
-        except asyncio.TimeoutError:
+        # 自动重连机制 - 最多重试2次
+        max_retries = 2
+        for attempt in range(max_retries + 1):
+            # 获取Blaze连接
+            blaze_socket = await self._get_optimized_connection()
+            if not blaze_socket:
+                if attempt == max_retries:
+                    return "BlazeClient初始化出错!"
+                logger.warning(f"获取Blaze连接失败，第{attempt + 1}次重试...")
+                await asyncio.sleep(1)  # 短暂等待后重试
+                continue
+
             try:
-                await blaze_socket.close()
-            except Exception as e:
-                logger.error(f"关闭连接时出错: {e}")
-            logger.error("Blaze后端超时!")
-            return "Blaze后端超时!"
+                # 使用优化的超时时间
+                response = await asyncio.wait_for(
+                    blaze_socket.send(packet), timeout=self.CONNECTION_TIMEOUT
+                )
+                
+                if origin:
+                    return response
 
-        if origin:
-            return response
+                # 处理响应数据
+                response = BlazeData.player_list_handle(response)
+                if not isinstance(response, dict):
+                    # 检查是否为认证失败，如果是则清理连接并重试
+                    if attempt < max_retries and self._is_auth_error(response):
+                        logger.warning(f"检测到认证失败，清理连接并重试 (第{attempt + 1}次)")
+                        await self._invalidate_connection(BF1DA.pid)
+                        await asyncio.sleep(1)
+                        continue
+                    blaze_socket.authenticated = False
+                    return response
 
-        # 处理响应数据
-        response = BlazeData.player_list_handle(response)
-        if not isinstance(response, dict):
-            blaze_socket.authenticated = False
-            return response
+                # 优化的Platoon处理
+                if platoon:
+                    response = await self._process_platoon_with_cache(response, game_ids)
 
-        # 优化的Platoon处理
-        if platoon:
-            response = await self._process_platoon_with_cache(response, game_ids)
+                return response
 
-        return response
+            except (asyncio.TimeoutError, ConnectionError, OSError) as e:
+                logger.warning(f"Blaze连接异常: {e}")
+                try:
+                    await blaze_socket.close()
+                except Exception as close_e:
+                    logger.error(f"关闭连接时出错: {close_e}")
+                
+                # 清理无效连接
+                await self._invalidate_connection(BF1DA.pid)
+                
+                if attempt == max_retries:
+                    logger.error("Blaze后端连接失败，已达到最大重试次数!")
+                    return "Blaze后端连接失败!"
+                else:
+                    logger.info(f"Blaze连接失败，正在重试... (第{attempt + 1}/{max_retries}次)")
+                    await asyncio.sleep(2)  # 等待更长时间后重试
+
+        return "Blaze后端连接失败!"
 
     async def _get_optimized_connection(self) -> BlazeSocket | None:
         """获取优化的Blaze连接"""
@@ -140,10 +166,10 @@ class OptimizedBlazeManager:
         return await self._create_new_connection(pid)
 
     async def _create_new_connection(self, pid: int) -> BlazeSocket | None:
-        """创建新的Blaze连接"""
+        """创建新的Blaze连接 - 使用增强的重试机制"""
         try:
-            # 获取连接
-            blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
+            # 使用增强的连接管理器获取连接
+            blaze_socket = await BlazeClientManagerInstance.ensure_connection(pid)
             if not blaze_socket:
                 logger.error("无法获取到BlazeSocket")
                 return None
@@ -305,6 +331,35 @@ class OptimizedBlazeManager:
                     logger.error(f"关闭Blaze连接时出错: {e}")
             self._connection_cache.clear()
             logger.info("所有Blaze连接已关闭")
+
+    def _is_auth_error(self, response: str) -> bool:
+        """检查响应是否为认证错误"""
+        if not isinstance(response, str):
+            return False
+        
+        auth_error_indicators = [
+            "需要重新登录",
+            "登录信息已过期", 
+            "认证失败",
+            "authentication",
+            "login",
+            "invalid session"
+        ]
+        
+        response_lower = response.lower()
+        return any(indicator in response_lower for indicator in auth_error_indicators)
+
+    async def _invalidate_connection(self, pid: int) -> None:
+        """使指定PID的连接失效并清理"""
+        async with self._lock:
+            if pid in self._connection_cache:
+                connection_info = self._connection_cache[pid]
+                try:
+                    await connection_info["socket"].close()
+                except Exception as e:
+                    logger.debug(f"清理连接时出错: {e}")
+                del self._connection_cache[pid]
+                logger.debug(f"已清理PID {pid} 的无效Blaze连接")
 
 
 # 全局优化管理器实例

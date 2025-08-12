@@ -38,13 +38,29 @@ uv run pytest tests/ -v
 **NEVER CANCEL** - Test suite completes in 2-3 seconds. Always wait for full completion.
 
 ### Running the Application
-**Application startup requires external setup:**
+**⚠️ IMPORTANT: Most development tasks do NOT require running the full application.**
+
+**When to run the full application:**
+- Developing new plugins that require framework integration testing
+- Making core framework changes that need end-to-end validation
+- Testing full bot behavior with external dependencies (Mirai HTTP, QQ)
+
+**For plugin functionality testing, prefer unit tests:**
 ```bash
-# This will FAIL without proper configuration:
+# Test specific plugin functionality:
+uv run pytest tests/test_plugin_name.py -v
+
+# Test all plugins:
+uv run pytest tests/ -v
+```
+
+**Application startup requires external setup and will FAIL without proper configuration:**
+```bash
+# Only run if developing plugins or core framework changes:
 uv run main.py
 ```
 
-**Quick start scripts:**
+**Quick start scripts (for full deployment only):**
 ```bash
 # Linux/Mac:
 ./run.sh
@@ -53,7 +69,7 @@ uv run main.py
 run.bat
 ```
 
-**Configuration setup:**
+**Configuration setup (only needed for full application runs):**
 ```bash
 # Copy demo config and manually edit:
 cp config/config_demo.yaml config/config.yaml
@@ -68,7 +84,7 @@ uv run main.py --set-config
 ### Manual Testing After Changes
 **ALWAYS test after making changes:**
 
-1. **Development workflow validation:**
+1. **Development workflow validation (required for all changes):**
    ```bash
    uv sync                              # Verify dependencies install
    uv run ruff check .                  # Verify code passes linting
@@ -76,13 +92,23 @@ uv run main.py --set-config
    uv run pytest tests/ -v              # Verify tests pass
    ```
 
-2. **Application startup validation:**
+2. **Plugin-specific testing (for plugin changes):**
+   ```bash
+   # Test specific plugin functionality:
+   uv run pytest tests/test_plugin_name.py -v
+   
+   # Test affected modules only:
+   uv run pytest tests/ -k "plugin_name" -v
+   ```
+
+3. **Application startup validation (only for plugin development or framework changes):**
    ```bash
    # Should fail gracefully with config errors (expected):
+   # Only run if developing plugins or core framework changes
    uv run main.py
    ```
 
-3. **Configuration validation:**
+4. **Configuration validation (only if modifying config-related code):**
    ```bash
    # Verify config file structure:
    python3 -c "import yaml; print(yaml.safe_load(open('config/config_demo.yaml')))"
@@ -172,8 +198,10 @@ uv run pytest -v              # Verbose test output
 1. **Create plugin in appropriate `modules/` subdirectory**
 2. **Include `metadata.json` with plugin information**
 3. **Use `@channel.use(ListenerSchema())` for event handling**
-4. **Test with `uv run pytest` and manual validation**
-5. **Run `pre-commit run --all-files` before committing**
+4. **Test with unit tests first: `uv run pytest tests/test_new_plugin.py -v`**
+5. **Run full test suite: `uv run pytest tests/ -v`**
+6. **Only run full application if plugin requires framework integration testing**
+7. **Run `pre-commit run --all-files` before committing**
 
 ### Debugging Issues
 1. **Check logs in `log/` directory (created at runtime)**
@@ -232,12 +260,15 @@ uv run pytest -v              # Verbose test output
 ## Quick Reference Commands
 
 ```bash
-# Essential development cycle:
+# Essential development cycle (for most changes):
 uv sync                              # Setup dependencies
 uv run ruff check . && uv run ruff format --check .  # Code quality  
 uv run pytest tests/ -v             # Run tests
-uv run main.py                       # Test startup (will fail gracefully)
 pre-commit run --all-files          # Final validation
+
+# Plugin development cycle (when creating/modifying plugins):
+uv run pytest tests/test_plugin_name.py -v  # Test specific plugin
+uv run main.py                       # Test framework integration (only if needed)
 
 # Repository exploration:
 ls -la                               # See project structure

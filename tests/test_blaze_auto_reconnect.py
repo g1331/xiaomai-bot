@@ -5,17 +5,12 @@
 
 运行方法：
 - 运行测试：python -m pytest tests/test_blaze_auto_reconnect.py -v
-- 或者：python tests/test_blaze_auto_reconnect.py
+- 或者从项目根目录：python -m tests.test_blaze_auto_reconnect
 """
 
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
-import sys
-import os
-
-# 添加项目根目录到 sys.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 try:
     from utils.bf1.bf_utils import BF1BlazeManager, BlazeQueryResult, BlazeQueryResponse
@@ -23,6 +18,8 @@ try:
     from utils.bf1.default_account import BF1DA
 except ImportError as e:
     print(f"导入模块失败，可能是因为依赖缺失: {e}")
+    print("请确保从项目根目录运行测试")
+    raise
     print("这个测试需要在完整的项目环境中运行")
     sys.exit(1)
 

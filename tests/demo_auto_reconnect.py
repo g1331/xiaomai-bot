@@ -2,15 +2,11 @@
 简单的集成测试：验证自动重连的日志输出
 
 这个脚本模拟了自动重连过程中的日志输出，展示用户会看到的消息。
+请从项目根目录运行：python -m tests.demo_auto_reconnect
 """
 
 import asyncio
 from unittest.mock import patch, AsyncMock
-import sys
-import os
-
-# 添加项目路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # 创建一个简单的日志模拟
 class MockLogger:

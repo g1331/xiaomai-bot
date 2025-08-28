@@ -18,7 +18,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 try:
-    from utils.bf1.bf_utils import BF1BlazeManager
+    from utils.bf1.bf_utils import BF1BlazeManager, BlazeQueryResult, BlazeQueryResponse
     from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
     from utils.bf1.default_account import BF1DA
 except ImportError as e:
@@ -161,6 +161,29 @@ class TestBlazeAutoReconnect(unittest.TestCase):
             self.assertEqual(call_count, 1, "超时错误不应该触发重试")
             self.assertEqual(result, "Blaze后端超时!", "应该返回超时错误信息")
 
+    def test_blaze_query_response_functionality(self):
+        """测试 BlazeQueryResponse 类的功能"""
+        
+        # 测试成功响应
+        success_response = BlazeQueryResponse(BlazeQueryResult.SUCCESS, data={"test": "data"})
+        self.assertTrue(success_response.is_success())
+        self.assertFalse(success_response.need_reconnect())
+        self.assertFalse(success_response.is_timeout())
+        self.assertEqual(success_response.get_result(), {"test": "data"})
+        
+        # 测试需要重连响应
+        reconnect_response = BlazeQueryResponse(BlazeQueryResult.NEED_RECONNECT)
+        self.assertFalse(reconnect_response.is_success())
+        self.assertTrue(reconnect_response.need_reconnect())
+        self.assertFalse(reconnect_response.is_timeout())
+        
+        # 测试超时响应
+        timeout_response = BlazeQueryResponse(BlazeQueryResult.TIMEOUT, error_message="超时错误")
+        self.assertFalse(timeout_response.is_success())
+        self.assertFalse(timeout_response.need_reconnect())
+        self.assertTrue(timeout_response.is_timeout())
+        self.assertEqual(timeout_response.get_result(), "超时错误")
+
 
 async def run_async_tests():
     """运行异步测试"""
@@ -168,6 +191,10 @@ async def run_async_tests():
     test_instance.setUp()
     
     try:
+        print("测试: BlazeQueryResponse 类功能...")
+        test_instance.test_blaze_query_response_functionality()
+        print("✓ BlazeQueryResponse 类功能测试通过")
+        
         print("测试: 连接错误时的自动重连...")
         await test_instance.test_auto_reconnect_on_connection_error()
         print("✓ 连接错误自动重连测试通过")

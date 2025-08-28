@@ -1,81 +1,95 @@
-# Blaze Auto-Reconnection Implementation
+# Blaze 自动重连功能实现
 
-## Problem
-When Blaze connections drop, users had to manually run `/blaze relogin` before being able to query player lists again. This caused poor user experience.
+## 问题描述
+当 Blaze 连接断开时，用户必须手动运行 `/blaze relogin` 命令才能再次查询玩家列表，这导致了糟糕的用户体验。
 
-## Solution  
-Implemented automatic reconnection in `BF1BlazeManager.get_player_list()` that:
+## 解决方案  
+在 `BF1BlazeManager.get_player_list()` 中实现了自动重连功能：
 
-1. **Detects connection failures** - Catches connection errors and data processing failures
-2. **Automatically retries once** - Cleans up old connections and attempts reconnection  
-3. **Preserves timeout behavior** - Timeout errors still fail immediately to avoid long waits
-4. **Maintains existing functionality** - All parameters and features work as before
+1. **检测连接失败** - 捕获连接错误和数据处理失败
+2. **自动重试一次** - 清理旧连接并尝试重新连接  
+3. **保持超时行为** - 超时错误仍会立即失败，避免长时间等待
+4. **维持现有功能** - 所有参数和特性都照常工作
 
-## Benefits
+## 优势
 
-### Commands that now auto-reconnect:
-- `-谁在玩` / `-谁在捞` (Who's playing queries)
-- Server clearing operations (kick all players)
-- `-sk` / `-searchkick` (Search and kick operations) 
-- `-move` / `-换边` (Move player operations)
-- And any other functionality using `BF1BlazeManager.get_player_list()`
+### 支持自动重连的命令：
+- `-谁在玩` / `-谁在捞` (查询在线玩家)
+- 服务器清理操作 (踢出所有玩家)
+- `-sk` / `-searchkick` (搜索并踢出操作) 
+- `-move` / `-换边` (移动玩家操作)
+- 以及其他任何使用 `BF1BlazeManager.get_player_list()` 的功能
 
-### User Experience:
-- **Before**: Error message → User runs `/blaze relogin` → User retries command
-- **After**: Automatic reconnection → User gets result seamlessly
+### 用户体验：
+- **之前**: 错误信息 → 用户运行 `/blaze relogin` → 用户重试命令
+- **现在**: 自动重连 → 用户无缝获得结果
 
-## Implementation Details
+## 实现细节
 
-### Core Logic:
+### 核心逻辑：
 ```python
 async def get_player_list(game_ids, origin=False, platoon=False):
-    # Try query first
+    # 首次尝试查询
     result = await _perform_query(retry_attempt=False)
     
-    # If connection failed, auto-retry once
-    if result == "需要重连":
+    # 如果连接失败，自动重试一次
+    if result.need_reconnect():
         logger.info("正在执行自动重连...")
-        # Clean up old connection
+        # 清理旧连接
         await cleanup_connection()
-        # Retry
+        # 重试
         result = await _perform_query(retry_attempt=True)
-        if isinstance(result, dict):
+        if result.is_success():
             logger.success("自动重连成功!")
     
-    return result
+    return result.get_result()
 ```
 
-### Error Handling:
-- **Connection errors**: Auto-retry once
-- **Timeout errors**: Fail immediately (no retry)
-- **Data processing failures**: Auto-retry once  
-- **Second failure**: Return error (prevent infinite loops)
+### 错误处理：
+- **连接错误**: 自动重试一次
+- **超时错误**: 立即失败（不重试）
+- **数据处理失败**: 自动重试一次  
+- **第二次失败**: 返回错误（防止无限循环）
 
-### Connection Cleanup:
-- Properly closes old sockets before retry
-- Removes clients from manager cache
-- Uses same reconnection logic as manual `/blaze relogin`
+### 连接清理：
+- 在重试前正确关闭旧套接字
+- 从管理器缓存中移除客户端
+- 使用与手动 `/blaze relogin` 相同的重连逻辑
 
-## Testing
+## 测试
 
-### Test Coverage:
-- `test_blaze_auto_reconnect.py` - Unit tests for various failure scenarios
-- `demo_auto_reconnect.py` - Integration demo showing user experience
-- Syntax validation and code style consistency checks
+### 测试覆盖：
+- `test_blaze_auto_reconnect.py` - 各种失败场景的单元测试
+- `demo_auto_reconnect.py` - 展示用户体验的集成演示
+- 语法验证和代码风格一致性检查
 
-### Test Scenarios:
-1. Connection initialization failure → auto-retry → success
-2. Send operation failure → auto-retry → success  
-3. Timeout error → immediate failure (no retry)
-4. Data processing failure → auto-retry → success
+### 测试场景：
+1. 连接初始化失败 → 自动重试 → 成功
+2. 发送操作失败 → 自动重试 → 成功  
+3. 超时错误 → 立即失败（不重试）
+4. 数据处理失败 → 自动重试 → 成功
 
-## Compatibility
+## 兼容性
 
-- **Backward compatible**: All existing code continues to work unchanged
-- **Same API**: Method signature and return values unchanged
-- **Consistent patterns**: Follows existing reconnection patterns in codebase
-- **Proper logging**: Uses same logging style as existing code
+- **向后兼容**: 所有现有代码继续正常工作
+- **相同API**: 方法签名和返回值保持不变
+- **一致模式**: 遵循代码库中现有的重连模式
+- **适当的日志**: 使用与现有代码相同的日志风格
 
-## Result
+## 技术改进
 
-Users no longer need to manually run `/blaze relogin` when connections drop. The system handles reconnection automatically, making the bot significantly more reliable and user-friendly.
+### 错误处理优化：
+- 使用 `BlazeQueryResult` 枚举定义明确的状态类型
+- 使用 `BlazeQueryResponse` 类包装结果，提供类型安全的状态检查
+- 移除了魔法字符串，使用显式的状态枚举和方法
+- 改进了错误检测逻辑，不再依赖字符串匹配
+
+### 代码维护性：
+- 引入了明确的类型注解
+- 使用枚举替代魔法字符串
+- 提供了清晰的方法来检查结果状态
+- 改善了错误消息的一致性
+
+## 结果
+
+用户不再需要在连接断开时手动运行 `/blaze relogin`。系统会自动处理重连，使机器人显著更加可靠和用户友好。

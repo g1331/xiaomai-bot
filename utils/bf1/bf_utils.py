@@ -3,7 +3,9 @@ import datetime
 import json
 import platform
 import time
+from enum import Enum
 from functools import wraps
+from typing import Dict, List, Optional, Union
 
 import aiohttp
 import httpx
@@ -36,6 +38,39 @@ urllib3.disable_warnings()
 
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else ""
+
+
+class BlazeQueryResult(Enum):
+    """Blaze查询结果状态枚举"""
+    SUCCESS = "success"
+    NEED_RECONNECT = "need_reconnect"
+    TIMEOUT = "timeout"
+    CONNECTION_FAILED = "connection_failed"
+    DATA_PROCESSING_FAILED = "data_processing_failed"
+
+
+class BlazeQueryResponse:
+    """Blaze查询响应包装类，提供更明确的结果状态"""
+    
+    def __init__(self, status: BlazeQueryResult, data: Optional[Union[Dict, str]] = None, error_message: Optional[str] = None):
+        self.status = status
+        self.data = data
+        self.error_message = error_message
+    
+    def is_success(self) -> bool:
+        return self.status == BlazeQueryResult.SUCCESS
+    
+    def need_reconnect(self) -> bool:
+        return self.status == BlazeQueryResult.NEED_RECONNECT
+    
+    def is_timeout(self) -> bool:
+        return self.status == BlazeQueryResult.TIMEOUT
+    
+    def get_result(self) -> Union[Dict, str]:
+        """获取结果，成功时返回数据，失败时返回错误信息"""
+        if self.is_success():
+            return self.data
+        return self.error_message or f"查询失败: {self.status.value}"
 
 
 async def get_personas_by_name(player_name: str) -> dict | None:
@@ -1467,12 +1502,15 @@ class BF1BlazeManager:
         game_ids = [int(game_id) for game_id in game_ids]
         
         # 定义内部函数来执行实际的查询
-        async def _perform_query(retry_attempt: bool = False) -> dict | None | str:
+        async def _perform_query(retry_attempt: bool = False) -> BlazeQueryResponse:
             blaze_socket = await BF1BlazeManager.init_socket(
                 BF1DA.pid, BF1DA.remid, BF1DA.sid
             )
             if not blaze_socket:
-                return "BlazeClient初始化出错!"
+                return BlazeQueryResponse(
+                    BlazeQueryResult.CONNECTION_FAILED, 
+                    error_message="BlazeClient初始化出错!"
+                )
             
             packet = {
                 "method": "GameManager.getGameDataFromId",
@@ -1491,7 +1529,10 @@ class BF1BlazeManager:
                 except Exception as e:
                     logger.error(f"关闭连接时出错: {e}")
                 logger.error("Blaze后端超时!")
-                return "Blaze后端超时!"
+                return BlazeQueryResponse(
+                    BlazeQueryResult.TIMEOUT, 
+                    error_message="Blaze后端超时!"
+                )
             except Exception as e:
                 # 连接异常，可能需要重连
                 logger.warning(f"Blaze连接异常: {e}")
@@ -1501,12 +1542,15 @@ class BF1BlazeManager:
                     pass
                 if not retry_attempt:
                     logger.info("检测到连接异常，尝试自动重连...")
-                    return "需要重连"
+                    return BlazeQueryResponse(BlazeQueryResult.NEED_RECONNECT)
                 else:
-                    return f"连接失败: {e}"
+                    return BlazeQueryResponse(
+                        BlazeQueryResult.CONNECTION_FAILED,
+                        error_message=f"连接失败: {e}"
+                    )
             
             if origin:
-                return response
+                return BlazeQueryResponse(BlazeQueryResult.SUCCESS, data=response)
             
             response = BlazeData.player_list_handle(response)
             if not isinstance(response, dict):
@@ -1514,16 +1558,19 @@ class BF1BlazeManager:
                 # 如果数据处理失败且不是重试，尝试重连
                 if not retry_attempt:
                     logger.info("数据处理失败，可能连接已断开，尝试自动重连...")
-                    return "需要重连"
-                return response
+                    return BlazeQueryResponse(BlazeQueryResult.NEED_RECONNECT)
+                return BlazeQueryResponse(
+                    BlazeQueryResult.DATA_PROCESSING_FAILED,
+                    error_message=response if isinstance(response, str) else "数据处理失败"
+                )
             
-            return response
+            return BlazeQueryResponse(BlazeQueryResult.SUCCESS, data=response)
         
         # 首次尝试查询
         result = await _perform_query(retry_attempt=False)
         
         # 如果需要重连，则清理连接并重试一次
-        if result == "需要重连":
+        if result.need_reconnect():
             logger.info("正在执行自动重连...")
             # 强制清理现有连接
             pid = int(BF1DA.pid)
@@ -1538,22 +1585,24 @@ class BF1BlazeManager:
             
             # 重试查询
             result = await _perform_query(retry_attempt=True)
-            if isinstance(result, dict):
+            if result.is_success():
                 logger.success("自动重连成功!")
-            elif isinstance(result, str) and "出错" not in result and "失败" not in result and "超时" not in result:
-                logger.warning(f"自动重连后仍有问题: {result}")
+            elif not result.is_timeout():
+                logger.warning(f"自动重连后仍有问题: {result.get_result()}")
         
         # 如果仍然失败，返回错误信息
-        if not isinstance(result, dict):
-            return result
+        if not result.is_success():
+            return result.get_result()
+        
+        response_data = result.data
         
         # 处理 platoon 信息
         if platoon:
             bf1_account = await BF1DA.get_api_instance()
             for game_id in game_ids:
-                if game_id in result:
+                if game_id in response_data:
                     pid_list = [
-                        player["pid"] for player in result[game_id]["players"]
+                        player["pid"] for player in response_data[game_id]["players"]
                     ]
                     platoon_task = [
                         bf1_account.getActivePlatoon(pid) for pid in pid_list
@@ -1571,11 +1620,11 @@ class BF1BlazeManager:
                                 continue
                             if platoon not in platoons:
                                 platoons.append(platoon)
-                            result[game_id]["players"][i]["platoon"] = platoon
+                            response_data[game_id]["players"][i]["platoon"] = platoon
                         else:
-                            result[game_id]["players"][i]["platoon"] = {}
-                    result[game_id]["platoons"] = platoons
-        return result
+                            response_data[game_id]["players"][i]["platoon"] = {}
+                    response_data[game_id]["platoons"] = platoons
+        return response_data
 
 
 async def perm_judge(bf_group_name: str, group: Group, sender: Member) -> bool:

@@ -4,12 +4,13 @@ on:
   push:
     branches:
       - v3
+      - main
   pull_request:
     types:
       - opened
       - synchronize
     branches:
-      - v3
+      - main
 
 permissions:
   contents: read

@@ -19,8 +19,6 @@ except ImportError as e:
     print(f"导入模块失败，可能是因为依赖缺失: {e}")
     print("请确保从项目根目录运行测试")
     raise
-    print("这个测试需要在完整的项目环境中运行")
-    sys.exit(1)
 
 
 class TestBlazeAutoReconnect(unittest.TestCase):

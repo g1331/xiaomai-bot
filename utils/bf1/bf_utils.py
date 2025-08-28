@@ -5,7 +5,6 @@ import platform
 import time
 from enum import Enum
 from functools import wraps
-from typing import Dict, List, Optional, Union
 
 import aiohttp
 import httpx
@@ -42,6 +41,7 @@ proxy = config.proxy if config.proxy != "proxy" else ""
 
 class BlazeQueryResult(Enum):
     """Blaze查询结果状态枚举"""
+
     SUCCESS = "success"
     NEED_RECONNECT = "need_reconnect"
     TIMEOUT = "timeout"
@@ -51,34 +51,39 @@ class BlazeQueryResult(Enum):
 
 class BlazeQueryResponse:
     """Blaze查询响应包装类，提供更明确的结果状态"""
-    
-    def __init__(self, status: BlazeQueryResult, data: Optional[Union[Dict, str]] = None, error_message: Optional[str] = None):
+
+    def __init__(
+        self,
+        status: BlazeQueryResult,
+        data: dict | str | None = None,
+        error_message: str | None = None,
+    ):
         self.status = status
         self.data = data
         self.error_message = error_message
-    
+
     def is_success(self) -> bool:
         return self.status == BlazeQueryResult.SUCCESS
-    
+
     def need_reconnect(self) -> bool:
         return self.status == BlazeQueryResult.NEED_RECONNECT
-    
+
     def is_timeout(self) -> bool:
         return self.status == BlazeQueryResult.TIMEOUT
-    
-    def get_data(self) -> Optional[Dict]:
+
+    def get_data(self) -> dict | None:
         """成功时返回数据，否则返回None"""
         if self.is_success():
             return self.data if isinstance(self.data, dict) else None
         return None
 
-    def get_error_message(self) -> Optional[str]:
+    def get_error_message(self) -> str | None:
         """失败时返回错误信息，否则返回None"""
         if not self.is_success():
             return self.error_message or f"查询失败: {self.status.value}"
         return None
-    
-    def get_result(self) -> Union[Dict, str]:
+
+    def get_result(self) -> dict | str:
         """获取结果，成功时返回数据，失败时返回错误信息"""
         if self.is_success():
             return self.data
@@ -1526,10 +1531,10 @@ class BF1BlazeManager:
         )
         if not blaze_socket:
             return BlazeQueryResponse(
-                BlazeQueryResult.CONNECTION_FAILED, 
-                error_message="BlazeClient初始化出错!"
+                BlazeQueryResult.CONNECTION_FAILED,
+                error_message="BlazeClient初始化出错!",
             )
-        
+
         packet = {
             "method": "GameManager.getGameDataFromId",
             "type": "Command",
@@ -1538,7 +1543,7 @@ class BF1BlazeManager:
                 "GLST 40": game_ids,
             },
         }
-        
+
         try:
             response = await blaze_socket.send(packet)
         except TimeoutError:
@@ -1548,8 +1553,7 @@ class BF1BlazeManager:
                 logger.error(f"关闭连接时出错: {e}")
             logger.error("Blaze后端超时!")
             return BlazeQueryResponse(
-                BlazeQueryResult.TIMEOUT, 
-                error_message="Blaze后端超时!"
+                BlazeQueryResult.TIMEOUT, error_message="Blaze后端超时!"
             )
         except Exception as e:
             # 连接异常，可能需要重连
@@ -1563,13 +1567,12 @@ class BF1BlazeManager:
                 return BlazeQueryResponse(BlazeQueryResult.NEED_RECONNECT)
             else:
                 return BlazeQueryResponse(
-                    BlazeQueryResult.CONNECTION_FAILED,
-                    error_message=f"连接失败: {e}"
+                    BlazeQueryResult.CONNECTION_FAILED, error_message=f"连接失败: {e}"
                 )
-        
+
         if origin:
             return BlazeQueryResponse(BlazeQueryResult.SUCCESS, data=response)
-        
+
         response = BlazeData.player_list_handle(response)
         if not isinstance(response, dict):
             blaze_socket.authenticated = False
@@ -1579,9 +1582,9 @@ class BF1BlazeManager:
                 return BlazeQueryResponse(BlazeQueryResult.NEED_RECONNECT)
             return BlazeQueryResponse(
                 BlazeQueryResult.DATA_PROCESSING_FAILED,
-                error_message=response if isinstance(response, str) else "数据处理失败"
+                error_message=response if isinstance(response, str) else "数据处理失败",
             )
-        
+
         return BlazeQueryResponse(BlazeQueryResult.SUCCESS, data=response)
 
     @staticmethod
@@ -1593,17 +1596,17 @@ class BF1BlazeManager:
         if not isinstance(game_ids, list):
             game_ids = [game_ids]
         game_ids = [int(game_id) for game_id in game_ids]
-        
+
         # 首次尝试查询
         result = await BF1BlazeManager._perform_player_query(
             game_ids, origin, retry_attempt=False
         )
-        
+
         # 如果需要重连，则清理连接并重试一次
         if result.need_reconnect():
             logger.info("正在执行自动重连...")
             await BF1BlazeManager._cleanup_connection()
-            
+
             # 重试查询
             result = await BF1BlazeManager._perform_player_query(
                 game_ids, origin, retry_attempt=True
@@ -1612,15 +1615,15 @@ class BF1BlazeManager:
                 logger.success("自动重连成功!")
             elif not result.is_timeout():
                 logger.warning(f"自动重连后仍有问题: {result.get_error_message()}")
-        
+
         # 如果仍然失败，返回错误信息
         if not result.is_success():
             return result.get_error_message() or "未知错误"
-        
+
         response_data = result.get_data()
         if response_data is None:
             return "数据获取失败"
-        
+
         # 处理 platoon 信息
         if platoon:
             bf1_account = await BF1DA.get_api_instance()

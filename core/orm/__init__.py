@@ -6,6 +6,7 @@ from sqlalchemy import MetaData, inspect, delete, update, select, insert, text, 
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.exc import IntegrityError
 
 from core.config import GlobalConfig
 
@@ -207,21 +208,28 @@ class AsyncORM:
 
     async def insert_or_update(self, table, data, condition):
         """
-        如果满足条件则更新，否则插入
+        如果满足条件则更新，否则插入（并发安全）
+        - 先尝试 UPDATE，如果受影响行数为 0，则尝试 INSERT
+        - 若 INSERT 因唯一约束冲突（IntegrityError）失败，则再次执行 UPDATE
         :param table: 表
         :param data: 数据
         :param condition: 条件
         """
-        # 判断是否存在符合条件的数据
-        exist = (await self.execute(select(table).where(*condition))).all()
-        if exist:
-            # 如果存在，则执行更新操作
-            stmt = update(table).where(*condition).values(**data)
-            stmt = stmt.execution_options(synchronize_session="fetch")
-            await self.execute(stmt)
-        else:
-            # 否则执行插入操作
-            await self.execute(insert(table).values(**data))
+        # 优先 UPDATE，避免大多数情况下的唯一约束冲突
+        stmt = update(table).where(*condition).values(**data)
+        stmt = stmt.execution_options(synchronize_session="fetch")
+        result = await self.execute(stmt)
+        try:
+            if result is not None and getattr(result, "rowcount", 0) > 0:
+                return result
+            # 受影响行数为 0，说明不存在，尝试 INSERT
+            return await self.execute(insert(table).values(**data))
+        except IntegrityError:
+            # 竞争条件：在我们尝试 INSERT 前，其他协程/进程已插入相同唯一键
+            # 回退到 UPDATE，确保数据按预期更新
+            stmt2 = update(table).where(*condition).values(**data)
+            stmt2 = stmt2.execution_options(synchronize_session="fetch")
+            return await self.execute(stmt2)
 
     async def insert_or_update_batch(self, table, data_list, conditions_list):
         """

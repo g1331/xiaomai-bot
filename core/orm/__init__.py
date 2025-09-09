@@ -3,10 +3,10 @@ from asyncio import Lock
 from creart import create
 from loguru import logger
 from sqlalchemy import MetaData, inspect, delete, update, select, insert, text, event
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.exc import IntegrityError
 
 from core.config import GlobalConfig
 
@@ -206,6 +206,18 @@ class AsyncORM:
         # 执行批量更新操作
         await self.execute_all(update_stmts)
 
+    def _build_update_stmt(self, table, data, condition):
+        """
+        构造 UPDATE 语句的辅助方法
+        :param table: 表
+        :param data: 数据
+        :param condition: 条件
+        :return: 配置好的 UPDATE 语句
+        """
+        stmt = update(table).where(*condition).values(**data)
+        stmt = stmt.execution_options(synchronize_session="fetch")
+        return stmt
+
     async def insert_or_update(self, table, data, condition):
         """
         如果满足条件则更新，否则插入（并发安全）
@@ -216,20 +228,18 @@ class AsyncORM:
         :param condition: 条件
         """
         # 优先 UPDATE，避免大多数情况下的唯一约束冲突
-        stmt = update(table).where(*condition).values(**data)
-        stmt = stmt.execution_options(synchronize_session="fetch")
-        result = await self.execute(stmt)
+        update_stmt = self._build_update_stmt(table, data, condition)
+        result = await self.execute(update_stmt)
         try:
-            if result is not None and getattr(result, "rowcount", 0) > 0:
+            if getattr(result, "rowcount", 0) > 0:
                 return result
             # 受影响行数为 0，说明不存在，尝试 INSERT
             return await self.execute(insert(table).values(**data))
         except IntegrityError:
             # 竞争条件：在我们尝试 INSERT 前，其他协程/进程已插入相同唯一键
             # 回退到 UPDATE，确保数据按预期更新
-            stmt2 = update(table).where(*condition).values(**data)
-            stmt2 = stmt2.execution_options(synchronize_session="fetch")
-            return await self.execute(stmt2)
+            retry_update_stmt = self._build_update_stmt(table, data, condition)
+            return await self.execute(retry_update_stmt)
 
     async def insert_or_update_batch(self, table, data_list, conditions_list):
         """
@@ -238,17 +248,14 @@ class AsyncORM:
         :param data_list: 数据列表，每个元素是一个dict，表示一条记录的数据
         :param conditions_list: 条件列表，每个元素是一个tuple或list，表示该记录的条件，与data_list中的元素一一对应
         """
-        stmts = []
+        # 为了避免批量操作中的约束冲突，我们逐个处理每条记录
         for data, condition in zip(data_list, conditions_list):
-            exist = (await self.execute(select(table).where(*condition))).all()
-            if exist:
-                # 如果存在符合条件的数据，则更新
-                stmts.append(update(table).where(*condition).values(**data))
-            else:
-                # 否则插入
-                stmts.append(insert(table).values(**data))
-        # 执行批量插入或更新操作
-        await self.execute_all(stmts)
+            try:
+                await self.insert_or_update(table, data, condition)
+            except Exception as e:
+                logger.error(f"Failed to insert_or_update in batch operation: {e}")
+                # 继续处理其他记录，不中断整个批量操作
+                continue
 
     async def insert_or_ignore(self, table, data, condition):
         """
@@ -257,9 +264,23 @@ class AsyncORM:
         :param data: 数据
         :param condition: 条件
         """
-        if not (await self.execute(select(table).where(*condition))).all():
-            return await self.execute(insert(table).values(**data))
-        return None
+        try:
+            if not (await self.execute(select(table).where(*condition))).all():
+                return await self.execute(insert(table).values(**data))
+            return None
+        except IntegrityError as e:
+            # 如果是 UNIQUE 约束冲突，说明记录已存在，直接忽略
+            if "UNIQUE constraint failed" in str(e):
+                logger.debug(f"Record already exists, ignoring insert: {e}")
+                return None
+            else:
+                # 其他完整性错误直接抛出
+                logger.error(f"IntegrityError in insert_or_ignore: {e}")
+                raise e
+        except Exception as e:
+            # 其他异常直接抛出
+            logger.error(f"Unexpected error in insert_or_ignore: {e}")
+            raise e
 
     async def select(self, el, condition=None):
         """

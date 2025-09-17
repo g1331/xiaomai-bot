@@ -1454,6 +1454,7 @@ class BF1ServerVipManager:
 
 
 class BF1BlazeManager:
+    @staticmethod
     async def init_socket(pid: str | int, remid: str, sid: str) -> BlazeSocket | None:
         """
         建立（或复用）Blaze 连接并完成登录。
@@ -1566,7 +1567,8 @@ class BF1BlazeManager:
                     except Exception:
                         pass
                     await BlazeClientManagerInstance.remove_client(pid)
-                    return None
+        # 兜底返回，理论上不应到达此处
+        return None
 
     @staticmethod
     async def _cleanup_connection() -> None:

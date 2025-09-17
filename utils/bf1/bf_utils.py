@@ -1456,57 +1456,119 @@ class BF1ServerVipManager:
 class BF1BlazeManager:
     @staticmethod
     async def init_socket(pid: str | int, remid: str, sid: str) -> BlazeSocket | None:
+        """
+        建立（或复用）Blaze 连接并完成登录。
+        - 具备登录阶段的自动重试与指数退避
+        - 使用按 PID 的异步锁串行化同一 PID 的连接/重连，避免竞态
+        """
+        import asyncio
+        from loguru import logger
+
         pid = int(pid)
-        if pid in BlazeClientManagerInstance.clients_by_pid:
-            blaze_socket = BlazeClientManagerInstance.clients_by_pid[pid]
-            if blaze_socket.authenticated:
-                return await BlazeClientManagerInstance.get_socket_for_pid(pid)
-            else:
-                await BlazeClientManagerInstance.remove_client(pid)
-        # 连接blaze
-        blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
-        if not blaze_socket:
-            logger.error("无法获取到BlazeSocket")
-            return None
-        # 1.获取账号实例
-        bf1_account = api_instance.get_api_instance(pid=pid, remid=remid, sid=sid)
-        # 2.获取BlazeAuthcode
-        auth_code = await bf1_account.getBlazeAuthcode()
-        logger.success(f"获取到Blaze AuthCode: {auth_code}")
-        # 3.Blaze登录
-        login_packet = {
-            "method": "Authentication.login",
-            "type": "Command",
-            "id": 0,
-            "length": 28,
-            "data": {"AUTH 1": auth_code, "EXTB 2": "", "EXTI 0": 0},
-        }
-        response = await blaze_socket.send(login_packet)
-        try:
-            name = response["data"]["DSNM"]
-            pid = response["data"]["PID"]
-            uid = response["data"]["UID"]
 
-            # 安全地提取CGID（支持tuple和list）
-            cgid_data = response["data"].get("CGID")
-            if (
-                cgid_data
-                and isinstance(cgid_data, list | tuple)
-                and len(cgid_data) >= 3
-            ):
-                CGID = cgid_data[2]
-            else:
-                CGID = None
+        # 按 PID 串行化，避免并发重连导致的竞态
+        if not hasattr(BF1BlazeManager, "_locks"):
+            BF1BlazeManager._locks = {}
+        if pid not in BF1BlazeManager._locks:
+            BF1BlazeManager._locks[pid] = asyncio.Lock()
 
-            logger.success(
-                f"Blaze登录成功: Name:{name} Pid:{pid} Uid:{uid} CGID:{CGID}"
-            )
-            blaze_socket.authenticated = True
-            BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
-            return blaze_socket
-        except Exception:
-            logger.exception(f"Blaze登录失败: {response}")
-            return None
+        MAX_RETRIES = getattr(BF1BlazeManager, "RECONNECT_MAX_RETRIES", 3)
+        BASE_DELAY = getattr(BF1BlazeManager, "RECONNECT_BASE_DELAY", 1.0)
+
+        async with BF1BlazeManager._locks[pid]:
+            # 如果已有且已登录且连接正常，直接复用
+            if pid in BlazeClientManagerInstance.clients_by_pid:
+                blaze_socket = BlazeClientManagerInstance.clients_by_pid[pid]
+                if getattr(blaze_socket, "authenticated", False) and getattr(
+                    blaze_socket, "connect", False
+                ):
+                    return await BlazeClientManagerInstance.get_socket_for_pid(pid)
+                else:
+                    # 旧连接无效，移除
+                    await BlazeClientManagerInstance.remove_client(pid)
+
+            # 先获取账号与 AuthCode（避免先建连接后等待，期间被服务端关闭）
+            bf1_account = api_instance.get_api_instance(pid=pid, remid=remid, sid=sid)
+            try:
+                auth_code = await bf1_account.getBlazeAuthcode()
+                logger.success(f"获取到Blaze AuthCode: {auth_code}")
+            except Exception as e:
+                logger.error(f"获取Blaze AuthCode失败: {e}")
+                return None
+
+            # 尝试连接 + 登录，失败会指数退避重试
+            attempt = 0
+            while attempt <= MAX_RETRIES:
+                # 获取或创建底层 socket
+                blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
+                if not blaze_socket:
+                    logger.error("无法获取到BlazeSocket")
+                    if attempt >= MAX_RETRIES:
+                        return None
+                    await asyncio.sleep(BASE_DELAY * (2**attempt))
+                    attempt += 1
+                    continue
+
+                login_packet = {
+                    "method": "Authentication.login",
+                    "type": "Command",
+                    "id": 0,
+                    "length": 28,
+                    "data": {"AUTH 1": auth_code, "EXTB 2": "", "EXTI 0": 0},
+                }
+
+                try:
+                    response = await blaze_socket.send(login_packet)
+                    # 解析登录响应
+                    name = response["data"].get("DSNM")
+                    b_pid = response["data"].get("PID")
+                    uid = response["data"].get("UID")
+
+                    # 兼容 CGID tuple/list 结构
+                    cgid_data = response["data"].get("CGID")
+                    CGID = None
+                    if (
+                        cgid_data
+                        and isinstance(cgid_data, list | tuple)
+                        and len(cgid_data) >= 3
+                    ):
+                        CGID = cgid_data[2]
+
+                    logger.success(
+                        f"Blaze登录成功: Name:{name} Pid:{b_pid} Uid:{uid} CGID:{CGID}"
+                    )
+                    blaze_socket.authenticated = True
+                    BlazeClientManagerInstance.clients_by_pid[pid] = blaze_socket
+                    return blaze_socket
+
+                except (TimeoutError, ConnectionError) as e:
+                    # 登录阶段连接/超时异常：清理并重试
+                    logger.warning(
+                        f"Blaze登录异常(尝试 {attempt + 1}/{MAX_RETRIES + 1})，准备重试: {e}"
+                    )
+                    try:
+                        await blaze_socket.close()
+                    except Exception:
+                        pass
+                    await BlazeClientManagerInstance.remove_client(pid)
+
+                    if attempt >= MAX_RETRIES:
+                        logger.error("Blaze登录在最大重试后仍失败")
+                        return None
+
+                    await asyncio.sleep(BASE_DELAY * (2**attempt))
+                    attempt += 1
+                    continue
+
+                except Exception as e:
+                    logger.exception(f"Blaze登录失败(未知异常): {e}")
+                    try:
+                        await blaze_socket.close()
+                    except Exception:
+                        pass
+                    await BlazeClientManagerInstance.remove_client(pid)
+        # 兜底返回，理论上不应到达此处
+        return None
 
     @staticmethod
     async def _cleanup_connection() -> None:

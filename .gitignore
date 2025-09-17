@@ -203,3 +203,10 @@ alembic.ini
 
 #文件修改记录
 .history/
+
+# Claude Code 本地配置
+.claude/settings.local.json
+.claude/*.local.*
+.claude/local/
+
+.serena/

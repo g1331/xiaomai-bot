@@ -9,11 +9,11 @@ from typing import TypedDict
 
 from loguru import logger
 
-from utils.bf1.blaze.BlazeClient import BlazeClientManagerInstance
+
 from utils.bf1.blaze.BlazeSocket import BlazeSocket
 from utils.bf1.data_handle import BlazeData
 from utils.bf1.default_account import BF1DA
-from utils.bf1.gateway_api import api_instance
+
 from utils.bf1.performance_cache import bf1_performance_cache
 
 
@@ -140,74 +140,27 @@ class OptimizedBlazeManager:
         return await self._create_new_connection(pid)
 
     async def _create_new_connection(self, pid: int) -> BlazeSocket | None:
-        """创建新的Blaze连接"""
+        """创建新的Blaze连接，统一走 BF1BlazeManager 的初始化逻辑（带自动重试/互斥）"""
         try:
-            # 获取连接
-            blaze_socket = await BlazeClientManagerInstance.get_socket_for_pid(pid)
+            # 统一复用 BF1BlazeManager 的初始化与重试逻辑
+            from utils.bf1.bf_utils import BF1BlazeManager
+
+            blaze_socket = await BF1BlazeManager.init_socket(
+                BF1DA.pid, BF1DA.remid, BF1DA.sid
+            )
             if not blaze_socket:
-                logger.error("无法获取到BlazeSocket")
+                logger.error("无法初始化BlazeSocket")
                 return None
 
-            # 获取账号实例
-            bf1_account = api_instance.get_api_instance(
-                pid=pid, remid=BF1DA.remid, sid=BF1DA.sid
-            )
+            # 缓存连接（带时间戳，便于过期判断）
+            async with self._lock:
+                self._connection_cache[pid] = {
+                    "socket": blaze_socket,
+                    "created_at": time.time(),
+                }
 
-            # 获取认证码
-            auth_code = await bf1_account.getBlazeAuthcode()
-            logger.debug(f"获取到Blaze AuthCode: {auth_code}")
+            return blaze_socket
 
-            # Blaze登录
-            login_packet = {
-                "method": "Authentication.login",
-                "type": "Command",
-                "id": 0,
-                "length": 28,
-                "data": {"AUTH 1": auth_code, "EXTB 2": "", "EXTI 0": 0},
-            }
-
-            # 使用优化的超时时间
-            response = await asyncio.wait_for(
-                blaze_socket.send(login_packet), timeout=self.API_TIMEOUT
-            )
-
-            # 验证登录结果
-            if "data" in response and "DSNM" in response["data"]:
-                name = response["data"]["DSNM"]
-                pid_response = response["data"]["PID"]
-                uid = response["data"]["UID"]
-
-                # 安全地提取CGID（支持tuple和list）
-                cgid_data = response["data"].get("CGID")
-                if (
-                    cgid_data
-                    and isinstance(cgid_data, list | tuple)
-                    and len(cgid_data) >= 3
-                ):
-                    CGID = cgid_data[2]
-                else:
-                    CGID = None
-                logger.success(
-                    f"Blaze登录成功: Name:{name} Pid:{pid_response} Uid:{uid} CGID:{CGID}"
-                )
-
-                blaze_socket.authenticated = True
-
-                # 缓存连接
-                async with self._lock:
-                    self._connection_cache[pid] = {
-                        "socket": blaze_socket,
-                        "created_at": time.time(),
-                    }
-
-                return blaze_socket
-            else:
-                logger.error(f"Blaze登录失败: {response}")
-                return None
-
-        except asyncio.TimeoutError:
-            logger.error("Blaze连接超时!")
-            return None
         except Exception as e:
             logger.error(f"Blaze连接失败: {e}")
             return None

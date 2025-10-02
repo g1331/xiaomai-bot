@@ -120,6 +120,12 @@ class OpenAICompatibleProvider(BaseAIProvider):
         """根据配置映射请求参数"""
         mapped_params = {}
         for key, value in params.items():
+            # 跳过值为 None 的参数
+            if value is None:
+                continue
+            # 当 max_tokens 为 -1 时，不传递该参数
+            if key == "max_tokens" and value == -1:
+                continue
             if key in self.config.param_mapping:
                 mapped_key = self.config.param_mapping[key]
                 mapped_params[mapped_key] = value

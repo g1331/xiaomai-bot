@@ -440,6 +440,13 @@ async def init():
                     # 重试指令
                     ArgumentMatch("-r", "--retry", action="store_true", optional=True)
                     @ "retry",
+                    # 群组模式切换
+                    ArgumentMatch("--群组共享", action="store_true", optional=True)
+                    @ "enable_group_shared",
+                    ArgumentMatch("--独立对话", action="store_true", optional=True)
+                    @ "disable_group_shared",
+                    ArgumentMatch("--对话模式", action="store_true", optional=True)
+                    @ "show_group_mode",
                     WildcardMatch().flags(re.DOTALL) @ "content",
                 ]
             )
@@ -476,6 +483,9 @@ async def ai_chat(
     switch_model: ArgResult,
     retry: ArgResult,
     switch_provider: ArgResult,
+    enable_group_shared: ArgResult,
+    disable_group_shared: ArgResult,
+    show_group_mode: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -515,6 +525,59 @@ async def ai_chat(
     group_id_str = str(group.id)
     member_id_str = str(member.id)
     content_text = content.result.display.strip() if content.matched else ""
+
+    # 查询当前群组对话模式
+    if show_group_mode.matched:
+        current_mode = g_manager.get_group_mode(group_id_str)
+        mode_name = (
+            "群组共享模式"
+            if current_mode == ConversationManager.GroupMode.SHARED
+            else "独立对话模式"
+        )
+        mode_desc = (
+            "群内所有成员共享同一个对话上下文"
+            if current_mode == ConversationManager.GroupMode.SHARED
+            else "每个成员拥有独立的对话上下文"
+        )
+        return await app.send_group_message(
+            group,
+            MessageChain(f"当前群组对话模式：{mode_name}\n{mode_desc}"),
+            quote=source,
+        )
+
+    # 处理群组模式切换
+    if enable_group_shared.matched or disable_group_shared.matched:
+        # 鉴权：只有群管理员及以上权限才能切换群组模式
+        group_perm = await Permission.get_user_perm_byID(group.id, member.id)
+        if group_perm < Permission.GroupAdmin:
+            return await app.send_group_message(
+                group,
+                MessageChain("只有群管理员及以上权限才能切换群组对话模式"),
+                quote=source,
+            )
+
+        if enable_group_shared.matched:
+            # 启用群组共享模式
+            g_manager.update_group_mode(
+                group_id_str, ConversationManager.GroupMode.SHARED
+            )
+            return await app.send_group_message(
+                group,
+                MessageChain(
+                    "已启用群组共享对话模式\n群内所有成员将共享同一个对话上下文"
+                ),
+                quote=source,
+            )
+        else:
+            # 恢复独立对话模式
+            g_manager.update_group_mode(
+                group_id_str, ConversationManager.GroupMode.DEFAULT
+            )
+            return await app.send_group_message(
+                group,
+                MessageChain("已恢复独立对话模式\n每个成员将拥有独立的对话上下文"),
+                quote=source,
+            )
 
     if reload_cfg.matched:
         # 鉴权

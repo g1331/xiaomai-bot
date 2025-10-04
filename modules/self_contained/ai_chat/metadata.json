@@ -22,7 +22,10 @@
     "--show-preset - 显示预设",
     "--model-info / --info - 显示当前模型信息及状态",
     "--no-vision - 禁用多模态输入",
-    "--reload-cfg - 重载配置(限BOT管理员)"
+    "--reload-cfg - 重载配置(限BOT管理员)",
+    "--对话模式 - 查询当前群组对话模式",
+    "--群组共享 - 启用群组共享对话模式(限群管理员)",
+    "--独立对话 - 恢复独立对话模式(限群管理员)"
   ],
   "example": [
     "@bot 你好",
@@ -33,7 +36,10 @@
     "@bot --info",
     "@bot --reload-cfg",
     "@bot -m deepseek-chat",
-    "@bot -v cf-proxy-gemini"
+    "@bot -v cf-proxy-gemini",
+    "@bot --对话模式",
+    "@bot --群组共享",
+    "@bot --独立对话"
   ],
   "default_switch": false,
   "default_notice": true

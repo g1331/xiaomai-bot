@@ -150,6 +150,31 @@ class ConversationManager:
                 del self.locks[f"group:{group_id}"]
             logger.info(f"已移除会话: {conv_key.key}")
 
+    def clear_group_locks(self, group_id: str):
+        """清理指定群组的所有相关锁
+
+        在切换群组对话模式时调用，避免锁残留导致首次对话失败
+
+        Args:
+            group_id: 群组ID
+        """
+        # 清理群组共享模式的锁
+        group_lock_key = f"group:{group_id}"
+        if group_lock_key in self.locks:
+            del self.locks[group_lock_key]
+            logger.info(f"已清理群组锁: {group_lock_key}")
+
+        # 清理该群组下所有用户的锁
+        keys_to_remove = []
+        for lock_key in self.locks.keys():
+            # 匹配 "user:{group_id}-{member_id}" 或 "group:{group_id}" 格式
+            if lock_key.startswith(f"user:{group_id}-") or lock_key == group_lock_key:
+                keys_to_remove.append(lock_key)
+
+        for key in keys_to_remove:
+            del self.locks[key]
+            logger.info(f"已清理锁: {key}")
+
     def new(self, group_id: str, member_id: str, preset: str = "") -> Conversation:
         """创建新的会话，如果已存在则中断旧会话并创建新会话"""
         conv_key = self._get_conversation_key(group_id, member_id)

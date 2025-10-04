@@ -561,6 +561,8 @@ async def ai_chat(
             g_manager.update_group_mode(
                 group_id_str, ConversationManager.GroupMode.SHARED
             )
+            # 清理该群组相关的所有锁，避免锁残留导致首次对话失败
+            g_manager.clear_group_locks(group_id_str)
             return await app.send_group_message(
                 group,
                 MessageChain(
@@ -573,6 +575,8 @@ async def ai_chat(
             g_manager.update_group_mode(
                 group_id_str, ConversationManager.GroupMode.DEFAULT
             )
+            # 清理该群组相关的所有锁，避免锁残留导致首次对话失败
+            g_manager.clear_group_locks(group_id_str)
             return await app.send_group_message(
                 group,
                 MessageChain("已恢复独立对话模式\n每个成员将拥有独立的对话上下文"),

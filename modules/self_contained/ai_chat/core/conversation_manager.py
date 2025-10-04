@@ -97,10 +97,10 @@ class ConversationManager:
         self._config_dirty = True
         asyncio.create_task(self._delayed_save_configs())
 
-    # 获取群模式，默认返回 DEFAULT
+    # 获取群模式，默认返回 SHARED（群组共享模式）
     def get_group_mode(self, group_id: str) -> "ConversationManager.GroupMode":
         group_config = self._configs.get(group_id, {})
-        mode = group_config.get("group_mode", "default")
+        mode = group_config.get("group_mode", "shared")
         return ConversationManager.GroupMode(mode)
 
     # 获取用户模式，默认返回 GLOBAL

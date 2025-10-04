@@ -530,7 +530,7 @@ async def ai_chat(
     if show_group_mode.matched:
         current_mode = g_manager.get_group_mode(group_id_str)
         mode_name = (
-            "群组共享模式"
+            "群组共享模式（默认）"
             if current_mode == ConversationManager.GroupMode.SHARED
             else "独立对话模式"
         )

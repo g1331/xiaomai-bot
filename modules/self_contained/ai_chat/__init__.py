@@ -445,8 +445,6 @@ async def init():
                     @ "enable_group_shared",
                     ArgumentMatch("--独立对话", action="store_true", optional=True)
                     @ "disable_group_shared",
-                    ArgumentMatch("--对话模式", action="store_true", optional=True)
-                    @ "show_group_mode",
                     WildcardMatch().flags(re.DOTALL) @ "content",
                 ]
             )
@@ -485,7 +483,6 @@ async def ai_chat(
     switch_provider: ArgResult,
     enable_group_shared: ArgResult,
     disable_group_shared: ArgResult,
-    show_group_mode: ArgResult,
 ):
     """
     修改默认为文字响应，主要考量：
@@ -525,25 +522,6 @@ async def ai_chat(
     group_id_str = str(group.id)
     member_id_str = str(member.id)
     content_text = content.result.display.strip() if content.matched else ""
-
-    # 查询当前群组对话模式
-    if show_group_mode.matched:
-        current_mode = g_manager.get_group_mode(group_id_str)
-        mode_name = (
-            "群组共享模式（默认）"
-            if current_mode == ConversationManager.GroupMode.SHARED
-            else "独立对话模式"
-        )
-        mode_desc = (
-            "群内所有成员共享同一个对话上下文"
-            if current_mode == ConversationManager.GroupMode.SHARED
-            else "每个成员拥有独立的对话上下文"
-        )
-        return await app.send_group_message(
-            group,
-            MessageChain(f"当前群组对话模式：{mode_name}\n{mode_desc}"),
-            quote=source,
-        )
 
     # 处理群组模式切换
     if enable_group_shared.matched or disable_group_shared.matched:
@@ -769,7 +747,12 @@ async def ai_chat(
             plugin_info = "\n\n目前没有加载任何插件"
 
         # 群聊模式
-        group_mode = g_manager.get_group_mode(group_id_str).name
+        group_mode_enum = g_manager.get_group_mode(group_id_str)
+        group_mode = (
+            "群组共享模式（默认）"
+            if group_mode_enum == ConversationManager.GroupMode.SHARED
+            else "独立对话模式"
+        )
         user_mode = g_manager.get_user_mode(group_id_str, member_id_str).name
 
         # 预设信息
@@ -832,7 +815,8 @@ async def ai_chat(
 ## 会话状态
 - **当前状态**: {conversation_status}
 - **已消耗**: {usage_tokens} tokens
-- **对话模式**: 群聊({group_mode}) / 用户({user_mode})
+- **群组对话模式**: {group_mode}
+- **用户模式**: {user_mode}
 
 ## 插件信息
 - **已加载插件数量**: {plugin_count} 个{plugin_info}

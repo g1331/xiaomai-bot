@@ -35,9 +35,7 @@ class ConversationManager:
             self.is_shared = (
                 manager.get_group_mode(group_id) == ConversationManager.GroupMode.SHARED
             )
-            self.lock_key = (
-                f"group:{self.key}" if self.is_shared else f"user:{self.key}"
-            )
+            self.lock_key = f"conv:{self.key}" if self.is_shared else f"user:{self.key}"
 
         @staticmethod
         def _generate_key(
@@ -164,11 +162,18 @@ class ConversationManager:
             del self.locks[group_lock_key]
             logger.info(f"已清理群组锁: {group_lock_key}")
 
-        # 清理该群组下所有用户的锁
+        # 清理该群组下所有相关锁（用户锁与会话锁）
         keys_to_remove = []
         for lock_key in self.locks.keys():
-            # 匹配 "user:{group_id}-{member_id}" 或 "group:{group_id}" 格式
-            if lock_key.startswith(f"user:{group_id}-") or lock_key == group_lock_key:
+            # 匹配以下格式：
+            # 1) 用户锁：user:{group_id}-{member_id}
+            # 2) 群组锁：group:{group_id}
+            # 3) 会话锁（群共享）：conv:{group_id}
+            if (
+                lock_key.startswith(f"user:{group_id}-")
+                or lock_key == group_lock_key
+                or lock_key == f"conv:{group_id}"
+            ):
                 keys_to_remove.append(lock_key)
 
         for key in keys_to_remove:

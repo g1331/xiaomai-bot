@@ -1,0 +1,66 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 允许 Claude 访问完整历史
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        env:
+          # 自定义 Anthropic 基础 URL（如果你有代理或镜像）
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          # 可选：自定义头（如多租户或审计追踪）
+          # ANTHROPIC_CUSTOM_HEADERS: '{"X-Tenant":"acme","X-Trace":"true"}'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR_NUMBER: ${{ github.event.pull_request.number }}
+
+            Task: 代码审查本次 Pull Request。
+
+            请按以下结构输出：
+            1. 概览：总结改动目的与范围（如果无法推断请说明需要更多上下文）。
+            2. 主要改动文件与关注点。
+            3. 代码质量：命名、结构、重复、可维护性。
+            4. 潜在缺陷或边界情况（指出具体文件与行号区间）。
+            5. 性能影响（如果相关）。
+            6. 安全风险（输入验证、敏感信息处理、并发、权限）。
+            7. 测试与覆盖率建议：缺失的测试场景。
+            8. 可改进的重构建议（分优先级：高/中/低）。
+            9. 如果已有严重问题，请在最前面添加“⚠️ 阻塞”段落。
+
+            风格参考仓库内 CLAUDE.md（如果存在）。
+            输出请保持简洁、分点且带引用（文件:行号），示例：src/utils/date.ts:42-47。
+
+            最后使用 Bash 工具执行：
+              gh pr comment ${{ github.event.pull_request.number }} --body "<你的审查总结>"
+            将你的总结评论到 PR（只需一次，不要在 body 里重复全部细节，可附上核心摘要与阻塞项）。
+
+          # 扩展允许的工具（让 Claude 能查看文件、列目录、搜索）
+          claude_args: >
+            --allowed-tools
+            "View,GlobTool,GrepTool,
+            Bash(gh issue view:*),
+            Bash(gh search:*),
+            Bash(gh issue list:*),
+            Bash(gh pr comment:*),
+            Bash(gh pr diff:*),
+            Bash(gh pr view:*),
+            Bash(gh pr list:*)"

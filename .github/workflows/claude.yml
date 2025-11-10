@@ -1,0 +1,66 @@
+name: Claude Code
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write          # 建议提升为 write，允许必要时推送更改或更新说明
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read            # 允许读取 CI 运行结果/日志（与 additional_permissions 配合）
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # 获取完整历史，便于更深入分析
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        # 如果你使用自定义模型网关/代理，打开以下 env 配置：
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+        #   ANTHROPIC_CUSTOM_HEADERS: '{"X-Tenant":"acme"}'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # 允许 Claude 读取 CI 状态/日志，用于回答“CI 为何失败”等问题
+          additional_permissions: |
+            actions: read
+
+          # 可选：使用“粘性评论”减少噪音（在同一条评论中持续更新进度和结果）
+          use_sticky_comment: true
+
+          # 可选：自定义触发短语（默认 @claude）
+          # trigger_phrase: "/claude"
+
+          # 可选：限制网络访问域名（安全加固）
+          # experimental_allowed_domains: |
+          #   api.github.com
+          #   uploads.github.com
+
+          # 可选：自定义工具权限或其它 CLI 行为
+          # 参考文档：https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # 或 CLI 参考：https://docs.claude.com/en/docs/claude-code/cli-reference
+          # claude_args: >
+          #   --allowed-tools "View,GlobTool,GrepTool,
+          #   Bash(gh pr:*),Bash(gh issue:*),Bash(gh run:*),Bash(gh api:*)"
+          #
+          # 可选：赋予固定的自动化提示。当不设置时，Claude将按 @claude 评论/正文指令行动
+          # prompt: 'Update the pull request description to include a summary of changes.'

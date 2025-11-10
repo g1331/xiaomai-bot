@@ -230,10 +230,13 @@ class AsyncORM:
         # 优先 UPDATE，避免大多数情况下的唯一约束冲突
         update_stmt = self._build_update_stmt(table, data, condition)
         result = await self.execute(update_stmt)
+
+        # 如果 UPDATE 影响了行，则成功返回
+        if getattr(result, "rowcount", 0) > 0:
+            return result
+
+        # 受影响行数为 0，说明不存在，尝试 INSERT
         try:
-            if getattr(result, "rowcount", 0) > 0:
-                return result
-            # 受影响行数为 0，说明不存在，尝试 INSERT
             return await self.execute(insert(table).values(**data))
         except IntegrityError:
             # 竞争条件：在我们尝试 INSERT 前，其他协程/进程已插入相同唯一键
@@ -259,15 +262,15 @@ class AsyncORM:
 
     async def insert_or_ignore(self, table, data, condition):
         """
-        不满足条件则插入,否则跳过
+        不满足条件则插入,否则跳过（并发安全）
+        直接尝试插入，若 UNIQUE 约束冲突则忽略
         :param table: 表
         :param data: 数据
-        :param condition: 条件
+        :param condition: 条件（用于日志记录，实际插入依赖唯一约束）
         """
         try:
-            if not (await self.execute(select(table).where(*condition))).all():
-                return await self.execute(insert(table).values(**data))
-            return None
+            # 直接尝试插入，让数据库的唯一约束来保证不重复
+            return await self.execute(insert(table).values(**data))
         except IntegrityError as e:
             # 如果是 UNIQUE 约束冲突，说明记录已存在，直接忽略
             if "UNIQUE constraint failed" in str(e):
@@ -276,11 +279,7 @@ class AsyncORM:
             else:
                 # 其他完整性错误直接抛出
                 logger.error(f"IntegrityError in insert_or_ignore: {e}")
-                raise e
-        except Exception as e:
-            # 其他异常直接抛出
-            logger.error(f"Unexpected error in insert_or_ignore: {e}")
-            raise e
+                raise
 
     async def select(self, el, condition=None):
         """

@@ -63,4 +63,4 @@ jobs:
           #   Bash(gh pr:*),Bash(gh issue:*),Bash(gh run:*),Bash(gh api:*)"
           #
           # 可选：赋予固定的自动化提示。当不设置时，Claude将按 @claude 评论/正文指令行动
-          prompt: 'Reply in cn'
+          # prompt: 'Update the pull request description to include a summary of changes.'

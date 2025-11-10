@@ -208,3 +208,5 @@ alembic.ini
 .claude/settings.local.json
 .claude/*.local.*
 .claude/local/
+
+.serena/

@@ -100,7 +100,10 @@ async def add_wife_handle(
     img: Image = img.result
     img_url = img.url
     img_name = wife_name.result.display.replace("\n", "")
-    img_type = img.dict()["imageId"][img.dict()["imageId"].rfind(".") + 1 :]
+    image_id = img.dict().get("imageId", "")
+    valid_extensions = {"jpg", "jpeg", "png", "gif", "bmp", "webp"}
+    ext_candidate = image_id.rsplit(".", 1)[-1].lower() if "." in image_id else ""
+    img_type = ext_candidate if ext_candidate in valid_extensions else "png"
     if img_name in ["\n", ""]:
         return await app.send_message(group, MessageChain("请输入名字!"), quote=source)
     path = Path(__file__).parent / "wife"

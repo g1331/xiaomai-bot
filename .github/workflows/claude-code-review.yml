@@ -1,8 +1,9 @@
 name: Claude Code Review
 
+# 自动 PR review 已暂停；如需重新启用，把下面 workflow_dispatch 替换回
+# pull_request: { types: [opened, synchronize] } 即可。
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_dispatch:
 
 jobs:
   claude-review:

@@ -68,6 +68,58 @@ class bf1_db:
                 return {}
 
         @staticmethod
+        async def get_bf1account_by_displayName(display_name: str) -> dict | None:
+            """根据玩家显示名(忽略大小写)从本地缓存获取玩家信息
+
+            EA Desktop 的 SearchPlayer 无法检索 displayName 含连字符的玩家，
+            这里用历史缓存兜底，查询顺序：
+
+            1. bf1_account 主表：被按 pid 查询过、绑定过或精确查名命中过的玩家；
+            2. 服务器 vip/ban/admin/owner 列表：这些列表由 EA 服务器详情接口原生
+               返回 personaId + displayName，凡是进过某服务器名单的玩家(含连字符名)
+               都可凭精确名反查到 pid，无需依赖名称搜索。
+
+            :param display_name: 玩家显示名
+            :return: 命中返回dict(含pid、uid、name、displayName)，未命中返回None
+            """
+            if not display_name:
+                return None
+            target_name = display_name.strip().lower()
+            if account := await orm.fetch_one(
+                select(
+                    Bf1Account.persona_id,
+                    Bf1Account.user_id,
+                    Bf1Account.name,
+                    Bf1Account.display_name,
+                ).where(func.lower(Bf1Account.display_name) == target_name)
+            ):
+                return {
+                    "pid": account[0],
+                    "uid": account[1],
+                    "name": account[2],
+                    "displayName": account[3],
+                }
+            # 回退查服务器名单(EA 原生 name->pid 数据，覆盖连字符玩家名)
+            for table in (
+                Bf1ServerVip,
+                Bf1ServerBan,
+                Bf1ServerAdmin,
+                Bf1ServerOwner,
+            ):
+                if record := await orm.fetch_one(
+                    select(table.personaId, table.displayName).where(
+                        func.lower(table.displayName) == target_name
+                    )
+                ):
+                    return {
+                        "pid": record[0],
+                        "uid": None,
+                        "name": str(record[1]).lower(),
+                        "displayName": record[1],
+                    }
+            return None
+
+        @staticmethod
         async def get_session_by_pid(pid: int) -> str:
             if account := await orm.fetch_one(
                 select(Bf1Account.session).where(Bf1Account.persona_id == pid)

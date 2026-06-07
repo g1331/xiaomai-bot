@@ -6829,17 +6829,11 @@ async def add_vip(
 ):
     if bf_group_name.matched and bf_group_name.result.display in ["ban", "b", "ba"]:
         return
-    if server_rank.matched and server_rank.result.display in [
-        "iplis",
-        "lis",
-        "ip列",
-        "l",
-        "列",
-        "ban",
-        "b",
-        "ba",
-    ]:
-        logger.debug(server_rank)
+    # -vip/-v 是 -viplist/-vbanlist/-vl/-vban 等命令的前缀，UnionMatch 会把这些更长的
+    # 命令误匹配进来。实测这类误触发后 server_rank 必为非数字残留(例如 -viplist 6 会被
+    # 解析成 server_rank='t')，而真正的加 vip 指令 server_rank 必为数字序号。因此非数字
+    # 一律静默返回，交由对应的专用监听器处理，避免一条命令出现两条回复。
+    if not server_rank.result.display.isdigit():
         return
 
     # 日期检查

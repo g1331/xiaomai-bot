@@ -208,5 +208,12 @@ alembic.ini
 .claude/settings.local.json
 .claude/*.local.*
 .claude/local/
+.claude/plugins.json
+
+# Sigma 本地检查点(含嵌套 .git，禁止提交以免产生误判的子模块)
+.sigmadev/
+
+# 临时交接文档
+HANDOFF_BF_MANAGER.md
 
 .serena/

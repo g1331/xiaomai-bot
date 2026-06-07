@@ -90,34 +90,128 @@ class BlazeQueryResponse:
         return self.error_message or f"查询失败: {self.status.value}"
 
 
-async def get_personas_by_name(player_name: str) -> dict | None:
-    """根据玩家名称获取玩家信息
+async def _get_pid_by_name_via_gametools(player_name: str) -> int | None:
+    """通过 gametools 社区接口把玩家名翻译成 personaId(仅作回退使用)
+
+    EA Desktop 替换 Origin 之后,官方按名搜索接口(SAL SearchPlayer)无法检索
+    含连字符的玩家名,本地 bf1_account 缓存也未必收录陌生玩家。在这两条路径
+    都落空时,调用 gametools 维护的历史 name->pid 缓存库取得 personaId。此处
+    只取 personaId,真正的玩家数据仍由 EA 原生接口按 pid 拉取,以保证数据来源
+    权威。任何超时、状态码异常或解析异常都静默返回 None,避免外部社区服务故障
+    导致整条查询链失败。
+
     :param player_name: 玩家名称
-    :return: 成功返回dict，失败返回str信息，玩家不存在返回None
+    :return: 命中返回 personaId(int),未命中或异常返回 None
+    """
+    url = "https://api.gametools.network/bf1/stats/"
+    params = {"name": player_name, "platform": "pc", "skip_battlelog": "true"}
+    header = {"Accept": "application/json", "Connection": "Keep-Alive"}
+    try:
+        async with httpx.AsyncClient(proxy=proxy or None, timeout=10) as client:
+            response = await client.get(url, params=params, headers=header)
+        if response.status_code != 200:
+            return None
+        data = response.json()
+    except Exception as e:
+        logger.warning(f"gametools 回退查询玩家 {player_name} 失败: {e}")
+        return None
+    pid = data.get("id") if isinstance(data, dict) else None
+    if not pid:
+        return None
+    try:
+        return int(pid)
+    except (TypeError, ValueError):
+        return None
+
+
+async def get_personas_by_name(player_name: str) -> dict | str | None:
+    """根据玩家名称精确获取玩家信息
+
+    EA 的 SearchPlayer 是模糊前缀搜索，返回的候选列表既不保证精确项排在首位，
+    也可能完全搜不到含连字符的玩家名。绑定、添加 VIP、封禁等操作都需要精确的
+    玩家，因此这里先在 SearchPlayer 候选中按 displayName 做忽略大小写的精确
+    匹配；精确匹配落空时，再回退查本地 bf1_account 缓存（凡是出现在服务器
+    vip/ban/admin 列表、被按 pid 查询过或绑定过的玩家都已入库），从而支持
+    SearchPlayer 索引不到的连字符玩家名。处理结果：
+
+    - 命中精确玩家：返回 dict，persona[0] 必为精确玩家，并写入数据库缓存；
+    - SearchPlayer 落空但缓存命中：返回 dict，persona[0] 为缓存中的精确玩家；
+    - 仅有近似候选：返回提示字符串，列出近似玩家名供使用者用正确名重新查询；
+    - 完全无候选且缓存未命中：返回 None；
+    - 接口或网络出错：返回原始错误字符串（与 get_personas_by_player_pid 一致，
+      由调用方统一加"查询出错!"前缀展示）。
+
+    :param player_name: 玩家名称
+    :return: 精确命中返回dict，未精确命中返回str提示，无任何候选返回None
     """
     player_info = await (await BF1DA.get_api_instance()).getPersonasByName(player_name)
     if isinstance(player_info, str):
         return player_info
-    elif not player_info.get("personas"):
-        return None
-    else:
-        pid = player_info["personas"]["persona"][0]["personaId"]
-        uid = player_info["personas"]["persona"][0]["pidId"]
-        display_name = player_info["personas"]["persona"][0]["displayName"]
-        name = player_info["personas"]["persona"][0]["name"]
-        # dateCreated = player_info["personas"]["persona"][0]["dateCreated"]
-        # lastAuthenticated = player_info["personas"]["persona"][0]["lastAuthenticated"]
+    personas = player_info.get("personas", {}).get("persona", [])
+    target_name = player_name.strip().casefold()
+    exact = [
+        persona
+        for persona in personas
+        if str(persona.get("displayName", "")).casefold() == target_name
+    ]
+    if exact:
+        hit = exact[0]
         # 写入数据库
         try:
             await BF1DB.bf1account.update_bf1account(
-                pid=pid,
-                uid=uid,
-                name=name,
-                display_name=display_name,
+                pid=hit["personaId"],
+                uid=hit["pidId"],
+                name=hit["name"],
+                display_name=hit["displayName"],
             )
         except Exception as e:
             logger.error((e, player_info))
-        return player_info
+        return {"personas": {"persona": exact}}
+    # SearchPlayer 没有精确命中，回退查本地缓存(支持连字符玩家名)
+    cached = await BF1DB.bf1account.get_bf1account_by_displayName(player_name)
+    if cached and cached.get("pid"):
+        display_name = cached.get("displayName") or player_name
+        return {
+            "personas": {
+                "persona": [
+                    {
+                        "personaId": cached["pid"],
+                        "pidId": cached.get("uid"),
+                        "displayName": display_name,
+                        "name": cached.get("name") or str(display_name).lower(),
+                    }
+                ]
+            }
+        }
+    # SearchPlayer 与本地缓存都落空，用 gametools 把名字翻译成 pid 后回 EA 原生取数据
+    gametools_pid = await _get_pid_by_name_via_gametools(player_name)
+    if gametools_pid:
+        ea_info = await get_personas_by_player_pid(gametools_pid)
+        # get_personas_by_player_pid 内部已写入 bf1_account 缓存，下次可直接命中
+        if isinstance(ea_info, dict) and ea_info.get("result"):
+            ea_persona = ea_info["result"].get(str(gametools_pid))
+            if ea_persona and ea_persona.get("displayName"):
+                display_name = ea_persona["displayName"]
+                # 仅接受 gametools 翻译结果与查询名忽略大小写一致的精确命中，
+                # 防止 gametools 历史名变更或误匹配返回到错误玩家
+                if str(display_name).casefold() == target_name:
+                    return {
+                        "personas": {
+                            "persona": [
+                                {
+                                    "personaId": gametools_pid,
+                                    "pidId": ea_persona.get("nucleusId"),
+                                    "displayName": display_name,
+                                    "name": str(display_name).lower(),
+                                }
+                            ]
+                        }
+                    }
+    if not personas:
+        return None
+    # 把近似玩家名反馈给使用者，便于用正确的名字重新查询
+    candidates = "\n".join(str(persona.get("displayName")) for persona in personas[:10])
+    return f"未找到玩家 {player_name}，近似玩家名：\n{candidates}"
 
 
 async def get_personas_by_player_pid(player_pid: int) -> dict | str | None:
@@ -439,8 +533,8 @@ async def check_vban(player_pid) -> str | dict:
     url = f"https://api.gametools.network/manager/checkban?playerid={player_pid}&platform=pc&skip_battlelog=false"
     header = {"Accept": "application/json", "Connection": "Keep-Alive"}
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=header, timeout=5, proxy=proxy)
+        async with httpx.AsyncClient(proxy=proxy or None) as client:
+            response = await client.get(url, headers=header, timeout=5)
         try:
             return eval(response.text)
         except SyntaxError:

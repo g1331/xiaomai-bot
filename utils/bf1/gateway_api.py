@@ -809,26 +809,60 @@ class bf1_api:
             logger.warning(f"按昵称查询返回错误: {data['errors']}")
             return {"personas": {"persona": []}}
 
-        items = (
-            data.get("data", {}).get("players", {}).get("items", [])
-            if isinstance(data, dict)
-            else []
-        )
+        # SAL GraphQL SearchPlayer 是模糊前缀搜索，返回顺序并非按精确度排列
+        # （实测搜 "V1IZ" 时精确项排在第 41 位、第 3 页），且无法检索含连字符的
+        # 玩家名（实测 "scallion-6th" 返回 0 条）。首页未精确命中时继续翻页扫描，
+        # 最多 5 页（100 条），找到精确匹配即提前返回。
+        target_lower = player_name.strip().casefold()
         persona_list: list[dict] = []
-        for item in items or []:
-            psd = item.get("psd")
-            if not psd:
-                continue
-            pd = item.get("pd")
-            display_name = item.get("displayName") or player_name
-            persona_list.append(
-                {
-                    "personaId": int(psd),
-                    "pidId": int(pd) if pd else None,
-                    "displayName": display_name,
-                    "name": display_name.lower(),
-                }
+        page_number = 1
+
+        while True:
+            items = (
+                data.get("data", {}).get("players", {}).get("items", [])
+                if isinstance(data, dict)
+                else []
             )
+            for item in items or []:
+                psd = item.get("psd")
+                if not psd:
+                    continue
+                pd = item.get("pd")
+                display_name = item.get("displayName") or player_name
+                persona_list.append(
+                    {
+                        "personaId": int(psd),
+                        "pidId": int(pd) if pd else None,
+                        "displayName": display_name,
+                        "name": display_name.lower(),
+                    }
+                )
+
+            has_exact = any(
+                str(p.get("displayName", "")).casefold() == target_lower
+                for p in persona_list
+            )
+            if has_exact or len(items or []) < 20 or page_number >= 5:
+                break
+
+            page_number += 1
+            payload["variables"]["pageNumber"] = page_number
+            try:
+                async with self.http_session.post(
+                    url=url,
+                    headers=header,
+                    data=json.dumps(payload),
+                    timeout=15,
+                    ssl=False,
+                    proxy=proxy,
+                ) as response:
+                    body_text = await response.text()
+                    if response.status != 200:
+                        break
+                    data = json.loads(body_text)
+            except Exception:
+                break
+
         return {"personas": {"persona": persona_list}}
 
     async def getPersonasByIds(self, personaIds: list[int | str]) -> dict:

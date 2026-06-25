@@ -14,6 +14,10 @@ from core.config import GlobalConfig
 config = create(GlobalConfig)
 proxy = config.proxy if config.proxy != "proxy" else ""
 
+# 暴露的 EA 错误常量：消费方匹配错误时引用本常量，避免硬编码翻译串
+# 一处变更全链路同步(error_code_dict 也引用同一常量)。
+EA_ERR_PLAYER_NOT_FOUND = "玩家不存在"
+
 
 async def get_a_uuid() -> str:
     """返回一个uuid"""
@@ -66,7 +70,7 @@ class bf1_api:
             -32603: "此code为多个错误共用,请查阅error_msg_dict",
             # -32850: "服务器栏位已满/玩家已在栏位",
             -32851: "服务器不存在/已过期",
-            -32856: "玩家不存在",
+            -32856: EA_ERR_PLAYER_NOT_FOUND,
             -32857: "无法处置管理员",
             -32858: "服务器未开启",
         }

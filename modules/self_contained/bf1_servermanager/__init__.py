@@ -65,6 +65,7 @@ from utils.bf1.bf_utils import (
 from utils.bf1.data_handle import VehicleData, WeaponData
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
+from utils.bf1.gateway_api import EA_ERR_PLAYER_NOT_FOUND
 from utils.bf1.draw import (
     PlayerStatPic,
     PlayerVehiclePic,
@@ -7662,7 +7663,9 @@ async def check_vip(
                 # EA 明确回 -32856(玩家不存在)，说明数据库挂着一条同名空号脏记录。
                 # 留着每轮 checkvip 都会重试+刷错误日志，无法自愈，直接清掉。
                 # 仅匹配 EA 定义的玩家级错误，不误删会话失效等可恢复错误。
-                if add_task_result[i] == "玩家不存在":
+                # 注意：极少数情况下 -32856 可能是 EA 临时抽风(账号短期被锁等)，
+                # 自愈后该玩家会丢 VIP；用 warning 让运维看见，必要时人工补回。
+                if add_task_result[i] == EA_ERR_PLAYER_NOT_FOUND:
                     await BF1ServerVipManager.del_server_vip_by_pid(
                         server_id=server_id,
                         player_pid=add_task[i]["personaId"],
@@ -7676,6 +7679,11 @@ async def check_vip(
                         display_name=add_task[i]["displayName"],
                         action="unvip",
                         info="自动清理(玩家不存在)",
+                    )
+                    logger.warning(
+                        f"checkvip 自愈：删除脏 VIP 记录 server={server_id} "
+                        f"pid={add_task[i]['personaId']} name={add_task[i]['displayName']} "
+                        f"(EA 报玩家不存在；若为短期 EA 抽风请人工补回)"
                     )
         send = [
             f"操作完成!\n成功添加{add_suc_count}个,失败{add_fail_count}个\n成功删除{del_suc_count}个,失败{del_fail_count}个"

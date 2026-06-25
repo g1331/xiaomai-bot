@@ -7659,6 +7659,24 @@ async def check_vip(
             else:
                 add_task[i]["result"] = f"添加失败!{add_task_result[i]}"
                 add_fail_count += 1
+                # EA 明确回 -32856(玩家不存在)，说明数据库挂着一条同名空号脏记录。
+                # 留着每轮 checkvip 都会重试+刷错误日志，无法自愈，直接清掉。
+                # 仅匹配 EA 定义的玩家级错误，不误删会话失效等可恢复错误。
+                if add_task_result[i] == "玩家不存在":
+                    await BF1ServerVipManager.del_server_vip_by_pid(
+                        server_id=server_id,
+                        player_pid=add_task[i]["personaId"],
+                    )
+                    await BF1Log.record(
+                        operator_qq=sender.id,
+                        serverId=server_id,
+                        persistedGameId=server_guid,
+                        gameId=server_gameid,
+                        pid=add_task[i]["personaId"],
+                        display_name=add_task[i]["displayName"],
+                        action="unvip",
+                        info="自动清理(玩家不存在)",
+                    )
         send = [
             f"操作完成!\n成功添加{add_suc_count}个,失败{add_fail_count}个\n成功删除{del_suc_count}个,失败{del_fail_count}个"
         ]

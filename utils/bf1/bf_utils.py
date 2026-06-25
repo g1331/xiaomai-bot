@@ -124,6 +124,33 @@ async def _get_pid_by_name_via_gametools(player_name: str) -> int | None:
         return None
 
 
+async def _pick_bf1_persona(candidates: list[dict]) -> dict:
+    """同名 displayName 多个精确候选时，按 BF1 生涯时长选真号。
+
+    EA 允许多个账号共用同一 displayName，SearchPlayer 也不保证精确候选的顺序，
+    盲取 candidates[0] 会把不玩 BF1 的同名空号写进 vip/绑定表，下游 addServerVip
+    必然报「玩家不存在」。这里用 detailedStatsByPersonaId 的 basicStats.timePlayed
+    区分：真正玩过 BF1 的账号 > 0，空号是 0 或接口直接报错。单候选 / 全 0 / 全
+    报错时退回首个候选，保证不阻断解析。
+    """
+    if len(candidates) <= 1:
+        return candidates[0]
+    api = await BF1DA.get_api_instance()
+
+    async def _playtime(pid) -> int:
+        try:
+            data = await api.detailedStatsByPersonaId(pid)
+        except Exception:
+            return 0
+        if not isinstance(data, dict):
+            return 0
+        return (data.get("result") or {}).get("basicStats", {}).get("timePlayed") or 0
+
+    times = await asyncio.gather(*[_playtime(c["personaId"]) for c in candidates])
+    best_idx = max(range(len(candidates)), key=lambda i: times[i])
+    return candidates[best_idx] if times[best_idx] > 0 else candidates[0]
+
+
 async def get_personas_by_name(player_name: str) -> dict | str | None:
     """根据玩家名称精确获取玩家信息
 
@@ -155,7 +182,10 @@ async def get_personas_by_name(player_name: str) -> dict | str | None:
         if str(persona.get("displayName", "")).casefold() == target_name
     ]
     if exact:
-        hit = exact[0]
+        # EA 允许同名多账号，按 BF1 生涯时长选真号；调用方统一读 persona[0]，
+        # 选中的需置首，否则 vip/bind/ban 全链路依旧会落到空号上。
+        hit = await _pick_bf1_persona(exact)
+        exact = [hit] + [p for p in exact if p is not hit]
         # 写入数据库
         try:
             await BF1DB.bf1account.update_bf1account(

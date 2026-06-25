@@ -3318,7 +3318,7 @@ async def kick(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -4019,7 +4019,7 @@ async def add_ban(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -4188,7 +4188,7 @@ async def del_ban(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -4374,7 +4374,7 @@ async def add_banall(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -4576,7 +4576,7 @@ async def del_banall(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -5106,7 +5106,7 @@ async def add_cloudban(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -5276,7 +5276,7 @@ async def del_cloudban(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -6106,7 +6106,7 @@ async def move_player(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -6930,7 +6930,7 @@ async def add_vip(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source
@@ -7285,7 +7285,7 @@ async def del_vip(
         dict_temp = {"personas": {"persona": [player_info["result"][str(player_pid)]]}}
         player_info = dict_temp
     else:
-        player_info = await get_personas_by_name(player_name)
+        player_info = await get_personas_by_name(player_name, require_bf1_player=True)
     if isinstance(player_info, str):
         return await app.send_message(
             group, MessageChain(f"查询出错!{player_info}"), quote=source

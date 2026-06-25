@@ -124,34 +124,58 @@ async def _get_pid_by_name_via_gametools(player_name: str) -> int | None:
         return None
 
 
+async def _get_bf1_playtime(pid: int | str) -> int:
+    """detailedStatsByPersonaId 抽出的 basicStats.timePlayed(秒)。
+
+    真玩过 BF1 必 > 0；空号 / 异常 / 接口报错统一返回 0，让上层把它视作
+    "不是 BF1 玩家"。
+    """
+    try:
+        api = await BF1DA.get_api_instance()
+        data = await api.detailedStatsByPersonaId(pid)
+    except Exception:
+        return 0
+    if not isinstance(data, dict):
+        return 0
+    return (data.get("result") or {}).get("basicStats", {}).get("timePlayed") or 0
+
+
 async def _pick_bf1_persona(candidates: list[dict]) -> dict:
     """同名 displayName 多个精确候选时，按 BF1 生涯时长选真号。
 
     EA 允许多个账号共用同一 displayName，SearchPlayer 也不保证精确候选的顺序，
     盲取 candidates[0] 会把不玩 BF1 的同名空号写进 vip/绑定表，下游 addServerVip
-    必然报「玩家不存在」。这里用 detailedStatsByPersonaId 的 basicStats.timePlayed
-    区分：真正玩过 BF1 的账号 > 0，空号是 0 或接口直接报错。单候选 / 全 0 / 全
-    报错时退回首个候选，保证不阻断解析。
+    必然报「玩家不存在」。这里按 timePlayed 区分：真号 > 0，空号是 0。单候选 /
+    全 0 / 全报错时退回首个候选，保证不阻断解析。
     """
     if len(candidates) <= 1:
         return candidates[0]
-    api = await BF1DA.get_api_instance()
-
-    async def _playtime(pid) -> int:
-        try:
-            data = await api.detailedStatsByPersonaId(pid)
-        except Exception:
-            return 0
-        if not isinstance(data, dict):
-            return 0
-        return (data.get("result") or {}).get("basicStats", {}).get("timePlayed") or 0
-
-    times = await asyncio.gather(*[_playtime(c["personaId"]) for c in candidates])
+    times = await asyncio.gather(
+        *[_get_bf1_playtime(c["personaId"]) for c in candidates]
+    )
     best_idx = max(range(len(candidates)), key=lambda i: times[i])
     return candidates[best_idx] if times[best_idx] > 0 else candidates[0]
 
 
-async def get_personas_by_name(player_name: str) -> dict | str | None:
+async def _gate_bf1_player(
+    player_name: str, persona_dict: dict, require_bf1_player: bool
+) -> dict | str:
+    """require_bf1_player=True 时，确认 persona_dict 命中的 pid 真玩 BF1。
+
+    返回原 dict (BF1 玩家) 或错误字符串 (非 BF1 玩家)。get_personas_by_name 所有
+    "返回 dict"分支统一过此关，避免服管命令落到不玩 BF1 的同名 EA 账号上。
+    """
+    if not require_bf1_player:
+        return persona_dict
+    pid = persona_dict["personas"]["persona"][0]["personaId"]
+    if await _get_bf1_playtime(pid) > 0:
+        return persona_dict
+    return f"玩家 {player_name}(pid {pid}) 不是 BF1 玩家(无游玩记录或账号不存在)"
+
+
+async def get_personas_by_name(
+    player_name: str, *, require_bf1_player: bool = False
+) -> dict | str | None:
     """根据玩家名称精确获取玩家信息
 
     EA 的 SearchPlayer 是模糊前缀搜索，返回的候选列表既不保证精确项排在首位，
@@ -169,6 +193,9 @@ async def get_personas_by_name(player_name: str) -> dict | str | None:
       由调用方统一加"查询出错!"前缀展示）。
 
     :param player_name: 玩家名称
+    :param require_bf1_player: True 时仅返回真 BF1 玩家(timePlayed>0)；非真玩家
+        返回错误字符串。供服管类操作(vip/ban/kick/move 等)使用，避免对不玩 BF1
+        的同名 EA 账号执行实质动作。-stat 等查询路径保持默认 False。
     :return: 精确命中返回dict，未精确命中返回str提示，无任何候选返回None
     """
     player_info = await (await BF1DA.get_api_instance()).getPersonasByName(player_name)
@@ -196,23 +223,29 @@ async def get_personas_by_name(player_name: str) -> dict | str | None:
             )
         except Exception as e:
             logger.error((e, player_info))
-        return {"personas": {"persona": exact}}
+        return await _gate_bf1_player(
+            player_name, {"personas": {"persona": exact}}, require_bf1_player
+        )
     # SearchPlayer 没有精确命中，回退查本地缓存(支持连字符玩家名)
     cached = await BF1DB.bf1account.get_bf1account_by_displayName(player_name)
     if cached and cached.get("pid"):
         display_name = cached.get("displayName") or player_name
-        return {
-            "personas": {
-                "persona": [
-                    {
-                        "personaId": cached["pid"],
-                        "pidId": cached.get("uid"),
-                        "displayName": display_name,
-                        "name": cached.get("name") or str(display_name).lower(),
-                    }
-                ]
-            }
-        }
+        return await _gate_bf1_player(
+            player_name,
+            {
+                "personas": {
+                    "persona": [
+                        {
+                            "personaId": cached["pid"],
+                            "pidId": cached.get("uid"),
+                            "displayName": display_name,
+                            "name": cached.get("name") or str(display_name).lower(),
+                        }
+                    ]
+                }
+            },
+            require_bf1_player,
+        )
     # SearchPlayer 与本地缓存都落空，用 gametools 把名字翻译成 pid 后回 EA 原生取数据
     gametools_pid = await _get_pid_by_name_via_gametools(player_name)
     if gametools_pid:
@@ -225,18 +258,22 @@ async def get_personas_by_name(player_name: str) -> dict | str | None:
                 # 仅接受 gametools 翻译结果与查询名忽略大小写一致的精确命中，
                 # 防止 gametools 历史名变更或误匹配返回到错误玩家
                 if str(display_name).casefold() == target_name:
-                    return {
-                        "personas": {
-                            "persona": [
-                                {
-                                    "personaId": gametools_pid,
-                                    "pidId": ea_persona.get("nucleusId"),
-                                    "displayName": display_name,
-                                    "name": str(display_name).lower(),
-                                }
-                            ]
-                        }
-                    }
+                    return await _gate_bf1_player(
+                        player_name,
+                        {
+                            "personas": {
+                                "persona": [
+                                    {
+                                        "personaId": gametools_pid,
+                                        "pidId": ea_persona.get("nucleusId"),
+                                        "displayName": display_name,
+                                        "name": str(display_name).lower(),
+                                    }
+                                ]
+                            }
+                        },
+                        require_bf1_player,
+                    )
     if not personas:
         return None
     # 把近似玩家名反馈给使用者，便于用正确的名字重新查询

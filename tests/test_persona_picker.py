@@ -86,3 +86,36 @@ def test_multi_candidate_api_error_falls_back_to_first(monkeypatch):
     a = {"personaId": 1, "displayName": "X"}
     b = {"personaId": 2, "displayName": "X"}
     assert asyncio.run(bf_utils._pick_bf1_persona([a, b])) is a
+
+
+# ---- _gate_bf1_player：服管路径"非 BF1 玩家"硬拦截 ----
+
+
+def _dict_for(pid: int, name: str = "Sipne") -> dict:
+    return {"personas": {"persona": [{"personaId": pid, "displayName": name}]}}
+
+
+def test_gate_off_returns_dict_unchanged(monkeypatch):
+    """require_bf1_player=False 时直接放行，不调 API"""
+    monkeypatch.setattr(bf_utils, "BF1DA", _FakeBF1DA)
+    _FakeBF1DA.api = _FakeApi({})
+    d = _dict_for(1004344969376)
+    assert asyncio.run(bf_utils._gate_bf1_player("Sipne", d, False)) is d
+
+
+def test_gate_on_rejects_zero_playtime(monkeypatch):
+    """空号(timePlayed=0) 必须被服管路径拦截，返回字符串而非 dict"""
+    monkeypatch.setattr(bf_utils, "BF1DA", _FakeBF1DA)
+    _FakeBF1DA.api = _FakeApi({"1004344969376": 0})
+    d = _dict_for(1004344969376)
+    result = asyncio.run(bf_utils._gate_bf1_player("Sipne", d, True))
+    assert isinstance(result, str), "0 时长账号必须被拦"
+    assert "1004344969376" in result and "不是 BF1 玩家" in result
+
+
+def test_gate_on_passes_real_player(monkeypatch):
+    """真号(timePlayed>0) 放行返回原 dict"""
+    monkeypatch.setattr(bf_utils, "BF1DA", _FakeBF1DA)
+    _FakeBF1DA.api = _FakeApi({"1008491571150": 3_257_572})
+    d = _dict_for(1008491571150)
+    assert asyncio.run(bf_utils._gate_bf1_player("Sipne", d, True)) is d

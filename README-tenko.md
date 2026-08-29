@@ -101,6 +101,92 @@ reply_text = "Tenko 已收到消息。"
 
 测试不要求真实 NapCat：OneBot 11 原始事件类型使用 mock 数据，发送测试使用 mock WebSocket 和 action response，验证实际官方适配器发出的 action JSON。
 
+## 第二阶段：宿主重写
+
+第二阶段在不触碰旧 `core/`、`modules/`、`utils/` 和 `main.py` 的前提下，
+为后续业务插件迁移建立三个 Tenko 宿主子系统：多账号注册表、权限协议包装和
+插件装载运行时。它们位于 `tenko/host/`，只使用第一阶段的 Satori
+`MessageContext` 和 Entari `Account`，不保存 Ariadne 对象，也不复用 Graia
+的事件注入或 Saya channel 结构。
+
+### 新旧职责对应
+
+| Tenko 第二阶段 | 旧实现 | 迁移边界 |
+| --- | --- | --- |
+| `tenko/host/accounts.py` 的 `AccountRegistry` | `core/models/response_model/AccountController`，以及 `core/bot.py` 的账号生命周期部分 | 保存 `self_id -> satori.client.Account`、可用状态和群路由；群成员/群列表由宿主显式绑定，不调用 Ariadne API |
+| `tenko/host/perm.py` 的 `Permission`、`PermissionRegistry`、`PermissionChecker` | `core/control.py` 的权限数值策略和 `MemberPerm`/`GroupPerm` 读操作 | 保留 `-1/0/16/32/64/128/256` 成员权限与 `0/1/2/3` 群等级；通过 `MessageContext` 返回 awaitable 布尔检查，不产生 `Depend` 或 `ExecutionStop` |
+| `tenko/host/plugins.py` 的 `PluginRuntime` | `core/models/saya_model.ModulesController` 和 Graia Saya | 扫描 Tenko 插件目录，导入模块并调用 `register(app, ctx)`；只读兼容旧 `modules_data.json` 的开关字段，不写回旧文件 |
+
+### A：多账号注册表
+
+`AccountRegistry` 的注册、状态和路由操作均以 Satori `Account` 为对象：
+
+```python
+registry.register(account, available=True, groups=["10001"])
+registry.set_available(account, False)
+target = registry.select_for_context(context, source_id=stable_message_id)
+```
+
+群消息会从已绑定且可用的账号中选择；`random` 策略在传入 `source_id` 时遵循旧宿主
+的 `round(source_id) % account_count` 规则，`deterministic` 策略则使用指定账号。
+deterministic 账号离线时返回 `None`，不会静默换成另一账号。私聊沿用消息所属的
+`context.account_id`，账号注销时会同时移除它参与的群路由。
+
+### B：权限协议包装
+
+`Permission` 和 `GroupPermission` 保留旧数值含义；`PermissionRegistry` 可承载
+Tenko 启动配置或测试中的 master、BotAdmin、成员和群等级覆盖。常规检查通过
+`PermissionChecker` 或模块级入口完成：
+
+```python
+checker = PermissionChecker(registry=permission_registry)
+allowed = await checker.require_perm(context, Permission.GroupAdmin)
+group_allowed = await checker.require_group_perm(context, GroupPermission.ActiveGroup)
+```
+
+当没有提供运行时注册表时，检查器在第一次确实需要数据库读取时才延迟导入旧
+`core.orm.orm`；读取使用 `MemberPerm`、`GroupPerm` 的查询，不执行写入。群消息
+上下文会携带 Satori `Member` 的 `member`、`admin` 或 `owner` 角色；全局黑名单
+优先于群内角色。权限不足由 `require_*` 返回 `False`，由插件决定如何处理，不再
+依赖 Graia 的事件注入异常。
+
+### C：插件装载运行时
+
+`PluginRuntime` 默认扫描 `tenko/plugins/` 的直接子项，支持单个 `.py` 文件和带
+`__init__.py` 的插件包。插件只需要提供简单入口：
+
+```python
+def register(app, ctx):
+    app.register_on_message(ctx)
+
+
+def unregister(app, ctx):
+    pass
+```
+
+运行时提供 `discover()`、`load()`、`unload()`、`reload()` 和 `load_all()`；被开关
+过滤的插件不会执行导入或 `register`。插件元数据可用 `metadata.json` 中的
+`default_switch` 指定默认状态。
+
+传入旧 `modules_data.json` 路径后，运行时读取其 `modules` 下的 `available`、
+群 ID 对象中的 `switch`，并兼容旧模块名及 `groups` 嵌套形式。`set_enabled()`
+只建立当前进程内的覆盖；旧文件始终保持只读，因此第二阶段不会改变旧 Saya
+宿主的运行数据。
+
+### 第二阶段校验
+
+继续使用独立 Entari 环境运行：
+
+```bash
+.venv-entari/bin/ruff check tenko tests/tenko
+.venv-entari/bin/python -m pytest tests/tenko
+```
+
+`tests/tenko/test_accounts.py` 覆盖注册/注销、可用性和多账号路由；
+`tests/tenko/test_perm.py` 覆盖权限矩阵、数据库 mock、黑名单和群等级；
+`tests/tenko/test_plugins.py` 覆盖发现、加载/卸载、开关过滤、旧状态只读和重载。
+测试使用临时目录和 mock 账号/数据库，不会启动 NapCat、修改旧状态文件或部署服务。
+
 ## 依赖来源
 
 - [Entari](https://github.com/ArcletProject/Entari)

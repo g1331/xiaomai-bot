@@ -16,7 +16,7 @@ Satori OneBot 11 adapter ──► Satori Server ──► Entari client
 ## 边界与文件
 
 - `tenko/connection.py`：连接层，组装官方 Satori Server、OneBot 11 反向适配器和 Entari 使用的内部 WebSocket。
-- `tenko/events.py`：事件层，记录消息、过滤机器人自己的消息，并按开关发送固定文案。
+- `tenko/events.py`：事件层，在插件分发前执行调试白名单和禁言过滤，记录消息并按开关发送固定文案。
 - `tenko/context.py`：消息上下文层，统一 `account_id`、事件类型、群/私聊、文本和图片 URL。
 - `tenko/config.py`：只使用 Python 标准库 `tomllib` 读取 TOML 配置。
 - `tenko/runtime.py`、`tenko/__main__.py`：服务编排和入口。
@@ -62,6 +62,30 @@ ws://127.0.0.1:8080/onebot/v11/ws
 在 NapCat 的 OneBot 11 反向 WebSocket 配置中填写上述地址。若 Tenko 与 NapCat 不在同一台机器，把 `127.0.0.1` 换成 Tenko 可访问的监听地址；若配置了 `access_token`，NapCat 必须使用相同 token。OneBot 反向连接还需要 NapCat 发送 `X-Self-ID`，官方适配器会据此创建账号。
 
 `[onebot]` 中的 `satori_*` 是 Tenko 内部使用的 Satori client/server 配置，不应填写为 NapCat 的反向 WebSocket 地址。`listen_host = "0.0.0.0"` 时，Tenko 会自动用 `127.0.0.1` 连接本机内部 Satori 服务；跨机器场景请显式设置 `satori_host`。
+
+### 开发调试模式（仅响应 master）
+
+在真实环境测试时，可以开启开发调试模式，让 Tenko 只处理指定开发者产生的事件：
+
+```toml
+[debug]
+enabled = true
+masters = ["123456789"]
+```
+
+`masters` 是开发者 QQ 号列表，建议始终写成字符串。事件入口会把事件中的用户
+ID 和白名单统一转换为字符串后比较，因此协议层返回整数 ID 时也不会因为类型
+不同而漏过过滤。`enabled = false` 是默认值；省略整个 `[debug]` 配置节时，行为
+与未启用调试模式相同。
+
+过滤发生在 `tenko/events.py` 的 `MessageEventHandler.should_skip()`，并由
+`MessageEventHandler.guard()` 包在 Entari 原生事件分发入口之前。因而群聊、私聊、
+命令、普通消息以及由消息触发的插件/AI 处理都会一起受到限制；没有事件来源用户
+的事件也不会在调试模式下放行。
+
+启用调试模式但将 `masters` 留空时，Tenko 会把所有事件视为不在白名单并跳过，
+同时记录 warning 日志。该配置会导致全静默，只适合在明确需要时使用；正常测试
+应填写至少一个开发者 QQ 号。
 
 ## 启动与验证
 
@@ -314,8 +338,9 @@ OneBot 11 的 action 失败回执由 `AccountRegistry.observe_send_failure()` �
 
 运行时在 `tenko/runtime.py` 通过 Satori `event_callbacks` 的原生回调列表包住
 Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` 做
-账号×群判定。这样被禁言账号收到该群消息或事件时，会在 Entari 发布到插件
-之前跳过，并记录 debug 日志；解除或到期后恢复正常。Satori `App` 的回调列表
+调试白名单和账号×群判定。这样不在调试白名单的事件、或被禁言账号收到该群消息
+或事件时，会在 Entari 发布到插件之前跳过，并记录 debug 日志；解除调试模式或
+禁言到期后恢复正常。Satori `App` 的回调列表
 和并发发布位置为 `satori/client/__init__.py:62-70,304-315`，Entari 原生事件
 入口为 `arclet/entari/core.py:471-480`。
 

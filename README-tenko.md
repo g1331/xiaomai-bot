@@ -63,6 +63,22 @@ ws://127.0.0.1:8080/onebot/v11/ws
 
 `[onebot]` 中的 `satori_*` 是 Tenko 内部使用的 Satori client/server 配置，不应填写为 NapCat 的反向 WebSocket 地址。`listen_host = "0.0.0.0"` 时，Tenko 会自动用 `127.0.0.1` 连接本机内部 Satori 服务；跨机器场景请显式设置 `satori_host`。
 
+### Entari superusers（异常报告）
+
+Entari 0.18.6 的原生配置字段是“平台名称 → 该平台用户 ID 列表”的
+`basic.superusers` 映射。Tenko 在自己的 `[runtime]` 配置节中提供同形状的单一来源：
+
+```toml
+[runtime]
+superusers = { onebot = ["YOUR_QQ_ID"] }
+```
+
+`onebot` 必须与账号的 Satori `platform` 值一致；ID 可以写成字符串或整数，Tenko
+加载时会统一转换为字符串。运行时会在 Entari 初始化后、加载插件前将这项配置写入
+`EntariConfig.instance.basic.superusers`，异常捕获插件因此可以向这些用户发送报告，
+不需要另外维护 Entari 的 `entari.yml`。`[upgrade].superuser_ids` 仍只控制升级命令的
+权限，两者用途不同。
+
 ### 开发调试模式（仅响应 master）
 
 在真实环境测试时，可以开启开发调试模式，让 Tenko 只处理指定开发者产生的事件：
@@ -169,10 +185,14 @@ group_allowed = await checker.require_group_perm(context, GroupPermission.Active
 ```
 
 当没有提供运行时注册表时，检查器在第一次确实需要数据库读取时才延迟导入旧
-`core.orm.orm`；读取使用 `MemberPerm`、`GroupPerm` 的查询，不执行写入。群消息
-上下文会携带 Satori `Member` 的 `member`、`admin` 或 `owner` 角色；全局黑名单
-优先于群内角色。权限不足由 `require_*` 返回 `False`，由插件决定如何处理，不再
-依赖 Graia 的事件注入异常。
+`core.orm.orm`；读取使用 `MemberPerm`、`GroupPerm` 的查询，不执行写入。数据库可用
+时行为保持不变：已有记录优先，没有群记录时使用旧实现的 `ActiveGroup = 1` 默认值。
+如果 Entari 隔离环境没有旧的 SQLAlchemy/数据库驱动，或数据库连接读取失败，权限层
+会把它视为正常的不可用分支：群权限仍回退到 `ActiveGroup = 1`，成员权限回退到
+运行时注册表或 Satori 群角色，命令继续执行；同一检查器对同一群只记录一次包含群
+ID 和原因的 warning，不会反复刷屏。该降级不要求、也不应通过向 `.venv-entari`
+安装 SQLAlchemy 来解决。权限不足由 `require_*` 返回 `False`，由插件决定如何处理，
+不再依赖 Graia 的事件注入异常。
 
 ### C：插件装载运行时
 

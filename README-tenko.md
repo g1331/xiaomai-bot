@@ -157,7 +157,8 @@ group_allowed = await checker.require_group_perm(context, GroupPermission.Active
 
 ```python
 def register(app, ctx):
-    app.register_on_message(ctx)
+    # 使用宿主提供的 app 与 ctx 注册业务 handler
+    ...
 
 
 def unregister(app, ctx):

@@ -14,6 +14,7 @@ from .config import TenkoConfig
 from .commands import configure_command_prefix
 from .connection import OneBotConnection
 from .events import MessageEventHandler
+from .host.accounts import account_registry
 from .host.plugins import PluginRuntime
 
 
@@ -23,10 +24,12 @@ class TenkoRuntime:
     def __init__(self, config: TenkoConfig) -> None:
         self.config = config
         configure_command_prefix(config.runtime.command_prefix)
+        self.accounts = account_registry
         self.connection = OneBotConnection(config.onebot)
         self.message_handler = MessageEventHandler(
             send_replies=config.runtime.send_replies,
             reply_text=config.runtime.reply_text,
+            account_registry=self.accounts,
         )
         self.app: Entari | None = None
         self.manager: Launart | None = None
@@ -42,12 +45,25 @@ class TenkoRuntime:
             log_level=self.config.runtime.log_level,
             ignore_self_message=True,
         )
+        native_handler = app.handle_event
+        for index, callback in enumerate(app.event_callbacks):
+            if callback == native_handler:
+                app.event_callbacks[index] = self.message_handler.guard(callback)
+                break
+        else:  # pragma: no cover - Entari registers this callback in __init__
+            raise RuntimeError("Entari native event handler is not registered")
         app.register_on(EventType.MESSAGE_CREATED)(self.message_handler.handle)
         app.lifecycle(self._on_lifecycle)
         self.app = app
         return app
 
     async def _on_lifecycle(self, account: Account, state: LoginStatus) -> None:
+        if state in (LoginStatus.ONLINE, LoginStatus.CONNECT, LoginStatus.RECONNECT):
+            self.accounts.register(account, available=state == LoginStatus.ONLINE)
+        elif state in (LoginStatus.DISCONNECT, LoginStatus.OFFLINE):
+            if self.accounts.get(account.self_id) is not None:
+                self.accounts.set_available(account, False)
+
         if state == LoginStatus.ONLINE:
             logger.info("OneBot account {} is online", account.self_id)
         elif state in (LoginStatus.CONNECT, LoginStatus.RECONNECT):

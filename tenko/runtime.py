@@ -13,6 +13,7 @@ from satori.client import Account
 from .config import TenkoConfig
 from .connection import OneBotConnection
 from .events import MessageEventHandler
+from .host.plugins import PluginRuntime
 
 
 class TenkoRuntime:
@@ -27,6 +28,7 @@ class TenkoRuntime:
         )
         self.app: Entari | None = None
         self.manager: Launart | None = None
+        self.plugin_runtime: PluginRuntime | None = None
 
     def build_app(self) -> Entari:
         if self.app is not None:
@@ -75,6 +77,13 @@ class TenkoRuntime:
             "enabled" if self.config.runtime.send_replies else "disabled",
         )
         app = self.build_app()
+        # Entari's native command root and plugin services must be installed
+        # before loading Tenko plugins.  PluginRuntime then discovers the
+        # required plugins from tenko/plugins and delegates their lifecycle to
+        # Entari.
+        app.ensure_manager(manager)
+        self.plugin_runtime = PluginRuntime()
+        await self.plugin_runtime.load_all()
         # The Satori client must start after the server socket is accepting
         # connections. Otherwise its first connection attempt can race Uvicorn
         # and events arriving in that window would not be replayed to a client.

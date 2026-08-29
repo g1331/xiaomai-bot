@@ -42,6 +42,7 @@ class TenkoRuntime:
             send_replies=config.runtime.send_replies,
             reply_text=config.runtime.reply_text,
             account_registry=self.accounts,
+            debug_config=config.debug,
         )
         self.app: Entari | None = None
         self.manager: Launart | None = None

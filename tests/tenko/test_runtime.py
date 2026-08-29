@@ -82,9 +82,13 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
             self.lifecycle_callback = callback
 
     monkeypatch.setattr(runtime_module, "Entari", FakeEntari)
-    runtime = TenkoRuntime(
-        TenkoConfig.from_mapping({"runtime": {"command_prefix": "!"}})
+    config = TenkoConfig.from_mapping(
+        {
+            "runtime": {"command_prefix": "!"},
+            "debug": {"enabled": True, "masters": [20001]},
+        }
     )
+    runtime = TenkoRuntime(config)
 
     try:
         app = runtime.build_app()
@@ -96,5 +100,6 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
             app.registered_message_handler.__func__
             is runtime.message_handler.handle.__func__
         )
+        assert runtime.message_handler.debug_config is config.debug
     finally:
         runtime_module.configure_command_prefix("/")

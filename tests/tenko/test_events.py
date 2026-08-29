@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from satori import (
@@ -16,8 +16,10 @@ from satori import (
 from satori.exception import ActionFailed
 from satori.model import Event
 
+import tenko.events as events_module
 from tenko.events import MessageEventHandler
 from tenko.host.accounts import AccountRegistry
+from tenko.config import DebugConfig
 
 
 class FakeProtocol:
@@ -39,27 +41,102 @@ class FakeAccount:
         self.protocol = FakeProtocol()
 
 
-def make_private_event() -> Event:
+def make_private_event(user_id: str = "20001", text: str = "hello") -> Event:
     return Event(
         type=EventType.MESSAGE_CREATED,
         timestamp=datetime.now(),
         login=Login(platform="onebot", user=User("10001")),
         channel=Channel("private:20001", ChannelType.DIRECT),
-        user=User("20001"),
-        message=MessageObject("30001", "hello"),
+        user=User(user_id),
+        message=MessageObject("30001", text),
     )
 
 
-def make_group_event(group_id: str = "40001") -> Event:
+def make_group_event(
+    group_id: str = "40001", user_id: str = "20001", text: str = "hello"
+) -> Event:
     return Event(
         type=EventType.MESSAGE_CREATED,
         timestamp=datetime.now(),
         login=Login(platform="onebot", user=User("10001")),
         channel=Channel(group_id, ChannelType.TEXT),
         guild=Guild(group_id, "Tenko"),
-        user=User("20001"),
-        message=MessageObject("30001", "hello"),
+        user=User(user_id),
+        message=MessageObject("30001", text),
     )
+
+
+def make_userless_event() -> Event:
+    return Event(
+        type=EventType.GUILD_ADDED,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User("10001")),
+        guild=Guild("40001", "Tenko"),
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "event_factory", [make_private_event, make_group_event], ids=["private", "group"]
+)
+@pytest.mark.parametrize(
+    ("enabled", "user_id", "masters", "should_send"),
+    [
+        (False, "20001", ["20001"], True),
+        (False, "30001", ["20001"], True),
+        (True, "20001", ["20001"], True),
+        (True, "30001", ["20001"], False),
+    ],
+)
+async def test_debug_filter_matrix(
+    event_factory,
+    enabled: bool,
+    user_id: str,
+    masters: list[str],
+    should_send: bool,
+) -> None:
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=True,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=enabled, masters=masters),
+    )
+
+    await handler.handle(account, event_factory(user_id=user_id))
+
+    assert bool(account.protocol.calls) is should_send
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("text", ["hello", "/状态"], ids=["message", "command"])
+async def test_debug_filter_applies_to_non_master_messages_and_commands(
+    text: str,
+) -> None:
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=True,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+    )
+
+    await handler.handle(account, make_group_event(user_id="30001", text=text))
+
+    assert account.protocol.calls == []
+
+
+def test_debug_mode_without_masters_warns(monkeypatch) -> None:
+    warning = Mock()
+    monkeypatch.setattr(events_module.logger, "warning", warning)
+
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True),
+    )
+
+    assert handler.should_skip(FakeAccount(), make_private_event())
+    warning.assert_called_once()
+    assert "masters" in warning.call_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -169,3 +246,42 @@ async def test_entari_event_guard_blocks_only_muted_account_group_pair() -> None
     await guarded(account, other_group_event)
 
     callback.assert_awaited_once_with(account, other_group_event)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "event_factory", [make_private_event, make_group_event], ids=["private", "group"]
+)
+async def test_entari_event_guard_filters_non_master_events(
+    event_factory,
+) -> None:
+    account = FakeAccount()
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+    )
+    guarded = handler.guard(callback)
+    non_master_event = event_factory(user_id="30001")
+    master_event = event_factory(user_id="20001")
+
+    await guarded(account, non_master_event)
+    await guarded(account, master_event)
+
+    callback.assert_awaited_once_with(account, master_event)
+
+
+@pytest.mark.asyncio
+async def test_debug_event_guard_filters_events_without_user_source() -> None:
+    account = FakeAccount()
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+    )
+
+    await handler.guard(callback)(account, make_userless_event())
+
+    callback.assert_not_awaited()

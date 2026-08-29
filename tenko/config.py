@@ -48,6 +48,37 @@ def _boolean(section: Mapping[str, Any], key: str, default: bool) -> bool:
     return value
 
 
+def _string_sequence(
+    section: Mapping[str, Any], key: str, default: tuple[str, ...]
+) -> tuple[str, ...]:
+    value = section.get(key, default)
+    if not isinstance(value, list | tuple):
+        raise ValueError(f"配置项 {key!r} 必须是字符串列表")
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            raise ValueError(f"配置项 {key!r} 的每项必须是非空字符串")
+        normalized.append(item)
+    return tuple(normalized)
+
+
+def _identifier_sequence(
+    section: Mapping[str, Any], key: str, default: tuple[str, ...]
+) -> tuple[str, ...]:
+    value = section.get(key, default)
+    if not isinstance(value, list | tuple):
+        raise ValueError(f"配置项 {key!r} 必须是字符串或整数列表")
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str | int) or isinstance(item, bool):
+            raise ValueError(f"配置项 {key!r} 的每项必须是字符串或整数")
+        item = str(item)
+        if not item:
+            raise ValueError(f"配置项 {key!r} 的每项不能为空")
+        normalized.append(item)
+    return tuple(normalized)
+
+
 def _path(*parts: str) -> str:
     clean_parts = [part.strip("/") for part in parts if part.strip("/")]
     return "/" + "/".join(clean_parts)
@@ -219,15 +250,131 @@ class RuntimeConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class UpgradeConfig:
+    """宿主升级策略配置。
+
+    升级配置独立于旧 Graia 配置。默认策略只检查，不下载或切换制品；这样
+    ``TenkoConfig()`` 在没有额外配置时也不会产生写入或重启副作用。
+    """
+
+    enabled: bool = True
+    source: str = "git_tag"
+    repository: str = "."
+    github_repository: str = ""
+    manifest_url: str = ""
+    github_token: str | None = None
+    asset_name: str | None = None
+    tag_prefix: str = "v"
+    channel: str = "stable"
+    policy: str = "check"
+    current_version: str | None = None
+    config_version: str = "1.0.0"
+    install_root: str = ".tenko/upgrades"
+    config_path: str = "config/tenko.toml"
+    data_dir: str = "data"
+    health_command: tuple[str, ...] = ()
+    launch_command: tuple[str, ...] = ()
+    health_timeout: int = 30
+    check_interval_hours: int = 24
+    superuser_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.source:
+            raise ValueError("upgrade source 不能为空")
+        if self.channel.lower() not in {
+            "stable",
+            "release",
+            "prerelease",
+            "pre-release",
+            "preview",
+            "beta",
+        }:
+            raise ValueError("upgrade channel 必须是 stable 或 prerelease")
+        if self.policy.lower() not in {
+            "check",
+            "check-only",
+            "manual",
+            "download",
+            "auto-download",
+            "install",
+            "auto-install",
+        }:
+            raise ValueError("upgrade policy 必须是 check、download 或 install")
+        if not self.repository:
+            raise ValueError("upgrade repository 不能为空")
+        if not self.tag_prefix:
+            raise ValueError("upgrade tag_prefix 不能为空")
+        if not self.config_version:
+            raise ValueError("upgrade config_version 不能为空")
+        if not self.install_root or not self.config_path or not self.data_dir:
+            raise ValueError("upgrade 路径配置不能为空")
+        if self.health_timeout <= 0:
+            raise ValueError("upgrade health_timeout 必须大于 0")
+        if self.check_interval_hours <= 0:
+            raise ValueError("upgrade check_interval_hours 必须大于 0")
+
+        for name in ("github_token", "asset_name", "current_version"):
+            value = getattr(self, name)
+            if value == "":
+                object.__setattr__(self, name, None)
+
+        object.__setattr__(self, "health_command", tuple(self.health_command))
+        object.__setattr__(self, "launch_command", tuple(self.launch_command))
+        object.__setattr__(self, "superuser_ids", tuple(self.superuser_ids))
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> UpgradeConfig:
+        defaults = cls()
+        return cls(
+            enabled=_boolean(section, "enabled", defaults.enabled),
+            source=_string(section, "source", defaults.source),
+            repository=_string(section, "repository", defaults.repository),
+            github_repository=_string(
+                section, "github_repository", defaults.github_repository
+            ),
+            manifest_url=_string(section, "manifest_url", defaults.manifest_url),
+            github_token=_optional_string(
+                section, "github_token", defaults.github_token
+            ),
+            asset_name=_optional_string(section, "asset_name", defaults.asset_name),
+            tag_prefix=_string(section, "tag_prefix", defaults.tag_prefix),
+            channel=_string(section, "channel", defaults.channel),
+            policy=_string(section, "policy", defaults.policy),
+            current_version=_optional_string(
+                section, "current_version", defaults.current_version
+            ),
+            config_version=_string(section, "config_version", defaults.config_version),
+            install_root=_string(section, "install_root", defaults.install_root),
+            config_path=_string(section, "config_path", defaults.config_path),
+            data_dir=_string(section, "data_dir", defaults.data_dir),
+            health_command=_string_sequence(
+                section, "health_command", defaults.health_command
+            ),
+            launch_command=_string_sequence(
+                section, "launch_command", defaults.launch_command
+            ),
+            health_timeout=_integer(section, "health_timeout", defaults.health_timeout),
+            check_interval_hours=_integer(
+                section, "check_interval_hours", defaults.check_interval_hours
+            ),
+            superuser_ids=_identifier_sequence(
+                section, "superuser_ids", defaults.superuser_ids
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TenkoConfig:
     onebot: OneBotConfig = OneBotConfig()
     runtime: RuntimeConfig = RuntimeConfig()
+    upgrade: UpgradeConfig = UpgradeConfig()
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> TenkoConfig:
         return cls(
             onebot=OneBotConfig.from_mapping(_section(data, "onebot")),
             runtime=RuntimeConfig.from_mapping(_section(data, "runtime")),
+            upgrade=UpgradeConfig.from_mapping(_section(data, "upgrade")),
         )
 
     @classmethod

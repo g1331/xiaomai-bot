@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+from pathlib import Path
 
 from arclet.entari import Entari
 from arclet.letoderea.utils import set_event_loop
@@ -17,6 +18,7 @@ from .events import MessageEventHandler
 from .host.accounts import account_registry
 from .host.actions import action_service
 from .host.plugins import PluginRuntime
+from .host.updater import UpgradeManager, configure_updater
 
 
 class TenkoRuntime:
@@ -28,6 +30,13 @@ class TenkoRuntime:
         self.accounts = account_registry
         self.actions = action_service
         self.actions.configure_capability_overrides(config.onebot.capability_overrides)
+        self.updater = UpgradeManager.from_config(
+            config.upgrade, project_root=Path.cwd()
+        )
+        configure_updater(
+            self.updater,
+            superuser_ids=config.upgrade.superuser_ids,
+        )
         self.connection = OneBotConnection(config.onebot)
         self.message_handler = MessageEventHandler(
             send_replies=config.runtime.send_replies,
@@ -104,6 +113,8 @@ class TenkoRuntime:
         # required plugins from tenko/plugins and delegates their lifecycle to
         # Entari.
         app.ensure_manager(manager)
+        # updater plugin is loaded after this injection, so it can use the same
+        # manager and superuser policy without importing the plugin early.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
         # The Satori client must start after the server socket is accepting

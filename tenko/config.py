@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +53,34 @@ def _path(*parts: str) -> str:
     return "/" + "/".join(clean_parts)
 
 
+def _capability_overrides(
+    section: Mapping[str, Any], key: str = "capability_overrides"
+) -> Mapping[str, Mapping[str, bool]]:
+    value = section.get(key, {})
+    if not isinstance(value, Mapping):
+        raise ValueError(f"配置项 {key!r} 必须是 TOML table")
+
+    normalized: dict[str, dict[str, bool]] = {}
+    for account_id, account_value in value.items():
+        if not isinstance(account_value, Mapping):
+            raise ValueError(
+                f"账号 {account_id!r} 的 capability_overrides 必须是 TOML table"
+            )
+        account_key = str(account_id)
+        if not account_key:
+            raise ValueError("capability_overrides 的账号 ID 不能为空")
+        normalized[account_key] = {}
+        for capability, enabled in account_value.items():
+            if not isinstance(capability, str) or not capability:
+                raise ValueError("capability 名称必须是非空字符串")
+            if type(enabled) is not bool:
+                raise ValueError(
+                    f"账号 {account_key} 的 capability {capability!r} 必须是布尔值"
+                )
+            normalized[account_key][capability] = enabled
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class OneBotConfig:
     """NapCat 反向 WebSocket 与内部 Satori 服务的配置。"""
@@ -67,6 +95,7 @@ class OneBotConfig:
     satori_host: str | None = None
     satori_path: str = "satori"
     satori_token: str | None = "tenko-satori-local"
+    capability_overrides: Mapping[str, Mapping[str, bool]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.listen_host:
@@ -79,6 +108,11 @@ class OneBotConfig:
             raise ValueError("api_timeout 必须大于 0")
         if not self.satori_path:
             raise ValueError("satori_path 不能为空")
+
+        normalized_overrides = _capability_overrides(
+            {"capability_overrides": self.capability_overrides}
+        )
+        object.__setattr__(self, "capability_overrides", normalized_overrides)
 
         if self.access_token == "":
             object.__setattr__(self, "access_token", None)
@@ -152,6 +186,7 @@ class OneBotConfig:
             satori_token=_optional_string(
                 section, "satori_token", defaults.satori_token
             ),
+            capability_overrides=_capability_overrides(section),
         )
 
 

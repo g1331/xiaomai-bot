@@ -15,6 +15,7 @@ from .commands import configure_command_prefix
 from .connection import OneBotConnection
 from .events import MessageEventHandler
 from .host.accounts import account_registry
+from .host.actions import action_service
 from .host.plugins import PluginRuntime
 
 
@@ -25,6 +26,8 @@ class TenkoRuntime:
         self.config = config
         configure_command_prefix(config.runtime.command_prefix)
         self.accounts = account_registry
+        self.actions = action_service
+        self.actions.configure_capability_overrides(config.onebot.capability_overrides)
         self.connection = OneBotConnection(config.onebot)
         self.message_handler = MessageEventHandler(
             send_replies=config.runtime.send_replies,

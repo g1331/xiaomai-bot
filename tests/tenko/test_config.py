@@ -23,6 +23,10 @@ listen_port = 9000
 access_token = "secret"
 satori_host = "127.0.0.1"
 
+[onebot.capability_overrides."10001"]
+member_mute = true
+group_essence = false
+
 [runtime]
 send_replies = true
 reply_text = "收到"
@@ -37,6 +41,9 @@ command_prefix = "!"
     assert config.onebot.reverse_ws_url == "ws://0.0.0.0:9000/onebot/v11/ws"
     assert config.onebot.access_token == "secret"
     assert config.onebot.satori_client_host == "127.0.0.1"
+    assert config.onebot.capability_overrides == {
+        "10001": {"member_mute": True, "group_essence": False}
+    }
     assert config.runtime.send_replies is True
     assert config.runtime.reply_text == "收到"
     assert config.runtime.log_level == "DEBUG"

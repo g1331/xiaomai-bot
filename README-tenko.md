@@ -115,7 +115,7 @@ reply_text = "Tenko 已收到消息。"
 | --- | --- | --- |
 | `tenko/host/accounts.py` 的 `AccountRegistry` | `core/models/response_model/AccountController`，以及 `core/bot.py` 的账号生命周期部分 | 保存 `self_id -> satori.client.Account`、可用状态和群路由；群成员/群列表由宿主显式绑定，不调用 Ariadne API |
 | `tenko/host/perm.py` 的 `Permission`、`PermissionRegistry`、`PermissionChecker` | `core/control.py` 的权限数值策略和 `MemberPerm`/`GroupPerm` 读操作 | 保留 `-1/0/16/32/64/128/256` 成员权限与 `0/1/2/3` 群等级；通过 `MessageContext` 返回 awaitable 布尔检查，不产生 `Depend` 或 `ExecutionStop` |
-| `tenko/host/plugins.py` 的 `PluginRuntime` | `core/models/saya_model.ModulesController` 和 Graia Saya | 扫描 Tenko 插件目录，导入模块并调用 `register(app, ctx)`；只读兼容旧 `modules_data.json` 的开关字段，不写回旧文件 |
+| `tenko/host/plugins.py` 的 `PluginRuntime` | `core/models/saya_model.ModulesController` 和 Graia Saya | 发现 Tenko 插件目录项并转换为 Entari 导入名；加载、卸载、重载、元数据和开关全部交给 Entari 原生机制，只读兼容旧 `modules_data.json` 的状态，不写回旧文件 |
 
 ### A：多账号注册表
 
@@ -152,27 +152,42 @@ group_allowed = await checker.require_group_perm(context, GroupPermission.Active
 
 ### C：插件装载运行时
 
-`PluginRuntime` 默认扫描 `tenko/plugins/` 的直接子项，支持单个 `.py` 文件和带
-`__init__.py` 的插件包。插件只需要提供简单入口：
+`PluginRuntime` 默认发现 `tenko/plugins/` 的直接子项，支持单个 `.py` 文件和带
+`__init__.py` 的插件包，然后把它们转换为 Entari 的导入路径。插件模块不再实现
+Tenko 自己的 `register(app, ctx)` 或 `unregister` 协议，而是直接使用 Entari 的
+插件上下文、元数据和事件监听：
 
 ```python
-def register(app, ctx):
-    # 使用宿主提供的 app 与 ctx 注册业务 handler
+from arclet.entari import MessageCreatedEvent, plugin
+
+
+plugin.metadata(
+    "Tenko 示例插件",
+    version="0.1.0",
+    description="使用 Entari 原生插件上下文注册消息处理器",
+)
+
+
+@plugin.listen(MessageCreatedEvent)
+async def handle_message(event: MessageCreatedEvent):
+    # 使用 Entari 的事件、依赖注入和插件生命周期能力
     ...
-
-
-def unregister(app, ctx):
-    pass
 ```
 
-运行时提供 `discover()`、`load()`、`unload()`、`reload()` 和 `load_all()`；被开关
-过滤的插件不会执行导入或 `register`。插件元数据可用 `metadata.json` 中的
-`default_switch` 指定默认状态。
+`plugin.metadata(...)` 是当前 Entari 版本的原生元数据声明，插件元数据不由
+Tenko 读取或转换。运行时的 `load()`、`load_all()` 和 `reload()` 是异步方法：它们
+调用 Entari 的 `load_plugin()`，重载按 Entari 的原生方式先 `unload_plugin()` 再
+加载；`unload()` 直接调用 Entari 的 `unload_plugin()`。全局开关通过
+`await runtime.enable(name)`、`await runtime.disable(name)` 或
+`await runtime.set_enabled(name, enabled)` 委托给 Entari，不在 Tenko 中维护第二份
+插件生命周期状态。
 
-传入旧 `modules_data.json` 路径后，运行时读取其 `modules` 下的 `available`、
-群 ID 对象中的 `switch`，并兼容旧模块名及 `groups` 嵌套形式。`set_enabled()`
-只建立当前进程内的覆盖；旧文件始终保持只读，因此第二阶段不会改变旧 Saya
-宿主的运行数据。
+传入旧 `modules_data.json` 路径后，适配层只读取其 `modules` 下的 `available` 和
+全局 `switch`，并将明确的旧状态映射到 Entari 的 `enable_plugin()` /
+`disable_plugin()`；旧模块名 `modules.required`、`modules.self_contained` 和
+`modules.third_party` 作为兼容查找名保留。群 ID 对象中的 `switch` 仍可通过
+`is_enabled()` 查询，但不会把单个群的旧开关错误地转换成整个 Entari 插件的全局
+禁用。旧文件始终保持只读。
 
 ### 第二阶段校验
 
@@ -185,8 +200,9 @@ def unregister(app, ctx):
 
 `tests/tenko/test_accounts.py` 覆盖注册/注销、可用性和多账号路由；
 `tests/tenko/test_perm.py` 覆盖权限矩阵、数据库 mock、黑名单和群等级；
-`tests/tenko/test_plugins.py` 覆盖发现、加载/卸载、开关过滤、旧状态只读和重载。
-测试使用临时目录和 mock 账号/数据库，不会启动 NapCat、修改旧状态文件或部署服务。
+`tests/tenko/test_plugins.py` 覆盖目录形状发现、Entari 原生生命周期委托、旧状态到
+原生全局开关的映射、兼容查找名、群级旧开关查询和旧状态只读。测试 mock Entari
+插件机制，使用临时目录，不会启动 NapCat、修改旧状态文件或部署服务。
 
 ## 依赖来源
 

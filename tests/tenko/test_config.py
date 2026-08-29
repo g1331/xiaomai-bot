@@ -34,6 +34,7 @@ send_replies = true
 reply_text = "收到"
 log_level = "DEBUG"
 command_prefix = "!"
+superusers = { onebot = [12345, "67890"] }
 
 [debug]
 enabled = true
@@ -54,6 +55,9 @@ masters = [12345, "67890"]
     assert config.runtime.reply_text == "收到"
     assert config.runtime.log_level == "DEBUG"
     assert config.runtime.command_prefix == "!"
+    assert config.runtime.superusers == {
+        "onebot": ("12345", "67890"),
+    }
     assert config.debug.enabled is True
     assert config.debug.masters == ("12345", "67890")
 

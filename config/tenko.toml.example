@@ -32,6 +32,8 @@ reply_text = "Tenko 已收到消息。"
 log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"
+# Entari superusers：键为平台名称，值为该平台的用户 ID 列表。
+superusers = { onebot = ["YOUR_QQ_ID"] }
 
 [debug]
 # 开启后，Tenko 只处理 masters 中 QQ 号对应用户产生的事件。

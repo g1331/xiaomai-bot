@@ -79,6 +79,23 @@ def _identifier_sequence(
     return tuple(normalized)
 
 
+def _identifier_mapping(
+    section: Mapping[str, Any],
+    key: str,
+    default: Mapping[str, tuple[str, ...]],
+) -> dict[str, tuple[str, ...]]:
+    value = section.get(key, default)
+    if not isinstance(value, Mapping):
+        raise ValueError(f"配置项 {key!r} 必须是平台到 ID 列表的 TOML table")
+
+    normalized: dict[str, tuple[str, ...]] = {}
+    for platform, identifiers in value.items():
+        if not isinstance(platform, str) or not platform:
+            raise ValueError(f"配置项 {key!r} 的平台名称必须是非空字符串")
+        normalized[platform] = _identifier_sequence({key: identifiers}, key, ())
+    return normalized
+
+
 def _path(*parts: str) -> str:
     clean_parts = [part.strip("/") for part in parts if part.strip("/")]
     return "/" + "/".join(clean_parts)
@@ -229,6 +246,7 @@ class RuntimeConfig:
     reply_text: str = "Tenko 已收到消息。"
     log_level: str = "INFO"
     command_prefix: str = "/"
+    superusers: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.reply_text:
@@ -237,6 +255,11 @@ class RuntimeConfig:
             raise ValueError("log_level 不能为空")
         if not self.command_prefix:
             raise ValueError("command_prefix 不能为空")
+        object.__setattr__(
+            self,
+            "superusers",
+            _identifier_mapping({"superusers": self.superusers}, "superusers", {}),
+        )
 
     @classmethod
     def from_mapping(cls, section: Mapping[str, Any]) -> RuntimeConfig:
@@ -246,6 +269,7 @@ class RuntimeConfig:
             reply_text=_string(section, "reply_text", defaults.reply_text),
             log_level=_string(section, "log_level", defaults.log_level),
             command_prefix=_string(section, "command_prefix", defaults.command_prefix),
+            superusers=_identifier_mapping(section, "superusers", defaults.superusers),
         )
 
 

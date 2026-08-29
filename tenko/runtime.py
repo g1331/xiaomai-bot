@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import signal
+from collections.abc import Mapping
 from pathlib import Path
 
 from arclet.entari import Entari
+from arclet.entari.config import EntariConfig
 from arclet.letoderea.utils import set_event_loop
 from launart import Launart
 from loguru import logger
@@ -19,6 +21,16 @@ from .host.accounts import account_registry
 from .host.actions import action_service
 from .host.plugins import PluginRuntime
 from .host.updater import UpgradeManager, configure_updater
+
+
+def _configure_entari_superusers(
+    superusers: Mapping[str, tuple[str, ...]],
+) -> None:
+    """把 Tenko 的平台用户映射写入 Entari 原生 basic 配置。"""
+
+    EntariConfig.instance.basic.superusers = {
+        platform: list(user_ids) for platform, user_ids in superusers.items()
+    }
 
 
 class TenkoRuntime:
@@ -58,6 +70,7 @@ class TenkoRuntime:
             log_level=self.config.runtime.log_level,
             ignore_self_message=True,
         )
+        _configure_entari_superusers(self.config.runtime.superusers)
         configure_command_prefix(self.config.runtime.command_prefix)
         native_handler = app.handle_event
         for index, callback in enumerate(app.event_callbacks):

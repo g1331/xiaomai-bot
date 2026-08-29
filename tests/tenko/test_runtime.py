@@ -123,17 +123,24 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
     monkeypatch.setattr(runtime_module, "Entari", FakeEntari)
     config = TenkoConfig.from_mapping(
         {
-            "runtime": {"command_prefix": "!"},
+            "runtime": {
+                "command_prefix": "!",
+                "superusers": {"onebot": [12345, "67890"]},
+            },
             "debug": {"enabled": True, "masters": [20001]},
         }
     )
     runtime = TenkoRuntime(config)
+    original_superusers = (
+        dict(EntariConfig.instance.basic.superusers) if EntariConfig._inited else None
+    )
 
     try:
         app = runtime.build_app()
 
         assert EntariConfig.instance.basic.prefix == []
         assert EntariConfig.instance.basic.nickname == ""
+        assert EntariConfig.instance.basic.superusers == {"onebot": ["12345", "67890"]}
         assert app.registered_message_handler.__self__ is runtime.message_handler
         assert (
             app.registered_message_handler.__func__
@@ -142,3 +149,4 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
         assert runtime.message_handler.debug_config is config.debug
     finally:
         runtime_module.configure_command_prefix("/")
+        EntariConfig.instance.basic.superusers = original_superusers or {}

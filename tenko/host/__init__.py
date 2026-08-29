@@ -8,6 +8,7 @@ from .perm import (
     PermissionChecker,
     PermissionRegistry,
 )
+from .plugins import PluginInfo, PluginInterfaceError, PluginRuntime
 
 __all__ = [
     "AccountRegistry",
@@ -16,4 +17,7 @@ __all__ = [
     "Permission",
     "PermissionChecker",
     "PermissionRegistry",
+    "PluginInfo",
+    "PluginInterfaceError",
+    "PluginRuntime",
 ]

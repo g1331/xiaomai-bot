@@ -4,17 +4,22 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
+from graia.amnesia.builtins.aiohttp import AiohttpClientService
+from launart import Launart
 
-from tenko.config import TenkoConfig
 from tenko import runtime as runtime_module
+from tenko.config import TenkoConfig
+from tenko.connection import OneBotConnection
 from tenko.runtime import TenkoRuntime
 
 
 @pytest.mark.asyncio
-async def test_run_async_installs_entari_manager_before_loading_plugins(
+async def test_run_async_loads_plugins_before_starting_entari(
     monkeypatch,
 ) -> None:
+    lifecycle: list[str] = []
     connection = Mock()
     connection.ready_service.id = "tenko.ready"
     monkeypatch.setattr(
@@ -28,24 +33,58 @@ async def test_run_async_installs_entari_manager_before_loading_plugins(
     app.ensure_manager = Mock()
     app.run_async = AsyncMock()
     runtime.build_app = Mock(return_value=app)
-    runtime.connection.install = Mock()
+    runtime.connection.install = Mock(
+        side_effect=lambda _: lifecycle.append("connection")
+    )
 
     plugin_runtime = Mock()
-    plugin_runtime.load_all = AsyncMock(return_value={})
+
+    async def load_all():
+        lifecycle.append("plugins")
+        return {}
+
+    plugin_runtime.load_all = AsyncMock(side_effect=load_all)
     monkeypatch.setattr(runtime_module, "Launart", Mock(return_value=manager))
     monkeypatch.setattr(
         runtime_module, "PluginRuntime", Mock(return_value=plugin_runtime)
     )
 
+    async def run_app(*args, **kwargs):
+        lifecycle.append("app")
+
+    app.run_async.side_effect = run_app
+
     await runtime.run_async()
 
-    app.ensure_manager.assert_called_once_with(manager)
+    app.ensure_manager.assert_not_called()
     connection.install.assert_called_once_with(manager)
     plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
     app.run_async.assert_awaited_once_with(
         manager,
         stop_signal=(runtime_module.signal.SIGINT, runtime_module.signal.SIGTERM),
+    )
+    assert lifecycle == ["connection", "plugins", "app"]
+    assert app.required == {"tenko.ready"}
+
+
+def test_entari_run_async_registration_keeps_connection_components(
+    entari_plugin_host,
+) -> None:
+    app = entari_plugin_host
+    assert isinstance(app, Entari)
+    connection = OneBotConnection(TenkoConfig().onebot)
+    manager = Launart()
+
+    connection.install(manager)
+    manager.add_component(AiohttpClientService())
+    manager.add_component(app)
+
+    assert manager.get_component(Entari) is app
+    assert manager.get_component(AiohttpClientService).id == "http.client/aiohttp"
+    assert manager.get_component("satori-python.server") is connection.server
+    assert (
+        manager.get_component(connection.ready_service.id) is connection.ready_service
     )
 
 

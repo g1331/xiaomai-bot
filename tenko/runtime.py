@@ -109,13 +109,11 @@ class TenkoRuntime:
             "enabled" if self.config.runtime.send_replies else "disabled",
         )
         app = self.build_app()
-        # Entari's native command root and plugin services must be installed
-        # before loading Tenko plugins.  PluginRuntime then discovers the
-        # required plugins from tenko/plugins and delegates their lifecycle to
-        # Entari.
-        app.ensure_manager(manager)
-        # updater plugin is loaded after this injection, so it can use the same
-        # manager and superuser policy without importing the plugin early.
+        # PluginRuntime.load_all() only imports Tenko plugins through Entari's
+        # load_plugin API, so it does not need a Launart component registration.
+        # Keep it before run_async: Entari's documented startup sequence loads
+        # plugins before run(), which makes their commands and event handlers
+        # available before Launart starts.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
         # The Satori client must start after the server socket is accepting

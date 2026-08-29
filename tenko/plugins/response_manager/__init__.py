@@ -28,7 +28,7 @@ permission_checker = PermissionChecker()
 
 def _mute_label(registry: AccountRegistry, account_id: str, group_id: str) -> str:
     if not registry.is_muted(account_id, group_id):
-        return "可用"
+        return "未禁言"
     until = registry.mute_until(account_id, group_id)
     return "禁言（永久）" if until is None else f"禁言至 {until.isoformat()}"
 

@@ -74,7 +74,7 @@ def test_query_format_includes_route_availability_and_mute_state(loaded_plugin) 
     assert "群40001响应账号" in group_text
     assert "响应类型: 指定(10001)" in group_text
     assert "10001: 在线，禁言至" in group_text
-    assert "10002: 离线，可用" in group_text
+    assert "10002: 离线，未禁言" in group_text
     assert "在线BOT列表:1/2" in online_text
     assert "10001: 在线" in online_text
     assert "10002: 离线" in online_text

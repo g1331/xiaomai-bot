@@ -18,6 +18,13 @@ satori_host = "127.0.0.1"
 satori_path = "satori"
 satori_token = "tenko-satori-local"
 
+# 可选：按账号覆盖 action service 的能力学习结果。键为逻辑能力名；未配置的能力
+# 仍采用“首次调用成功/失败”探测。NapCat 扩展的真实失败语义待第⑧步实测确认。
+# [onebot.capability_overrides."10001"]
+# member_mute = true
+# group_mute = true
+# group_essence = false
+
 [runtime]
 # 安全起见默认只打印收到的消息，不发送 OneBot action。
 send_replies = false

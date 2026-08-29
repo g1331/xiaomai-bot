@@ -225,7 +225,7 @@ Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
 | --- | --- | --- |
 | `tenko/plugins/perm_manager` | `modules/required/perm_manager` | 复用 `MemberPerm`、`GroupPerm`、`GroupSetting` 的权限管理、查询和成员权限同步；使用 `PermissionChecker` 做统一权限检查。成员加入、退群和管理员角色变化分别映射为 `GuildMemberAddedEvent`、`GuildMemberRemovedEvent`、`GuildMemberUpdatedEvent`。OneBot/Satori 当前无法确认的成员管理能力保留 `InternalEvent` 日志，并标记“待 NapCat capability 确认”。 |
 | `tenko/plugins/helper` | `modules/required/helper` | 使用 Entari/Alconna 当前注册命令表生成帮助和编号详情，不复制旧的文本解析或图片菜单生成逻辑。 |
-| `tenko/plugins/group_manager` | `modules/required/group_manager` | 仅提供 `群设置` 的群设置只读查询，读取旧 `GroupSetting`、`GroupPerm` 表；禁言、解禁、撤回、加精、全体禁言及邀请等平台动作留给第⑦步 capability-aware service。 |
+| `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁和踢出；群精华/退群仍只在宿主动作层保留扩展入口。 |
 | `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供文本状态查询，报告当前会话和已注册 Entari 插件数量；不再依赖旧的进程监控、图片渲染或 Ariadne 对象。 |
 | `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送 Satori 文本报告；不复制旧的 Graia 异常注入和图片报告路径。 |
 
@@ -331,6 +331,101 @@ Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` �
 
 插件只读取 `account_registry`，没有迁移旧版 `设定响应`、`指定BOT` 的运行时
 切换逻辑，也没有导入旧 `modules/required/response_manager`。
+
+## 批次 C：平台动作层与公告迁移
+
+### capability-aware action service
+
+`tenko/host/actions.py` 的 `ActionService` 是管理动作的唯一宿主入口。插件只传递
+群、成员、消息和业务时长，不拼接 OneBot JSON，也不直接调用 OneBot action。标准
+动作使用当前独立环境（`.venv-entari`）中 `satori.client.protocol.ApiProtocol`
+的原生方法，已安装的 OneBot 11 adapter 再负责协议转换：
+
+| Tenko 服务方法 | Satori 原生方法 | OneBot 11 action / 说明 |
+| --- | --- | --- |
+| `mute_member(..., duration)` | `guild_member_mute` | `set_group_ban`；服务时长为秒，`0` 表示解禁 |
+| `mute_group(..., enabled)` | `channel_mute` | `set_group_whole_ban`；全体禁言是独立 action，不复用单人禁言 action |
+| `delete_message` | `message_delete` | `delete_msg`；消息 ID 按 OneBot 标准转为整数 |
+| `kick_member` | `guild_member_kick` | `set_group_kick`；`permanent` 映射标准 `reject_add_request` |
+| `send_group_message` | `send_message` | 由 adapter 的消息创建路径发出群消息，并接入发送失败观察点 |
+| `set_essence`、`leave_group` | `protocol.internal` | NapCat/OneBot 扩展入口；具体失败回执仍“待第⑧步 NapCat 实测确认” |
+
+OneBot 11 没有标准 capability 查询 action。`get_version_info` 只能识别实现方，
+不能证明某个扩展 action 或当前账号权限可用；Satori 0.18.6/已安装 adapter 也没有
+提供逐 action 的类型化 capability 列表。因此 Tenko 使用账号×能力的三态懒探测：
+初始为未知，首次成功记为可用，首次抛出异常或收到 `status != "ok"` / `retcode != 0`
+的回执记为不可用，后续调用会显式抛出 `ActionCapabilityUnavailable` 并记录日志。
+配置覆盖优先于学习结果，示例为：
+
+```toml
+[onebot.capability_overrides."10001"]
+member_mute = true
+group_mute = true
+group_essence = false
+```
+
+失败记录保留账号、逻辑能力、实际 action、`status`、`retcode`、`data`、`message`、
+`wording` 和 `echo`，供日志和测试读取；群发送失败还会调用
+`AccountRegistry.observe_send_failure()`，使账号×群禁言状态机继续生效。NapCat 官方
+API 页面列出标准动作和扩展动作，OneBot 11 WebSocket 回执规范定义了
+`status/retcode/data/echo` 字段；NapCat 实际失败 retcode 与 `message/wording` 组合
+在本批次只作为结构化字段保留，具体组合“待第⑧步 NapCat 实测确认”。
+
+协议依据：
+
+- OneBot 11 [公共 API 定义](https://github.com/botuniverse/onebot-11/blob/master/api/public.md)；
+- OneBot 11 [反向 WebSocket 通信与回执](https://github.com/botuniverse/onebot-11/blob/master/communication/ws.md)；
+- NapCat [OneBot API 列表](https://napneko.github.io/onebot/api)；
+- Entari [官方教程](https://arclet.top/tutorial/entari/)。
+
+Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名、参数单位、内部路由和
+异常传递以安装环境 `.venv-entari` 的 `arclet.entari`、`satori` 和
+`satori.adapters.onebot11` 实际源码确认；这一回退边界在宿主代码 docstring 中明确
+标注为“按源码确认”。
+
+### 群管理命令
+
+`tenko/plugins/group_manager/` 的管理命令全部使用全局 `/` 前缀，并经过
+`ActionService.authorize()`（内部调用 `PermissionChecker`）。它保留旧
+`core.control.Permission` 的 `GroupAdmin=32`、`GroupOwner=64`、`BotAdmin=128` 和
+`Master=256` 数值语义：
+
+- `/禁言 [@成员|成员ID] [分钟] [-t <分钟>]`：默认 2 分钟，范围 `1..43200`；进入
+  action service 后转换成标准秒数；
+- `/解禁 [@成员|成员ID]`：也支持回复目标消息；
+- `/全体禁言`、`/全体解禁`；
+- `/撤回`：必须回复消息，使用 Satori `Quote.id`；
+- `/踢出 [@成员|成员ID]`：也支持回复目标消息。
+
+目标为机器人自身或已知管理权限成员时，插件会在发出动作前拦截；平台返回的权限
+错误仍会作为逐条动作失败返回，不会伪装成成功。
+
+### announcement 迁移
+
+`tenko/plugins/announcement/` 注册 `/公告 <功能名> <内容...> [-t <间隔分钟>]`。
+它通过 `PluginRuntime.is_enabled()` 只读查询旧状态中的
+`modules -> groups -> switch`，按 `AccountRegistry` 的群路由每群选择一个可用账号，
+然后通过 `ActionService.send_group_message()` 发送。每个群都会得到一个
+`PushResult`，状态包括成功、功能未开启、账号不可用、账号在群内禁言、能力不可用和
+动作失败；这些结果会汇总返回，避免静默丢弃目标。发送前的 `is_muted(account, group)`
+检查与发送失败后的状态观察都使用现有账号×群禁言状态机。
+
+旧仓库事实与任务描述存在一处边界差异：当前 `core/orm/tables.py` 没有群-功能开关
+表，旧实现实际由 `ModulesController` 维护 `modules_data.json`。因此本批次沿用该
+JSON 契约的只读适配，而不是在 `.venv-entari` 中导入旧 ORM 或调用会写回状态的旧
+控制器方法；真实数据库/部署数据验证仍“待第⑧步真实数据库验证”。
+
+### 批次 C 校验
+
+新增测试覆盖 action service 的标准/扩展动作和 OneBot 失败回执、能力锁定与显式覆盖；
+group_manager 的全局前缀、目标解析、时长边界、权限拦截和回复撤回；announcement
+的开关/账号/禁言预检、逐目标推送、间隔、失败结果和权限拦截。插件目录中不包含裸
+OneBot action 名称，所有平台动作都经过宿主服务。
+
+```bash
+./.venv-entari/bin/ruff check .
+./.venv-entari/bin/python -m pytest tests/tenko -q
+```
 
 ## 依赖来源
 

@@ -46,6 +46,7 @@ class MessageContext:
     message_id: str
     text: str
     image_urls: tuple[str, ...]
+    member_role: str | None = None
 
     @classmethod
     def from_event(cls, event: Event) -> MessageContext:
@@ -85,7 +86,24 @@ class MessageContext:
             message_id=event.message.id,
             text=text,
             image_urls=image_urls,
+            member_role=(
+                _member_role(event.member) if event.member is not None else None
+            ),
         )
+
+
+def _member_role(member: object) -> str | None:
+    """把 Satori Member 的标准角色 ID 映射为 Tenko 权限角色。"""
+
+    for role in getattr(member, "roles", ()):
+        role_id = _value(getattr(role, "id", "")).lower()
+        if role_id in {"owner", "admin", "member"}:
+            return role_id
+        if role_id in {"administrator", "管理员"}:
+            return "admin"
+        if role_id in {"群主"}:
+            return "owner"
+    return None
 
 
 def is_message_created(event: Event) -> bool:

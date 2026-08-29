@@ -271,8 +271,9 @@ command_prefix = "/"
 - Entari 的 `arclet/entari/command/provider.py:40-63,68-99` 会在命令解析前
   消费 `EntariConfig.instance.basic.prefix`；`command/plugin.py:55-67` 默认
   启用这一步，`config/model.py:85-93` 定义了该配置。若同时设置两层，`/` 会
-  被消费两次，Alconna 将看不到它。因此 Tenko 在同一个集中接缝中清空 Entari
-  的消息级前缀预处理，只保留 Alconna 的严格命令头匹配。
+  被消费两次，Alconna 将看不到它；nickname 也会绕过 `/` 规则。因此 Tenko 在
+  同一个集中接缝中清空 Entari 的消息级前缀和 nickname 预处理，只保留 Alconna
+  的严格命令头匹配。
 
 这样裸词不会触发，`/帮助x` 和 `/ 帮助` 也不会被当成同一命令；参数本身由
 Alconna 继续负责类型和范围解析，helper 对越界编号返回“编号不在范围内~”。

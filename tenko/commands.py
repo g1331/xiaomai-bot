@@ -29,3 +29,4 @@ def configure_command_prefix(prefix: str = DEFAULT_COMMAND_PREFIX) -> None:
 
     if EntariConfig._inited:
         EntariConfig.instance.basic.prefix = []
+        EntariConfig.instance.basic.nickname = ""

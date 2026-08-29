@@ -64,6 +64,7 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
             if not EntariConfig._inited:
                 EntariConfig(Path("/tmp/tenko-runtime-test.yml"))
             EntariConfig.instance.basic.prefix = ["!"]
+            EntariConfig.instance.basic.nickname = "Tenko"
             self.event_callbacks = [self.handle_event]
             self.registered_message_handler = None
 
@@ -89,6 +90,7 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
         app = runtime.build_app()
 
         assert EntariConfig.instance.basic.prefix == []
+        assert EntariConfig.instance.basic.nickname == ""
         assert app.registered_message_handler.__self__ is runtime.message_handler
         assert (
             app.registered_message_handler.__func__

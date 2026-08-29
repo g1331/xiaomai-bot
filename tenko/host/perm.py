@@ -1,16 +1,64 @@
 from __future__ import annotations
 
 import inspect
+import sqlite3
 from collections.abc import Iterable
 from enum import IntEnum
 from typing import Any
 
 from ..context import MessageContext
+from loguru import logger
 
 # Deliberately left unset at import time. Tests and a host bootstrapper may inject
 # a reader here; the normal path imports core.orm only when a database lookup is
 # actually needed.
 orm: Any | None = None
+
+_DATABASE_IMPORT_ROOTS = (
+    "sqlalchemy",
+    "core.orm",
+    "aiosqlite",
+    "asyncpg",
+    "aiomysql",
+    "psycopg2",
+)
+_SQLALCHEMY_CONNECTION_ERRORS = {
+    "DisconnectionError",
+    "InterfaceError",
+    "NoSuchModuleError",
+    "OperationalError",
+    "TimeoutError",
+}
+
+
+def _is_database_unavailable(error: BaseException) -> bool:
+    """判断异常是否属于数据库依赖/连接不可用，而不是业务逻辑错误。"""
+
+    if isinstance(error, ImportError):
+        module_name = getattr(error, "name", None)
+        if module_name and any(
+            module_name == root or module_name.startswith(f"{root}.")
+            for root in _DATABASE_IMPORT_ROOTS
+        ):
+            return True
+        message = str(error)
+        return "No module named 'sqlalchemy'" in message or (
+            "sqlalchemy" in message and "cannot import" in message
+        )
+
+    if isinstance(
+        error, ConnectionError | TimeoutError | OSError | sqlite3.OperationalError
+    ):
+        return True
+
+    for error_type in type(error).__mro__:
+        if error_type.__module__ != "sqlalchemy.exc":
+            continue
+        if error_type.__name__ in _SQLALCHEMY_CONNECTION_ERRORS:
+            return True
+        if error_type.__name__ == "DBAPIError":
+            return bool(getattr(error, "connection_invalidated", False))
+    return False
 
 
 class Permission(IntEnum):
@@ -156,6 +204,9 @@ class PermissionChecker:
         self._legacy_database = database is None and registry is None and orm is None
         self._database = database if database is not None else orm
         self._bot_admins_from_database: set[str] | None = None
+        self._database_unavailable = False
+        self._database_failure_reason: str | None = None
+        self._database_warning_groups: set[str] = set()
 
     def _get_database(self) -> Any:
         if self._database is None and self._legacy_database:
@@ -188,6 +239,25 @@ class PermissionChecker:
                 )
         return (kind, *values)
 
+    def _warn_database_fallback(self, group_id: str | int) -> None:
+        normalized_group_id = _key(group_id)
+        if normalized_group_id in self._database_warning_groups:
+            return
+        self._database_warning_groups.add(normalized_group_id)
+        reason = self._database_failure_reason or "数据库读取失败"
+        logger.warning(
+            f"权限数据库不可用，群 {normalized_group_id} 回退到默认权限等级 "
+            f"{int(GroupPermission.ActiveGroup)}；原因：{reason}"
+        )
+
+    def _record_database_failure(
+        self, group_id: str | int, error: BaseException
+    ) -> None:
+        self._database_unavailable = True
+        if self._database_failure_reason is None:
+            self._database_failure_reason = f"{type(error).__name__}: {error}"
+        self._warn_database_fallback(group_id)
+
     async def _fetch_one(self, statement: object) -> object | None:
         fetch_one = getattr(self._get_database(), "fetch_one")
         result = fetch_one(statement)
@@ -208,22 +278,53 @@ class PermissionChecker:
     async def _database_member_level(
         self, group_id: str | int, user_id: str | int
     ) -> int | None:
-        result = await self._fetch_one(
-            self._statement(
-                "member_perm", _database_key(group_id), _database_key(user_id)
+        if self._database_unavailable:
+            self._warn_database_fallback(group_id)
+            return None
+        try:
+            result = await self._fetch_one(
+                self._statement(
+                    "member_perm", _database_key(group_id), _database_key(user_id)
+                )
             )
-        )
+        except Exception as error:
+            if not _is_database_unavailable(error):
+                raise
+            self._record_database_failure(group_id, error)
+            return None
         return _level(result)
 
     async def _database_group_level(self, group_id: str | int) -> int | None:
-        result = await self._fetch_one(
-            self._statement("group_perm", _database_key(group_id))
-        )
+        if self._database_unavailable:
+            self._warn_database_fallback(group_id)
+            return GroupPermission.ActiveGroup
+        try:
+            result = await self._fetch_one(
+                self._statement("group_perm", _database_key(group_id))
+            )
+        except Exception as error:
+            if not _is_database_unavailable(error):
+                raise
+            self._record_database_failure(group_id, error)
+            # This is the old core/control.py behavior for a group without a
+            # GroupPerm row: an unavailable database has the same permission
+            # semantics as that missing row, so commands remain usable.
+            return GroupPermission.ActiveGroup
         return _level(result)
 
     async def _database_bot_admin_ids(self) -> set[str]:
+        if self._database_unavailable:
+            self._warn_database_fallback(0)
+            return self._bot_admins_from_database or set()
         if self._bot_admins_from_database is None:
-            rows = await self._fetch_all(self._statement("bot_admins"))
+            try:
+                rows = await self._fetch_all(self._statement("bot_admins"))
+            except Exception as error:
+                if not _is_database_unavailable(error):
+                    raise
+                self._bot_admins_from_database = set()
+                self._record_database_failure(0, error)
+                return self._bot_admins_from_database
             self._bot_admins_from_database = {
                 _key(value) for row in rows if (value := _scalar(row)) is not None
             }
@@ -271,6 +372,8 @@ class PermissionChecker:
             return GroupPermission.ActiveGroup
         group_id = context.channel_id
         if self._database is not None or self._legacy_database:
+            # 数据库可用时保持记录优先的原有行为；数据库不可用时，读取路径
+            # 返回旧实现“无群记录”的 ActiveGroup 默认值，命令继续正常执行。
             database_level = await self._database_group_level(group_id)
             if database_level is not None:
                 return database_level

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import builtins
 from dataclasses import dataclass, field
 from typing import Literal
+from unittest.mock import Mock
 
 import pytest
 
+import tenko.host.perm as perm_module
 from tenko.context import MessageContext
 from tenko.host.perm import (
     GroupPermission,
@@ -110,6 +113,50 @@ async def test_database_levels_override_context_defaults_and_are_read_only() -> 
     assert not any(
         query[0] in {"add", "update", "delete"} for query in database.queries
     )
+
+
+@pytest.mark.asyncio
+async def test_missing_sqlalchemy_uses_default_group_permission_and_warns_once(
+    monkeypatch,
+) -> None:
+    real_import = builtins.__import__
+
+    def missing_sqlalchemy(name, *args, **kwargs):
+        if name == "sqlalchemy":
+            raise ModuleNotFoundError("No module named 'sqlalchemy'", name="sqlalchemy")
+        return real_import(name, *args, **kwargs)
+
+    warning = Mock()
+    monkeypatch.setattr(builtins, "__import__", missing_sqlalchemy)
+    monkeypatch.setattr(perm_module.logger, "warning", warning)
+
+    checker = PermissionChecker()
+    context = make_context()
+
+    assert await checker.require_group_perm(context, GroupPermission.ActiveGroup)
+    assert not await checker.require_group_perm(context, GroupPermission.VipGroup)
+    assert await checker.get_group_perm(context) == GroupPermission.ActiveGroup
+
+    warning.assert_called_once()
+    message = warning.call_args.args[0]
+    assert "10001" in message
+    assert "sqlalchemy" in message
+
+
+@pytest.mark.asyncio
+async def test_non_database_import_errors_are_not_swallowed(monkeypatch) -> None:
+    checker = PermissionChecker(database=object())
+
+    def fail_statement(*_args):
+        raise ModuleNotFoundError(
+            "No module named 'unrelated_dependency'",
+            name="unrelated_dependency",
+        )
+
+    monkeypatch.setattr(checker, "_statement", fail_statement)
+
+    with pytest.raises(ModuleNotFoundError, match="unrelated_dependency"):
+        await checker.get_group_perm(make_context())
 
 
 @pytest.mark.asyncio

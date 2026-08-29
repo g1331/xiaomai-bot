@@ -244,6 +244,14 @@ dev = [
     "pytest-asyncio>=1.0.0",
     "ruff>=0.11.13",
 ]
+entari = [
+    "arclet-entari==0.18.6",
+    "satori-python-adapter-onebot11==0.5.0",
+    "satori-python-client==1.3.7",
+    "satori-python-core==1.3.9.post1",
+    "satori-python-server==1.3.7",
+    "tomli==2.2.1",
+]
 
 # 配置 Ruff 的 PyUpgrade 功能（Python 版本兼容性优化）
 [tool.ruff.lint.pyupgrade]

@@ -1,0 +1,25 @@
+# Tenko 第一阶段配置示例。
+# 复制为 config/tenko.toml 后按 NapCat 实际地址修改；不要把真实 token 提交到仓库。
+
+[onebot]
+# Tenko 监听 NapCat 反向 WebSocket 的地址。
+listen_host = "127.0.0.1"
+listen_port = 8080
+reverse_ws_prefix = "/"
+reverse_ws_path = "onebot/v11"
+reverse_ws_endpoint = "ws"
+
+# NapCat 配置了 token 时，在这里填写相同 token；本地无鉴权时可留空字符串。
+access_token = "replace-with-napcat-token"
+api_timeout = 60
+
+# 这是 Tenko 内部的 Satori WebSocket，不是 NapCat 的连接地址。
+satori_host = "127.0.0.1"
+satori_path = "satori"
+satori_token = "tenko-satori-local"
+
+[runtime]
+# 安全起见默认只打印收到的消息，不发送 OneBot action。
+send_replies = false
+reply_text = "Tenko 已收到消息。"
+log_level = "INFO"

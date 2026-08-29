@@ -1,26 +1,30 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from tenko.context import MessageContext
-from tenko.host.plugins import PluginInterfaceError, PluginRuntime
+from tenko.host import plugins as plugin_host
+from tenko.host.plugins import PluginRuntime
 
 
-def write_plugin(
-    plugin_dir: Path,
-    name: str,
-    source: str,
-    *,
-    metadata: dict | None = None,
-) -> None:
-    path = plugin_dir / name
-    path.mkdir(parents=True, exist_ok=True)
-    (path / "__init__.py").write_text(source, encoding="utf-8")
-    if metadata is not None:
-        (path / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
+@dataclass
+class FakePlugin:
+    id: str
+    is_available: bool = True
+
+
+def make_plugin_dir(tmp_path: Path) -> Path:
+    plugin_dir = tmp_path / "plugins"
+    plugin_dir.mkdir()
+    (plugin_dir / "package_plugin").mkdir()
+    (plugin_dir / "package_plugin" / "__init__.py").write_text("", encoding="utf-8")
+    (plugin_dir / "file_plugin.py").write_text("", encoding="utf-8")
+    return plugin_dir
 
 
 def make_group_context(group_id: str) -> MessageContext:
@@ -37,130 +41,125 @@ def make_group_context(group_id: str) -> MessageContext:
     )
 
 
-def test_discover_packages_and_python_modules(tmp_path: Path) -> None:
-    plugin_dir = tmp_path / "plugins"
-    plugin_dir.mkdir()
-    write_plugin(plugin_dir, "package_plugin", "def register(app, ctx): pass\n")
-    (plugin_dir / "file_plugin.py").write_text(
-        "def register(app, ctx): pass\n", encoding="utf-8"
+def test_discover_plugin_shapes_without_reading_plugin_metadata(
+    tmp_path: Path,
+) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
+    (plugin_dir / "package_plugin" / "metadata.json").write_text(
+        "{not valid json", encoding="utf-8"
     )
     (plugin_dir / "not_a_plugin").mkdir()
     (plugin_dir / "_private.py").write_text("", encoding="utf-8")
 
     runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
 
-    assert [info.name for info in runtime.discover()] == [
-        "file_plugin",
-        "package_plugin",
-    ]
+    infos = runtime.discover()
+
+    assert [info.name for info in infos] == ["file_plugin", "package_plugin"]
+    assert infos[0].qualified_name == "tenko.plugins.file_plugin"
+    assert "modules.self_contained.file_plugin" in infos[0].lookup_names
 
 
-def test_load_and_unload_call_plugin_lifecycle(tmp_path: Path) -> None:
-    plugin_dir = tmp_path / "plugins"
-    plugin_dir.mkdir()
-    write_plugin(
-        plugin_dir,
-        "lifecycle",
-        """
-def register(app, ctx):
-    app.append(("register", ctx))
+@pytest.mark.asyncio
+async def test_lifecycle_delegates_to_entari(monkeypatch, tmp_path: Path) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
+    loaded = FakePlugin("tenko.plugins.file_plugin")
+    load_plugin = Mock(return_value=loaded)
+    unload_plugin = Mock(return_value=True)
+    enable_plugin = AsyncMock(return_value=True)
+    disable_plugin = AsyncMock(return_value=True)
+    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin)
+    monkeypatch.setattr(plugin_host, "unload_plugin", unload_plugin)
+    monkeypatch.setattr(plugin_host, "enable_plugin", enable_plugin)
+    monkeypatch.setattr(plugin_host, "disable_plugin", disable_plugin)
 
-def unregister(app, ctx):
-    app.append(("unregister", ctx))
-""",
-    )
-    calls: list[tuple[str, object]] = []
-    context = object()
-    runtime = PluginRuntime(
-        plugin_dir,
-        app=calls,
-        context=context,
-        legacy_state_path=None,
-    )
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
 
-    module = runtime.load("lifecycle")
-
-    assert module is not None
-    assert calls == [("register", context)]
-    assert runtime.is_loaded("lifecycle")
-    assert runtime.unload("lifecycle")
-    assert calls == [("register", context), ("unregister", context)]
-    assert not runtime.is_loaded("lifecycle")
-    assert runtime.unload("lifecycle") is False
+    assert await runtime.load("file_plugin") is loaded
+    assert load_plugin.call_args.args == ("tenko.plugins.file_plugin",)
+    assert runtime.unload("file_plugin")
+    assert unload_plugin.call_args.args == ("tenko.plugins.file_plugin",)
+    assert await runtime.enable("file_plugin")
+    assert await runtime.disable("file_plugin")
+    enable_plugin.assert_awaited_once_with("tenko.plugins.file_plugin")
+    disable_plugin.assert_awaited_once_with("tenko.plugins.file_plugin")
 
 
-def test_legacy_switches_filter_loading_and_are_read_only(tmp_path: Path) -> None:
-    plugin_dir = tmp_path / "plugins"
-    plugin_dir.mkdir()
-    write_plugin(
-        plugin_dir,
-        "alpha",
-        'def register(app, ctx): app.append("alpha")\n',
-        metadata={"default_switch": True},
-    )
-    write_plugin(
-        plugin_dir,
-        "beta",
-        'def register(app, ctx): app.append("beta")\n',
-        metadata={"default_switch": True},
-    )
+@pytest.mark.asyncio
+async def test_reload_uses_native_unload_and_load(monkeypatch, tmp_path: Path) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
+    first = FakePlugin("tenko.plugins.file_plugin")
+    second = FakePlugin("tenko.plugins.file_plugin")
+    load_plugin = Mock(side_effect=[first, second])
+    unload_plugin = Mock(return_value=True)
+    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin)
+    monkeypatch.setattr(plugin_host, "unload_plugin", unload_plugin)
+
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+
+    assert await runtime.load("file_plugin") is first
+    assert await runtime.reload("file_plugin") is second
+    assert unload_plugin.call_args.args == ("tenko.plugins.file_plugin",)
+    assert load_plugin.call_args_list[-1].args == ("tenko.plugins.file_plugin",)
+
+
+@pytest.mark.asyncio
+async def test_legacy_state_maps_global_switches_and_is_read_only(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
     state_path = tmp_path / "modules_data.json"
     state = {
         "modules": {
-            "alpha": {"available": True, "100": {"switch": False}},
-            "beta": {"available": False},
+            "modules.self_contained.file_plugin": {"available": False},
+            "modules.required.package_plugin": {"available": True},
         },
         "groups": {},
     }
     state_path.write_text(json.dumps(state), encoding="utf-8")
     before = state_path.read_bytes()
-    calls: list[str] = []
-    runtime = PluginRuntime(
-        plugin_dir,
-        app=calls,
-        legacy_state_path=state_path,
+    native_plugins = {
+        "file_plugin": FakePlugin("native.file_plugin"),
+        "package_plugin": FakePlugin("native.package_plugin"),
+    }
+    load_plugin = Mock(side_effect=lambda name: native_plugins[name.rsplit(".", 1)[-1]])
+    enable_plugin = AsyncMock(return_value=True)
+    disable_plugin = AsyncMock(return_value=True)
+    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin)
+    monkeypatch.setattr(plugin_host, "enable_plugin", enable_plugin)
+    monkeypatch.setattr(plugin_host, "disable_plugin", disable_plugin)
+
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=state_path)
+
+    assert await runtime.load("file_plugin") is native_plugins["file_plugin"]
+    assert (
+        await runtime.load("modules.required.package_plugin")
+        is native_plugins["package_plugin"]
     )
-
-    assert not runtime.is_enabled("alpha", make_group_context("100"))
-    assert runtime.is_enabled("alpha", make_group_context("101"))
-    assert runtime.load("alpha", group_id="100") is None
-    assert runtime.load("alpha", group_id="101") is not None
-    assert runtime.load("beta") is None
-    runtime.set_enabled("beta", True)
-    assert runtime.is_enabled("beta")
-    assert runtime.load("beta") is not None
+    disable_plugin.assert_awaited_once_with("native.file_plugin")
+    enable_plugin.assert_awaited_once_with("native.package_plugin")
     assert state_path.read_bytes() == before
-    assert calls == ["alpha", "beta"]
 
 
-def test_reload_reads_changed_source_and_rejects_missing_register(
+def test_legacy_group_switch_uses_compatible_name_without_global_toggle(
     tmp_path: Path,
 ) -> None:
-    plugin_dir = tmp_path / "plugins"
-    plugin_dir.mkdir()
-    plugin_path = plugin_dir / "reloadable"
-    write_plugin(
-        plugin_dir,
-        "reloadable",
-        "VERSION = 'one'\ndef register(app, ctx): app.append(VERSION)\n",
-    )
-    calls: list[str] = []
-    runtime = PluginRuntime(plugin_dir, app=calls, legacy_state_path=None)
-    first = runtime.load("reloadable")
-    assert first is not None
-    assert calls == ["one"]
-
-    (plugin_path / "__init__.py").write_text(
-        "VERSION = 'two'\ndef register(app, ctx): app.append(VERSION)\n",
+    plugin_dir = make_plugin_dir(tmp_path)
+    state_path = tmp_path / "modules_data.json"
+    state_path.write_text(
+        json.dumps(
+            {
+                "modules": {
+                    "modules.self_contained.file_plugin": {
+                        "groups": {"100": {"switch": False}}
+                    }
+                }
+            }
+        ),
         encoding="utf-8",
     )
-    second = runtime.reload("reloadable")
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=state_path)
 
-    assert second is not None
-    assert second.VERSION == "two"
-    assert calls == ["one", "two"]
-
-    write_plugin(plugin_dir, "invalid", "VALUE = 1\n")
-    with pytest.raises(PluginInterfaceError, match="register"):
-        runtime.discover()
-        runtime.load("invalid")
+    assert not runtime.is_enabled("file_plugin", make_group_context("100"))
+    assert runtime.is_enabled("file_plugin", make_group_context("101"))

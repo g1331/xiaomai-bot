@@ -32,3 +32,35 @@ reply_text = "Tenko 已收到消息。"
 log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"
+
+[upgrade]
+# 宿主升级默认只检查，不自动下载或安装。不要把旧 config/config_demo.yaml 的
+# auto_upgrade=true 直接迁移过来；新系统不会执行 git pull 式原地更新。
+enabled = true
+# 可选：git_tag、github_release 或 manifest。
+source = "git_tag"
+repository = "."
+github_repository = ""
+manifest_url = ""
+github_token = ""
+asset_name = ""
+tag_prefix = "v"
+channel = "stable"
+# check = 只检查并记录；download = 自动准备制品；install = 自动生成外部安装接管记录。
+policy = "check"
+# 留空时从项目 pyproject.toml 的 [project].version 读取。
+current_version = ""
+# 用户配置的兼容版本；制品可在 upgrade-manifest.json 中声明 min_config_version。
+config_version = "1.0.0"
+install_root = ".tenko/upgrades"
+config_path = "config/tenko.toml"
+data_dir = "data"
+# 可选健康检查命令。{python}、{release_root}、{config_path}、{data_dir} 可作为独立参数使用。
+health_command = []
+# 可选外部启动命令。{python}、{release_root}、{config_path}、{data_dir} 可替换。
+launch_command = []
+health_timeout = 30
+# 默认 24 小时；保留旧版周期检查场景，但策略默认不下载/安装。
+check_interval_hours = 24
+# 仅这些用户能执行 /检查更新、/升级、/回滚；ID 可写字符串或整数。
+superuser_ids = []

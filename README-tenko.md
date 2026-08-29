@@ -427,6 +427,153 @@ OneBot action 名称，所有平台动作都经过宿主服务。
 ./.venv-entari/bin/python -m pytest tests/tenko -q
 ```
 
+## 第⑦步：宿主升级系统（替代旧 `auto_upgrade`）
+
+本步只升级 Tenko 宿主自身，不分发 `tenko-plugins` 外部插件。实现位于
+`tenko/host/updater.py`，管理命令位于原生 Entari 插件
+`tenko/plugins/updater/`；旧 `modules/required/auto_upgrade/` 保持不变，也不再被
+Tenko 运行时加载。
+
+### 旧实现的实际行为基线
+
+实现前先读取了旧插件和相关配置，基线不是只根据旧插件名称推断出来的：
+
+- `utils/self_upgrade.py` 从当前 Git 工作树推导 `origin`，通过 GitHub 的当前分支
+  commit/compare 接口查找更新，真正执行时调用 `origin.pull()`；成功消息只说明
+  更新将在重启后生效，没有制品校验、独立版本目录或回滚副本。
+- `modules/required/auto_upgrade/__init__.py` 监听群消息中的 `-upgrade`，经过
+  功能开关、频率、群和 Master 权限检查；同时注册 24 小时一次的定时检查。
+- 检查到更新时，旧实现只在 `config.test_group` 通知，展示最多三条 commit 的
+  SHA/消息，并发送 GitHub OpenGraph 图片；Master 需要在 30 秒确认窗口中回复
+  `y/yes` 才会在后台线程执行 `git pull`。
+- 没有更新、没有 Git、GitHub/网络不可用和 pull 失败分别记录日志或返回失败提示；
+  pull 失败不会自动恢复到 pull 前的完整代码状态。
+- 旧配置是 `core/config.py` 中的布尔 `auto_upgrade`，示例值为 `true`。它只控制
+  自动提示，不提供 stable/预发布通道、配置兼容版本、制品哈希、健康检查或回滚策略。
+
+这些行为中“周期检查、人工触发、更新提示、Git 来源和失败可见”被保留为场景，
+而 `git pull` 原地覆盖、旧 `-upgrade` 文本协议、OpenGraph 图片通知和旧布尔配置
+不会迁移。新系统用 `/检查更新`、`/升级`、`/回滚` 以及结构化审计替代它们。
+
+### 十个设计环节与决策
+
+| 环节 | 实现 | 决策理由 |
+| --- | --- | --- |
+| 1. 版本发现 | `Version` 实现严格 SemVer 比较；`VersionSource` 可插拔；内置 `GitTagSource`、`GitHubReleaseSource`，并保留 `UrlManifestSource` 扩展点 | 版本发现与制品获取分离，新增源不需要改升级状态机；非法版本不会参与选择 |
+| 2. 更新通道 | `stable` 排除 SemVer 预发布版本，`prerelease` 同时允许正式版和预发布版；多源取最高候选 | 通道过滤发生在源和最终选择两层，避免某个源遗漏过滤导致稳定实例误装预发布版 |
+| 3. 制品获取与校验 | Git tag 浅克隆后比较完整 commit SHA；GitHub Release/manifest 下载 zip/tar 并强制比较 SHA-256；缺少强校验或校验失败立即停止 | tag、文件名和版本号都不是内容完整性证明；校验失败不能进入 staging 之后的步骤 |
+| 4. 配置兼容性 | release 元数据和 `upgrade-manifest.json` 均可声明最低配置版本，取两者较高值，在提升制品前比较 | 兼容性阻断发生在原子切换之前，不把不可兼容配置带入新进程 |
+| 5. 原子切换 | 制品先进入随机 staging 目录，再提升到 `versions/`；`active.json` 使用临时文件加 `os.replace` 替换 | 不覆盖当前项目根目录，外部启动器只读一个完整指针，不会读到半写入状态 |
+| 6. 健康检查 | 切换前默认检查 `tenko/__init__.py` 和 Python `compileall`，也可配置一次性 `health_command`；切换后检查新进程存活并重复健康检查 | 默认检查不依赖真实 QQ/网络；部署可用最小启动命令补足真实运行时检查 |
+| 7. 失败回滚 | 首次激活时把当前代码复制为 `versions/*-baseline-*`；切换后健康检查失败则恢复旧 active 指针并终止新进程 | 回滚依赖完整旧副本，而不是尝试从新代码反向修补旧代码 |
+| 8. 配置与数据保留 | 代码版本目录与配置/数据目录分离；当前代码快照明确排除配置、数据、虚拟环境和升级状态目录；新进程通过同一配置/数据路径启动 | 升级不清理或覆盖用户配置和数据，候选制品也不能携带一份同名配置覆盖外部配置 |
+| 9. 审计 | `audit.jsonl` 追加 JSON Lines，记录 UTC 时间、动作、当前/目标版本、结果及错误/路径/校验方式 | 检查、下载、安装请求、成功安装和回滚失败都能按记录重建结果；写入时 flush、fsync |
+| 10. 手动/自动策略 | `check` 只检查提醒，`download` 自动下载并准备，`install` 自动生成外部安装接管记录；默认 `check` | 同一控制平面覆盖保守提醒、自动预取和自动安装三档；`install` 仍不在当前进程热替换 |
+
+### 版本源与外部事实
+
+GitHub 源使用官方 Releases API 的 repository releases endpoint，读取
+`tag_name`、`prerelease`、`draft` 以及资产的 `browser_download_url` 和 `digest`；
+官方接口文档见 [List releases](https://docs.github.com/en/rest/releases/releases#list-releases)。
+资产没有可验证的 SHA-256 digest 时，GitHub 源仍可用于检查，但不能进入获取/安装阶段。
+
+插件接入使用 Entari 已有的原生 `command.on`、`plugin.listen(Ready)` 和
+`scheduler.schedule`，没有再创建 Tenko 自己的事件总线或调度线程；生命周期、命令
+和插件能力以 [Entari 官方教程](https://arclet.top/tutorial/entari/index.html) 为准。
+`VersionSource` 是升级领域本身的隔离接口，不是对 Entari 插件系统的包装层。
+
+### 状态目录与外部重启接缝
+
+配置的 `install_root` 下会产生以下状态；代码版本和控制记录均不放回当前项目根目录：
+
+```text
+.tenko/upgrades/
+├── versions/
+│   ├── 3.0.1-baseline-<随机后缀>/
+│   └── 3.1.0-<commit 或随机后缀>/
+├── staging/
+├── active.json
+├── previous.json
+├── pending.json
+├── handoff.json
+└── audit.jsonl
+```
+
+`/升级` 的动作顺序是“发现 → 获取 → 强校验 → 配置兼容性 → 切换前健康检查 →
+写入 pending → 写入 activate handoff”。它不会在当前 Python 进程中导入候选目录，
+也不会替换 `sys.modules` 或覆盖正在运行的源码。这样处理是因为升级执行器与被升级
+对象可能是同一进程；原地热替换会让已注册的事件处理器和新旧依赖混用。
+
+实际部署需要一个稳定的外部启动器或 supervisor 接管 handoff：
+
+1. 停止旧 Tenko 进程，并从仍然可用的稳定启动代码调用
+   `UpgradeManager.apply_handoff()`。
+2. `activate` 路径以一次原子 `active.json` 替换作为切换点，再由配置的
+   `launch_command` 在候选版本目录启动新进程。
+3. `SubprocessLauncher` 不使用 shell，并把解析后的 `TENKO_CONFIG_PATH`、
+   `TENKO_DATA_DIR` 和 `TENKO_UPGRADE_ROOT` 传给新进程；因此候选版本改变工作目录
+   后仍会使用同一份用户配置、数据和升级状态。
+4. 新进程存活和健康检查通过后保留 `previous.json`；失败则终止新进程、恢复旧
+   active 指针并写入 rollback 审计。`rollback` handoff 使用同一接缝回到
+   `previous.json`，成功后交换 active/previous 指针。
+
+自定义 supervisor 必须提供等价的“停旧进程 → 调用 `apply_handoff()` → 传递三个
+绝对路径环境变量/参数 → 观察健康结果”流程；本批次不伪造一个无法适配部署环境的
+守护进程脚本，也不把重启责任塞进 Entari 事件处理器。
+
+### 配置与命令
+
+`config/tenko.toml.example` 的 `[upgrade]` 是独立于旧 `auto_upgrade` 的配置节：
+
+```toml
+[upgrade]
+enabled = true
+source = "git_tag"             # git_tag / github_release / manifest
+repository = "."
+github_repository = "owner/repository"
+channel = "stable"             # stable / prerelease
+policy = "check"               # check / download / install
+config_version = "1.0.0"
+install_root = ".tenko/upgrades"
+config_path = "config/tenko.toml"
+data_dir = "data"
+health_command = []
+launch_command = []
+check_interval_hours = 24
+superuser_ids = [123456]
+```
+
+三个命令使用全局 `/` 前缀，且只允许 `superuser_ids` 中被映射为
+`Permission.Master` 的用户：
+
+- `/检查更新`：执行版本发现并返回当前/候选版本、通道和来源；不下载制品。
+- `/升级`：执行一次检查，准备并校验候选版本，检查通过后生成外部 `activate`
+  handoff；返回制品目录和 handoff 路径，不热替换当前进程。
+- `/回滚`：检查是否存在上一可用版本，生成外部 `rollback` handoff；不存在时
+  返回可见失败并写入审计，不伪造成功。
+
+`Ready` 事件会按策略执行一次，之后由 Entari 原生调度器按
+`check_interval_hours` 执行；默认 24 小时对应旧版周期检查场景。策略为 `check` 时
+周期任务只产生提醒和审计，`download` 会自动准备，`install` 只自动生成外部接管
+记录，最终进程切换仍由稳定启动器完成。
+
+### 旧 `auto_upgrade` 行为覆盖对照
+
+| 旧行为 | 新系统处理 | 是否保留 |
+| --- | --- | --- |
+| GitHub 当前分支 commit/compare 检查 | Git tag 源比较版本和 commit SHA；GitHub 源改为官方 Release + asset digest；manifest 可扩展 | 场景保留，数据协议升级 |
+| 24 小时自动检查 | `Ready` + Entari 原生 scheduler，周期可配置且默认 24 小时 | 保留 |
+| `-upgrade` 群消息触发 | 全局 `/升级`，仅超级用户，先准备再生成外部接管记录 | 能力保留，命令和权限收紧 |
+| `config.test_group`、最多三条 commit、OpenGraph 图片和 30 秒 y/n waiter | 返回结构化文本结果；检查、准备、安装请求和失败都写审计 | 明确不保留图片/等待器，避免把升级确认和消息会话生命周期绑定 |
+| `config.auto_upgrade` 布尔开关 | `[upgrade].enabled`、`channel`、`policy`、路径、健康检查和超级用户配置 | 不保留旧键，避免误把 `true` 解释成自动安装 |
+| `git pull` 原地更新 | 独立 staging/versions、强校验、原子 active 指针、外部重启 | 明确不保留；同一进程不做热替换 |
+| pull/网络/Git 失败日志和手工提示 | 失败关闭、不中途 promote、结构化错误审计；切换后失败自动回滚 | 失败可见场景保留，恢复能力增强 |
+| 插件自身分发 | 仅留下 `VersionSource` 扩展点 | 不在本批次实现，避免把宿主升级和插件分发耦合 |
+
+本步测试不进行真实网络调用：Git 源使用本地临时仓库 fixture，HTTP 源使用 mock
+client，覆盖版本比较边界、通道选择、commit/asset 校验失败、配置兼容性、staging、
+健康失败回滚、策略档位、状态审计和三个命令的正向/负向/权限矩阵。
+
 ## 依赖来源
 
 - [Entari](https://github.com/ArcletProject/Entari)

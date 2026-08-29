@@ -45,6 +45,7 @@ class TenkoRuntime:
             log_level=self.config.runtime.log_level,
             ignore_self_message=True,
         )
+        configure_command_prefix(self.config.runtime.command_prefix)
         native_handler = app.handle_event
         for index, callback in enumerate(app.event_callbacks):
             if callback == native_handler:

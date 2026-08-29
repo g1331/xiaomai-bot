@@ -41,6 +41,10 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/踢出 20002", "/踢出"),
         "boundary": ("/踢出-1", "/ 踢出"),
     },
+    "公告": {
+        "positive": ("/公告 帮助系统 维护通知", "/公告 帮助系统 维护 通知 -t 2"),
+        "boundary": ("/公告-1", "/ 公告"),
+    },
     "修改权限": {
         "positive": ("/修改权限 16 30001", "/修改权限 32 30001 30002"),
         "boundary": ("/修改权限-1", "/ 修改权限"),
@@ -102,7 +106,7 @@ def _commands_for_loaded_plugin() -> Iterable[Alconna]:
 
 @pytest.mark.parametrize(
     "loaded_plugin",
-    ["helper", "group_manager", "perm_manager", "status"],
+    ["helper", "group_manager", "perm_manager", "status", "announcement"],
     indirect=True,
 )
 def test_every_required_command_has_positive_negative_and_boundary_matrix(

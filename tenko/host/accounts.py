@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterable, Mapping
+from datetime import datetime, timezone
 from types import MappingProxyType
 from typing import Literal
 
 from satori.client import Account
+from satori.exception import ActionFailed
 
 from ..context import MessageContext
 
 ResponseType = Literal["random", "deterministic"]
+_NO_MUTE = object()
 
 
 def _key(value: object) -> str:
@@ -58,6 +61,7 @@ class AccountRegistry:
         self._groups: dict[str, list[str]] = {}
         self._response_types: dict[str, ResponseType] = {}
         self._deterministic_accounts: dict[str, str] = {}
+        self._muted_until: dict[tuple[str, str], datetime | None] = {}
 
     @property
     def accounts(self) -> Mapping[str, Account]:
@@ -100,6 +104,9 @@ class AccountRegistry:
         account_id = _account_id(account_or_id)
         account = self._accounts.pop(account_id, None)
         self._availability.pop(account_id, None)
+        for mute_key in tuple(self._muted_until):
+            if mute_key[0] == account_id:
+                del self._muted_until[mute_key]
         for group_id in tuple(self._groups):
             members = self._groups[group_id]
             self._groups[group_id] = [
@@ -134,6 +141,97 @@ class AccountRegistry:
         account_id = _account_id(account_or_id)
         return self._availability.get(account_id, False)
 
+    @staticmethod
+    def _mute_expired(until: datetime) -> bool:
+        now = datetime.now(timezone.utc) if until.tzinfo else datetime.now()
+        return until <= now
+
+    def set_muted(
+        self,
+        account_id: Account | str | int,
+        group_id: str | int,
+        muted: bool,
+        *,
+        until: datetime | None = None,
+    ) -> None:
+        """设置账号在指定群的禁言状态，过期时间由查询时惰性清理。"""
+
+        normalized_account = _account_id(account_id)
+        normalized_group = _key(group_id)
+        if normalized_account not in self._accounts:
+            raise KeyError(f"账号未注册: {normalized_account}")
+        if not isinstance(muted, bool):
+            raise TypeError("muted 必须是布尔值")
+        if until is not None and not isinstance(until, datetime):
+            raise TypeError("until 必须是 datetime 或 None")
+
+        mute_key = (normalized_account, normalized_group)
+        if muted:
+            self._muted_until[mute_key] = until
+        else:
+            self._muted_until.pop(mute_key, None)
+
+    def is_muted(self, account_id: Account | str | int, group_id: str | int) -> bool:
+        """查询账号在指定群是否仍被禁言，并惰性恢复已到期状态。"""
+
+        mute_key = (_account_id(account_id), _key(group_id))
+        until = self._muted_until.get(mute_key, _NO_MUTE)
+        if until is _NO_MUTE:
+            return False
+        if until is not None and self._mute_expired(until):
+            del self._muted_until[mute_key]
+            return False
+        return True
+
+    def mute_until(
+        self, account_id: Account | str | int, group_id: str | int
+    ) -> datetime | None:
+        """返回当前禁言到期时间；永久禁言和未禁言都返回 ``None``。"""
+
+        if not self.is_muted(account_id, group_id):
+            return None
+        return self._muted_until.get((_account_id(account_id), _key(group_id)))
+
+    @staticmethod
+    def _is_group_send_failure(failure: BaseException | Mapping[str, object]) -> bool:
+        """识别 OneBot action 失败回执，不把普通异常误判为禁言。"""
+
+        if isinstance(failure, Mapping):
+            candidates: Iterable[object] = (failure,)
+        elif isinstance(failure, ActionFailed):
+            candidates = failure.args
+        else:
+            return False
+
+        for candidate in candidates:
+            if not isinstance(candidate, Mapping):
+                continue
+            status = str(candidate.get("status", "")).lower()
+            retcode = candidate.get("retcode")
+            if status == "failed" or (
+                retcode is not None and str(retcode) not in {"0", "ok"}
+            ):
+                return True
+        return False
+
+    def observe_send_failure(
+        self,
+        account_id: Account | str | int,
+        group_id: str | int,
+        failure: BaseException | Mapping[str, object],
+    ) -> bool:
+        """消费群发送 action 失败接缝，并在失败回执明确时标记禁言。
+
+        调用方必须只在群 ``send_group_msg`` 对应的 Satori action 失败后调用；
+        该边界让 OneBot 11 的回执成为状态来源，而不会把任意发送异常升级为
+        群级禁言状态。NapCat 的具体 retcode 组合仍待实测确认。
+        """
+
+        if not self._is_group_send_failure(failure):
+            return False
+        self.set_muted(account_id, group_id, True)
+        return True
+
     def bind_group(
         self, group_id: str | int, account_or_id: Account | str | int
     ) -> None:
@@ -161,6 +259,7 @@ class AccountRegistry:
             return False
 
         members.remove(account_id)
+        self._muted_until.pop((account_id, normalized_group), None)
         if not members:
             del self._groups[normalized_group]
             self._response_types.pop(normalized_group, None)
@@ -169,16 +268,53 @@ class AccountRegistry:
             self._deterministic_accounts[normalized_group] = members[0]
         return True
 
+    def bound_accounts_for_group(self, group_id: str | int) -> tuple[Account, ...]:
+        """返回群已绑定的全部账号，包含离线或被禁言账号供状态查询。"""
+
+        normalized_group = _key(group_id)
+        members = self._groups.get(normalized_group, ())
+        return tuple(
+            account
+            for account_id in members
+            if (account := self._accounts.get(account_id)) is not None
+        )
+
+    def groups_for_account(self, account_id: Account | str | int) -> tuple[str, ...]:
+        """返回账号参与的群 ID，顺序与首次绑定顺序一致。"""
+
+        normalized_account = _account_id(account_id)
+        return tuple(
+            group_id
+            for group_id, members in self._groups.items()
+            if normalized_account in members
+        )
+
+    def response_type_for_group(self, group_id: str | int) -> ResponseType | None:
+        """返回群响应策略；未建立群路由时返回 ``None``。"""
+
+        normalized_group = _key(group_id)
+        if normalized_group not in self._groups:
+            return None
+        return self._response_types.get(normalized_group, "random")
+
+    def deterministic_account_for_group(self, group_id: str | int) -> str | None:
+        """返回群 deterministic 策略当前指定的账号 ID。"""
+
+        normalized_group = _key(group_id)
+        return self._deterministic_accounts.get(normalized_group)
+
     def accounts_for_group(
         self, group_id: str | int, *, available_only: bool = True
     ) -> tuple[Account, ...]:
         """返回群对应的账号句柄，默认只返回可用账号。"""
 
-        members = self._groups.get(_key(group_id), ())
+        normalized_group = _key(group_id)
+        members = self._groups.get(normalized_group, ())
         return tuple(
             account
             for account_id in members
             if (account := self._accounts.get(account_id)) is not None
+            and not self.is_muted(account_id, normalized_group)
             and (not available_only or self._availability.get(account_id, False))
         )
 
@@ -226,7 +362,11 @@ class AccountRegistry:
 
         if self._response_types.get(normalized_group, "random") == "deterministic":
             account_id = self._deterministic_accounts.get(normalized_group)
-            if account_id is None or not self.is_available(account_id):
+            if (
+                account_id is None
+                or not self.is_available(account_id)
+                or self.is_muted(account_id, normalized_group)
+            ):
                 return None
             return self._accounts.get(account_id)
 
@@ -244,3 +384,6 @@ class AccountRegistry:
         if self.is_available(context.account_id):
             return self.get(context.account_id)
         return None
+
+
+account_registry = AccountRegistry()

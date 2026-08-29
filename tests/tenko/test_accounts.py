@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Literal
+
+from satori.exception import ActionFailed
 
 from tenko.context import MessageContext
 from tenko.host.accounts import AccountRegistry
@@ -75,3 +78,59 @@ def test_group_message_routes_by_source_id_and_private_keeps_account() -> None:
         registry.select_for_context(make_context("10002", chat_type="private"))
         is second
     )
+
+
+def test_partial_group_mute_excludes_only_the_muted_account_from_selection() -> None:
+    registry = AccountRegistry()
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+
+    registry.set_muted(first, 100, True)
+
+    assert registry.bound_accounts_for_group(100) == (first, second)
+    assert registry.accounts_for_group(100) == (second,)
+    assert registry.select_account(100, source_id=0) is second
+    assert registry.select_account(100, source_id=1) is second
+
+
+def test_deterministic_muted_account_returns_none_without_fallback() -> None:
+    registry = AccountRegistry()
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+    registry.set_response_type(100, "deterministic")
+    registry.set_deterministic_account(100, second)
+
+    registry.set_muted(second, 100, True)
+    assert registry.select_account(100) is None
+
+    registry.set_muted(second, 100, False)
+    assert registry.select_account(100) is second
+
+
+def test_expired_mute_is_lazily_removed_and_routing_recovers() -> None:
+    registry = AccountRegistry()
+    account = FakeAccount("10001")
+    registry.register(account, groups=[100])
+    expired = datetime.now(timezone.utc) - timedelta(seconds=1)
+
+    registry.set_muted(account, 100, True, until=expired)
+
+    assert not registry.is_muted(account, 100)
+    assert registry.mute_until(account, 100) is None
+    assert registry.accounts_for_group(100) == (account,)
+
+
+def test_group_send_action_failure_is_an_explicit_mute_source() -> None:
+    registry = AccountRegistry()
+    account = FakeAccount("10001")
+    registry.register(account, groups=[100])
+    failed = ActionFailed("1200: failed", {"status": "failed", "retcode": 1200})
+    succeeded = ActionFailed("0: ok", {"status": "ok", "retcode": 0})
+
+    assert registry.observe_send_failure(account, 100, failed)
+    assert registry.is_muted(account, 100)
+    assert not registry.observe_send_failure(account, 100, succeeded)

@@ -1,6 +1,6 @@
 """Tenko host services."""
 
-from .accounts import AccountRegistry
+from .accounts import AccountRegistry, account_registry
 from .perm import (
     GroupLevel,
     GroupPermission,
@@ -12,6 +12,7 @@ from .plugins import PluginInfo, PluginInterfaceError, PluginRuntime
 
 __all__ = [
     "AccountRegistry",
+    "account_registry",
     "GroupLevel",
     "GroupPermission",
     "Permission",

@@ -57,6 +57,7 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
     monkeypatch.setattr(
         runtime_module, "OneBotConnection", Mock(return_value=connection)
     )
+    monkeypatch.setattr(runtime_module, "set_event_loop", Mock())
 
     class FakeEntari:
         def __init__(self, *configs, **kwargs) -> None:

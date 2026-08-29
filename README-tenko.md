@@ -204,6 +204,44 @@ Tenko 读取或转换。运行时的 `load()`、`load_all()` 和 `reload()` 是�
 原生全局开关的映射、兼容查找名、群级旧开关查询和旧状态只读。测试 mock Entari
 插件机制，使用临时目录，不会启动 NapCat、修改旧状态文件或部署服务。
 
+## 第四阶段：必需插件迁移
+
+第四阶段建立在 Tenko 协议闭环和第二阶段宿主子系统之上，把旧
+`modules/required/` 中与基础运行有关的插件迁移到 `tenko/plugins/`。每个插件都
+使用 Entari 原生的 `plugin.metadata`、`plugin.listen` 或 `command.on`；命令参数由
+Alconna 的 `Args`、`Option` 和 `Query` 注入，消息使用 Satori 元素构造，不再引入
+Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
+
+运行时在启动 Entari 前调用 `Entari.ensure_manager()`，随后由
+`PluginRuntime.load_all()` 发现并加载 `tenko/plugins/`。因此插件的命令、事件监听和
+生命周期都会进入同一套 Entari 原生分发链。当前 Entari 版本为 0.18.6，其
+`PluginMetadata` 构造器没有 `default_switch` 字段；各插件在原生元数据声明完成后
+保留 `metadata.default_switch = True` 兼容标记，供 `tenko/host/plugins.py` 的旧状态
+适配和检查工具使用。
+
+### 已迁移插件与旧实现对应关系
+
+| 新插件 | 对应旧实现 | 本阶段迁移内容与边界 |
+| --- | --- | --- |
+| `tenko/plugins/perm_manager` | `modules/required/perm_manager` | 复用 `MemberPerm`、`GroupPerm`、`GroupSetting` 的权限管理、查询和成员权限同步；使用 `PermissionChecker` 做统一权限检查。成员加入、退群和管理员角色变化分别映射为 `GuildMemberAddedEvent`、`GuildMemberRemovedEvent`、`GuildMemberUpdatedEvent`。OneBot/Satori 当前无法确认的成员管理能力保留 `InternalEvent` 日志，并标记“待 NapCat capability 确认”。 |
+| `tenko/plugins/helper` | `modules/required/helper` | 使用 Entari/Alconna 当前注册命令表生成帮助和编号详情，不复制旧的文本解析或图片菜单生成逻辑。 |
+| `tenko/plugins/group_manager` | `modules/required/group_manager` | 仅提供 `群设置` 的群设置只读查询，读取旧 `GroupSetting`、`GroupPerm` 表；禁言、解禁、撤回、加精、全体禁言及邀请等平台动作留给第⑦步 capability-aware service。 |
+| `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供文本状态查询，报告当前会话和已注册 Entari 插件数量；不再依赖旧的进程监控、图片渲染或 Ariadne 对象。 |
+| `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送 Satori 文本报告；不复制旧的 Graia 异常注入和图片报告路径。 |
+
+权限插件的数据库写入仍只发生在明确的权限管理命令中；状态查询、帮助查询和群设置
+查询路径不会创建或更新旧表。未迁移的群管理平台动作不会注册为“看似可用”的命令，
+避免在没有 capability 确认时产生误操作。五个插件各自有触发路径和权限/过滤路径的
+单元测试，实际测试会通过 `.venv-entari` 的 `load_plugin()` 验证元数据、命令登记和
+原生卸载。
+
+第四阶段校验命令仍为：
+
+```bash
+.venv-entari/bin/ruff check tenko tests/tenko
+.venv-entari/bin/python -m pytest tests/tenko
+```
+
 ## 依赖来源
 
 - [Entari](https://github.com/ArcletProject/Entari)

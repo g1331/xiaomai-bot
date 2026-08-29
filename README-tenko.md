@@ -242,6 +242,95 @@ Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
 .venv-entari/bin/python -m pytest tests/tenko
 ```
 
+## 第④.5步：命令前缀与禁言感知路由
+
+### 全局命令前缀
+
+Tenko 的命令前缀配置位于 `[runtime] command_prefix`，默认值为 `/`：
+
+```toml
+[runtime]
+command_prefix = "/"
+```
+
+实现选择的是 Alconna 原生的默认命名空间前缀，而不是在各个插件中重新解析
+消息。具体接入集中在 `tenko/commands.py:configure_command_prefix()`：它设置
+`arclet.alconna.config.default_namespace.prefixes`，所有插件构造的 `Alconna`
+命令都会复制这一配置；helper 和 status 的旧顶层别名则使用 Alconna 原生
+`shortcut(..., prefix=True)` 注册。
+
+选择依据是当前独立环境中的实际源码（Alconna 1.8.44、Entari 0.18.6）：
+
+- `arclet/alconna/core.py:120-147` 说明 `Alconna` 从命令参数或默认
+  `Namespace.prefixes` 获取前缀；`core.py:154-156` 会把示例中的 `$` 展开为
+  实际前缀。
+- `arclet/alconna/config.py:23-30,116-144` 定义了命名空间的 `prefixes` 和
+  全局默认命名空间。
+- `arclet/alconna/manager.py:466-490` 的帮助收集使用命令的
+  `header_display`，因此帮助列表会和解析使用同一前缀。
+- Entari 的 `arclet/entari/command/provider.py:40-63,68-99` 会在命令解析前
+  消费 `EntariConfig.instance.basic.prefix`；`command/plugin.py:55-67` 默认
+  启用这一步，`config/model.py:85-93` 定义了该配置。若同时设置两层，`/` 会
+  被消费两次，Alconna 将看不到它。因此 Tenko 在同一个集中接缝中清空 Entari
+  的消息级前缀预处理，只保留 Alconna 的严格命令头匹配。
+
+这样裸词不会触发，`/帮助x` 和 `/ 帮助` 也不会被当成同一命令；参数本身由
+Alconna 继续负责类型和范围解析，helper 对越界编号返回“编号不在范围内~”。
+
+### 禁言感知的账号×群路由
+
+禁言状态直接扩展现有 `AccountRegistry`，核心 API 为：
+
+```python
+registry.set_muted(
+    account_id,
+    group_id,
+    muted: bool,
+    *,
+    until: datetime | None = None,
+) -> None
+```
+
+`until=None` 表示持续禁言；带时区或不带时区的 `datetime` 都按其自身时间类型
+比较。状态在 `is_muted()`、`mute_until()`、`accounts_for_group()` 和选路时惰性
+检查，到期后自动从状态表移除并重新参与选路。`accounts_for_group()` 始终排除
+当前群仍被禁言的账号；deterministic 策略的指定账号被禁言时返回 `None`，不会
+静默换用其他账号。显式 `set_muted(..., False)` 会立即恢复该群选路。
+
+OneBot 11 的 action 失败回执由 `AccountRegistry.observe_send_failure()` 作为
+明确接缝消费。Satori OneBot 11 适配器的实际调用链在
+`satori/adapters/onebot11/reverse.py:111-128`：非 `ok` 回执会抛出
+`ActionFailed`，其中保留 `status` 和 `retcode`；Tenko 仅在群发送 action 的
+该接缝被调用且回执明确失败时设置禁言，不把普通网络异常误判为禁言。NapCat
+具体 retcode/自身 `message_sent` 字段的组合仍待实测确认。
+
+当前版本扫描了 `arclet/entari/event/base.py` 和
+`satori/adapters/onebot11/events/notice.py` 的原生事件定义，没有发现可直接
+表示“本账号在某群被禁言”的 Entari/Satori 事件，因此暂按“显式 `set_muted` +
+群发送 action 失败回执感知”降级接入，没有静默忽略该平台差异。OneBot 适配器
+对 `message_sent.group.normal` 的识别可见
+`satori/adapters/onebot11/events/message.py:71-99`，但这不等同于禁言状态事件。
+
+运行时在 `tenko/runtime.py` 通过 Satori `event_callbacks` 的原生回调列表包住
+Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` 做
+账号×群判定。这样被禁言账号收到该群消息或事件时，会在 Entari 发布到插件
+之前跳过，并记录 debug 日志；解除或到期后恢复正常。Satori `App` 的回调列表
+和并发发布位置为 `satori/client/__init__.py:62-70,304-315`，Entari 原生事件
+入口为 `arclet/entari/core.py:471-480`。
+
+### 查询插件
+
+`tenko/plugins/response_manager/` 只注册以下只读命令：
+
+- `/BOT列表 [群号]`：查看群绑定的全部账号、响应策略、在线状态和群内禁言状态；
+- `/BOT群列表 [BOT账号]`：查看一个账号的全部已知群绑定及各群状态；不带账号
+  时汇总所有账号；
+- `/在线BOT [群号]`：查看全局或指定群的在线/可用比例，同时保留不可用账号
+  的状态信息。
+
+插件只读取 `account_registry`，没有迁移旧版 `设定响应`、`指定BOT` 的运行时
+切换逻辑，也没有导入旧 `modules/required/response_manager`。
+
 ## 依赖来源
 
 - [Entari](https://github.com/ArcletProject/Entari)

@@ -250,6 +250,29 @@ class RuntimeConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class DebugConfig:
+    """开发调试模式配置。"""
+
+    enabled: bool = False
+    masters: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "masters",
+            _identifier_sequence({"masters": self.masters}, "masters", self.masters),
+        )
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> DebugConfig:
+        defaults = cls()
+        return cls(
+            enabled=_boolean(section, "enabled", defaults.enabled),
+            masters=_identifier_sequence(section, "masters", defaults.masters),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class UpgradeConfig:
     """宿主升级策略配置。
 
@@ -368,12 +391,14 @@ class TenkoConfig:
     onebot: OneBotConfig = OneBotConfig()
     runtime: RuntimeConfig = RuntimeConfig()
     upgrade: UpgradeConfig = UpgradeConfig()
+    debug: DebugConfig = DebugConfig()
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> TenkoConfig:
         return cls(
             onebot=OneBotConfig.from_mapping(_section(data, "onebot")),
             runtime=RuntimeConfig.from_mapping(_section(data, "runtime")),
+            debug=DebugConfig.from_mapping(_section(data, "debug")),
             upgrade=UpgradeConfig.from_mapping(_section(data, "upgrade")),
         )
 

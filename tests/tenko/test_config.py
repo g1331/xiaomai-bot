@@ -11,6 +11,8 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.onebot.reverse_ws_url == "ws://127.0.0.1:8080/onebot/v11/ws"
     assert config.runtime.send_replies is False
     assert config.runtime.command_prefix == "/"
+    assert config.debug.enabled is False
+    assert config.debug.masters == ()
 
 
 def test_config_loads_reverse_ws_and_runtime_options(tmp_path) -> None:
@@ -32,6 +34,10 @@ send_replies = true
 reply_text = "收到"
 log_level = "DEBUG"
 command_prefix = "!"
+
+[debug]
+enabled = true
+masters = [12345, "67890"]
 """,
         encoding="utf-8",
     )
@@ -48,6 +54,8 @@ command_prefix = "!"
     assert config.runtime.reply_text == "收到"
     assert config.runtime.log_level == "DEBUG"
     assert config.runtime.command_prefix == "!"
+    assert config.debug.enabled is True
+    assert config.debug.masters == ("12345", "67890")
 
 
 def test_empty_command_prefix_is_rejected() -> None:

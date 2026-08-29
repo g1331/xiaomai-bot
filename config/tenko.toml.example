@@ -33,6 +33,12 @@ log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"
 
+[debug]
+# 开启后，Tenko 只处理 masters 中 QQ 号对应用户产生的事件。
+enabled = false
+# ID 建议写成字符串；事件入口会统一按数字字符串比较。
+masters = ["10001"]
+
 [upgrade]
 # 宿主升级默认只检查，不自动下载或安装。不要把旧 config/config_demo.yaml 的
 # auto_upgrade=true 直接迁移过来；新系统不会执行 git pull 式原地更新。

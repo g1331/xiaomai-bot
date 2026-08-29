@@ -11,6 +11,7 @@ from satori import EventType, LoginStatus
 from satori.client import Account
 
 from .config import TenkoConfig
+from .commands import configure_command_prefix
 from .connection import OneBotConnection
 from .events import MessageEventHandler
 from .host.plugins import PluginRuntime
@@ -21,6 +22,7 @@ class TenkoRuntime:
 
     def __init__(self, config: TenkoConfig) -> None:
         self.config = config
+        configure_command_prefix(config.runtime.command_prefix)
         self.connection = OneBotConnection(config.onebot)
         self.message_handler = MessageEventHandler(
             send_replies=config.runtime.send_replies,

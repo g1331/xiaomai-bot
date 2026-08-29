@@ -26,7 +26,7 @@ permission_checker = PermissionChecker()
 
 
 status_command = Alconna(
-    "-bot|状态",
+    "-bot",
     Option(
         "-t",
         alias=["--text"],
@@ -41,6 +41,7 @@ status_command = Alconna(
         compact=True,
     ),
 )
+status_command.shortcut("状态", command="-bot", prefix=True)
 
 
 def build_status(context, plugin_count: int) -> str:

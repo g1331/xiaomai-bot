@@ -52,7 +52,8 @@ async def test_status_command_reports_native_runtime_context(loaded_plugin) -> N
 
     assert "Tenko 状态" in str(result)
     assert "账号: 10001" in str(result)
-    assert loaded_plugin.status_command.parse("-bot -t").matched
+    assert loaded_plugin.status_command.parse("/-bot -t").matched
+    assert loaded_plugin.status_command.parse("/状态 -t").matched
 
 
 @pytest.mark.asyncio

@@ -162,12 +162,15 @@ class RuntimeConfig:
     send_replies: bool = False
     reply_text: str = "Tenko 已收到消息。"
     log_level: str = "INFO"
+    command_prefix: str = "/"
 
     def __post_init__(self) -> None:
         if not self.reply_text:
             raise ValueError("reply_text 不能为空")
         if not self.log_level:
             raise ValueError("log_level 不能为空")
+        if not self.command_prefix:
+            raise ValueError("command_prefix 不能为空")
 
     @classmethod
     def from_mapping(cls, section: Mapping[str, Any]) -> RuntimeConfig:
@@ -176,6 +179,7 @@ class RuntimeConfig:
             send_replies=_boolean(section, "send_replies", defaults.send_replies),
             reply_text=_string(section, "reply_text", defaults.reply_text),
             log_level=_string(section, "log_level", defaults.log_level),
+            command_prefix=_string(section, "command_prefix", defaults.command_prefix),
         )
 
 

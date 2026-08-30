@@ -680,6 +680,52 @@ evidence_dir = ".tenko/exceptions"
 ./.venv-entari/bin/python -m tenko --dry-run
 ```
 
+## 批次 F：动作能力误判恢复与安全错误提示
+
+本批次只修改 `tenko/`、`tests/tenko/` 和本文件，继续不改旧 `core/`、`modules/`、
+`utils/`。重点是区分“账号确实不支持某个 action”和“账号在当前群暂时没有足够权限”：
+后者不能把账号级 capability 锁死。
+
+### NapCat 权限失败与 capability 学习
+
+NapCat 当前 `SetGroupBan` action 的源码注释明确记录：没有群管理员权限时，底层结果
+可以是 `120101005`，错误名为 `ERR_NOT_GROUP_ADMIN`，见
+[`SetGroupBan.ts`](https://github.com/NapNeko/NapCatQQ/blob/main/packages/napcat-onebot/action/group/SetGroupBan.ts)。
+OneBot 11 的 WebSocket action 失败回执使用 `status`、`retcode`、`data` 和 `echo` 等
+字段；适配器也可能把平台的 `errMsg` 放进 `message` 或 `wording`，所以 Tenko 同时
+兼容 `"1200: {'status': 'failed', ...}"` 这种 `ActionFailed` 文本和 mapping 参数，
+依据见 [OneBot 11 WebSocket 通信约定](https://github.com/botuniverse/onebot-11/blob/master/communication/ws.md)。
+
+`ERR_NOT_*` 以及 `*_ADMIN`/`*_OWNER` 是识别规则，而不是声称 NapCat 发布了一份稳定
+的完整符号枚举；当前也兼容 `ERR_NOT_GROUP_ADMIN`、`ERR_NOT_GROUP_OWNER` 和
+`ERR_NOT_FRIEND` 这几个已知/兼容名称。权限类 action 失败只记录失败和日志，不学习
+`capability=False`；如果历史版本已经错误学习为 `False`，收到新的权限类失败时会清除
+该学习值，下一次动作可以重新探测。动作成功仍会通过 `_remember_success` 恢复为可用。
+
+超管可以使用以下命令清除指定账号的全部“学习状态”（不改变显式 capability 覆盖）：
+
+```text
+/重置能力              # 重置当前处理账号
+/重置能力 <账号 ID>    # 重置指定账号
+```
+
+命令只授予 `Permission.Master`，返回实际清除的能力条数。它适用于升级、权限调整或
+历史错误状态后的人工恢复，不会绕过下一次真实 action 探测。
+
+### 群内提示与私聊取证
+
+群管理和公告的动作失败统一经过共享格式化工具。群内只返回分类后的短提示：本地权限
+拒绝为“权限不足”，能力不可用为“该账号暂不支持此操作（或已被临时限制），已通知开发者”，
+检测到平台权限失败为“该账号在此群没有管理员权限”，其他平台执行失败为“平台操作失败，
+已通知开发者”。群内提示不会输出 `retcode`、`echo`、`wording`、`ActionFailed` 原文或
+traceback。
+
+完整 `ActionFailure` 字段（账号、能力、action、status、retcode、data、message、
+wording、echo、错误类型、原始详情）和 traceback 复用 `exception_catcher` 的取证报告，
+通过 `[entari].superusers` 对应平台的私聊通道发送；发送失败会继续保留结构化日志和
+`[exception].evidence_dir` 本地证据，不阻塞群内错误提示。公告逐群发送也使用同一套
+格式化和报告路径，避免多个插件各自暴露平台回执。
+
 ## 第⑦步：宿主升级系统（替代旧 `auto_upgrade`）
 
 本步只升级 Tenko 宿主自身，不分发 `tenko-plugins` 外部插件。实现位于

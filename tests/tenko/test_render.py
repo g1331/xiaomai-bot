@@ -192,9 +192,30 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
                 "enabled_count": 2,
             },
         )
+        list_image = await service.render_template(
+            "list.html",
+            {
+                "title": "权限列表",
+                "subtitle": "群40001 · 成员权限",
+                "badge": "群 40001",
+                "summary": "群40001权限等级: 1",
+                "item_count": 1,
+                "items": (
+                    {
+                        "number": 1,
+                        "name": "30001",
+                        "meta": "权限等级：32",
+                        "detail": "群40001成员权限",
+                        "badge": "32",
+                    },
+                ),
+                "empty_text": "暂无额外权限成员",
+            },
+        )
     finally:
         await service.close()
 
     assert status_image.startswith(b"\xff\xd8")
     assert markdown_image.startswith(b"\xff\xd8")
     assert help_image.startswith(b"\xff\xd8")
+    assert list_image.startswith(b"\xff\xd8")

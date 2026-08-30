@@ -11,6 +11,7 @@ from satori import (
     ChannelType,
     EventType,
     Guild,
+    Image,
     Login,
     MessageObject,
     Role,
@@ -118,7 +119,9 @@ async def test_permission_list_rejects_cross_group_target_in_group(
         registry=PermissionRegistry(master_id="20001")
     )
     result = await loaded_plugin.get_perm_list.callable_target(
-        make_session("20001", "member"), make_query("group.group_id", 40002)
+        make_session("20001", "member"),
+        make_query("group.group_id", 40002),
+        render_service=loaded_plugin.RenderService(),
     )
 
     assert str(result) == "群内只能查询当前群"
@@ -137,7 +140,9 @@ async def test_master_private_permission_list_can_query_requested_group(
     )
 
     result = await loaded_plugin.get_perm_list.callable_target(
-        make_private_session("90001"), make_query("group.group_id", 40002)
+        make_private_session("90001"),
+        make_query("group.group_id", 40002),
+        render_service=loaded_plugin.RenderService(),
     )
 
     output = str(result)
@@ -151,7 +156,9 @@ async def test_master_private_permission_list_can_query_requested_group(
 async def test_non_master_private_permission_list_is_denied(loaded_plugin) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     result = await loaded_plugin.get_perm_list.callable_target(
-        make_private_session("20001"), make_query("group.group_id", 40002)
+        make_private_session("20001"),
+        make_query("group.group_id", 40002),
+        render_service=loaded_plugin.RenderService(),
     )
 
     assert str(result) == "权限不足"
@@ -183,15 +190,53 @@ async def test_sensitive_permission_lists_are_master_private_only(
         loaded_plugin._bot_admin_ids = AsyncMock(return_value={"20003"})
 
     handler = getattr(loaded_plugin, handler_name)
-    group_result = await handler.callable_target(make_session("90001", "member"))
+    group_result = await handler.callable_target(
+        make_session("90001", "member"),
+        render_service=loaded_plugin.RenderService(),
+    )
     assert str(group_result) == "该指令仅支持 Master 私聊执行"
 
-    private_result = await handler.callable_target(make_private_session("90001"))
+    private_result = await handler.callable_target(
+        make_private_session("90001"),
+        render_service=loaded_plugin.RenderService(),
+    )
     assert expected in str(private_result)
 
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
-    denied = await handler.callable_target(make_private_session("20001"))
+    denied = await handler.callable_target(
+        make_private_session("20001"),
+        render_service=loaded_plugin.RenderService(),
+    )
     assert str(denied) == "权限不足"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_permission_list_wraps_successful_render_as_image(
+    loaded_plugin, monkeypatch
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+    loaded_plugin._global_black_ids = AsyncMock(return_value={"20002"})
+    renderer = AsyncMock(return_value=b"jpeg-bytes")
+    monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    render_service = loaded_plugin.RenderService()
+
+    result = await loaded_plugin.get_global_black_list.callable_target(
+        make_private_session("90001"),
+        render_service=render_service,
+    )
+
+    assert isinstance(result[0], Image)
+    renderer.assert_awaited_once()
+    assert renderer.await_args.args[:3] == (
+        render_service,
+        "render_template",
+        "list.html",
+    )
+    assert renderer.await_args.args[3]["title"] == "全局黑名单"
+    assert renderer.await_args.args[3]["items"][0]["name"] == "20002"
 
 
 @pytest.mark.asyncio

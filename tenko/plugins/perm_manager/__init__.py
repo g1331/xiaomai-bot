@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 
 from arclet.alconna import Alconna, Args, CommandMeta, Field, MultiVar, Option
-from arclet.entari import Session, command, plugin
+from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Match, Query
 from arclet.entari.event.base import (
     GuildMemberAddedEvent,
@@ -14,6 +14,7 @@ from arclet.entari.event.base import (
 )
 from arclet.entari.plugin import PluginRole
 from loguru import logger
+from satori import Image
 
 from tenko.db.errors import DatabaseUnavailableError
 from tenko.host.actions import ActionServiceError, action_service
@@ -23,6 +24,8 @@ from tenko.plugins._common import (
     normalize_targets,
     text_message,
 )
+from tenko.plugins.render import RenderService  # entari: plugin
+from tenko.render import render_or_none
 
 
 plugin.metadata(
@@ -200,6 +203,126 @@ def _failure_summary(targets: tuple[str, ...], failures: list[tuple[str, str]]) 
             f"\n{target}-{reason}" for target, reason in failures
         )
     return result
+
+
+def _list_data(
+    title: str,
+    subtitle: str,
+    badge: str,
+    summary: str,
+    items: tuple[dict[str, object], ...],
+    empty_text: str,
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "badge": badge,
+        "summary": summary,
+        "items": items,
+        "item_count": len(items),
+        "empty_text": empty_text,
+    }
+
+
+async def _render_list(
+    render_service: RenderService, data: dict[str, object]
+) -> MessageChain | None:
+    image = await render_or_none(
+        render_service,
+        "render_template",
+        "list.html",
+        data,
+    )
+    if image is None:
+        return None
+    return MessageChain(Image.of(raw=image, mime="image/jpeg"))
+
+
+def build_vip_groups_data(rows) -> dict[str, object]:
+    items = tuple(
+        {
+            "number": index,
+            "name": f"{row.group_id}({row.group_name})",
+            "meta": "VIP 群",
+            "detail": f"群号：{row.group_id}",
+            "badge": "VIP",
+        }
+        for index, row in enumerate(rows, 1)
+    )
+    return _list_data(
+        "VIP 群列表",
+        "Master 私聊 · 已授权的群组",
+        "VIP",
+        f"共 {len(items)} 个 VIP 群",
+        items,
+        "当前没有VIP群~",
+    )
+
+
+def build_permission_list_data(
+    target_group: str, group_level: int, rows
+) -> dict[str, object]:
+    entries = tuple(row for row in rows if row.perm != Permission.User)
+    items = tuple(
+        {
+            "number": index,
+            "name": str(row.qq),
+            "meta": f"权限等级：{row.perm}",
+            "detail": f"群{target_group}成员权限",
+            "badge": str(row.perm),
+        }
+        for index, row in enumerate(entries, 1)
+    )
+    return _list_data(
+        "权限列表",
+        f"群{target_group} · 成员权限",
+        f"群 {target_group}",
+        f"群{target_group}权限等级: {group_level}",
+        items,
+        "暂无额外权限成员",
+    )
+
+
+def build_global_blacklist_data(values) -> dict[str, object]:
+    items = tuple(
+        {
+            "number": index,
+            "name": str(value),
+            "meta": "全局黑名单成员",
+            "detail": "该成员在所有群组中受限",
+            "badge": "黑名单",
+        }
+        for index, value in enumerate(values, 1)
+    )
+    return _list_data(
+        "全局黑名单",
+        "Master 私聊 · 全局权限限制",
+        "BLACK",
+        f"共 {len(items)} 名成员",
+        items,
+        "全局黑名单为空哦~",
+    )
+
+
+def build_bot_admins_data(values) -> dict[str, object]:
+    items = tuple(
+        {
+            "number": index,
+            "name": str(value),
+            "meta": "BOT 管理员",
+            "detail": "可执行受授权的机器人管理操作",
+            "badge": "ADMIN",
+        }
+        for index, value in enumerate(values, 1)
+    )
+    return _list_data(
+        "BOT 管理列表",
+        "Master 私聊 · Tenko 管理权限",
+        "ADMIN",
+        f"共 {len(items)} 名 BOT 管理员",
+        items,
+        "当前还没有BOT管理哦~",
+    )
 
 
 modify_user_command = Alconna(
@@ -380,7 +503,7 @@ async def change_group_perm_type(
         meta=CommandMeta("查询 VIP 群列表", compact=True),
     )
 )
-async def get_vg_list(session: Session):
+async def get_vg_list(session: Session, *, render_service: RenderService):
     context = context_from_session(session)
     if context.chat_type != "private":
         return text_message(_MASTER_PRIVATE_ONLY)
@@ -391,9 +514,11 @@ async def get_vg_list(session: Session):
     except DatabaseUnavailableError as error:
         return _database_error_message(error, action="查询 VIP 群列表")
     groups = [f"{row.group_id}({row.group_name})" for row in rows]
-    return text_message(
-        "当前没有VIP群~" if not groups else "VIP群列表:\n" + "\n".join(groups)
-    )
+    result = "当前没有VIP群~" if not groups else "VIP群列表:\n" + "\n".join(groups)
+    if not groups:
+        return text_message(result)
+    image = await _render_list(render_service, build_vip_groups_data(rows))
+    return image if image is not None else text_message(result)
 
 
 permission_list_command = Alconna(
@@ -411,6 +536,8 @@ permission_list_command.shortcut(
 async def get_perm_list(
     session: Session,
     group: Query[int] = Query("group.group_id", None),
+    *,
+    render_service: RenderService,
 ):
     context = context_from_session(session)
     if context.chat_type == "group":
@@ -444,7 +571,11 @@ async def get_perm_list(
     result = f"群{target_group}权限等级: {group_level}"
     if entries:
         result += "\n" + "\n".join(entries)
-    return text_message(result)
+    image = await _render_list(
+        render_service,
+        build_permission_list_data(target_group, group_level, rows),
+    )
+    return image if image is not None else text_message(result)
 
 
 global_black_command = Alconna(
@@ -495,7 +626,7 @@ async def change_global_black(
 
 
 @command.on(Alconna("全局黑名单列表", meta=CommandMeta("查询全局黑名单", compact=True)))
-async def get_global_black_list(session: Session):
+async def get_global_black_list(session: Session, *, render_service: RenderService):
     context = context_from_session(session)
     if context.chat_type != "private":
         return text_message(_MASTER_PRIVATE_ONLY)
@@ -505,9 +636,11 @@ async def get_global_black_list(session: Session):
         values = sorted(await _global_black_ids())
     except DatabaseUnavailableError as error:
         return _database_error_message(error, action="查询全局黑名单")
-    return text_message(
-        "全局黑名单为空哦~" if not values else "全局黑名单:\n" + "\n".join(values)
-    )
+    result = "全局黑名单为空哦~" if not values else "全局黑名单:\n" + "\n".join(values)
+    if not values:
+        return text_message(result)
+    image = await _render_list(render_service, build_global_blacklist_data(values))
+    return image if image is not None else text_message(result)
 
 
 bot_admin_command = Alconna(
@@ -554,7 +687,7 @@ async def change_bot_admin(
 
 
 @command.on(Alconna("BOT管理列表", meta=CommandMeta("查询 BOT 管理员", compact=True)))
-async def get_bot_admins_list(session: Session):
+async def get_bot_admins_list(session: Session, *, render_service: RenderService):
     context = context_from_session(session)
     if context.chat_type != "private":
         return text_message(_MASTER_PRIVATE_ONLY)
@@ -564,9 +697,13 @@ async def get_bot_admins_list(session: Session):
         values = sorted(await _bot_admin_ids())
     except DatabaseUnavailableError as error:
         return _database_error_message(error, action="查询 BOT 管理员")
-    return text_message(
+    result = (
         "当前还没有BOT管理哦~" if not values else "BOT管理列表:\n" + "\n".join(values)
     )
+    if not values:
+        return text_message(result)
+    image = await _render_list(render_service, build_bot_admins_data(values))
+    return image if image is not None else text_message(result)
 
 
 @plugin.listen(GuildMemberRemovedEvent)

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{ title }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 800px;
+    margin: 0;
+    color: #2C4A63;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(91, 168, 232, .10) 0 2px, transparent 3px),
+      radial-gradient(circle at 72% 32%, rgba(91, 168, 232, .09) 0 2px, transparent 3px),
+      radial-gradient(circle at 32% 82%, rgba(168, 216, 248, .12) 0 3px, transparent 4px),
+      linear-gradient(160deg, #EAF4FD 0%, #F7FBFF 45%, #E3F0FB 100%);
+    background-size: 260px 260px, 300px 300px, 340px 340px, auto;
+  }
+
+  .wrap { width: 800px; padding: 24px 28px 20px; }
+
+  /* ===== 页头：与状态卡、帮助卡共用天子蓝语言 ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    padding: 19px 24px;
+    border: 2px solid rgba(255, 255, 255, .55);
+    border-radius: 20px;
+    outline: 1px solid rgba(91, 168, 232, .35);
+    outline-offset: 3px;
+    background: linear-gradient(135deg, #2E5C9E 0%, #3D74C4 60%, #5B96DE 100%);
+    box-shadow: 0 6px 18px rgba(29, 63, 140, .45);
+  }
+  .header::before, .header::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .17);
+  }
+  .header::before { width: 150px; height: 150px; right: -44px; top: -64px; }
+  .header::after { width: 92px; height: 92px; right: 104px; bottom: -52px; }
+  .sigil {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    right: 14px;
+    width: 22px;
+    height: 22px;
+    background: rgba(255, 255, 255, .86);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .4), 0 0 10px rgba(255, 255, 255, .6);
+    transform: rotate(45deg);
+  }
+  .sigil::after {
+    content: "天";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1D3F8C;
+    font-size: 12px;
+    font-weight: 800;
+    transform: rotate(-45deg);
+  }
+  .avatar {
+    display: flex;
+    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    border: 3px solid rgba(255, 255, 255, .85);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #EAF6FF 0%, #7FA8D8 45%, #2E5C9E 100%);
+    box-shadow: 0 3px 10px rgba(30, 80, 130, .3);
+    position: relative;
+  }
+  .avatar span {
+    color: #FFFFFF;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 4px rgba(43, 95, 142, .6);
+  }
+  .avatar::after {
+    content: "✦";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    color: #FFF7C2;
+    font-size: 16px;
+    text-shadow: 0 0 6px rgba(255, 240, 150, .9);
+  }
+  .head-main { position: relative; z-index: 1; flex: 1; }
+  .head-title {
+    color: #FFFFFF;
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    line-height: 1.2;
+    text-shadow: 0 2px 6px rgba(43, 95, 142, .45);
+  }
+  .head-sub {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 6px;
+    color: rgba(255, 255, 255, .92);
+    font-size: 13px;
+  }
+  .head-sub .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #C8F5C0;
+    box-shadow: 0 0 6px rgba(200, 245, 192, .9);
+  }
+  .head-badge {
+    position: relative;
+    z-index: 1;
+    padding: 7px 13px;
+    color: #1D3F8C;
+    background: rgba(255, 255, 255, .92);
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(30, 80, 130, .25);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ===== 摘要与列表 ===== */
+  .summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 20px 2px 4px;
+    padding: 13px 18px;
+    border: 1px solid rgba(127, 196, 245, .45);
+    border-radius: 13px;
+    color: #3A6389;
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 3px 11px rgba(91, 168, 232, .12);
+    font-size: 13px;
+  }
+  .summary-text { color: #1D3F8C; font-weight: 700; }
+  .summary-count { color: #6E93B3; white-space: nowrap; }
+  .summary-count strong { color: #2E5C9E; font-size: 17px; }
+  .list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; margin-top: 18px; }
+  .list-card {
+    display: flex;
+    gap: 12px;
+    min-height: 86px;
+    padding: 13px 14px 12px 12px;
+    border: 1px solid rgba(127, 196, 245, .42);
+    border-radius: 13px;
+    background: #FFFFFF;
+    box-shadow: 0 3px 11px rgba(91, 168, 232, .12);
+  }
+  .item-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    margin-top: 1px;
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #3D74C4, #5B96DE);
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(61, 116, 196, .28);
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .item-body { min-width: 0; flex: 1; }
+  .item-title { display: flex; align-items: center; gap: 7px; }
+  .item-name {
+    overflow: hidden;
+    color: #1D3F8C;
+    font-size: 14px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .item-badge {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    color: #2E5C9E;
+    background: #E4F1FB;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .item-meta {
+    margin-top: 4px;
+    color: #3B76A8;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .item-detail {
+    margin-top: 5px;
+    color: #6E93B3;
+    font-size: 11.5px;
+    line-height: 1.45;
+    white-space: pre-line;
+  }
+  .empty {
+    margin-top: 18px;
+    padding: 23px 17px;
+    border: 1px dashed rgba(127, 196, 245, .6);
+    border-radius: 12px;
+    color: #7BA3C4;
+    background: rgba(255, 255, 255, .58);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .footer {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(127, 196, 245, .4);
+    color: #7BA3C4;
+    font-size: 12px;
+    text-align: center;
+  }
+  .footer .star { margin: 0 8px; color: #7FA8D8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="sigil"></div>
+    <div class="avatar"><span>天子</span></div>
+    <div class="head-main">
+      <div class="head-title">{{ title }}</div>
+      <div class="head-sub">
+        <span class="dot"></span>{{ subtitle }}
+      </div>
+    </div>
+    <div class="head-badge">{{ badge }}</div>
+  </div>
+
+  <div class="summary">
+    <span class="summary-text">{{ summary }}</span>
+    <span class="summary-count"><strong>{{ item_count }}</strong> 项记录</span>
+  </div>
+
+  {% if items %}
+  <div class="list">
+    {% for item in items %}
+    <article class="list-card">
+      <div class="item-index">{{ "%02d" | format(item["number"]) }}</div>
+      <div class="item-body">
+        <div class="item-title">
+          <span class="item-name">{{ item["name"] }}</span>
+          {% if item["badge"] %}<span class="item-badge">{{ item["badge"] }}</span>{% endif %}
+        </div>
+        {% if item["meta"] %}<div class="item-meta">{{ item["meta"] }}</div>{% endif %}
+        {% if item["detail"] %}<div class="item-detail">{{ item["detail"] }}</div>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty">{{ empty_text }}</div>
+  {% endif %}
+
+  <div class="footer">Tenko <span class="star">✦</span> そらにかわ、かわにそら <span class="star">✦</span></div>
+</div>
+</body>
+</html>

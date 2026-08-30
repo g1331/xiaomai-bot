@@ -354,6 +354,8 @@ pending_invites_command = Alconna(
 @command.on(pending_invites_command)
 async def pending_invite_list(session: Session):
     context = context_from_session(session)
+    if context.chat_type != "private":
+        return text_message("该指令仅支持 Master 私聊执行")
     if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     if not pending_invites:
@@ -384,6 +386,8 @@ async def reset_capability(
     account_id: Query[int] = Query("account_id", None),
 ):
     context = context_from_session(session)
+    if context.chat_type != "private":
+        return text_message("该指令仅支持 Master 私聊执行")
     if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     target_account = (
@@ -478,7 +482,7 @@ group_setting_command = Alconna(
         "--group",
         Args["group_id", int],
         alias=["-g", "群"],
-        help_text="查询指定群（跨群需要 BotAdmin）",
+        help_text="群内仅查询当前群；跨群查询需 Master 私聊",
     ),
     meta=CommandMeta(
         "只读查询群设置",
@@ -494,18 +498,24 @@ async def group_setting(
     group: Query[int] = Query("group.group_id", None),
 ):
     context = context_from_session(session)
-    if context.chat_type != "group":
-        return text_message("该指令只能在群聊中使用")
-    if not await permission_checker.require_group_perm(context, Permission.ActiveGroup):
-        return text_message("当前群不可用")
-    target_group = str(group.result) if group.available else context.channel_id
-    required = (
-        Permission.BotAdmin
-        if target_group != context.channel_id
-        else Permission.GroupAdmin
-    )
-    if not await permission_checker.require_perm(context, required):
-        return text_message("权限不足")
+    if context.chat_type == "group":
+        target_group = str(group.result) if group.available else context.channel_id
+        if target_group != context.channel_id:
+            return text_message("群内只能查询当前群")
+        if not await permission_checker.require_group_perm(
+            context, Permission.ActiveGroup
+        ):
+            return text_message("当前群不可用")
+        if not await permission_checker.require_perm(context, Permission.GroupAdmin):
+            return text_message("权限不足")
+    elif context.chat_type == "private":
+        if not await permission_checker.require_perm(context, Permission.Master):
+            return text_message("权限不足")
+        if not group.available:
+            return text_message("Master 私聊查询请提供 --group <群号>")
+        target_group = str(group.result)
+    else:
+        return text_message("该指令仅支持群聊或 Master 私聊执行")
     settings = await read_group_settings(target_group)
     return text_message(format_group_settings(target_group, settings))
 

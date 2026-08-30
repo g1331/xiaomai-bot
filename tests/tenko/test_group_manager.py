@@ -54,6 +54,33 @@ def make_session(user_id: str, role: str, elements=None):
     )
 
 
+def make_private_session(user_id: str):
+    event = Event(
+        type=EventType.MESSAGE_CREATED,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User("10001")),
+        channel=Channel(f"private:{user_id}", ChannelType.DIRECT),
+        guild=None,
+        member=None,
+        user=User(user_id),
+        message=MessageObject.from_elements("50001", []),
+    )
+    return SimpleNamespace(
+        event=SimpleNamespace(
+            _origin=event,
+            channel=event.channel,
+            guild=event.guild,
+            user=event.user,
+        )
+    )
+
+
+def make_query(path: str, result):
+    query = Query(path, result)
+    query.available = True
+    return query
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
 async def test_group_setting_trigger_is_read_only(loaded_plugin) -> None:
@@ -86,6 +113,64 @@ async def test_group_setting_permission_filter_blocks_normal_member(
 
     result = await loaded_plugin.group_setting.callable_target(
         make_session("20001", "member"), Query("group.group_id", None)
+    )
+
+    assert str(result) == "权限不足"
+    loaded_plugin.read_group_settings.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_setting_rejects_cross_group_target_in_group(
+    loaded_plugin,
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="20001")
+    )
+    loaded_plugin.read_group_settings = AsyncMock()
+
+    result = await loaded_plugin.group_setting.callable_target(
+        make_session("20001", "member"), make_query("group.group_id", 40002)
+    )
+
+    assert str(result) == "群内只能查询当前群"
+    loaded_plugin.read_group_settings.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_master_private_group_setting_can_query_requested_group(
+    loaded_plugin,
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+    loaded_plugin.read_group_settings = AsyncMock(
+        return_value={
+            "frequency_limitation": True,
+            "response_type": "random",
+            "permission_type": "default",
+            "permission": 1,
+            "active": True,
+        }
+    )
+
+    result = await loaded_plugin.group_setting.callable_target(
+        make_private_session("90001"), make_query("group.group_id", 40002)
+    )
+
+    assert "群40002设置" in str(result)
+    loaded_plugin.read_group_settings.assert_awaited_once_with("40002")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_non_master_private_group_setting_is_denied(loaded_plugin) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.read_group_settings = AsyncMock()
+
+    result = await loaded_plugin.group_setting.callable_target(
+        make_private_session("20001"), make_query("group.group_id", 40002)
     )
 
     assert str(result) == "权限不足"
@@ -519,7 +604,7 @@ async def test_superuser_can_list_pending_invites(loaded_plugin) -> None:
     )
 
     result = await loaded_plugin.pending_invite_list.callable_target(
-        make_session("90001", "member")
+        make_private_session("90001")
     )
 
     assert "request-1" in str(result)
@@ -543,7 +628,7 @@ async def test_superuser_can_reset_current_account_capability_state(
     loaded_plugin.action_service = service
 
     result = await loaded_plugin.reset_capability.callable_target(
-        make_session("90001", "member"), Query("account_id", None)
+        make_private_session("90001"), Query("account_id", None)
     )
 
     assert str(result) == "已重置账号 10001 的 2 项平台能力学习状态"
@@ -561,10 +646,52 @@ async def test_non_master_cannot_reset_capability_state(loaded_plugin) -> None:
     loaded_plugin.action_service = service
 
     result = await loaded_plugin.reset_capability.callable_target(
-        make_session("20001", "admin"), Query("account_id", None)
+        make_private_session("20001"), Query("account_id", None)
     )
 
     assert str(result) == "权限不足"
+    assert service.capability_status("10001", "member_mute") is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_master_group_cannot_list_pending_invites(loaded_plugin) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=InviteAccount(InviteProtocol()),
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+
+    result = await loaded_plugin.pending_invite_list.callable_target(
+        make_session("90001", "member")
+    )
+
+    assert str(result) == "该指令仅支持 Master 私聊执行"
+    loaded_plugin.pending_invites.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_master_group_cannot_reset_capability_state(loaded_plugin) -> None:
+    checker = PermissionChecker(registry=PermissionRegistry(master_id="90001"))
+    service = ActionService(AccountRegistry(), checker)
+    service.set_capability("10001", "member_mute", False)
+    loaded_plugin.permission_checker = checker
+    loaded_plugin.action_service = service
+
+    result = await loaded_plugin.reset_capability.callable_target(
+        make_session("90001", "member"), Query("account_id", None)
+    )
+
+    assert str(result) == "该指令仅支持 Master 私聊执行"
     assert service.capability_status("10001", "member_mute") is False
 
 

@@ -555,6 +555,10 @@ class AccountRegistry:
             selected = self._accounts.get(selected_id)
             if selected in available:
                 return selected
+            # The choice belongs to this message.  Do not re-route it after
+            # the chosen account goes offline or becomes muted, otherwise a
+            # late duplicate event could be processed by a second account.
+            return None
         selected = random.choice(available)
         self._event_selections[selection_key] = _account_id(selected)
         if len(self._event_selections) > _MAX_EVENT_SELECTIONS:

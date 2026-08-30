@@ -108,6 +108,22 @@ def test_event_random_selection_normalizes_account_id_in_cache(monkeypatch) -> N
     assert registry.select_for_event(100, source_id="message-1") is first
 
 
+def test_event_selection_does_not_reroute_after_selected_account_goes_offline(
+    monkeypatch,
+) -> None:
+    registry = AccountRegistry()
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+    monkeypatch.setattr(accounts_module.random, "choice", lambda _: first)
+
+    assert registry.select_for_event(100, source_id="message-1") is first
+    registry.set_available(first, False)
+
+    assert registry.select_for_event(100, source_id="message-1") is None
+
+
 def test_partial_group_mute_excludes_only_the_muted_account_from_selection() -> None:
     registry = AccountRegistry()
     first = FakeAccount("10001")

@@ -257,7 +257,7 @@ keep-runtime-typing = true # 保留 `from __future__ import annotations`，避�
 
 # pytest 配置
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/tenko"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

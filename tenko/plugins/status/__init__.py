@@ -1,9 +1,18 @@
 from __future__ import annotations
 
+import importlib.metadata
+import os
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib
 
 from arclet.alconna import Alconna, CommandMeta, Option, store_true
 from arclet.entari import Session, command, plugin
@@ -13,11 +22,7 @@ from arclet.entari.plugin import PluginRole
 from tenko.events import MessageMetrics, message_metrics
 from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.perm import Permission, PermissionChecker
-from tenko.plugins._common import (
-    context_from_session,
-    send_private_message,
-    text_message,
-)
+from tenko.plugins._common import context_from_session, text_message
 
 try:
     import psutil
@@ -41,6 +46,9 @@ plugin.get_plugin().metadata.default_switch = True
 permission_checker = PermissionChecker()
 _PROCESS_START_TIME = time.time()
 _RATE_WINDOW_SECONDS = 60.0
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_PROJECT_NAME = "bot-xiaomai-open"
+_PROJECT_ADDRESS = "项目地址：https://github.com/g1331/xiaomai-bot"
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,19 +85,81 @@ def _format_duration(seconds: float) -> str:
     days, remainder = divmod(total, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, seconds = divmod(remainder, 60)
-    if days:
-        return f"{days}天{hours}小时{minutes}分"
-    if hours:
-        return f"{hours}小时{minutes}分{seconds}秒"
-    if minutes:
-        return f"{minutes}分{seconds}秒"
-    return f"{seconds}秒"
+    return f"{days}天{hours}小时{minutes}分{seconds}秒"
 
 
 def _format_time(value: datetime) -> str:
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone().isoformat(timespec="seconds")
+        local_value = value
+    else:
+        local_value = value.astimezone()
+    return local_value.strftime("%Y年%m月%d日%H时%M分%S秒")
+
+
+def _project_version() -> str:
+    try:
+        return importlib.metadata.version(_PROJECT_NAME)
+    except importlib.metadata.PackageNotFoundError:
+        pass
+
+    try:
+        with (_PROJECT_ROOT / "pyproject.toml").open("rb") as project_file:
+            project_data = tomllib.load(project_file)
+        version = project_data["project"]["version"]
+    except (
+        OSError,
+        KeyError,
+        TypeError,
+        tomllib.TOMLDecodeError,
+    ):
+        return "0.0.0"
+    return str(version)
+
+
+def _git_output(*arguments: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=_PROJECT_ROOT,
+            capture_output=True,
+            check=True,
+            text=True,
+            timeout=1.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    output = result.stdout.strip()
+    return output or None
+
+
+def get_version_details() -> tuple[str, ...]:
+    """按旧版文本状态的顺序组装版本与构建信息。"""
+
+    lines = [f"版本信息：v{_project_version()}"]
+    branch = _git_output("branch", "--show-current") or "未知分支"
+    commit_output = _git_output("log", "-1", "--format=%h%x1f%an%x1f%s")
+    if commit_output is not None:
+        commit_short, separator, commit_rest = commit_output.partition("\x1f")
+        if separator:
+            author, separator, message = commit_rest.partition("\x1f")
+        else:
+            author = message = "未知"
+        if commit_short:
+            lines.extend(
+                [
+                    f"Git分支：{branch}",
+                    f"最新提交：{commit_short} ({author})",
+                    f"提交信息：{message}",
+                ]
+            )
+
+    build_number = os.environ.get("B2V_BUILD_NUMBER", "开发环境")
+    if build_number != "开发环境":
+        lines.append(f"构建编号：{build_number}")
+        if build_date := os.environ.get("B2V_BUILD_DATE", ""):
+            lines.append(f"构建日期：{build_date}")
+        lines.append(f"构建类型：{os.environ.get('B2V_BUILD_TYPE', 'dev')}")
+    return tuple(lines)
 
 
 def collect_system_resources() -> SystemResources | None:
@@ -143,41 +213,22 @@ def collect_process_info() -> ProcessInfo:
     )
 
 
-def _registry_lines(registry: AccountRegistry) -> tuple[str, str, str]:
+def _online_bot_count(registry: AccountRegistry) -> str:
     accounts = tuple(registry.accounts.values())
-    online_ids = tuple(
-        str(account.self_id) for account in accounts if registry.is_available(account)
-    )
-    online = ", ".join(online_ids) if online_ids else "无"
-
-    mute_entries: list[str] = []
-    for group_id in registry.group_ids:
-        for account in registry.bound_accounts_for_group(group_id):
-            if not registry.is_muted(account, group_id):
-                state = "正常"
-            elif (until := registry.mute_until(account, group_id)) is None:
-                state = "永久"
-            else:
-                state = f"至 {_format_time(until)}"
-            mute_entries.append(f"{account.self_id}@{group_id}={state}")
-    mute_summary = ", ".join(mute_entries) if mute_entries else "无"
-    return f"{len(online_ids)}/{len(accounts)}", online, mute_summary
+    online_count = sum(registry.is_available(account) for account in accounts)
+    return f"{online_count}/{len(accounts)}"
 
 
-def _current_group_summary(context: Any, registry: AccountRegistry) -> str:
+def _current_group_mute(context: Any, registry: AccountRegistry) -> str | None:
     if context.chat_type != "group":
-        return "群健康: 不适用"
+        return None
 
     accounts = registry.bound_accounts_for_group(context.channel_id)
-    available = sum(registry.is_available(account) for account in accounts)
     muted = sum(
         registry.is_muted(getattr(account, "self_id", account), context.channel_id)
         for account in accounts
     )
-    return (
-        f"当前群BOT在线: {available}/{len(accounts)}；"
-        f"当前群禁言: {muted}/{len(accounts)}"
-    )
+    return f"当前群禁言：{muted}/{len(accounts)}"
 
 
 def build_status(
@@ -189,71 +240,57 @@ def build_status(
     resources: SystemResources | None = None,
     process: ProcessInfo | None = None,
     detailed: bool = False,
+    version_details: tuple[str, ...] | None = None,
 ) -> str:
+    del plugin_count
     registry = account_registry if registry is None else registry
     metrics = message_metrics if metrics is None else metrics
-    if detailed:
-        resources = collect_system_resources() if resources is None else resources
-        process = collect_process_info() if process is None else process
-    location = (
-        f"群聊 {context.channel_id}"
-        if context.chat_type == "group"
-        else f"私聊 {context.channel_id}"
-        if context.chat_type == "private"
-        else f"频道 {context.channel_id}"
-    )
+    resources = collect_system_resources() if resources is None else resources
+    process = collect_process_info() if process is None else process
     received_rate, sent_rate = metrics.rates(_RATE_WINDOW_SECONDS)
-    online_count, online_ids, mute_summary = _registry_lines(registry)
+    current_group_mute = _current_group_mute(context, registry)
+    version_lines = (
+        get_version_details() if version_details is None else tuple(version_details)
+    )
 
     lines = [
-        "Tenko 状态",
-        f"账号: {context.account_id}",
-        f"会话: {location}",
-        f"用户: {context.user_id}",
-        f"已注册插件: {plugin_count}",
-        (
-            f"消息: 收 {metrics.received_count} / 发 {metrics.sent_count}；"
-            f"近60秒 收 {received_rate} ({received_rate / _RATE_WINDOW_SECONDS:.2f}/秒)"
-            f" / 发 {sent_rate} ({sent_rate / _RATE_WINDOW_SECONDS:.2f}/秒)"
-        ),
-        f"账号在线: {online_count}",
-        f"活跃群: {len(registry.group_ids)}",
-        _current_group_summary(context, registry),
+        f"开机时间：{_format_time(process.start_time)}",
+        f"运行时长：{_format_duration(process.uptime_seconds)}",
+        (f"接收消息：{metrics.received_count}条 (实时:{received_rate}条/m)"),
+        f"发送消息：{metrics.sent_count}条 (实时:{sent_rate}条/m)",
     ]
-    if detailed:
-        lines.extend(
-            [
-                f"在线账号: {online_ids}",
-                f"账号×群禁言: {mute_summary}",
-                (
-                    f"进程: 启动 {_format_time(process.start_time)}；"
-                    f"运行 {_format_duration(process.uptime_seconds)}"
-                    + (
-                        f"；RSS {_format_bytes(process.rss)}"
-                        if process is not None and process.rss is not None
-                        else ""
-                    )
-                ),
-            ]
-        )
-    if detailed and resources is not None:
+    if resources is not None:
         lines.extend(
             [
                 (
-                    f"系统: CPU {resources.cpu_percent:.1f}%；"
-                    f"内存 {_format_bytes(resources.memory_used)}/"
-                    f"{_format_bytes(resources.memory_total)}"
-                    f" ({resources.memory_percent:.1f}%)；"
-                    f"磁盘 {_format_bytes(resources.disk_used)}/"
-                    f"{_format_bytes(resources.disk_total)}"
-                    f" ({resources.disk_percent:.1f}%)"
+                    f"内存使用：{round(resources.memory_used / 1024**2)}MB "
+                    f"({resources.memory_percent:.0f}%)"
                 ),
-                (
-                    f"网络 IO: ↑ {_format_bytes(resources.net_sent)}；"
-                    f"↓ {_format_bytes(resources.net_received)}"
-                ),
+                f"CPU占比：{resources.cpu_percent:.1f}%",
+                f"磁盘占比：{resources.disk_percent:.1f}%",
             ]
         )
+    lines.extend(
+        [
+            f"在线bot数量：{_online_bot_count(registry)}",
+            f"活动群组数量：{len(registry.group_ids)}",
+            *version_lines,
+            _PROJECT_ADDRESS,
+        ]
+    )
+    if current_group_mute is not None:
+        lines.append(current_group_mute)
+
+    if detailed and context.chat_type == "private":
+        diagnostic_lines: list[str] = []
+        if process.rss is not None:
+            diagnostic_lines.append(f"进程 RSS：{_format_bytes(process.rss)}")
+        if resources is not None:
+            diagnostic_lines.append(
+                f"网络 IO：↑ {_format_bytes(resources.net_sent)}；"
+                f"↓ {_format_bytes(resources.net_received)}"
+            )
+        lines.extend(diagnostic_lines)
     return "\n".join(lines)
 
 
@@ -287,21 +324,14 @@ async def status(
         context, Permission.ActiveGroup
     ) or not await permission_checker.require_perm(context, Permission.User):
         return text_message("权限不足")
-    is_master = await permission_checker.require_perm(context, Permission.Master)
-    if context.chat_type == "private" and is_master:
-        return text_message(
-            build_status(context, len(plugin.get_plugins()), detailed=True)
-        )
-
-    summary = build_status(context, len(plugin.get_plugins()))
-    if context.chat_type == "group" and is_master:
-        diagnostic = build_status(
+    is_master_private = (
+        context.chat_type == "private"
+        and await permission_checker.require_perm(context, Permission.Master)
+    )
+    return text_message(
+        build_status(
             context,
             len(plugin.get_plugins()),
-            detailed=True,
+            detailed=is_master_private,
         )
-        if await send_private_message(session, context.user_id, diagnostic):
-            summary += "\n详情已发送给维护者"
-        else:
-            summary += "\n详情发送失败，请查看日志"
-    return text_message(summary)
+    )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -76,21 +77,75 @@ class PrivateMessageProtocol:
         return []
 
 
+def make_resources(loaded_plugin):
+    return loaded_plugin.SystemResources(
+        cpu_percent=12.5,
+        memory_used=2 * 1024**3,
+        memory_total=8 * 1024**3,
+        memory_percent=25.0,
+        disk_used=3 * 1024**3,
+        disk_total=10 * 1024**3,
+        disk_percent=30.0,
+        net_sent=4 * 1024**2,
+        net_received=5 * 1024**2,
+    )
+
+
+def make_process(loaded_plugin):
+    return loaded_plugin.ProcessInfo(
+        start_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        uptime_seconds=3661,
+        rss=64 * 1024**2,
+    )
+
+
+def patch_status_data(loaded_plugin, monkeypatch) -> None:
+    resources = make_resources(loaded_plugin)
+    process = make_process(loaded_plugin)
+    monkeypatch.setattr(loaded_plugin, "collect_system_resources", lambda: resources)
+    monkeypatch.setattr(loaded_plugin, "collect_process_info", lambda: process)
+    monkeypatch.setattr(
+        loaded_plugin,
+        "get_version_details",
+        lambda: ("版本信息：v9.9.9", "Git分支：test", "最新提交：abc123 (tester)"),
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
-async def test_status_command_reports_native_runtime_context(loaded_plugin) -> None:
+async def test_status_command_reports_legacy_group_fields_without_context_details(
+    loaded_plugin, monkeypatch
+) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(
         make_session("20001", "member"), Query("text.value", False)
     )
 
-    assert "Tenko 状态" in str(result)
-    assert "账号: 10001" in str(result)
-    assert "当前群BOT在线:" in str(result)
-    assert "在线账号:" not in str(result)
-    assert "账号×群禁言:" not in str(result)
-    assert "进程: 启动" not in str(result)
+    output = str(result)
+    assert output.startswith("开机时间：2026年")
+    assert "运行时长：0天1小时1分1秒" in output
+    assert "接收消息：0条 (实时:0条/m)" in output
+    assert "发送消息：0条 (实时:0条/m)" in output
+    assert "内存使用：2048MB (25%)" in output
+    assert "CPU占比：12.5%" in output
+    assert "磁盘占比：30.0%" in output
+    assert "在线bot数量：0/0" in output
+    assert "活动群组数量：0" in output
+    assert "当前群禁言：0/0" in output
+    assert "项目地址：https://github.com/g1331/xiaomai-bot" in output
+    assert "Tenko 状态" not in output
+    assert "10001" not in output
+    assert "20001" not in output
+    assert "账号:" not in output
+    assert "用户:" not in output
+    assert "会话:" not in output
+    assert "已注册插件:" not in output
+    assert "在线账号:" not in output
+    assert "账号×群禁言:" not in output
+    assert "RSS" not in output
+    assert "网络 IO" not in output
     assert loaded_plugin.status_command.parse("/-bot -t").matched
     assert loaded_plugin.status_command.parse("/状态 -t").matched
 
@@ -113,47 +168,127 @@ async def test_status_permission_filter_blocks_global_blacklisted_user(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
-async def test_master_private_status_receives_full_diagnostic(loaded_plugin) -> None:
-    loaded_plugin.permission_checker = PermissionChecker(
-        registry=PermissionRegistry(master_id="90001")
-    )
-
-    result = await loaded_plugin.status.callable_target(
-        make_private_session("90001"), Query("text.value", False)
-    )
-
-    output = str(result)
-    assert "在线账号:" in output
-    assert "账号×群禁言:" in output
-    assert "进程: 启动" in output
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
-async def test_master_group_status_keeps_group_summary_and_pushes_diagnostic(
-    loaded_plugin,
+async def test_master_private_status_appends_only_operational_diagnostic(
+    loaded_plugin, monkeypatch
 ) -> None:
     protocol = PrivateMessageProtocol()
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
     )
+    patch_status_data(loaded_plugin, monkeypatch)
+
+    result = await loaded_plugin.status.callable_target(
+        make_private_session("90001", protocol), Query("text.value", False)
+    )
+
+    output = str(result)
+    assert "版本信息：v9.9.9" in output
+    assert "进程 RSS：64.0MB" in output
+    assert "网络 IO：↑ 4.0MB；↓ 5.0MB" in output
+    assert "进程: 启动" not in output
+    assert "在线账号:" not in output
+    assert "账号×群禁言:" not in output
+    assert "账号:" not in output
+    assert "用户:" not in output
+    assert "会话:" not in output
+    assert "已注册插件:" not in output
+    assert protocol.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+async def test_master_group_status_never_pushes_private_diagnostic(
+    loaded_plugin, monkeypatch
+) -> None:
+    protocol = PrivateMessageProtocol()
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+    patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(
         make_session("90001", "member", protocol), Query("text.value", False)
     )
 
     output = str(result)
-    assert "当前群BOT在线:" in output
-    assert "详情已发送给维护者" in output
+    assert "当前群禁言：" in output
+    assert "详情" not in output
     assert "在线账号:" not in output
     assert "账号×群禁言:" not in output
-    assert protocol.calls and protocol.calls[0][0] == "90001"
-    assert "在线账号:" in protocol.calls[0][1]
-    assert "账号×群禁言:" in protocol.calls[0][1]
+    assert "进程 RSS：" not in output
+    assert "网络 IO：" not in output
+    assert protocol.calls == []
 
 
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
-def test_build_status_reports_resources_metrics_and_account_mute_state(
+def test_group_and_private_status_share_the_same_legacy_base(
+    loaded_plugin,
+) -> None:
+    registry = AccountRegistry()
+    first = SimpleNamespace(self_id="10001")
+    second = SimpleNamespace(self_id="10002")
+    registry.register(first, groups=["40001"])
+    registry.register(second, available=False, groups=["40002"])
+    registry.set_muted(first, "40001", True)
+    context = MessageContext(
+        account_id="10001",
+        event_type="message-created",
+        protocol_event_type="message.group.normal",
+        chat_type="group",
+        channel_id="40001",
+        user_id="20001",
+        message_id="50001",
+        text="状态",
+        image_urls=(),
+    )
+    private_context = replace(
+        context,
+        chat_type="private",
+        channel_id="private:20001",
+    )
+    resources = make_resources(loaded_plugin)
+    process = make_process(loaded_plugin)
+    metrics = MessageMetrics()
+    version_details = ("版本信息：v9.9.9", "Git分支：test")
+
+    group_output = loaded_plugin.build_status(
+        context,
+        7,
+        registry=registry,
+        metrics=metrics,
+        resources=resources,
+        process=process,
+        version_details=version_details,
+    )
+    private_output = loaded_plugin.build_status(
+        private_context,
+        7,
+        registry=registry,
+        metrics=metrics,
+        resources=resources,
+        process=process,
+        version_details=version_details,
+    )
+
+    assert group_output == f"{private_output}\n当前群禁言：1/1"
+    assert "当前群禁言：" not in private_output
+    for forbidden_value in ("10001", "10002", "20001", "40002"):
+        assert forbidden_value not in group_output
+    for forbidden_field in (
+        "账号:",
+        "用户:",
+        "会话:",
+        "已注册插件:",
+        "在线账号:",
+        "账号×群禁言:",
+        "RSS",
+        "网络 IO",
+    ):
+        assert forbidden_field not in group_output
+
+
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+def test_build_status_reports_legacy_resources_and_current_group_mute(
     loaded_plugin,
 ) -> None:
     registry = AccountRegistry()
@@ -205,17 +340,25 @@ def test_build_status_reports_resources_metrics_and_account_mute_state(
             rss=64 * 1024**2,
         ),
         detailed=True,
+        version_details=("版本信息：v9.9.9", "构建类型：dev"),
     )
 
-    assert "消息: 收 1 / 发 1" in output
-    assert "系统: CPU 12.5%" in output
-    assert "内存 2.0GB/8.0GB" in output
-    assert "磁盘 3.0GB/10.0GB" in output
-    assert "网络 IO" in output
-    assert "在线账号: 10001" in output
-    assert "活跃群: 1" in output
-    assert "10001@40001=永久" in output
-    assert "RSS 64.0MB" in output
+    assert "开机时间：2026年" in output
+    assert "运行时长：0天1小时1分1秒" in output
+    assert "接收消息：1条 (实时:1条/m)" in output
+    assert "发送消息：1条 (实时:1条/m)" in output
+    assert "内存使用：2048MB (25%)" in output
+    assert "CPU占比：12.5%" in output
+    assert "磁盘占比：30.0%" in output
+    assert "在线bot数量：1/2" in output
+    assert "活动群组数量：1" in output
+    assert "版本信息：v9.9.9" in output
+    assert "构建类型：dev" in output
+    assert "当前群禁言：1/2" in output
+    assert "RSS" not in output
+    assert "网络 IO" not in output
+    assert "在线账号:" not in output
+    assert "账号×群禁言:" not in output
 
 
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
@@ -240,8 +383,11 @@ def test_status_skips_system_resource_section_when_psutil_is_missing(
         context, 1, registry=registry, metrics=MessageMetrics(), detailed=True
     )
 
-    assert "进程: 启动" in output
-    assert "系统:" not in output
+    assert "开机时间：" in output
+    assert "内存使用：" not in output
+    assert "CPU占比：" not in output
+    assert "磁盘占比：" not in output
+    assert "RSS" not in output
     assert "网络 IO" not in output
 
 
@@ -275,4 +421,34 @@ def test_collect_system_resources_reads_psutil_snapshot(
         disk_percent=30.0,
         net_sent=4 * 1024**2,
         net_received=5 * 1024**2,
+    )
+
+
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+def test_get_version_details_includes_git_and_build_metadata(
+    loaded_plugin, monkeypatch
+) -> None:
+    monkeypatch.setattr(loaded_plugin, "_project_version", lambda: "9.9.9")
+    monkeypatch.setattr(
+        loaded_plugin,
+        "_git_output",
+        lambda *arguments: {
+            ("branch", "--show-current"): "release/test",
+            ("log", "-1", "--format=%h%x1f%an%x1f%s"): (
+                "abc123\x1fTenko Test\x1ffix(status): align output"
+            ),
+        }[arguments],
+    )
+    monkeypatch.setenv("B2V_BUILD_NUMBER", "42")
+    monkeypatch.setenv("B2V_BUILD_DATE", "2026-08-30")
+    monkeypatch.setenv("B2V_BUILD_TYPE", "release")
+
+    assert loaded_plugin.get_version_details() == (
+        "版本信息：v9.9.9",
+        "Git分支：release/test",
+        "最新提交：abc123 (Tenko Test)",
+        "提交信息：fix(status): align output",
+        "构建编号：42",
+        "构建日期：2026-08-30",
+        "构建类型：release",
     )

@@ -1,6 +1,8 @@
-# Tenko 第一阶段：Entari + Satori/OneBot 11 最小闭环
+# Tenko：Entari + Satori/OneBot 11 宿主闭环
 
-这一阶段在旧 Graia Ariadne 机器人旁边新增独立的 `tenko` 包，完成以下最小链路：
+Tenko 在旧 Graia Ariadne 机器人旁边提供独立的 `tenko` 包，当前闭环包括
+Satori/OneBot 11 接入、Entari 原生插件、统一权限/动作服务、多账号群路由、群级功能
+开关和命令限流：
 
 ```text
 NapCat 反向 WebSocket
@@ -8,21 +10,29 @@ NapCat 反向 WebSocket
         ▼
 Satori OneBot 11 adapter ──► Satori Server ──► Entari client
         ▲                                      │
-        └──────── OneBot action ◄── 固定回复事件处理器
+        └──────── OneBot action ◄── Tenko host services ◄── Entari plugins
 ```
 
-收到 OneBot 11 的群聊或私聊消息后，Tenko 会记录账号、会话类型、用户、文本和图片 URL。固定回复默认关闭；开启后，会通过 Satori protocol 发送 `Tenko 已收到消息。`（或配置的文案）。
+收到 OneBot 11 的群聊或私聊消息后，Tenko 会记录账号、会话类型、用户、文本和图片
+URL。群消息在多账号同时在线时按群策略只交给一个账号处理；命令进入 Entari 前统一
+经过群级功能开关和频率限制。固定回复默认关闭；开启后，会通过 Satori protocol
+发送 `Tenko 已收到消息。`（或配置的文案）。
 
 ## 边界与文件
 
 - `tenko/connection.py`：连接层，组装官方 Satori Server、OneBot 11 反向适配器和 Entari 使用的内部 WebSocket。
 - `tenko/events.py`：事件层，在插件分发前执行调试白名单和禁言过滤，记录消息并按开关发送固定文案。
 - `tenko/context.py`：消息上下文层，统一 `account_id`、事件类型、群/私聊、文本和图片 URL。
+- `tenko/host/accounts.py`：账号生命周期、群绑定、响应策略、禁言状态和管理账号候选。
+- `tenko/host/actions.py`：Satori/OneBot 动作接缝、能力学习、失败分类和群发现。
+- `tenko/host/features.py`、`tenko/host/ratelimit.py`：群级插件开关、维护状态和命令限流。
 - `tenko/config.py`：只使用 Python 标准库 `tomllib` 读取 TOML 配置。
 - `tenko/runtime.py`、`tenko/__main__.py`：服务编排和入口。
 - `tests/tenko/`：事件类型解析、上下文提取、回复开关和 OneBot action JSON 测试。
 
-本阶段不加载或迁移旧的 `core/`、`modules/`、`utils/`，也不修改这些目录。没有实现业务插件、权限迁移、数据库迁移或消息等待器。
+Tenko 不加载或修改旧的 `core/`、`modules/`、`utils/` 和 `main.py`。当前 JSON 状态
+文件是开关、限流黑名单和响应策略的临时持久化边界，真实数据库接入仍是后续任务；
+插件权限查询对旧数据库保持只读兼容。
 
 ## 创建独立环境
 
@@ -63,21 +73,26 @@ ws://127.0.0.1:8080/onebot/v11/ws
 
 `[onebot]` 中的 `satori_*` 是 Tenko 内部使用的 Satori client/server 配置，不应填写为 NapCat 的反向 WebSocket 地址。`listen_host = "0.0.0.0"` 时，Tenko 会自动用 `127.0.0.1` 连接本机内部 Satori 服务；跨机器场景请显式设置 `satori_host`。
 
-### Entari superusers（异常报告）
+### Entari superusers（唯一权威来源）
 
 Entari 0.18.6 的原生配置字段是“平台名称 → 该平台用户 ID 列表”的
-`basic.superusers` 映射。Tenko 在自己的 `[runtime]` 配置节中提供同形状的单一来源：
+`basic.superusers` 映射。Tenko 在自己的 `[entari]` 配置节中提供唯一权威来源：
 
 ```toml
-[runtime]
+[entari]
 superusers = { onebot = ["YOUR_QQ_ID"] }
 ```
 
 `onebot` 必须与账号的 Satori `platform` 值一致；ID 可以写成字符串或整数，Tenko
 加载时会统一转换为字符串。运行时会在 Entari 初始化后、加载插件前将这项配置写入
 `EntariConfig.instance.basic.superusers`，异常捕获插件因此可以向这些用户发送报告，
-不需要另外维护 Entari 的 `entari.yml`。`[upgrade].superuser_ids` 仍只控制升级命令的
-权限，两者用途不同。
+不需要另外维护 Entari 的 `entari.yml`。`PermissionChecker` 使用与 Entari 原生
+`filter.superusers` 相同的 platform→ID 判定，并将命中者视为 `Permission.Master`。
+
+`[debug].masters` 和 `[upgrade].superuser_ids` 在未显式配置时继承这份名单；显式配置
+（包括显式空列表）优先覆盖继承。旧 `[runtime].superusers` 仅作为迁移读取入口，解析后
+与 `[entari]` 共享同一份有效值，不再是独立名单。升级命令的继承关系也不改变其自身
+命令权限用途。
 
 ### 开发调试模式（仅响应 master）
 
@@ -86,10 +101,11 @@ superusers = { onebot = ["YOUR_QQ_ID"] }
 ```toml
 [debug]
 enabled = true
-masters = ["123456789"]
+# masters = ["123456789"]  # 省略时继承 [entari].superusers
 ```
 
-`masters` 是开发者 QQ 号列表，建议始终写成字符串。事件入口会把事件中的用户
+`masters` 是开发者 QQ 号列表，建议始终写成字符串；显式填写后不再使用超管继承。
+事件入口会把事件中的用户
 ID 和白名单统一转换为字符串后比较，因此协议层返回整数 ID 时也不会因为类型
 不同而漏过过滤。`enabled = false` 是默认值；省略整个 `[debug]` 配置节时，行为
 与未启用调试模式相同。
@@ -153,7 +169,7 @@ reply_text = "Tenko 已收到消息。"
 
 | Tenko 第二阶段 | 旧实现 | 迁移边界 |
 | --- | --- | --- |
-| `tenko/host/accounts.py` 的 `AccountRegistry` | `core/models/response_model/AccountController`，以及 `core/bot.py` 的账号生命周期部分 | 保存 `self_id -> satori.client.Account`、可用状态和群路由；群成员/群列表由宿主显式绑定，不调用 Ariadne API |
+| `tenko/host/accounts.py` 的 `AccountRegistry` | `core/models/response_model/AccountController`，以及 `core/bot.py` 的账号生命周期部分 | 保存 `self_id -> satori.client.Account`、可用状态和群路由；注册表本身不调用 API，账号上线后的群列表由 `ActionService` 发现后写入 |
 | `tenko/host/perm.py` 的 `Permission`、`PermissionRegistry`、`PermissionChecker` | `core/control.py` 的权限数值策略和 `MemberPerm`/`GroupPerm` 读操作 | 保留 `-1/0/16/32/64/128/256` 成员权限与 `0/1/2/3` 群等级；通过 `MessageContext` 返回 awaitable 布尔检查，不产生 `Depend` 或 `ExecutionStop` |
 | `tenko/host/plugins.py` 的 `PluginRuntime` | `core/models/saya_model.ModulesController` 和 Graia Saya | 发现 Tenko 插件目录项并转换为 Entari 导入名；加载、卸载、重载、元数据和开关全部交给 Entari 原生机制，只读兼容旧 `modules_data.json` 的状态，不写回旧文件 |
 
@@ -167,10 +183,11 @@ registry.set_available(account, False)
 target = registry.select_for_context(context, source_id=stable_message_id)
 ```
 
-群消息会从已绑定且可用的账号中选择；`random` 策略在传入 `source_id` 时遵循旧宿主
-的 `round(source_id) % account_count` 规则，`deterministic` 策略则使用指定账号。
-deterministic 账号离线时返回 `None`，不会静默换成另一账号。私聊沿用消息所属的
-`context.account_id`，账号注销时会同时移除它参与的群路由。
+群消息会从已绑定且可用的账号中选择；事件入口的 `random` 策略每条消息随机选择一
+个账号，并缓存这条消息的选择，使多个账号收到同一消息时只有一个进入 Entari。
+`deterministic` 策略使用指定账号；指定账号离线或在该群被禁言时返回 `None`，不会
+静默换用另一账号。私聊沿用消息所属的 `context.account_id`，账号注销时会同时移除
+它参与的群路由。单账号群仍走原账号，不增加额外路由行为。
 
 ### B：权限协议包装
 
@@ -342,6 +359,12 @@ registry.set_muted(
 当前群仍被禁言的账号；deterministic 策略的指定账号被禁言时返回 `None`，不会
 静默换用其他账号。显式 `set_muted(..., False)` 会立即恢复该群选路。
 
+如果群发送 action 成功，`ActionService.send_group_message()` 和固定回复处理器都会
+惰性清除对应的过期/误判 `muted` 标记。被标记的账号仍允许精确的 `/解禁自己` 进入
+群管理插件；该命令按群管理员权限执行 `duration=0` 的标准解禁动作，成功后清除
+账号×群状态。除此之外仍保留 `until` 到期时的惰性恢复；状态查询命令会展示永久或
+具体到期时间。
+
 OneBot 11 的 action 失败回执由 `AccountRegistry.observe_send_failure()` 作为
 明确接缝消费。Satori OneBot 11 适配器的实际调用链在
 `satori/adapters/onebot11/reverse.py:111-128`：非 `ok` 回执会抛出
@@ -375,7 +398,9 @@ Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` �
   的状态信息。
 
 插件只读取 `account_registry`，没有迁移旧版 `设定响应`、`指定BOT` 的运行时
-切换逻辑，也没有导入旧 `modules/required/response_manager`。
+切换命令，也没有导入旧 `modules/required/response_manager`。群策略由宿主启动时从
+`.tenko/accounts.json` 恢复，因此查询命令展示的是持久化后的 `random` 或
+`deterministic` 以及指定账号。
 
 ## 批次 C：平台动作层与公告迁移
 
@@ -398,9 +423,10 @@ Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` �
 OneBot 11 没有标准 capability 查询 action。`get_version_info` 只能识别实现方，
 不能证明某个扩展 action 或当前账号权限可用；Satori 0.18.6/已安装 adapter 也没有
 提供逐 action 的类型化 capability 列表。因此 Tenko 使用账号×能力的三态懒探测：
-初始为未知，首次成功记为可用，首次抛出异常或收到 `status != "ok"` / `retcode != 0`
-的回执记为不可用，后续调用会显式抛出 `ActionCapabilityUnavailable` 并记录日志。
-配置覆盖优先于学习结果，示例为：
+初始为未知，首次成功记为可用；真正的平台级不支持/失败才记为不可用，后续调用会
+显式抛出 `ActionCapabilityUnavailable` 并记录日志。群内权限不足和连接/超时等暂态
+失败只记录本次动作，不会把该账号在其他群的能力永久锁定。配置覆盖优先于学习结果，
+示例为：
 
 ```toml
 [onebot.capability_overrides."10001"]
@@ -443,12 +469,14 @@ Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名�
 - `/踢出 [@成员|成员ID]`：也支持回复目标消息。
 
 目标为机器人自身或已知管理权限成员时，插件会在发出动作前拦截；平台返回的权限
-错误仍会作为逐条动作失败返回，不会伪装成成功。
+错误仍会作为逐条动作失败返回，不会伪装成成功。管理动作遇到当前账号在目标群无
+权限时，`ActionService` 会从同群在线账号中查找已知的 Administrator/Owner，按群
+权限尝试其他账号；动作 capability 状态始终按账号维度记录，不跨群污染。
 
 ### announcement 迁移
 
 `tenko/plugins/announcement/` 注册 `/公告 <功能名> <内容...> [-t <间隔分钟>]`。
-它通过 `PluginRuntime.is_enabled()` 只读查询旧状态中的
+它先读取宿主 `FeatureService` 的群×插件开关，再只读兼容旧状态中的
 `modules -> groups -> switch`，按 `AccountRegistry` 的群路由每群选择一个可用账号，
 然后通过 `ActionService.send_group_message()` 发送。每个群都会得到一个
 `PushResult`，状态包括成功、功能未开启、账号不可用、账号在群内禁言、能力不可用和
@@ -470,6 +498,90 @@ OneBot action 名称，所有平台动作都经过宿主服务。
 ```bash
 ./.venv-entari/bin/ruff check .
 ./.venv-entari/bin/python -m pytest tests/tenko -q
+```
+
+## 批次 D：宿主层正确性修复与 P1 缺口
+
+本批次继续只修改 `tenko/`、`tests/tenko/`、`config/tenko.toml.example` 和本文件，
+不改旧 `core/`、`modules/`、`utils/`。新增状态文件默认位于 `.tenko/`，目录由服务
+在第一次需要写入时创建。
+
+### 多账号唯一选路
+
+账号上线后，`TenkoRuntime` 通过 `ActionService.get_group_list()` 发现该账号的群，
+再写入 `AccountRegistry`。收到群消息时，`MessageEventHandler.guard()` 在 Entari
+原生命令/事件分发前按群策略选路：
+
+- `random`：从该群已绑定且在线、未处于有效 `muted` 状态的账号中随机选一个；同一
+  消息的选择按消息 ID 缓存，多个账号同时收到该消息时只有选中账号继续分发；
+- `deterministic`：只允许指定账号处理；指定账号离线或在该群被禁言时不回退到其他
+  账号，相关事件跳过并记录 debug 日志；
+- 单账号群和私聊保持原有路径。消息触发的首次绑定仍保留，因此上线群发现失败时
+  不会阻断后续消息兜底。
+
+### 群级功能开关与命令限流
+
+`FeatureService` 负责群×插件的显式开关和插件全局维护状态，写入
+`[features].state_path`（默认 `.tenko/features.json`）。未显式设置的群使用
+`default_enabled`。`tenko/plugins/feature_manager/` 提供 `/开启 <插件编号或名称>`
+和 `/关闭 <插件编号或名称>`，要求当前用户达到 `GroupAdmin`；必须的宿主插件不可
+关闭。命令归属由 `PluginRuntime` 从 Entari 当前命令注册表解析，事件入口统一在
+插件回调之前拦截关闭的功能并提示开启方式，因此不需要每个插件重复装饰器。
+公告插件同时读取该新开关和旧 `modules_data.json` 的只读兼容状态。
+
+`RateLimitService` 负责用户×群的滚动窗口、冷却和临时黑名单，写入
+`[ratelimit].state_path`（默认 `.tenko/ratelimit.json`）。默认窗口为 15 秒、每次
+命令权重为 1、阈值为 24；达到阈值后默认冷却 5 秒并加入 300 秒临时黑名单，均可
+在配置中调整。群管理员达到 `override_permission`（默认 32）时跳过限流。开关检查
+优先于限流，二者都在 Entari 命令执行前完成。
+
+### 超管收敛与权限桥接
+
+`[entari].superusers` 是唯一权威名单，格式与 Entari 的
+`basic.superusers` 相同。`[debug].masters` 和 `[upgrade].superuser_ids` 缺省时继承
+它；显式配置（包括 `[]`）覆盖继承。旧 `[runtime].superusers` 只为旧配置提供迁移
+读取，解析后成为同一份有效名单。
+
+运行时将名单写入 `EntariConfig.instance.basic.superusers`。`PermissionChecker` 按
+平台和用户 ID 复用 Entari 原生 `filter.superusers` 的判定，命中者直接获得
+`Permission.Master`，优先于数据库和普通群角色查询。
+
+### 动作失败分类与禁言恢复
+
+`ActionService` 只把真正的平台级不支持/失败学习为账号×能力不可用；群内权限不足、
+连接错误和超时只记录当前动作，不会锁死该账号在其他群的能力。群管理动作的当前
+执行账号权限不足时，会从同群在线账号中寻找已知的 Administrator/Owner 并重试；
+候选账号状态和 capability 都按账号维度维护。
+
+群发送失败产生的 `muted` 状态仍按账号×群维护并支持到期惰性清理。后续群消息成功
+发送时会清除对应状态；需要立即恢复时，群管理员可发送 `/解禁自己`，该命令使用
+标准 `duration=0` 动作并在成功后清除当前账号×群标记。`/BOT列表`、`/BOT群列表`
+会展示在线/离线和禁言到期信息。
+
+### 响应策略持久化与启动群发现
+
+`AccountRegistry` 把每个群的 `response_type` 和 `deterministic_account` 写入
+`[accounts].state_path`（默认 `.tenko/accounts.json`），`TenkoRuntime` 在账号上线
+前配置并恢复这份状态；之后的群绑定会保留已恢复策略。响应查询命令读取同一个
+注册表，因此显示的是恢复后的值。
+
+账号进入 `ONLINE` 生命周期后，运行时调用 `ActionService.get_group_list()`，该服务
+通过 Satori `guild_list()` 进入 OneBot adapter，再由 adapter 调用标准
+`get_group_list` action，将返回的群 ID 全量绑定到该账号。拉取失败只记录 warning，
+不会阻止账号上线；消息入口的绑定逻辑继续作为兜底。OneBot 11 的 action 名和无参
+群列表返回约束见[公共 API 定义](https://github.com/botuniverse/onebot-11/blob/master/api/public.md)。
+
+### 批次 D 校验
+
+新增测试覆盖随机/指定选路及在线、离线、禁言组合；群开关的持久化、命令拦截和命令
+格式；限流阈值、冷却、恢复和黑名单重启恢复；超管继承/覆盖与原生 Master 桥接；
+动作权限失败、平台失败、跨群隔离和管理账号回退；禁言自动/手动恢复；响应策略
+重启恢复及上线群列表 mock 发现。
+
+```bash
+./.venv-entari/bin/ruff check .
+./.venv-entari/bin/python -m pytest tests/tenko -q
+./.venv-entari/bin/python -m tenko --dry-run
 ```
 
 ## 第⑦步：宿主升级系统（替代旧 `auto_upgrade`）

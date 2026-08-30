@@ -1,4 +1,4 @@
-# Tenko 第一阶段配置示例。
+# Tenko 配置示例。
 # 复制为 config/tenko.toml 后按 NapCat 实际地址修改；不要把真实 token 提交到仓库。
 
 [onebot]
@@ -32,14 +32,36 @@ reply_text = "Tenko 已收到消息。"
 log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"
-# Entari superusers：键为平台名称，值为该平台的用户 ID 列表。
+
+[entari]
+# 超管唯一权威来源：键为平台名称，值为该平台的用户 ID 列表。
 superusers = { onebot = ["YOUR_QQ_ID"] }
 
 [debug]
 # 开启后，Tenko 只处理 masters 中 QQ 号对应用户产生的事件。
 enabled = false
-# ID 建议写成字符串；事件入口会统一按数字字符串比较。
-masters = ["10001"]
+# ID 建议写成字符串；省略时继承 [entari].superusers，显式填写（包括 []）会覆盖继承。
+# masters = ["10001"]
+
+[accounts]
+# 群响应策略（random/deterministic）和指定账号的持久化文件。
+state_path = ".tenko/accounts.json"
+
+[features]
+# 群×插件功能开关和全局维护状态的持久化文件。
+state_path = ".tenko/features.json"
+default_enabled = true
+
+[ratelimit]
+# 命令按用户×群执行滚动窗口限流；群管理员达到 override_permission 时豁免。
+enabled = true
+state_path = ".tenko/ratelimit.json"
+window_seconds = 15.0
+max_weight = 24
+default_weight = 1
+cooldown_seconds = 5.0
+blacklist_seconds = 300.0
+override_permission = 32
 
 [upgrade]
 # 宿主升级默认只检查，不自动下载或安装。不要把旧 config/config_demo.yaml 的
@@ -70,5 +92,6 @@ launch_command = []
 health_timeout = 30
 # 默认 24 小时；保留旧版周期检查场景，但策略默认不下载/安装。
 check_interval_hours = 24
-# 仅这些用户能执行 /检查更新、/升级、/回滚；ID 可写字符串或整数。
-superuser_ids = []
+# 仅这些用户能执行 /检查更新、/升级、/回滚；省略时继承 [entari].superusers。
+# 显式填写（包括 []）会覆盖继承；ID 可写字符串或整数。
+# superuser_ids = ["YOUR_QQ_ID"]

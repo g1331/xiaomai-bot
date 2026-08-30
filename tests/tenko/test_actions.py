@@ -53,6 +53,10 @@ class FakeProtocol:
             raise response
         return response
 
+    def guild_list(self) -> Any:
+        self.calls.append(("guild_list", (), {}))
+        return self.responses.get("guild_list", [])
+
 
 @dataclass
 class FakeAccount:
@@ -287,6 +291,22 @@ async def test_successful_group_send_clears_stale_mute_state() -> None:
 
     assert receipt.account_id == account.self_id
     assert not service.registry.is_muted(account, "40001")
+
+
+@pytest.mark.asyncio
+async def test_group_discovery_uses_satori_guild_list() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "guild_list": [
+                {"group_id": 40001, "group_name": "one"},
+                {"id": "40002", "name": "two"},
+            ]
+        }
+    )
+    service, account, _, _ = make_service(protocol)
+
+    assert await service.get_group_list(account) == ("40001", "40002")
+    assert protocol.calls == [("guild_list", (), {})]
 
 
 @pytest.mark.asyncio

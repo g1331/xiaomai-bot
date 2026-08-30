@@ -8,6 +8,7 @@ from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
 from graia.amnesia.builtins.aiohttp import AiohttpClientService
 from launart import Launart
+from satori import LoginStatus
 
 from tenko import runtime as runtime_module
 from tenko.config import TenkoConfig
@@ -66,6 +67,45 @@ async def test_run_async_loads_plugins_before_starting_entari(
     )
     assert lifecycle == ["connection", "plugins", "app"]
     assert app.required == {"tenko.ready"}
+
+
+@pytest.mark.asyncio
+async def test_online_lifecycle_discovers_groups_through_action_service() -> None:
+    runtime = TenkoRuntime(TenkoConfig())
+    accounts = Mock()
+    actions = Mock()
+    actions.get_group_list = AsyncMock(return_value=("40001", "40002"))
+    runtime.accounts = accounts
+    runtime.actions = actions
+    account = Mock()
+    account.self_id = "10001"
+
+    await runtime._on_lifecycle(account, LoginStatus.ONLINE)
+
+    accounts.register.assert_called_once_with(account, available=True)
+    assert accounts.bind_group.call_args_list == [
+        (("40001", account), {}),
+        (("40002", account), {}),
+    ]
+    actions.get_group_list.assert_awaited_once_with(account)
+
+
+@pytest.mark.asyncio
+async def test_online_lifecycle_tolerates_group_discovery_failure(monkeypatch) -> None:
+    runtime = TenkoRuntime(TenkoConfig())
+    runtime.accounts = Mock()
+    runtime.actions = Mock()
+    runtime.actions.get_group_list = AsyncMock(side_effect=RuntimeError("offline"))
+    warning = Mock()
+    monkeypatch.setattr(runtime_module.logger, "warning", warning)
+    account = Mock()
+    account.self_id = "10001"
+
+    await runtime._on_lifecycle(account, LoginStatus.ONLINE)
+
+    runtime.accounts.register.assert_called_once_with(account, available=True)
+    runtime.accounts.bind_group.assert_not_called()
+    assert "discover groups" in warning.call_args.args[0]
 
 
 def test_entari_run_async_registration_keeps_connection_components(

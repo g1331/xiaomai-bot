@@ -103,6 +103,23 @@ class TenkoRuntime:
     async def _on_lifecycle(self, account: Account, state: LoginStatus) -> None:
         if state in (LoginStatus.ONLINE, LoginStatus.CONNECT, LoginStatus.RECONNECT):
             self.accounts.register(account, available=state == LoginStatus.ONLINE)
+            if state == LoginStatus.ONLINE:
+                try:
+                    group_ids = await self.actions.get_group_list(account)
+                except Exception as error:
+                    logger.warning(
+                        "Could not discover groups for OneBot account {}: {}",
+                        account.self_id,
+                        error,
+                    )
+                else:
+                    for group_id in group_ids:
+                        self.accounts.bind_group(group_id, account)
+                    logger.info(
+                        "Discovered {} groups for OneBot account {}",
+                        len(group_ids),
+                        account.self_id,
+                    )
         elif state in (LoginStatus.DISCONNECT, LoginStatus.OFFLINE):
             if self.accounts.get(account.self_id) is not None:
                 self.accounts.set_available(account, False)

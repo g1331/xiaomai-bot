@@ -13,6 +13,8 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.runtime.command_prefix == "/"
     assert config.debug.enabled is False
     assert config.debug.masters == ()
+    assert config.exception.message_buffer_size == 10
+    assert config.exception.evidence_dir == ".tenko/exceptions"
 
 
 def test_config_loads_reverse_ws_and_runtime_options(tmp_path) -> None:
@@ -65,6 +67,22 @@ masters = [12345, "67890"]
 def test_empty_command_prefix_is_rejected() -> None:
     with pytest.raises(ValueError, match="command_prefix"):
         TenkoConfig.from_mapping({"runtime": {"command_prefix": ""}})
+
+
+def test_exception_evidence_configuration_is_loaded_and_validated() -> None:
+    config = TenkoConfig.from_mapping(
+        {
+            "exception": {
+                "message_buffer_size": 32,
+                "evidence_dir": ".tenko/test-exceptions",
+            }
+        }
+    )
+
+    assert config.exception.message_buffer_size == 32
+    assert config.exception.evidence_dir == ".tenko/test-exceptions"
+    with pytest.raises(ValueError, match="message_buffer_size"):
+        TenkoConfig.from_mapping({"exception": {"message_buffer_size": 0}})
 
 
 def test_entari_superusers_are_inherited_by_debug_and_upgrade() -> None:

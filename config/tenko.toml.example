@@ -63,6 +63,12 @@ cooldown_seconds = 5.0
 blacklist_seconds = 300.0
 override_permission = 32
 
+[exception]
+# 异常报告最近消息环形缓冲条数；超出后按先进先出淘汰。
+message_buffer_size = 10
+# 向 superusers 发送失败时的本地取证目录。
+evidence_dir = ".tenko/exceptions"
+
 [upgrade]
 # 宿主升级默认只检查，不自动下载或安装。不要把旧 config/config_demo.yaml 的
 # auto_upgrade=true 直接迁移过来；新系统不会执行 git pull 式原地更新。

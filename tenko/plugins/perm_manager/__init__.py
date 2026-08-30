@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from arclet.alconna import Alconna, Args, CommandMeta, Field, MultiVar, Option
@@ -36,6 +37,7 @@ plugin.get_plugin().metadata.default_switch = True
 
 
 permission_checker = PermissionChecker()
+_MASTER_PRIVATE_ONLY = "该指令仅支持 Master 私聊执行"
 
 
 def _database() -> Any:
@@ -332,7 +334,10 @@ async def change_group_perm_type(
     )
 )
 async def get_vg_list(session: Session):
-    if not await _authorized(session, Permission.BotAdmin):
+    context = context_from_session(session)
+    if context.chat_type != "private":
+        return text_message(_MASTER_PRIVATE_ONLY)
+    if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     group_perm, _, _ = _tables()
     select = _select()
@@ -367,11 +372,28 @@ async def get_perm_list(
     group: Query[int] = Query("group.group_id", None),
 ):
     context = context_from_session(session)
-    if not await _authorized(session, Permission.GroupAdmin):
-        return text_message("权限不足")
-    target_group, _ = await _target_group(session, group)
-    if target_group is None:
-        return text_message("权限不足或没有找到目标群")
+    if context.chat_type == "group":
+        target_group = str(group.result) if group.available else context.channel_id
+        if target_group != context.channel_id:
+            return text_message("群内只能查询当前群")
+        if not await permission_checker.require_group_perm(
+            context, Permission.ActiveGroup
+        ) or not await permission_checker.require_perm(context, Permission.GroupAdmin):
+            return text_message("权限不足")
+        target_context = context
+    elif context.chat_type == "private":
+        if not await permission_checker.require_perm(context, Permission.Master):
+            return text_message("权限不足")
+        if not group.available:
+            return text_message("Master 私聊查询请提供 --group <群号>")
+        target_group = str(group.result)
+        target_context = replace(
+            context,
+            chat_type="group",
+            channel_id=target_group,
+        )
+    else:
+        return text_message("该指令仅支持群聊或 Master 私聊执行")
     _, _, member_perm = _tables()
     select = _select()
     rows = await _database().fetch_all(
@@ -381,7 +403,7 @@ async def get_perm_list(
         )
     )
     entries = [f"{row[0]}: {row[1]}" for row in rows]
-    group_level = await permission_checker.get_group_perm(context)
+    group_level = await permission_checker.get_group_perm(target_context)
     result = f"群{target_group}权限等级: {group_level}"
     if entries:
         result += "\n" + "\n".join(entries)
@@ -426,7 +448,10 @@ async def change_global_black(
 
 @command.on(Alconna("全局黑名单列表", meta=CommandMeta("查询全局黑名单", compact=True)))
 async def get_global_black_list(session: Session):
-    if not await _authorized(session, Permission.GroupAdmin):
+    context = context_from_session(session)
+    if context.chat_type != "private":
+        return text_message(_MASTER_PRIVATE_ONLY)
+    if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     values = sorted(await _global_black_ids())
     return text_message(
@@ -468,7 +493,10 @@ async def change_bot_admin(
 
 @command.on(Alconna("BOT管理列表", meta=CommandMeta("查询 BOT 管理员", compact=True)))
 async def get_bot_admins_list(session: Session):
-    if not await _authorized(session, Permission.GroupAdmin):
+    context = context_from_session(session)
+    if context.chat_type != "private":
+        return text_message(_MASTER_PRIVATE_ONLY)
+    if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     values = sorted(await _bot_admin_ids())
     return text_message(

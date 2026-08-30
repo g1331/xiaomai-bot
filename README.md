@@ -83,9 +83,17 @@ Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生
 
 ### 创建独立环境
 
-在项目根目录执行：
+推荐使用 uv 管理依赖（基于 pyproject.toml 与 uv.lock）：
 
-    python --version
+    uv sync
+
+uv 会在项目根目录创建 .venv 并按锁文件安装依赖，之后通过 uv run 执行命令：
+
+    uv run python -m tenko
+    uv run pytest -q
+
+如果不想使用 uv，也可以手动创建虚拟环境并按 requirements-entari.txt 安装：
+
     python -m venv .venv-entari
     source .venv-entari/bin/activate
     pip install -r requirements-entari.txt
@@ -100,7 +108,7 @@ Windows PowerShell 的激活命令为：
 
 然后按下节说明编辑 config/tenko.toml。启动：
 
-    python -m tenko
+    python -m tenko      # 或 uv run python -m tenko
 
 ### 协议端连接（以 NapCat 为例）
 
@@ -116,7 +124,7 @@ Windows PowerShell 的激活命令为：
 ### 启用图片渲染
 
 保持 [render].enabled = false 时无需安装浏览器。需要状态图片或异常图片时，
-在已激活的 .venv-entari 中执行：
+在当前虚拟环境中执行（uv 环境可写为 uv run python -m playwright ...）：
 
     python -m playwright install chromium
 
@@ -306,7 +314,12 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     ./.venv-entari/bin/ruff check tenko tests/tenko
     ./.venv-entari/bin/python -m pytest tests/tenko
 
-如果只使用已激活的虚拟环境，也可以执行：
+使用 uv 环境时可以直接执行：
+
+    uv run ruff check tenko tests/tenko
+    uv run pytest -q
+
+如果使用已激活的虚拟环境，也可以执行：
 
     ruff check tenko tests/tenko
     python -m pytest tests/tenko

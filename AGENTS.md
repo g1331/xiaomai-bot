@@ -33,12 +33,11 @@ requirements-entari.txt      # 运行环境依赖
 ## 开发环境与命令
 
 - 支持 Python `>=3.10,<3.13`。
-- 在项目根目录创建独立环境并安装依赖：
-
-  ```text
-  python -m venv .venv-entari
-  ./.venv-entari/bin/python -m pip install -r requirements-entari.txt
-  ```
+- 依赖管理使用 uv（pyproject.toml 声明依赖，uv.lock 锁定版本）。
+  在项目根目录执行 `uv sync` 创建/更新环境，随后用 `uv run <命令>` 执行
+  （例如 `uv run pytest -q`、`uv run python -m tenko --dry-run`）。
+  服务器上的既有环境名为 `.venv-entari`，由 requirements-entari.txt 建立，
+  两种方式并存时以 uv 为准。
 
 - 提交前至少执行：
 

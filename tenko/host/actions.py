@@ -521,18 +521,16 @@ class ActionService:
             return known
         protocol = account.protocol
         result: object | None = None
+        # The OneBot adapter's Satori ``guild_member_get`` currently builds a
+        # Member without copying the raw ``role`` field.  Prefer the standard
+        # raw API inside this host boundary so Administrator/Owner discovery
+        # is based on the actual platform response; retain the typed Satori
+        # method as a fallback for other adapters.
+        internal = getattr(protocol, "internal", None)
         member_get = getattr(protocol, "guild_member_get", None)
         try:
-            if callable(member_get):
-                result = member_get(group_id, account.self_id)
-                if inspect.isawaitable(result):
-                    result = await result
-            else:
-                internal = getattr(protocol, "internal", None)
-                if not callable(internal):
-                    return None
-                group, group_number = _numeric_id(group_id, "群 ID")
-                del group
+            if callable(internal):
+                _, group_number = _numeric_id(group_id, "群 ID")
                 _, user_number = _numeric_id(account.self_id, "账号 ID")
                 result = internal(
                     "get_group_member_info",
@@ -541,6 +539,12 @@ class ActionService:
                 )
                 if inspect.isawaitable(result):
                     result = await result
+            elif callable(member_get):
+                result = member_get(group_id, account.self_id)
+                if inspect.isawaitable(result):
+                    result = await result
+            else:
+                return None
         except Exception as error:
             logger.debug(
                 "Could not discover group permission: account={} group={} error={}",

@@ -286,6 +286,46 @@ async def test_group_manager_action_falls_back_to_another_admin_account() -> Non
 
 
 @pytest.mark.asyncio
+async def test_group_manager_discovers_admin_from_raw_onebot_member_info() -> None:
+    first_protocol = FakeProtocol(
+        responses={
+            "guild_member_mute": {
+                "status": "failed",
+                "retcode": 1200,
+                "message": "没有权限",
+            }
+        }
+    )
+    second_protocol = FakeProtocol(responses={"internal": {"role": "admin"}})
+    first = FakeAccount("10001", first_protocol)
+    second = FakeAccount("10002", second_protocol)
+    accounts = AccountRegistry()
+    accounts.register(first, groups=["40001"])
+    accounts.register(second, groups=["40001"])
+    service = ActionService(
+        accounts,
+        PermissionChecker(registry=PermissionRegistry()),
+    )
+
+    receipt = await service.mute_member(
+        first,
+        "40001",
+        "20002",
+        90,
+        context=make_context(account_id="10001"),
+    )
+
+    assert receipt.account_id == "10002"
+    assert second_protocol.calls[0] == (
+        "internal",
+        ("get_group_member_info",),
+        {"group_id": 40001, "user_id": 10002},
+    )
+    assert second_protocol.calls[1][0] == "guild_member_mute"
+    assert accounts.group_permission(second, "40001") == Permission.GroupAdmin
+
+
+@pytest.mark.asyncio
 async def test_explicit_capability_override_wins_over_failed_learning() -> None:
     protocol = FakeProtocol(
         responses={

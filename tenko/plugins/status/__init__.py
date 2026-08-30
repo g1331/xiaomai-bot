@@ -367,7 +367,7 @@ def build_status(
 
 
 status_command = Alconna(
-    "-bot",
+    "状态",
     Option(
         "-t",
         alias=["--text"],
@@ -377,12 +377,12 @@ status_command = Alconna(
     ),
     meta=CommandMeta(
         "查询 Tenko 运行状态",
-        usage="-bot [-t]",
-        example="-bot -t",
+        usage="状态 [-t]",
+        example="/状态 -t",
         compact=True,
     ),
 )
-status_command.shortcut("状态", command="-bot", prefix=True)
+status_command.shortcut("-bot", command="状态", prefix=True)
 
 
 @command.on(status_command)

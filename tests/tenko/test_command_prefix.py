@@ -128,9 +128,9 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/BOT管理列表", "/BOT管理列表 "),
         "boundary": ("/BOT管理列表-1", "/ BOT管理列表"),
     },
-    "-bot": {
-        "positive": ("/-bot", "/状态 -t"),
-        "boundary": ("/-bot-1", "/ -bot"),
+    "状态": {
+        "positive": ("/状态", "/状态 -t", "/-bot"),
+        "boundary": ("/状态-1", "/ -bot"),
     },
     "设定响应": {
         "positive": ("/设定响应", "/设定响应 random", "/设定响应 deterministic"),

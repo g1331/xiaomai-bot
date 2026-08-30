@@ -49,6 +49,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
     monkeypatch.setattr(
         runtime_module, "PluginRuntime", Mock(return_value=plugin_runtime)
     )
+    database_loader = Mock(return_value=object())
+    monkeypatch.setattr(runtime_module, "load_database_plugin", database_loader)
 
     async def run_app(*args, **kwargs):
         lifecycle.append("app")
@@ -61,6 +63,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
     connection.install.assert_called_once_with(manager)
     plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
+    database_loader.assert_called_once_with(runtime.config.database)
+    assert runtime.database_service is database_loader.return_value
     app.run_async.assert_awaited_once_with(
         manager,
         stop_signal=(runtime_module.signal.SIGINT, runtime_module.signal.SIGTERM),

@@ -17,6 +17,8 @@ from satori.client import Account
 from .config import TenkoConfig
 from .commands import configure_command_prefix
 from .connection import OneBotConnection
+from .db.bootstrap import load_database_plugin
+from .db.errors import DatabaseUnavailableError
 from .events import MessageEventHandler, configure_message_metrics
 from .host.accounts import account_registry
 from .host.actions import action_service
@@ -82,6 +84,7 @@ class TenkoRuntime:
         self.app: Entari | None = None
         self.manager: Launart | None = None
         self.plugin_runtime: PluginRuntime | None = None
+        self.database_service = None
 
     def build_app(self) -> Entari:
         if self.app is not None:
@@ -175,11 +178,18 @@ class TenkoRuntime:
             "enabled" if self.config.runtime.send_replies else "disabled",
         )
         app = self.build_app()
+        try:
+            self.database_service = load_database_plugin(self.config.database)
+        except DatabaseUnavailableError as error:
+            # PermissionChecker and the database-backed plugins have explicit
+            # fallback/error paths. Keep the host alive so a temporary database
+            # failure does not prevent messages from reaching Entari.
+            self.database_service = None
+            logger.error("Tenko database is unavailable: {}", error)
         # PluginRuntime.load_all() only imports Tenko plugins through Entari's
         # load_plugin API, so it does not need a Launart component registration.
-        # Keep it before run_async: Entari's documented startup sequence loads
-        # plugins before run(), which makes their commands and event handlers
-        # available before Launart starts.
+        # Keep it after database model registration and before run_async: the
+        # official database service is then added by Entari's plugin manager.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
         exception_catcher = sys.modules.get("tenko.plugins.exception_catcher")

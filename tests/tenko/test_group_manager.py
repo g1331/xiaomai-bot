@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 from arclet.entari.command import Match, Query
+from arclet.entari.event.base import GuildRequestEvent
 from satori import (
     Channel,
     ChannelType,
@@ -100,11 +102,62 @@ class FakeProtocol:
         self.calls.append(("guild_member_kick", args, kwargs))
 
 
+class InviteProtocol:
+    def __init__(self, approval_error: BaseException | None = None) -> None:
+        self.approvals: list[tuple[str, bool, str]] = []
+        self.private_messages: list[tuple[str, str]] = []
+        self.approval_error = approval_error
+
+    async def guild_approve(self, request_id, approved, comment):
+        if self.approval_error is not None:
+            raise self.approval_error
+        self.approvals.append((request_id, approved, comment))
+
+    async def send_private_message(self, user_id, content):
+        self.private_messages.append((str(user_id), str(content[0])))
+        return [MessageObject("notice-1", str(content[0]))]
+
+
 class FakeAccount:
     self_id = "10001"
 
     def __init__(self, protocol: FakeProtocol) -> None:
         self.protocol = protocol
+
+
+class InviteAccount:
+    self_id = "10001"
+    platform = "onebot"
+
+    def __init__(self, protocol: InviteProtocol) -> None:
+        self.protocol = protocol
+
+
+def make_invite_event(
+    account, request_id: str = "request-1", inviter_id: str = "20001"
+):
+    origin = Event(
+        type=EventType.GUILD_REQUEST,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User(account.self_id)),
+        channel=Channel("40001", ChannelType.TEXT),
+        guild=Guild("40001", "审核群"),
+        user=User(inviter_id),
+        message=MessageObject(request_id, "邀请机器人"),
+        _type="request.group.invite",
+        _data={"group_id": "40001", "user_id": inviter_id, "sub_type": "invite"},
+    )
+    return GuildRequestEvent(account, origin)
+
+
+async def clear_pending_invites(loaded_plugin) -> None:
+    tasks = tuple(loaded_plugin.invite_expiry_tasks.values())
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    loaded_plugin.invite_expiry_tasks.clear()
+    loaded_plugin.pending_invites.clear()
 
 
 def install_action_service(loaded_plugin):
@@ -227,3 +280,197 @@ async def test_mute_rejects_legacy_minute_boundaries(loaded_plugin, minutes) -> 
 
     assert str(result) == "时间非法!范围(分钟): `0 &lt; time &lt;= 43200`"
     assert protocol.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_privileged_inviter_is_automatically_approved(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    permissions = PermissionRegistry(bot_admin_ids=["20001"])
+    loaded_plugin.permission_checker = PermissionChecker(registry=permissions)
+    await clear_pending_invites(loaded_plugin)
+
+    await loaded_plugin.invited_event.callable_target(
+        make_invite_event(account, inviter_id="20001")
+    )
+
+    assert protocol.approvals == [("request-1", True, "已同意您的邀请~")]
+    assert loaded_plugin.pending_invites == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_unprivileged_inviter_is_recorded_for_command_review(
+    loaded_plugin,
+) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    await clear_pending_invites(loaded_plugin)
+
+    try:
+        await loaded_plugin.invited_event.callable_target(make_invite_event(account))
+
+        pending = loaded_plugin.pending_invites["request-1"]
+        assert pending.group_id == "40001"
+        assert pending.inviter_id == "20001"
+        assert protocol.approvals == []
+    finally:
+        await clear_pending_invites(loaded_plugin)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_privileged_invite_is_kept_pending_when_auto_approval_fails(
+    loaded_plugin,
+) -> None:
+    protocol = InviteProtocol(approval_error=RuntimeError("approval unavailable"))
+    account = InviteAccount(protocol)
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
+    await clear_pending_invites(loaded_plugin)
+
+    try:
+        await loaded_plugin.invited_event.callable_target(
+            make_invite_event(account, inviter_id="20001")
+        )
+
+        assert loaded_plugin.pending_invites["request-1"].inviter_id == "20001"
+        assert protocol.approvals == []
+    finally:
+        await clear_pending_invites(loaded_plugin)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_admin_can_approve_pending_invite(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=account,
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+
+    result = await loaded_plugin.approve_invite.callable_target(
+        make_session("20002", "admin"), Match("request-1", True)
+    )
+
+    assert str(result) == "已同意邀请 request-1"
+    assert protocol.approvals == [("request-1", True, "已同意您的邀请~")]
+    assert loaded_plugin.pending_invites == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_admin_can_reject_pending_invite_with_reason(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=account,
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+
+    result = await loaded_plugin.reject_invite.callable_target(
+        make_session("20002", "admin"),
+        Match("request-1", True),
+        Match(("非工作群",), True),
+    )
+
+    assert str(result) == "已拒绝邀请 request-1"
+    assert protocol.approvals == [("request-1", False, "非工作群")]
+    assert loaded_plugin.pending_invites == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_normal_group_member_cannot_review_pending_invite(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=account,
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+
+    result = await loaded_plugin.approve_invite.callable_target(
+        make_session("20002", "member"), Match("request-1", True)
+    )
+
+    assert str(result) == "权限不足"
+    assert protocol.approvals == []
+    loaded_plugin.pending_invites.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_superuser_can_list_pending_invites(loaded_plugin) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=InviteAccount(InviteProtocol()),
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+
+    result = await loaded_plugin.pending_invite_list.callable_target(
+        make_session("90001", "member")
+    )
+
+    assert "request-1" in str(result)
+    assert "邀请人(20001)" in str(result)
+    loaded_plugin.pending_invites.clear()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_expired_pending_invite_is_rejected_with_legacy_comment(
+    loaded_plugin, monkeypatch
+) -> None:
+    protocol = InviteProtocol()
+    loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
+        request_id="request-1",
+        account=InviteAccount(protocol),
+        group_id="40001",
+        group_name="审核群",
+        inviter_id="20001",
+        inviter_name="邀请人",
+        comment="",
+        created_at=0,
+    )
+    sleep = AsyncMock()
+    monkeypatch.setattr(loaded_plugin.asyncio, "sleep", sleep)
+
+    await loaded_plugin._expire_invite("request-1")
+
+    assert protocol.approvals == [
+        ("request-1", False, "拒绝了你的入群邀请!"),
+    ]
+    assert loaded_plugin.pending_invites == {}

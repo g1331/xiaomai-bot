@@ -1,12 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import replace
+import asyncio
+import inspect
+from dataclasses import dataclass, replace
 from typing import Any
 
 from arclet.alconna import Alconna, Args, CommandMeta, MultiVar, Option
 from arclet.entari import Session, command, plugin
 from arclet.entari.command import Match, Query
-from arclet.entari.plugin import PluginRole
+from arclet.entari.config import EntariConfig
+from arclet.entari.event.base import GuildRequestEvent
+from arclet.entari.plugin import PluginRole, collect_disposes
+from loguru import logger
+from satori import Text
 from satori.element import At, Author, Element, Quote
 
 from tenko.host.actions import (
@@ -17,6 +23,7 @@ from tenko.host.actions import (
     ActionServiceError,
     action_service,
 )
+from tenko.context import MessageContext
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import context_from_session, text_message
 
@@ -35,6 +42,324 @@ plugin.get_plugin().metadata.default_switch = True
 
 
 permission_checker = PermissionChecker()
+
+
+INVITE_TIMEOUT_SECONDS = 60 * 60
+
+
+@dataclass(slots=True)
+class PendingInvite:
+    """当前进程中等待管理员决定的 Satori 群邀请。"""
+
+    request_id: str
+    account: Any
+    group_id: str
+    group_name: str
+    inviter_id: str
+    inviter_name: str
+    comment: str
+    created_at: float
+    notification_id: str | None = None
+    notification_channel_id: str | None = None
+
+
+pending_invites: dict[str, PendingInvite] = {}
+invite_expiry_tasks: dict[str, asyncio.Task[None]] = {}
+
+
+def _dispose_invite_state() -> None:
+    for task in tuple(invite_expiry_tasks.values()):
+        task.cancel()
+    invite_expiry_tasks.clear()
+    pending_invites.clear()
+
+
+collect_disposes(_dispose_invite_state)
+
+
+def _request_context(event: GuildRequestEvent):
+    try:
+        return MessageContext.from_event(event._origin)
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
+async def _is_privileged_inviter(event: GuildRequestEvent) -> bool:
+    context = _request_context(event)
+    if context is None:
+        return False
+    try:
+        return await permission_checker.require_perm(context, Permission.BotAdmin)
+    except Exception:
+        # 权限数据库属于旧系统的可选读取边界；读取失败时按普通邀请
+        # 进入待审队列，不能因为权限查询异常自动放行邀请。
+        logger.exception("Could not check group invite inviter permission")
+        return False
+
+
+def _reviewer_ids(account: Any) -> tuple[str, ...]:
+    if not EntariConfig._inited:
+        return ()
+    configured = EntariConfig.instance.basic.superusers
+    return tuple(str(value) for value in configured.get(account.platform, ()))
+
+
+async def _send_reviewer_notice(
+    pending: PendingInvite,
+    text: str,
+) -> None:
+    protocol = pending.account.protocol
+    send_private = getattr(protocol, "send_private_message", None)
+    if not callable(send_private):
+        logger.warning(
+            "Pending invite {} recorded but protocol has no private message API",
+            pending.request_id,
+        )
+        return
+    reviewer_ids = _reviewer_ids(pending.account)
+    if not reviewer_ids:
+        logger.warning(
+            "Pending invite {} recorded without configured superusers",
+            pending.request_id,
+        )
+        return
+    for reviewer_id in reviewer_ids:
+        try:
+            result = send_private(reviewer_id, [Text(text)])
+            if inspect.isawaitable(result):
+                result = await result
+            items = tuple(result or ())
+            if items and getattr(items[-1], "id", None) is not None:
+                pending.notification_id = str(items[-1].id)
+                pending.notification_channel_id = f"private:{reviewer_id}"
+        except Exception:
+            logger.exception(
+                "Failed to notify superuser {} about pending invite {}",
+                reviewer_id,
+                pending.request_id,
+            )
+
+
+async def _apply_invite_decision(
+    pending: PendingInvite,
+    approved: bool,
+    comment: str,
+) -> None:
+    protocol = pending.account.protocol
+    approve = getattr(protocol, "guild_approve", None)
+    if not callable(approve):
+        raise RuntimeError("当前协议没有 guild_approve 群邀请审批 API")
+    result = approve(pending.request_id, approved, comment)
+    if inspect.isawaitable(result):
+        await result
+
+
+def _cancel_invite_expiry(request_id: str) -> None:
+    task = invite_expiry_tasks.pop(request_id, None)
+    if task is not None and not task.done():
+        task.cancel()
+
+
+async def _expire_invite(request_id: str) -> None:
+    try:
+        await asyncio.sleep(INVITE_TIMEOUT_SECONDS)
+    except asyncio.CancelledError:
+        return
+    pending = pending_invites.get(request_id)
+    if pending is None:
+        return
+    try:
+        await _apply_invite_decision(
+            pending,
+            False,
+            "拒绝了你的入群邀请!",
+        )
+    except Exception:
+        logger.exception("Failed to auto-reject expired invite {}", request_id)
+        invite_expiry_tasks.pop(request_id, None)
+        return
+    pending_invites.pop(request_id, None)
+    invite_expiry_tasks.pop(request_id, None)
+    await _send_reviewer_notice(
+        pending,
+        f"入群邀请 {request_id} 已超过 1 小时，已自动拒绝。",
+    )
+
+
+def _invite_notice(pending: PendingInvite) -> str:
+    group = f"{pending.group_name}({pending.group_id})"
+    inviter = f"{pending.inviter_name}({pending.inviter_id})"
+    return (
+        f"群邀请待审\n群: {group}\n邀请人: {inviter}\n"
+        f"请求 ID: {pending.request_id}\n"
+        f"请在 1 小时内使用 /同意邀请 {pending.request_id} 或 "
+        f"/拒绝邀请 {pending.request_id} [理由] 处理。"
+    )
+
+
+@plugin.listen(GuildRequestEvent)
+async def invited_event(event: GuildRequestEvent):
+    """迁移旧版群邀请处理：管理员邀请自动同意，其余进入待审队列。"""
+
+    request_id = getattr(getattr(event, "message", None), "id", None)
+    group = getattr(event, "guild", None)
+    inviter = getattr(event, "user", None)
+    account = getattr(event, "account", None)
+    if request_id is None or group is None or inviter is None or account is None:
+        logger.warning("Ignore malformed guild request event: {}", event)
+        return
+
+    pending = PendingInvite(
+        request_id=str(request_id),
+        account=account,
+        group_id=str(group.id),
+        group_name=str(getattr(group, "name", None) or group.id),
+        inviter_id=str(inviter.id),
+        inviter_name=str(getattr(inviter, "name", None) or inviter.id),
+        comment=str(getattr(getattr(event, "message", None), "content", "") or ""),
+        created_at=asyncio.get_running_loop().time(),
+    )
+    if await _is_privileged_inviter(event):
+        try:
+            await _apply_invite_decision(pending, True, "已同意您的邀请~")
+        except Exception:
+            # 审批 action 失败时不能丢掉平台仍在等待的请求；保留到待审队列，
+            # 同时把 action 错误记录下来，交给管理员稍后重试。
+            logger.exception(
+                "Failed to automatically approve privileged group invite: "
+                "request={} group={}",
+                pending.request_id,
+                pending.group_id,
+            )
+        else:
+            logger.info(
+                "Automatically approved privileged group invite: request={} group={} "
+                "inviter={}",
+                pending.request_id,
+                pending.group_id,
+                pending.inviter_id,
+            )
+            return
+
+    pending_invites[pending.request_id] = pending
+    _cancel_invite_expiry(pending.request_id)
+    invite_expiry_tasks[pending.request_id] = asyncio.create_task(
+        _expire_invite(pending.request_id)
+    )
+    await _send_reviewer_notice(pending, _invite_notice(pending))
+    logger.info(
+        "Recorded pending group invite: request={} group={} inviter={}",
+        pending.request_id,
+        pending.group_id,
+        pending.inviter_id,
+    )
+
+
+def _pending_invite(request_id: str) -> PendingInvite | None:
+    return pending_invites.get(str(request_id).strip())
+
+
+async def _can_review_invite(session: Session, pending: PendingInvite) -> bool:
+    context = context_from_session(session)
+    if context.chat_type == "group" and context.channel_id == pending.group_id:
+        return await permission_checker.require_group_perm(
+            context, Permission.ActiveGroup
+        ) and await permission_checker.require_perm(context, Permission.GroupAdmin)
+    # Bot 未入目标群时，只有超管能从私聊或其他群处理，避免把审批权
+    # 意外扩大到任意群管理员；这是当前没有旧 test_group 配置时的明确边界。
+    return await permission_checker.require_perm(context, Permission.Master)
+
+
+invite_approve_command = Alconna(
+    "同意邀请",
+    Args["request_id", str],
+    meta=CommandMeta(
+        "同意待审群邀请",
+        usage="同意邀请 <请求ID>",
+        example="同意邀请 abc123",
+        compact=False,
+    ),
+)
+invite_approve_command.shortcut("同意", command="同意邀请", prefix=True)
+
+
+@command.on(invite_approve_command)
+async def approve_invite(session: Session, request_id: Match[str]):
+    pending = _pending_invite(request_id.result)
+    if pending is None:
+        return text_message(f"未找到待审邀请: {request_id.result}")
+    if not await _can_review_invite(session, pending):
+        return text_message("权限不足")
+    try:
+        await _apply_invite_decision(pending, True, "已同意您的邀请~")
+    except Exception as error:
+        logger.exception("Failed to approve invite {}", pending.request_id)
+        return text_message(f"处理邀请失败: {error}")
+    pending_invites.pop(pending.request_id, None)
+    _cancel_invite_expiry(pending.request_id)
+    return text_message(f"已同意邀请 {pending.request_id}")
+
+
+invite_reject_command = Alconna(
+    "拒绝邀请",
+    Args["request_id", str],
+    Args["reason", MultiVar(str, "*")],
+    meta=CommandMeta(
+        "拒绝待审群邀请",
+        usage="拒绝邀请 <请求ID> [理由]",
+        example="拒绝邀请 abc123 非工作群",
+        compact=False,
+    ),
+)
+invite_reject_command.shortcut("拒绝", command="拒绝邀请", prefix=True)
+
+
+@command.on(invite_reject_command)
+async def reject_invite(
+    session: Session,
+    request_id: Match[str],
+    reason: Match[tuple[str, ...]],
+):
+    pending = _pending_invite(request_id.result)
+    if pending is None:
+        return text_message(f"未找到待审邀请: {request_id.result}")
+    if not await _can_review_invite(session, pending):
+        return text_message("权限不足")
+    comment = " ".join(reason.result).strip() if reason.available else ""
+    comment = comment or "BOT拒绝了你的入群邀请!"
+    try:
+        await _apply_invite_decision(pending, False, comment)
+    except Exception as error:
+        logger.exception("Failed to reject invite {}", pending.request_id)
+        return text_message(f"处理邀请失败: {error}")
+    pending_invites.pop(pending.request_id, None)
+    _cancel_invite_expiry(pending.request_id)
+    return text_message(f"已拒绝邀请 {pending.request_id}")
+
+
+pending_invites_command = Alconna(
+    "待审邀请",
+    meta=CommandMeta(
+        "查看待审群邀请（仅超管）",
+        usage="待审邀请",
+        compact=True,
+    ),
+)
+
+
+@command.on(pending_invites_command)
+async def pending_invite_list(session: Session):
+    context = context_from_session(session)
+    if not await permission_checker.require_perm(context, Permission.Master):
+        return text_message("权限不足")
+    if not pending_invites:
+        return text_message("当前没有待审邀请")
+    lines = [
+        f"{pending.request_id}: {pending.group_name}({pending.group_id}) "
+        f"邀请人 {pending.inviter_name}({pending.inviter_id})"
+        for pending in pending_invites.values()
+    ]
+    return text_message("待审邀请:\n" + "\n".join(lines))
 
 
 def _database() -> Any:

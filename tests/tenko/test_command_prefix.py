@@ -53,6 +53,18 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/踢出 20002", "/踢出"),
         "boundary": ("/踢出-1", "/ 踢出"),
     },
+    "同意邀请": {
+        "positive": ("/同意邀请 request-1",),
+        "boundary": ("/同意邀请", "/ 同意邀请"),
+    },
+    "拒绝邀请": {
+        "positive": ("/拒绝邀请 request-1", "/拒绝邀请 request-1 理由"),
+        "boundary": ("/拒绝邀请", "/ 拒绝邀请"),
+    },
+    "待审邀请": {
+        "positive": ("/待审邀请",),
+        "boundary": ("/待审邀请-1", "/ 待审邀请"),
+    },
     "公告": {
         "positive": ("/公告 帮助系统 维护通知", "/公告 帮助系统 维护 通知 -t 2"),
         "boundary": ("/公告-1", "/ 公告"),
@@ -147,6 +159,13 @@ def test_every_required_command_has_positive_negative_and_boundary_matrix(
             f"/{command.command}x",
             f"请{command.command}我",
         )
+        if command.command in {"同意邀请", "拒绝邀请"}:
+            # request_id is an opaque platform flag and can legally be
+            # adjacent to the command header; do not treat that token as a
+            # command-boundary assertion.
+            negative = tuple(
+                text for text in negative if text != f"/{command.command}x"
+            )
         for text in negative:
             assert not _parse(command, text).matched, (command.command, text)
 

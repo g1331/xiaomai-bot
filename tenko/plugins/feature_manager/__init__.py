@@ -90,12 +90,10 @@ enable_command = Alconna(
     Args["feature", str],
     meta=CommandMeta(
         "开启当前群的插件功能",
-        hide_shortcut=True,
         usage="开启 <插件编号或名称>",
         compact=False,
     ),
 )
-enable_command.shortcut("-开启", command="开启", prefix=True)
 
 
 @command.on(enable_command)
@@ -108,12 +106,10 @@ disable_command = Alconna(
     Args["feature", str],
     meta=CommandMeta(
         "关闭当前群的插件功能",
-        hide_shortcut=True,
         usage="关闭 <插件编号或名称>",
         compact=False,
     ),
 )
-disable_command.shortcut("-关闭", command="关闭", prefix=True)
 
 
 @command.on(disable_command)

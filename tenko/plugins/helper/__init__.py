@@ -46,14 +46,11 @@ help_command = Alconna(
     Args["index?", int],
     meta=CommandMeta(
         "列出 Entari 已注册命令或查看单条命令详情",
-        hide_shortcut=True,
         usage="帮助 [编号]",
         example="$帮助\n$帮助 1",
         compact=True,
     ),
 )
-help_command.shortcut("-help", command="帮助", prefix=True)
-help_command.shortcut("-帮助", command="帮助", prefix=True)
 
 
 def registered_commands():

@@ -166,7 +166,7 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
     assert "账号×群禁言:" not in output
     assert "RSS" not in output
     assert "网络 IO" not in output
-    assert loaded_plugin.status_command.parse("/-bot -t").matched
+    assert not loaded_plugin.status_command.parse("/-bot -t").matched
     assert loaded_plugin.status_command.parse("/状态 -t").matched
 
 

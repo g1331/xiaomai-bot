@@ -58,8 +58,8 @@ async def test_helper_trigger_uses_native_command_registry(loaded_plugin) -> Non
     assert "运行插件：" in str(result)
     assert "维护插件：" in str(result)
     assert loaded_plugin.help_command.parse("/帮助").matched
-    assert loaded_plugin.help_command.parse("/-help 1").matched
-    assert loaded_plugin.help_command.parse("/-帮助 1").matched
+    assert not loaded_plugin.help_command.parse("/-help 1").matched
+    assert not loaded_plugin.help_command.parse("/-帮助 1").matched
     assert not loaded_plugin.help_command.parse("帮助").matched
 
 

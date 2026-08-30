@@ -120,10 +120,10 @@ def test_collect_targets_reports_each_unsupported_group(
 
 
 @pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
-def test_announcement_keeps_legacy_prefixed_alias(loaded_plugin) -> None:
-    assert loaded_plugin.announcement_command.parse("/-公告 帮助系统 维护通知").matched
+def test_announcement_drops_legacy_dash_alias(loaded_plugin) -> None:
+    assert loaded_plugin.announcement_command.parse("/公告 帮助系统 维护通知").matched
     assert not loaded_plugin.announcement_command.parse(
-        "-公告 帮助系统 维护通知"
+        "/-公告 帮助系统 维护通知"
     ).matched
 
 

@@ -126,8 +126,8 @@ def test_updater_commands_use_global_prefix_and_reject_bare_words(
 
 
 @pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
-def test_upgrade_command_keeps_legacy_prefixed_alias(loaded_plugin) -> None:
-    assert loaded_plugin.upgrade_command.parse("/-upgrade").matched
+def test_upgrade_command_drops_legacy_dash_alias(loaded_plugin) -> None:
+    assert not loaded_plugin.upgrade_command.parse("/-upgrade").matched
     assert not loaded_plugin.upgrade_command.parse("-upgrade").matched
 
 

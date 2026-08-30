@@ -312,13 +312,11 @@ announcement_command = Alconna(
     Option("--time", Args["time", int], alias=["-t", "--interval"], default=1),
     meta=CommandMeta(
         "向开启指定功能的群推送公告",
-        hide_shortcut=True,
         usage="公告 <功能名> <内容...> [-t <间隔分钟>]",
         example="公告 帮助系统 识图插件维护啦",
         compact=False,
     ),
 )
-announcement_command.shortcut("-公告", command="公告", prefix=True)
 
 
 @command.on(announcement_command)

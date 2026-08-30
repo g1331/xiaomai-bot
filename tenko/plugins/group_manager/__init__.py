@@ -362,6 +362,35 @@ async def pending_invite_list(session: Session):
     return text_message("待审邀请:\n" + "\n".join(lines))
 
 
+reset_capability_command = Alconna(
+    "重置能力",
+    Args["account_id?", int],
+    meta=CommandMeta(
+        "重置账号的平台能力学习状态（仅超管）",
+        usage="重置能力 [账号]",
+        example="重置能力\n重置能力 10001",
+        compact=False,
+    ),
+)
+
+
+@command.on(reset_capability_command)
+async def reset_capability(
+    session: Session,
+    account_id: Query[int] = Query("account_id", None),
+):
+    context = context_from_session(session)
+    if not await permission_checker.require_perm(context, Permission.Master):
+        return text_message("权限不足")
+    target_account = (
+        str(account_id.result) if account_id.available else context.account_id
+    )
+    reset_count = action_service.reset_capabilities(target_account)
+    return text_message(
+        f"已重置账号 {target_account} 的 {reset_count} 项平台能力学习状态"
+    )
+
+
 def _database() -> Any:
     from core.orm import orm
 

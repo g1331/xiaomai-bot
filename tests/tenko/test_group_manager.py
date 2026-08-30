@@ -451,6 +451,47 @@ async def test_superuser_can_list_pending_invites(loaded_plugin) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_superuser_can_reset_current_account_capability_state(
+    loaded_plugin,
+) -> None:
+    accounts = AccountRegistry()
+    account = FakeAccount(FakeProtocol())
+    accounts.register(account, groups=["40001"])
+    checker = PermissionChecker(registry=PermissionRegistry(master_id="90001"))
+    service = ActionService(accounts, checker)
+    service.set_capability("10001", "member_mute", False)
+    service.set_capability("10001", "group_mute", True)
+    loaded_plugin.permission_checker = checker
+    loaded_plugin.action_service = service
+
+    result = await loaded_plugin.reset_capability.callable_target(
+        make_session("90001", "member"), Query("account_id", None)
+    )
+
+    assert str(result) == "已重置账号 10001 的 2 项平台能力学习状态"
+    assert service.capability_status("10001", "member_mute") is None
+    assert service.capability_status("10001", "group_mute") is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_non_master_cannot_reset_capability_state(loaded_plugin) -> None:
+    checker = PermissionChecker(registry=PermissionRegistry())
+    service = ActionService(AccountRegistry(), checker)
+    service.set_capability("10001", "member_mute", False)
+    loaded_plugin.permission_checker = checker
+    loaded_plugin.action_service = service
+
+    result = await loaded_plugin.reset_capability.callable_target(
+        make_session("20001", "admin"), Query("account_id", None)
+    )
+
+    assert str(result) == "权限不足"
+    assert service.capability_status("10001", "member_mute") is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
 async def test_expired_pending_invite_is_rejected_with_legacy_comment(
     loaded_plugin, monkeypatch
 ) -> None:

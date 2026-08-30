@@ -65,6 +65,10 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/待审邀请",),
         "boundary": ("/待审邀请-1", "/ 待审邀请"),
     },
+    "重置能力": {
+        "positive": ("/重置能力", "/重置能力 10001"),
+        "boundary": ("/重置能力-1", "/ 重置能力"),
+    },
     "公告": {
         "positive": ("/公告 帮助系统 维护通知", "/公告 帮助系统 维护 通知 -t 2"),
         "boundary": ("/公告-1", "/ 公告"),

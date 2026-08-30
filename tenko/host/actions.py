@@ -541,6 +541,15 @@ class ActionService:
         if key not in self._overrides:
             self._learned[key] = True
 
+    def reset_capabilities(self, account_id: str | int) -> int:
+        """清除账号的学习状态；显式 capability 覆盖不受影响。"""
+
+        account_key = _key(account_id, "账号 ID")
+        keys = tuple(key for key in self._learned if key[0] == account_key)
+        for key in keys:
+            del self._learned[key]
+        return len(keys)
+
     @staticmethod
     def _management_level(value: object) -> int | None:
         """从 Satori Member 或 OneBot 原始群成员信息读取角色等级。"""

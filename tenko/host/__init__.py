@@ -28,6 +28,12 @@ from .features import (
     configure_feature_service,
     feature_service,
 )
+from .ratelimit import (
+    RateLimitDecision,
+    RateLimitService,
+    configure_rate_limiter,
+    rate_limit_service,
+)
 from .plugins import PluginInfo, PluginInterfaceError, PluginRuntime
 from .updater import (
     ArtifactAcquisitionError,
@@ -94,6 +100,10 @@ __all__ = [
     "FeatureService",
     "configure_feature_service",
     "feature_service",
+    "RateLimitDecision",
+    "RateLimitService",
+    "configure_rate_limiter",
+    "rate_limit_service",
     "PluginInfo",
     "PluginInterfaceError",
     "PluginRuntime",

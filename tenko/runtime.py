@@ -19,7 +19,9 @@ from .connection import OneBotConnection
 from .events import MessageEventHandler
 from .host.accounts import account_registry
 from .host.actions import action_service
+from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
+from .host.ratelimit import configure_rate_limiter
 from .host.updater import UpgradeManager, configure_updater
 
 
@@ -42,6 +44,19 @@ class TenkoRuntime:
         self.accounts = account_registry
         self.actions = action_service
         self.actions.configure_capability_overrides(config.onebot.capability_overrides)
+        self.feature_service = configure_feature_service(
+            config.features.state_path,
+            default_enabled=config.features.default_enabled,
+        )
+        self.rate_limiter = configure_rate_limiter(
+            config.ratelimit.state_path,
+            enabled=config.ratelimit.enabled,
+            window_seconds=config.ratelimit.window_seconds,
+            max_weight=config.ratelimit.max_weight,
+            default_weight=config.ratelimit.default_weight,
+            cooldown_seconds=config.ratelimit.cooldown_seconds,
+            blacklist_seconds=config.ratelimit.blacklist_seconds,
+        )
         self.updater = UpgradeManager.from_config(
             config.upgrade, project_root=Path.cwd()
         )
@@ -70,7 +85,7 @@ class TenkoRuntime:
             log_level=self.config.runtime.log_level,
             ignore_self_message=True,
         )
-        _configure_entari_superusers(self.config.runtime.superusers)
+        _configure_entari_superusers(self.config.entari.superusers)
         configure_command_prefix(self.config.runtime.command_prefix)
         native_handler = app.handle_event
         for index, callback in enumerate(app.event_callbacks):
@@ -129,6 +144,13 @@ class TenkoRuntime:
         # available before Launart starts.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
+        self.message_handler.command_policy = CommandPolicy(
+            self.feature_service,
+            self.rate_limiter,
+            plugin_runtime=self.plugin_runtime,
+            command_prefix=self.config.runtime.command_prefix,
+            rate_limit_override_permission=self.config.ratelimit.override_permission,
+        )
         # The Satori client must start after the server socket is accepting
         # connections. Otherwise its first connection attempt can race Uvicorn
         # and events arriving in that window would not be replayed to a client.

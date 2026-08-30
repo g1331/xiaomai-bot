@@ -21,6 +21,8 @@ import tenko.host.accounts as accounts_module
 from tenko.events import MessageEventHandler
 from tenko.host.accounts import AccountRegistry
 from tenko.host.features import CommandPolicy, FeatureService
+from tenko.host.perm import PermissionChecker, PermissionRegistry
+from tenko.host.ratelimit import RateLimitService
 from tenko.config import DebugConfig
 
 
@@ -422,3 +424,36 @@ async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() ->
     await handler.guard(callback)(account, make_group_event(text="/演示"))
 
     callback.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_command_guard_applies_rate_limit_before_entari_dispatch() -> None:
+    class FakePluginRuntime:
+        def command_owner(self, text: str):
+            return type("Owner", (), {"name": "demo", "display_name": "演示"})()
+
+    limiter = RateLimitService(
+        max_weight=2,
+        cooldown_seconds=10,
+        blacklist_seconds=0,
+    )
+    policy = CommandPolicy(
+        FeatureService(),
+        limiter,
+        plugin_runtime=FakePluginRuntime(),
+        permission_checker=PermissionChecker(registry=PermissionRegistry()),
+    )
+    callback = AsyncMock()
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        command_policy=policy,
+    )
+    guarded = handler.guard(callback)
+
+    await guarded(account, make_group_event(text="/演示"))
+    await guarded(account, make_group_event(text="/演示"))
+
+    callback.assert_awaited_once()
+    assert "超过频率调用限制" in account.protocol.calls[-1][1]

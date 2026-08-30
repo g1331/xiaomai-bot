@@ -41,6 +41,13 @@ def _integer(section: Mapping[str, Any], key: str, default: int) -> int:
     return value
 
 
+def _number(section: Mapping[str, Any], key: str, default: float) -> float:
+    value = section.get(key, default)
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        raise ValueError(f"配置项 {key!r} 必须是数字")
+    return float(value)
+
+
 def _boolean(section: Mapping[str, Any], key: str, default: bool) -> bool:
     value = section.get(key, default)
     if type(value) is not bool:
@@ -262,15 +269,71 @@ class RuntimeConfig:
         )
 
     @classmethod
-    def from_mapping(cls, section: Mapping[str, Any]) -> RuntimeConfig:
+    def from_mapping(
+        cls,
+        section: Mapping[str, Any],
+        *,
+        superusers: Mapping[str, tuple[str, ...]] | None = None,
+    ) -> RuntimeConfig:
         defaults = cls()
         return cls(
             send_replies=_boolean(section, "send_replies", defaults.send_replies),
             reply_text=_string(section, "reply_text", defaults.reply_text),
             log_level=_string(section, "log_level", defaults.log_level),
             command_prefix=_string(section, "command_prefix", defaults.command_prefix),
-            superusers=_identifier_mapping(section, "superusers", defaults.superusers),
+            superusers=(
+                _identifier_mapping(section, "superusers", defaults.superusers)
+                if superusers is None
+                else superusers
+            ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EntariConfig:
+    """Entari 原生 basic.superusers 的唯一权威配置来源。"""
+
+    superusers: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "superusers",
+            _identifier_mapping({"superusers": self.superusers}, "superusers", {}),
+        )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        section: Mapping[str, Any],
+        *,
+        legacy_runtime_section: Mapping[str, Any] | None = None,
+    ) -> EntariConfig:
+        if "superusers" in section:
+            users = _identifier_mapping(section, "superusers", {})
+        elif (
+            legacy_runtime_section is not None
+            and "superusers" in legacy_runtime_section
+        ):
+            # 仅为旧 `[runtime].superusers` 配置提供迁移读取；解析后的有效值
+            # 仍只保存到本对象，避免运行时继续维护两份名单。
+            users = _identifier_mapping(legacy_runtime_section, "superusers", {})
+        else:
+            users = {}
+        return cls(users)
+
+
+def _flatten_identifiers(mapping: Mapping[str, tuple[str, ...]]) -> tuple[str, ...]:
+    """将平台映射按配置顺序展开，并去除重复 ID。"""
+
+    flattened: list[str] = []
+    seen: set[str] = set()
+    for identifiers in mapping.values():
+        for identifier in identifiers:
+            if identifier not in seen:
+                flattened.append(identifier)
+                seen.add(identifier)
+    return tuple(flattened)
 
 
 @dataclass(frozen=True, slots=True)
@@ -288,11 +351,16 @@ class DebugConfig:
         )
 
     @classmethod
-    def from_mapping(cls, section: Mapping[str, Any]) -> DebugConfig:
+    def from_mapping(
+        cls,
+        section: Mapping[str, Any],
+        *,
+        inherited_masters: tuple[str, ...] = (),
+    ) -> DebugConfig:
         defaults = cls()
         return cls(
             enabled=_boolean(section, "enabled", defaults.enabled),
-            masters=_identifier_sequence(section, "masters", defaults.masters),
+            masters=_identifier_sequence(section, "masters", inherited_masters),
         )
 
 
@@ -370,7 +438,12 @@ class UpgradeConfig:
         object.__setattr__(self, "superuser_ids", tuple(self.superuser_ids))
 
     @classmethod
-    def from_mapping(cls, section: Mapping[str, Any]) -> UpgradeConfig:
+    def from_mapping(
+        cls,
+        section: Mapping[str, Any],
+        *,
+        inherited_superuser_ids: tuple[str, ...] = (),
+    ) -> UpgradeConfig:
         defaults = cls()
         return cls(
             enabled=_boolean(section, "enabled", defaults.enabled),
@@ -405,25 +478,141 @@ class UpgradeConfig:
                 section, "check_interval_hours", defaults.check_interval_hours
             ),
             superuser_ids=_identifier_sequence(
-                section, "superuser_ids", defaults.superuser_ids
+                section, "superuser_ids", inherited_superuser_ids
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AccountsConfig:
+    """账号路由状态持久化配置。"""
+
+    state_path: str = ".tenko/accounts.json"
+
+    def __post_init__(self) -> None:
+        if not self.state_path:
+            raise ValueError("accounts state_path 不能为空")
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> AccountsConfig:
+        defaults = cls()
+        return cls(state_path=_string(section, "state_path", defaults.state_path))
+
+
+@dataclass(frozen=True, slots=True)
+class FeaturesConfig:
+    """群级插件开关配置。"""
+
+    state_path: str = ".tenko/features.json"
+    default_enabled: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.state_path:
+            raise ValueError("features state_path 不能为空")
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> FeaturesConfig:
+        defaults = cls()
+        return cls(
+            state_path=_string(section, "state_path", defaults.state_path),
+            default_enabled=_boolean(
+                section, "default_enabled", defaults.default_enabled
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RateLimitConfig:
+    """统一命令限流配置。"""
+
+    enabled: bool = True
+    state_path: str = ".tenko/ratelimit.json"
+    window_seconds: float = 15.0
+    max_weight: int = 24
+    default_weight: int = 1
+    cooldown_seconds: float = 5.0
+    blacklist_seconds: float = 300.0
+    override_permission: int = 32
+
+    def __post_init__(self) -> None:
+        if not self.state_path:
+            raise ValueError("ratelimit state_path 不能为空")
+        if self.window_seconds <= 0:
+            raise ValueError("ratelimit window_seconds 必须大于 0")
+        if self.max_weight <= 0 or self.default_weight <= 0:
+            raise ValueError("ratelimit weight 必须大于 0")
+        if self.cooldown_seconds < 0 or self.blacklist_seconds < 0:
+            raise ValueError("ratelimit 冷却时间不能为负数")
+        if self.override_permission < 0:
+            raise ValueError("ratelimit override_permission 不能为负数")
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> RateLimitConfig:
+        defaults = cls()
+        return cls(
+            enabled=_boolean(section, "enabled", defaults.enabled),
+            state_path=_string(section, "state_path", defaults.state_path),
+            window_seconds=_number(section, "window_seconds", defaults.window_seconds),
+            max_weight=_integer(section, "max_weight", defaults.max_weight),
+            default_weight=_integer(section, "default_weight", defaults.default_weight),
+            cooldown_seconds=_number(
+                section, "cooldown_seconds", defaults.cooldown_seconds
+            ),
+            blacklist_seconds=_number(
+                section, "blacklist_seconds", defaults.blacklist_seconds
+            ),
+            override_permission=_integer(
+                section, "override_permission", defaults.override_permission
+            ),
+        )
+
+
+# 允许调用方使用更自然的单数名称，同时配置字段保持 `[features]` / `[ratelimit]`。
+FeatureConfig = FeaturesConfig
+RatelimitConfig = RateLimitConfig
 
 
 @dataclass(frozen=True, slots=True)
 class TenkoConfig:
     onebot: OneBotConfig = OneBotConfig()
     runtime: RuntimeConfig = RuntimeConfig()
+    entari: EntariConfig = EntariConfig()
     upgrade: UpgradeConfig = UpgradeConfig()
     debug: DebugConfig = DebugConfig()
+    accounts: AccountsConfig = AccountsConfig()
+    features: FeaturesConfig = FeaturesConfig()
+    ratelimit: RateLimitConfig = RateLimitConfig()
+
+    def __post_init__(self) -> None:
+        # 代码构造方式的旧兼容：直接传 RuntimeConfig(superusers=...) 时也
+        # 使用同一份有效名单；从 TOML 读取时的 canonical `[entari]` 优先级
+        # 已在 from_mapping 中确定。
+        if not self.entari.superusers and self.runtime.superusers:
+            object.__setattr__(self, "entari", EntariConfig(self.runtime.superusers))
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> TenkoConfig:
+        runtime_section = _section(data, "runtime")
+        entari = EntariConfig.from_mapping(
+            _section(data, "entari"),
+            legacy_runtime_section=runtime_section,
+        )
+        superuser_ids = _flatten_identifiers(entari.superusers)
         return cls(
             onebot=OneBotConfig.from_mapping(_section(data, "onebot")),
-            runtime=RuntimeConfig.from_mapping(_section(data, "runtime")),
-            debug=DebugConfig.from_mapping(_section(data, "debug")),
-            upgrade=UpgradeConfig.from_mapping(_section(data, "upgrade")),
+            runtime=RuntimeConfig.from_mapping(
+                runtime_section, superusers=entari.superusers
+            ),
+            entari=entari,
+            debug=DebugConfig.from_mapping(
+                _section(data, "debug"), inherited_masters=superuser_ids
+            ),
+            upgrade=UpgradeConfig.from_mapping(
+                _section(data, "upgrade"), inherited_superuser_ids=superuser_ids
+            ),
+            accounts=AccountsConfig.from_mapping(_section(data, "accounts")),
+            features=FeaturesConfig.from_mapping(_section(data, "features")),
+            ratelimit=RateLimitConfig.from_mapping(_section(data, "ratelimit")),
         )
 
     @classmethod

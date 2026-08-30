@@ -65,3 +65,35 @@ masters = [12345, "67890"]
 def test_empty_command_prefix_is_rejected() -> None:
     with pytest.raises(ValueError, match="command_prefix"):
         TenkoConfig.from_mapping({"runtime": {"command_prefix": ""}})
+
+
+def test_entari_superusers_are_inherited_by_debug_and_upgrade() -> None:
+    config = TenkoConfig.from_mapping(
+        {
+            "entari": {"superusers": {"onebot": [12345], "satori": ["67890"]}},
+        }
+    )
+
+    assert config.entari.superusers == {
+        "onebot": ("12345",),
+        "satori": ("67890",),
+    }
+    assert config.runtime.superusers == config.entari.superusers
+    assert config.debug.masters == ("12345", "67890")
+    assert config.upgrade.superuser_ids == ("12345", "67890")
+
+
+def test_explicit_debug_and_upgrade_superusers_override_inheritance() -> None:
+    config = TenkoConfig.from_mapping(
+        {
+            "entari": {"superusers": {"onebot": ["10001"]}},
+            "runtime": {"superusers": {"onebot": ["legacy"]}},
+            "debug": {"masters": ["20001"]},
+            "upgrade": {"superuser_ids": ["30001"]},
+        }
+    )
+
+    assert config.entari.superusers == {"onebot": ("10001",)}
+    assert config.runtime.superusers == config.entari.superusers
+    assert config.debug.masters == ("20001",)
+    assert config.upgrade.superuser_ids == ("30001",)

@@ -203,6 +203,27 @@ async def test_platform_failed_receipt_latches_capability_unavailable() -> None:
 
 
 @pytest.mark.asyncio
+async def test_transient_action_failure_does_not_latch_capability_unavailable() -> None:
+    protocol = FakeProtocol(
+        responses={"send_message": ConnectionError("connection reset")}
+    )
+    service, account, context, _ = make_service(
+        protocol, role="bot_admin", user_id="20003"
+    )
+
+    with pytest.raises(ActionExecutionError):
+        await service.send_group_message(account, "40001", "测试", context=context)
+
+    assert (
+        service.capability_status("10001", ActionCapability.SEND_GROUP_MESSAGE) is None
+    )
+
+    with pytest.raises(ActionExecutionError):
+        await service.send_group_message(account, "40001", "测试", context=context)
+    assert len(protocol.calls) == 2
+
+
+@pytest.mark.asyncio
 async def test_group_manager_action_falls_back_to_another_admin_account() -> None:
     first_protocol = FakeProtocol(
         responses={

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import re
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -427,10 +427,37 @@ class ActionService:
             )
         )
 
+    @staticmethod
+    def _is_transient_failure(failure: ActionFailure) -> bool:
+        """识别连接/超时等暂态错误，避免它们污染账号能力学习结果。"""
+
+        raw = failure.raw
+        if isinstance(raw, ConnectionError | TimeoutError | OSError):
+            return True
+        error_type = (failure.error_type or "").lower()
+        if any(
+            word in error_type
+            for word in ("connection", "timeout", "network", "tempor")
+        ):
+            return True
+        details = " ".join(
+            value.lower()
+            for value in (failure.message, failure.wording, failure.detail)
+            if value
+        )
+        return any(
+            phrase in details
+            for phrase in ("connection timed out", "network unavailable", "暂时不可用")
+        )
+
     def _remember_failure(self, failure: ActionFailure) -> None:
         self._failures.append(failure)
         key = (failure.account_id, failure.capability)
-        if key not in self._overrides and not self._is_permission_failure(failure):
+        if (
+            key not in self._overrides
+            and not self._is_permission_failure(failure)
+            and not self._is_transient_failure(failure)
+        ):
             self._learned[key] = False
         logger.warning(
             "platform action failed: account={} capability={} action={} "
@@ -537,7 +564,7 @@ class ActionService:
         candidates = [(primary_id, primary)]
         if group_id is None:
             return candidates
-        for account in self.registry.accounts_for_group(group_id):
+        for account in self.registry.online_accounts_for_group(group_id):
             account_id = _key(account.self_id, "账号 ID")
             if account_id == primary_id:
                 continue
@@ -658,7 +685,10 @@ class ActionService:
                 data = data.get("data", data.get("groups", ()))
             if isinstance(data, str | bytes) or data is None:
                 data = ()
-            items.extend(data)
+            elif isinstance(data, Iterable):
+                items.extend(data)
+            else:
+                items.append(data)
 
         group_ids: list[str] = []
         for item in items:

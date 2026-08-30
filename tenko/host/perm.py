@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from enum import IntEnum
 from typing import Any
 
@@ -340,7 +340,7 @@ class PermissionChecker:
             return False
         basic = getattr(EntariConfig.instance, "basic", None)
         configured = getattr(basic, "superusers", {})
-        if not isinstance(configured, dict):
+        if not isinstance(configured, Mapping):
             return False
         return user_id in {str(value) for value in configured.get(context.platform, ())}
 

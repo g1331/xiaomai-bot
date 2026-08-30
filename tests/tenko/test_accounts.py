@@ -102,6 +102,7 @@ def test_partial_group_mute_excludes_only_the_muted_account_from_selection() -> 
     registry.set_muted(first, 100, True)
 
     assert registry.bound_accounts_for_group(100) == (first, second)
+    assert registry.online_accounts_for_group(100) == (first, second)
     assert registry.accounts_for_group(100) == (second,)
     assert registry.select_account(100, source_id=0) is second
     assert registry.select_account(100, source_id=1) is second

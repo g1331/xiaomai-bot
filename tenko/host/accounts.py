@@ -18,6 +18,7 @@ from ..context import MessageContext
 ResponseType = Literal["random", "deterministic"]
 _NO_MUTE = object()
 _STATE_VERSION = 1
+_MAX_EVENT_SELECTIONS = 4096
 _GROUP_PERMISSION_LEVELS = {
     "member": 16,
     "user": 16,
@@ -375,6 +376,15 @@ class AccountRegistry:
             if (account := self._accounts.get(account_id)) is not None
         )
 
+    def online_accounts_for_group(self, group_id: str | int) -> tuple[Account, ...]:
+        """返回群内在线账号，包含被禁言账号供管理动作候选使用。"""
+
+        return tuple(
+            account
+            for account in self.bound_accounts_for_group(group_id)
+            if self.is_available(account)
+        )
+
     def groups_for_account(self, account_id: Account | str | int) -> tuple[str, ...]:
         """返回账号参与的群 ID，顺序与首次绑定顺序一致。"""
 
@@ -428,12 +438,12 @@ class AccountRegistry:
     def management_accounts_for_group(
         self, group_id: str | int, *, minimum: int = 32
     ) -> tuple[Account, ...]:
-        """返回在线、未被禁言且已知达到管理权限的群账号。"""
+        """返回在线且已知达到管理权限的群账号。"""
 
         normalized_group = _key(group_id)
         return tuple(
             account
-            for account in self.accounts_for_group(normalized_group)
+            for account in self.online_accounts_for_group(normalized_group)
             if (level := self.group_permission(account, normalized_group)) is not None
             and level >= minimum
         )
@@ -547,6 +557,9 @@ class AccountRegistry:
                 return selected
         selected = random.choice(available)
         self._event_selections[selection_key] = selected.self_id
+        if len(self._event_selections) > _MAX_EVENT_SELECTIONS:
+            oldest_key = next(iter(self._event_selections))
+            del self._event_selections[oldest_key]
         return selected
 
     def select_for_context(

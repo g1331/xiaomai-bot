@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -18,7 +19,8 @@ from satori.model import Event
 
 import tenko.events as events_module
 import tenko.host.accounts as accounts_module
-from tenko.events import MessageEventHandler
+from tenko.context import MessageContext
+from tenko.events import MessageEventHandler, MessageMetrics
 from tenko.host.accounts import AccountRegistry
 from tenko.host.features import CommandPolicy, FeatureService
 from tenko.host.perm import PermissionChecker, PermissionRegistry
@@ -81,6 +83,39 @@ def make_userless_event() -> Event:
         timestamp=datetime.now(),
         login=Login(platform="onebot", user=User("10001")),
         guild=Guild("40001", "Tenko"),
+    )
+
+
+def make_member_removed_event(
+    *,
+    account_id: str = "10001",
+    group_id: str = "40001",
+    member_id: str = "10001",
+    protocol_type: str = "notice.group_decrease.leave",
+) -> Event:
+    return Event(
+        type=EventType.GUILD_MEMBER_REMOVED,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User(account_id)),
+        channel=Channel(group_id, ChannelType.TEXT),
+        guild=Guild(group_id, "Tenko"),
+        user=User(member_id),
+        _type=protocol_type,
+        _data={"group_id": group_id, "user_id": member_id},
+    )
+
+
+def make_context(text: str = "hello") -> MessageContext:
+    return MessageContext(
+        account_id="10001",
+        event_type="message-created",
+        protocol_event_type="message.group.normal",
+        chat_type="group",
+        channel_id="40001",
+        user_id="20001",
+        message_id="30001",
+        text=text,
+        image_urls=(),
     )
 
 
@@ -296,6 +331,52 @@ async def test_debug_event_guard_filters_events_without_user_source() -> None:
     callback.assert_not_awaited()
 
 
+def test_debug_filter_does_not_block_member_removal_events() -> None:
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+    )
+
+    assert not handler.should_skip(
+        account,
+        make_member_removed_event(member_id=account.self_id),
+    )
+
+
+@pytest.mark.asyncio
+async def test_guild_invite_event_bypasses_account_group_selection() -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, groups=[40001])
+    registry.set_response_type(40001, "deterministic")
+    registry.set_deterministic_account(40001, second)
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    event = Event(
+        type=EventType.GUILD_REQUEST,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User(first.self_id)),
+        channel=Channel("40001", ChannelType.TEXT),
+        guild=Guild("40001", "Tenko"),
+        user=User("20001"),
+        message=MessageObject("request-1", "邀请机器人"),
+        _type="request.group.invite",
+        _data={"group_id": "40001", "user_id": "20001", "sub_type": "invite"},
+    )
+
+    await handler.guard(callback)(first, event)
+
+    callback.assert_awaited_once_with(first, event)
+
+
 @pytest.mark.asyncio
 async def test_group_event_guard_randomly_selects_one_online_account(
     monkeypatch,
@@ -503,3 +584,247 @@ async def test_command_guard_applies_rate_limit_before_entari_dispatch() -> None
 
     callback.assert_awaited_once()
     assert "超过频率调用限制" in account.protocol.calls[-1][1]
+
+
+def test_message_metrics_counts_rates_and_evicts_oldest_records() -> None:
+    current = [0.0]
+    metrics = MessageMetrics(
+        buffer_size=2,
+        rate_window_seconds=3.0,
+        clock=lambda: current[0],
+    )
+
+    metrics.record_received(make_context("first"))
+    current[0] = 1.0
+    metrics.record_received(make_context("second"))
+    current[0] = 2.0
+    metrics.record_received(make_context("third"))
+    metrics.record_sent(
+        account_id="10001",
+        platform="onebot",
+        chat_type="group",
+        channel_id="40001",
+        text="reply",
+        count=2,
+    )
+
+    assert metrics.received_count == 3
+    assert metrics.sent_count == 2
+    assert [record.text for record in metrics.recent_messages] == ["third", "reply"]
+    assert metrics.rates() == (3, 2)
+    current[0] = 5.0
+    assert metrics.rates() == (1, 2)
+
+
+def test_message_metrics_records_entari_plugin_send_response() -> None:
+    metrics = MessageMetrics()
+    response = SimpleNamespace(
+        account=SimpleNamespace(self_id="10001", platform="onebot"),
+        channel="40001",
+        message=SimpleNamespace(display=lambda: "plugin reply"),
+        result=[MessageObject("90001", "plugin reply")],
+        session=None,
+    )
+
+    metrics.record_send_response(response)
+
+    assert metrics.sent_count == 1
+    record = metrics.recent_messages[0]
+    assert record.direction == "sent"
+    assert record.text == "plugin reply"
+    assert record.message_id == "90001"
+
+
+@pytest.mark.asyncio
+async def test_message_handler_records_received_and_fixed_reply() -> None:
+    metrics = MessageMetrics(buffer_size=10)
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=True,
+        reply_text="收到",
+        metrics=metrics,
+    )
+
+    await handler.handle(account, make_private_event(text="hello"))
+
+    assert metrics.received_count == 1
+    assert metrics.sent_count == 1
+    assert [record.direction for record in metrics.recent_messages] == [
+        "received",
+        "sent",
+    ]
+
+
+def test_image_only_message_is_visible_in_message_evidence() -> None:
+    context = MessageContext(
+        account_id="10001",
+        event_type="message-created",
+        protocol_event_type="message.group.normal",
+        chat_type="group",
+        channel_id="40001",
+        user_id="20001",
+        message_id="30001",
+        text="",
+        image_urls=("https://example.invalid/image.png",),
+    )
+    metrics = MessageMetrics()
+
+    metrics.record_received(context)
+
+    assert metrics.recent_messages[0].text == "[图片×1]"
+
+
+def test_send_response_with_non_iterable_result_still_records_one_message() -> None:
+    metrics = MessageMetrics()
+    response = SimpleNamespace(
+        account=SimpleNamespace(self_id="10001", platform="onebot"),
+        channel="40001",
+        message=SimpleNamespace(display=lambda: "plugin reply"),
+        result=object(),
+        session=None,
+    )
+
+    metrics.record_send_response(response)
+
+    assert metrics.sent_count == 1
+    assert metrics.recent_messages[0].text == "plugin reply"
+
+
+@pytest.mark.asyncio
+async def test_member_leave_unbinds_self_but_preserves_other_groups() -> None:
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001, 40002])
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.handle_member_removed(
+        account,
+        make_member_removed_event(group_id="40001", member_id="10001"),
+    )
+
+    assert registry.get(account.self_id) is account
+    assert registry.groups_for_account(account) == ("40002",)
+    assert registry.bound_accounts_for_group("40001") == ()
+
+
+@pytest.mark.asyncio
+async def test_member_leave_for_other_user_does_not_change_account_routes() -> None:
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.handle_member_removed(
+        account,
+        make_member_removed_event(group_id="40001", member_id="20001"),
+    )
+
+    assert registry.groups_for_account(account) == ("40001",)
+    assert registry.bound_accounts_for_group("40001") == (account,)
+
+
+@pytest.mark.asyncio
+async def test_unbinding_deterministic_account_uses_registry_fallback() -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, groups=[40001])
+    registry.set_response_type(40001, "deterministic")
+    registry.set_deterministic_account(40001, second)
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.handle_member_removed(
+        first,
+        make_member_removed_event(
+            account_id="10002",
+            group_id="40001",
+            member_id="10002",
+        ),
+    )
+
+    assert registry.deterministic_account_for_group("40001") == "10001"
+    assert registry.accounts_for_group("40001") == (first,)
+
+
+@pytest.mark.asyncio
+async def test_unbound_group_can_be_rebound_by_message_fallback() -> None:
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    await handler.handle_member_removed(
+        account,
+        make_member_removed_event(member_id="10001"),
+    )
+    callback = AsyncMock()
+
+    await handler.guard(callback)(account, make_group_event())
+
+    callback.assert_awaited_once()
+    assert registry.bound_accounts_for_group("40001") == (account,)
+
+
+@pytest.mark.asyncio
+async def test_kicked_account_route_shrinks_before_optional_membership_check() -> None:
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    actions = Mock()
+    actions.verify_group_membership = AsyncMock(return_value=False)
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+        action_service=actions,
+    )
+
+    await handler.handle_member_removed(
+        account,
+        make_member_removed_event(
+            member_id="10001",
+            protocol_type="notice.group_decrease.kick",
+        ),
+    )
+
+    assert registry.bound_accounts_for_group("40001") == ()
+    actions.verify_group_membership.assert_awaited_once_with(account, "40001")
+
+
+@pytest.mark.asyncio
+async def test_raw_internal_member_leave_is_handled_when_adapter_enrichment_fails() -> (
+    None
+):
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    event = make_member_removed_event(
+        protocol_type="notice.group_decrease.kick_me",
+    )
+    event.type = EventType.INTERNAL
+    event.user = None
+
+    await handler.handle_member_removed(account, event)
+
+    assert registry.bound_accounts_for_group("40001") == ()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from tenko.config import DatabaseConfig
 from tenko.db.bootstrap import load_database_plugin
+from tenko.db.migration import LEGACY_SCHEMA_REVISION, run_database_migrations
 
 
 def _legacy_metadata() -> MetaData:
@@ -107,7 +109,9 @@ async def _create_legacy_database(path: Path) -> MetaData:
 
 
 @pytest.mark.asyncio
-async def test_official_database_plugin_preserves_legacy_schema_and_rows(tmp_path):
+async def test_official_database_plugin_preserves_legacy_schema_and_rows(
+    tmp_path, monkeypatch
+):
     if not EntariConfig._inited:
         EntariConfig(Path("/tmp/tenko-database-test.yml"))
 
@@ -132,6 +136,25 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(tmp_pat
             service.base_class.metadata.create_all,
             checkfirst=True,
         )
+
+    from entari_plugin_database import migration as official_migration
+
+    migration_state = tmp_path / "migrations_lock.json"
+    monkeypatch.setattr(official_migration, "_STATE_FILE", migration_state)
+    await run_database_migrations(service)
+    state = json.loads(migration_state.read_text(encoding="utf-8"))
+    assert {
+        "MemberPerm",
+        "GroupPerm",
+        "GroupSetting",
+        "chat_record",
+        "keyword_reply",
+    } <= set(state)
+    assert all(
+        state[table]["revision"] == LEGACY_SCHEMA_REVISION
+        for table in state
+        if table in {model.__tablename__ for model in MODEL_CLASSES}
+    )
 
     async with service.get_session() as session:
         permissions = (

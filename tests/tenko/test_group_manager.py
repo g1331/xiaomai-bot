@@ -177,6 +177,52 @@ async def test_non_master_private_group_setting_is_denied(loaded_plugin) -> None
     loaded_plugin.read_group_settings.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_setting_reads_real_repositories(
+    loaded_plugin, tenko_database
+) -> None:
+    del tenko_database
+    from tenko.db.repositories import group_perm_repository, group_setting_repository
+
+    await group_perm_repository.set("40001", 2, group_name="VIP 群", active=False)
+    await group_setting_repository.set(
+        "40001",
+        frequency_limitation=False,
+        response_type="deterministic",
+        permission_type="admin",
+    )
+
+    settings = await loaded_plugin.read_group_settings("40001")
+
+    assert settings == {
+        "frequency_limitation": False,
+        "response_type": "deterministic",
+        "permission_type": "admin",
+        "permission": 2,
+        "active": False,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_setting_falls_back_when_database_is_unavailable(
+    loaded_plugin, tenko_database
+) -> None:
+    from tenko.db.repositories import configure_session_factory
+
+    configure_session_factory(None)
+    settings = await loaded_plugin.read_group_settings("40001")
+
+    assert settings == {
+        "frequency_limitation": True,
+        "response_type": "random",
+        "permission_type": "default",
+        "permission": 1,
+        "active": True,
+    }
+
+
 class FakeProtocol:
     def __init__(self) -> None:
         self.calls: list[tuple[str, tuple, dict]] = []

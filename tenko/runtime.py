@@ -192,6 +192,10 @@ class TenkoRuntime:
         # official database service is then added by Entari's plugin manager.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
+        permission_manager = sys.modules.get("tenko.plugins.perm_manager")
+        configure_test_group = getattr(permission_manager, "configure_test_group", None)
+        if callable(configure_test_group):
+            configure_test_group(self.config.test_group)
         exception_catcher = sys.modules.get("tenko.plugins.exception_catcher")
         if exception_catcher is not None:
             configure_evidence_directory = getattr(

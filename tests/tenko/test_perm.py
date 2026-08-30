@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import builtins
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -26,20 +25,26 @@ class FakeDatabase:
     bot_admin_ids: tuple[int, ...] = ()
     queries: list[tuple] = field(default_factory=list)
 
-    async def fetch_one(self, query: tuple) -> tuple[int] | None:
-        self.queries.append(query)
-        if query[0] == "member_perm":
-            level = self.member_levels.get((query[1], query[2]))
-        elif query[0] == "group_perm":
-            level = self.group_levels.get(query[1])
-        else:
-            raise AssertionError(f"unexpected fetch_one query: {query}")
-        return None if level is None else (level,)
+    @staticmethod
+    def _database_id(value: int | str) -> int | str:
+        normalized = str(value)
+        return int(normalized) if normalized.isdecimal() else normalized
 
-    async def fetch_all(self, query: tuple) -> list[tuple[int]]:
-        self.queries.append(query)
-        assert query == ("bot_admins",)
-        return [(user_id,) for user_id in self.bot_admin_ids]
+    async def get_member_permission(
+        self, group_id: int | str, user_id: int | str
+    ) -> int | None:
+        self.queries.append(("member_perm", group_id, user_id))
+        return self.member_levels.get(
+            (self._database_id(group_id), self._database_id(user_id))
+        )
+
+    async def get_group_permission(self, group_id: int | str) -> int | None:
+        self.queries.append(("group_perm", group_id))
+        return self.group_levels.get(self._database_id(group_id))
+
+    async def get_bot_admin_ids(self) -> tuple[int, ...]:
+        self.queries.append(("bot_admins",))
+        return self.bot_admin_ids
 
 
 def make_context(
@@ -112,28 +117,44 @@ async def test_database_levels_override_context_defaults_and_are_read_only() -> 
     assert await checker.get_group_perm(normal) == GroupPermission.VipGroup
     assert await checker.require_group_perm(normal, GroupPermission.VipGroup)
     assert not await checker.require_group_perm(normal, GroupPermission.TestGroup)
-    assert not any(
-        query[0] in {"add", "update", "delete"} for query in database.queries
+    assert all(
+        query[0] in {"member_perm", "group_perm", "bot_admins"}
+        for query in database.queries
     )
+
+
+@pytest.mark.asyncio
+async def test_permission_checker_reads_real_repository(tenko_database) -> None:
+    del tenko_database
+    from tenko.db.repositories import (
+        group_perm_repository,
+        member_perm_repository,
+    )
+
+    await member_perm_repository.set_permission("10001", "20001", Permission.GroupBlack)
+    await group_perm_repository.set("10001", GroupPermission.VipGroup)
+
+    checker = PermissionChecker()
+    context = make_context("20001", member_role="owner")
+
+    assert await checker.get_user_perm(context) == Permission.GroupBlack
+    assert await checker.get_group_perm(context) == GroupPermission.VipGroup
 
 
 @pytest.mark.asyncio
 async def test_missing_sqlalchemy_uses_default_group_permission_and_warns_once(
     monkeypatch,
 ) -> None:
-    real_import = builtins.__import__
-
-    def missing_sqlalchemy(name, *args, **kwargs):
-        if name == "sqlalchemy":
-            raise ModuleNotFoundError("No module named 'sqlalchemy'", name="sqlalchemy")
-        return real_import(name, *args, **kwargs)
-
     warning = Mock()
-    monkeypatch.setattr(builtins, "__import__", missing_sqlalchemy)
     monkeypatch.setattr(perm_module.logger, "warning", warning)
 
     checker = PermissionChecker()
     context = make_context()
+
+    async def missing_sqlalchemy(*_args):
+        raise ModuleNotFoundError("No module named 'sqlalchemy'", name="sqlalchemy")
+
+    monkeypatch.setattr(checker, "_call_database", missing_sqlalchemy)
 
     assert await checker.require_group_perm(context, GroupPermission.ActiveGroup)
     assert not await checker.require_group_perm(context, GroupPermission.VipGroup)
@@ -149,13 +170,13 @@ async def test_missing_sqlalchemy_uses_default_group_permission_and_warns_once(
 async def test_non_database_import_errors_are_not_swallowed(monkeypatch) -> None:
     checker = PermissionChecker(database=object())
 
-    def fail_statement(*_args):
+    async def fail_database_call(*_args):
         raise ModuleNotFoundError(
             "No module named 'unrelated_dependency'",
             name="unrelated_dependency",
         )
 
-    monkeypatch.setattr(checker, "_statement", fail_statement)
+    monkeypatch.setattr(checker, "_call_database", fail_database_call)
 
     with pytest.raises(ModuleNotFoundError, match="unrelated_dependency"):
         await checker.get_group_perm(make_context())

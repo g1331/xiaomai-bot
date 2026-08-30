@@ -390,12 +390,27 @@ group_perm_repository = GroupPermRepository()
 group_setting_repository = GroupSettingRepository()
 
 
+async def get_member_permission(group_id: str | int, user_id: str | int) -> int | None:
+    return await member_perm_repository.get_permission(group_id, user_id)
+
+
+async def get_group_permission(group_id: str | int) -> int | None:
+    return await group_perm_repository.get_permission(group_id)
+
+
+async def get_bot_admin_ids() -> tuple[int, ...]:
+    return await member_perm_repository.list_bot_admins()
+
+
 __all__ = [
     "GroupPermRepository",
     "GroupSettingRepository",
     "MemberPermRepository",
     "configure_database_service",
     "configure_session_factory",
+    "get_bot_admin_ids",
+    "get_group_permission",
+    "get_member_permission",
     "group_perm_repository",
     "group_setting_repository",
     "member_perm_repository",

@@ -44,6 +44,7 @@ plugin.get_plugin().metadata.default_switch = True
 
 
 permission_checker = PermissionChecker()
+_database_warning_groups: set[str] = set()
 
 
 INVITE_TIMEOUT_SECONDS = 60 * 60
@@ -399,69 +400,45 @@ async def reset_capability(
     )
 
 
-def _database() -> Any:
-    from core.orm import orm
-
-    return orm
-
-
-def _tables():
-    from core.orm.tables import GroupPerm, GroupSetting
-
-    return GroupPerm, GroupSetting
-
-
-def _select():
-    """Load the legacy query builder only when the read-only query is used."""
-
-    from sqlalchemy import select
-
-    return select
-
-
-def _row_value(row: object, index: int = 0) -> object | None:
-    if row is None:
-        return None
-    try:
-        return row[index]  # type: ignore[index]
-    except (IndexError, KeyError, TypeError):
-        return None
-
-
 async def read_group_settings(group_id: str) -> dict[str, object]:
-    """Read legacy group settings without creating or updating a row."""
+    """只读查询群设置；数据库不可用时返回旧默认值。"""
 
-    group_perm, group_setting = _tables()
-    select = _select()
-    database = _database()
-    setting_row = await database.fetch_one(
-        select(
-            group_setting.frequency_limitation,
-            group_setting.response_type,
-            group_setting.permission_type,
-        ).where(group_setting.group_id == int(group_id))
-    )
-    permission_row = await database.fetch_one(
-        select(group_perm.perm, group_perm.active).where(
-            group_perm.group_id == int(group_id)
+    from tenko.db.errors import DatabaseUnavailableError
+
+    try:
+        from tenko.db.repositories import (
+            group_perm_repository,
+            group_setting_repository,
         )
-    )
+
+        setting_row = await group_setting_repository.get(group_id)
+        permission_row = await group_perm_repository.get(group_id)
+    except DatabaseUnavailableError as error:
+        if group_id not in _database_warning_groups:
+            _database_warning_groups.add(group_id)
+            logger.warning(
+                "群 {} 的设置数据库不可用，使用默认设置: {}", group_id, error
+            )
+        return {
+            "frequency_limitation": True,
+            "response_type": "random",
+            "permission_type": "default",
+            "permission": 1,
+            "active": True,
+        }
+
     return {
         "frequency_limitation": (
-            True if setting_row is None else bool(_row_value(setting_row, 0))
+            True if setting_row is None else bool(setting_row.frequency_limitation)
         ),
         "response_type": (
-            "random" if setting_row is None else str(_row_value(setting_row, 1))
+            "random" if setting_row is None else str(setting_row.response_type)
         ),
         "permission_type": (
-            "default" if setting_row is None else str(_row_value(setting_row, 2))
+            "default" if setting_row is None else str(setting_row.permission_type)
         ),
-        "permission": 1
-        if permission_row is None
-        else int(_row_value(permission_row, 0)),
-        "active": True
-        if permission_row is None
-        else bool(_row_value(permission_row, 1)),
+        "permission": 1 if permission_row is None else int(permission_row.perm),
+        "active": True if permission_row is None else bool(permission_row.active),
     }
 
 

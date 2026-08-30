@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import ANY, AsyncMock
 
 import pytest
 from arclet.entari.command import Match, Query
@@ -69,24 +69,13 @@ def make_query(path: str, result):
     return query
 
 
-class QueryBuilder:
-    def where(self, *conditions):
-        del conditions
-        return self
-
-
-class Column:
-    def __eq__(self, other):
-        del other
-        return self
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
 async def test_native_permission_command_writes_parsed_target(loaded_plugin) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     loaded_plugin._member_permission = AsyncMock(return_value=Permission.User)
     loaded_plugin._write_member_permission = AsyncMock()
+    loaded_plugin._target_member = AsyncMock(return_value=object())
 
     result = await loaded_plugin.change_user_perm.callable_target(
         make_session("20001", "owner"),
@@ -128,13 +117,6 @@ async def test_permission_list_rejects_cross_group_target_in_group(
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="20001")
     )
-    loaded_plugin._tables = lambda: (
-        SimpleNamespace(),
-        SimpleNamespace(),
-        SimpleNamespace(),
-    )
-    loaded_plugin._database = lambda: SimpleNamespace(fetch_all=AsyncMock())
-
     result = await loaded_plugin.get_perm_list.callable_target(
         make_session("20001", "member"), make_query("group.group_id", 40002)
     )
@@ -147,16 +129,12 @@ async def test_permission_list_rejects_cross_group_target_in_group(
 async def test_master_private_permission_list_can_query_requested_group(
     loaded_plugin,
 ) -> None:
-    member_perm = SimpleNamespace(qq=Column(), perm=Column(), group_id=Column())
-    group_perm = SimpleNamespace()
-    group_setting = SimpleNamespace()
-    database = SimpleNamespace(fetch_all=AsyncMock(return_value=[("30001", 32)]))
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
     )
-    loaded_plugin._tables = lambda: (group_perm, group_setting, member_perm)
-    loaded_plugin._select = lambda: (lambda *columns: QueryBuilder())
-    loaded_plugin._database = lambda: database
+    loaded_plugin._group_member_permissions = AsyncMock(
+        return_value=[SimpleNamespace(qq=30001, perm=32)]
+    )
 
     result = await loaded_plugin.get_perm_list.callable_target(
         make_private_session("90001"), make_query("group.group_id", 40002)
@@ -165,17 +143,13 @@ async def test_master_private_permission_list_can_query_requested_group(
     output = str(result)
     assert "群40002权限等级: 1" in output
     assert "30001: 32" in output
-    database.fetch_all.assert_awaited_once()
+    loaded_plugin._group_member_permissions.assert_awaited_once_with("40002")
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
 async def test_non_master_private_permission_list_is_denied(loaded_plugin) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
-    loaded_plugin._tables = lambda: (_ for _ in ()).throw(
-        AssertionError("database should not be read")
-    )
-
     result = await loaded_plugin.get_perm_list.callable_target(
         make_private_session("20001"), make_query("group.group_id", 40002)
     )
@@ -200,17 +174,8 @@ async def test_sensitive_permission_lists_are_master_private_only(
         registry=PermissionRegistry(master_id="90001")
     )
     if data_name == "vip":
-        group_perm = SimpleNamespace(
-            group_id=Column(), group_name=Column(), perm=Column()
-        )
-        loaded_plugin._tables = lambda: (
-            group_perm,
-            SimpleNamespace(),
-            SimpleNamespace(),
-        )
-        loaded_plugin._select = lambda: (lambda *columns: QueryBuilder())
-        loaded_plugin._database = lambda: SimpleNamespace(
-            fetch_all=AsyncMock(return_value=[("40002", "其他群")])
+        loaded_plugin._vip_groups = AsyncMock(
+            return_value=[SimpleNamespace(group_id=40002, group_name="其他群")]
         )
     elif data_name == "black":
         loaded_plugin._global_black_ids = AsyncMock(return_value={"20002"})
@@ -227,3 +192,152 @@ async def test_sensitive_permission_lists_are_master_private_only(
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     denied = await handler.callable_target(make_private_session("20001"))
     assert str(denied) == "权限不足"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_permission_command_reads_and_writes_real_repository(
+    loaded_plugin, tenko_database
+) -> None:
+    del tenko_database
+    from tenko.db.repositories import member_perm_repository
+
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin._target_member = AsyncMock(return_value=object())
+
+    result = await loaded_plugin.change_user_perm.callable_target(
+        make_session("20001", "owner"),
+        Match(32, True),
+        Match(("30001",), True),
+        Query("group.group_id"),
+    )
+
+    assert "1个执行成功" in str(result)
+    assert await member_perm_repository.get_permission("40001", "30001") == 32
+    loaded_plugin._target_member.assert_awaited_once_with(ANY, "40001", "30001")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_group_permission_commands_sync_real_repository(
+    loaded_plugin, tenko_database
+) -> None:
+    del tenko_database
+    from tenko.db.repositories import (
+        group_perm_repository,
+        group_setting_repository,
+        member_perm_repository,
+    )
+
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
+    session = make_session("20001", "member")
+    loaded_plugin._target_members = AsyncMock(
+        return_value=(
+            {"user_id": "30001", "permission": "admin"},
+            {"user_id": "30002", "permission": "member"},
+            {"user_id": "30003", "permission": "member"},
+        )
+    )
+    await member_perm_repository.set_permission("40001", "30002", Permission.GroupOwner)
+    await member_perm_repository.set_permission("40001", "30003", Permission.User)
+
+    group_result = await loaded_plugin.change_group_perm.callable_target(
+        session, Match(2, True), Query("group.group_id")
+    )
+    type_result = await loaded_plugin.change_group_perm_type.callable_target(
+        session, Match("admin", True), Query("group.group_id")
+    )
+
+    assert str(group_result) == "已修改群40001权限为2"
+    assert str(type_result) == "已修改群40001权限类型为admin"
+    group_row = await group_perm_repository.get("40001")
+    setting_row = await group_setting_repository.get("40001")
+    assert group_row is not None and (group_row.perm, group_row.active) == (2, True)
+    assert setting_row is not None and setting_row.permission_type == "admin"
+    assert await member_perm_repository.get_permission("40001", "30001") == 32
+    assert await member_perm_repository.get_permission("40001", "30002") == 64
+    assert await member_perm_repository.get_permission("40001", "30003") == 32
+
+    loaded_plugin._target_members = AsyncMock(
+        return_value=(
+            {"user_id": "30001", "permission": "member"},
+            {"user_id": "30002", "permission": "member"},
+            {"user_id": "30003", "permission": "member"},
+        )
+    )
+    default_result = await loaded_plugin.change_group_perm_type.callable_target(
+        session, Match("default", True), Query("group.group_id")
+    )
+
+    assert str(default_result) == "已修改群40001权限类型为default"
+    assert await group_setting_repository.get("40001")
+    assert await member_perm_repository.get_permission("40001", "30001") == 16
+    assert await member_perm_repository.get_permission("40001", "30002") == 64
+    assert await member_perm_repository.get_permission("40001", "30003") == 16
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_permission_command_rejects_non_member_without_writing(
+    loaded_plugin, tenko_database
+) -> None:
+    del tenko_database
+    from tenko.db.repositories import member_perm_repository
+
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin._target_member = AsyncMock(return_value=None)
+
+    result = await loaded_plugin.change_user_perm.callable_target(
+        make_session("20001", "owner"),
+        Match(32, True),
+        Match(("30001",), True),
+        Query("group.group_id"),
+    )
+
+    assert "没有在群40001找到群成员" in str(result)
+    assert await member_perm_repository.get_permission("40001", "30001") is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_test_group_protection_blocks_both_permission_commands(
+    loaded_plugin, tenko_database
+) -> None:
+    del tenko_database
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
+    loaded_plugin.configure_test_group("40001")
+    try:
+        session = make_session("20001", "member")
+        group_result = await loaded_plugin.change_group_perm.callable_target(
+            session, Match(2, True), Query("group.group_id")
+        )
+        type_result = await loaded_plugin.change_group_perm_type.callable_target(
+            session, Match("admin", True), Query("group.group_id")
+        )
+    finally:
+        loaded_plugin.configure_test_group(None)
+
+    assert str(group_result) == "无法通过该指令修改测试群(40001)权限!"
+    assert str(type_result) == "无法通过该指令修改测试群(40001)权限!"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_permission_write_reports_database_unavailable(
+    loaded_plugin, tenko_database
+) -> None:
+    from tenko.db.repositories import configure_session_factory
+
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
+    configure_session_factory(None)
+    result = await loaded_plugin.change_group_perm.callable_target(
+        make_session("20001", "member"), Match(2, True), Query("group.group_id")
+    )
+
+    assert str(result) == "数据库暂不可用，修改群权限未执行"

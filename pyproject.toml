@@ -95,11 +95,6 @@ filename = "pyproject.toml"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
-[[tool.bumpversion.files]]
-filename = "core/__init__.py"
-search = "__version__ = \"{current_version}\""
-replace = "__version__ = \"{new_version}\""
-
 [tool.bumpversion.parts.pre_l]
 optional_value = "final"
 first_value = "dev"

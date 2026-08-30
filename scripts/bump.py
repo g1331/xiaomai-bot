@@ -9,12 +9,12 @@ bump.py - 项目版本号自动管理脚本
 - 可选自动 commit 和打 Git tag
 
 用法示例：
-    python -m utils.bump patch --commit --tag --changelog  # 更新补丁版本并提交、打标签
-    python -m utils.bump pre_l  # 递增预发布标签（如 dev → alpha → beta → rc）
-    python -m utils.bump pre_n  # 递增预发布版本号（如 alpha1 → alpha2）
-    python -m utils.bump patch --no-pre  # 直接更新补丁版本，不添加预发布标签
-    python -m utils.bump patch --new-version 0.2.0  # 直接指定目标版本号
-    python -m utils.bump release  # 移除预发布标签，发布正式版
+    python -m scripts.bump patch --commit --tag --changelog  # 更新补丁版本并提交、打标签
+    python -m scripts.bump pre_l  # 递增预发布标签（如 dev → alpha → beta → rc）
+    python -m scripts.bump pre_n  # 递增预发布版本号（如 alpha1 → alpha2）
+    python -m scripts.bump patch --no-pre  # 直接更新补丁版本，不添加预发布标签
+    python -m scripts.bump patch --new-version 0.2.0  # 直接指定目标版本号
+    python -m scripts.bump release  # 移除预发布标签，发布正式版
 """
 
 import argparse
@@ -154,18 +154,6 @@ def update_pyproject_version_directly(new_version):
         with open("pyproject.toml", "w", encoding="utf-8") as f:
             f.write(content)
 
-        # 同时更新 core/__init__.py
-        if os.path.exists("core/__init__.py"):
-            with open("core/__init__.py", encoding="utf-8") as f:
-                content = f.read()
-
-            content = re.sub(
-                r'(__version__\s*=\s*)"[^"]+"', f'\\1"{new_version}"', content
-            )
-
-            with open("core/__init__.py", "w", encoding="utf-8") as f:
-                f.write(content)
-
         print(f"✅ 已直接更新版本号至 {new_version}")
         return True
     except Exception as e:
@@ -210,8 +198,6 @@ def generate_changelog(version: str):
 def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
     """提交更改并创建 Git tag"""
     files = ["pyproject.toml", "uv.lock"]
-    if os.path.exists("core/__init__.py"):
-        files.append("core/__init__.py")
     if os.path.exists("CHANGELOG.md"):
         files.append("CHANGELOG.md")
 

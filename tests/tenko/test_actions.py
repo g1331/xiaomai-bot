@@ -57,6 +57,10 @@ class FakeProtocol:
         self.calls.append(("guild_list", (), {}))
         return self.responses.get("guild_list", [])
 
+    async def guild_get(self, *args: Any) -> Any:
+        self.calls.append(("guild_get", args, {}))
+        return self.responses.get("guild_get", {"id": args[0]})
+
 
 @dataclass
 class FakeAccount:
@@ -399,6 +403,33 @@ async def test_group_discovery_uses_satori_guild_list() -> None:
 
     assert await service.get_group_list(account) == ("40001", "40002")
     assert protocol.calls == [("guild_list", (), {})]
+
+
+@pytest.mark.asyncio
+async def test_verify_group_membership_uses_standard_guild_get() -> None:
+    service, account, _, protocol = make_service(
+        FakeProtocol(responses={"guild_get": {"id": "40001"}})
+    )
+
+    assert await service.verify_group_membership(account, "40001") is True
+    assert protocol.calls == [("guild_get", ("40001",), {})]
+
+
+@pytest.mark.asyncio
+async def test_verify_group_membership_surfaces_failed_group_lookup() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "guild_get": {
+                "status": "failed",
+                "retcode": 100,
+                "message": "not found",
+            }
+        }
+    )
+    service, account, _, _ = make_service(protocol)
+
+    with pytest.raises(RuntimeError, match="群信息查询失败"):
+        await service.verify_group_membership(account, "40001")
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from satori.client import Account
 from .config import TenkoConfig
 from .commands import configure_command_prefix
 from .connection import OneBotConnection
-from .events import MessageEventHandler
+from .events import MessageEventHandler, configure_message_metrics
 from .host.accounts import account_registry
 from .host.actions import action_service
 from .host.features import CommandPolicy, configure_feature_service
@@ -66,12 +67,17 @@ class TenkoRuntime:
             superuser_ids=config.upgrade.superuser_ids,
         )
         self.connection = OneBotConnection(config.onebot)
+        self.message_metrics = configure_message_metrics(
+            config.exception.message_buffer_size
+        )
         self.message_handler = MessageEventHandler(
             send_replies=config.runtime.send_replies,
             reply_text=config.runtime.reply_text,
             account_registry=self.accounts,
             debug_config=config.debug,
             command_prefix=config.runtime.command_prefix,
+            metrics=self.message_metrics,
+            action_service=self.actions,
         )
         self.app: Entari | None = None
         self.manager: Launart | None = None
@@ -96,6 +102,19 @@ class TenkoRuntime:
                 break
         else:  # pragma: no cover - Entari registers this callback in __init__
             raise RuntimeError("Entari native event handler is not registered")
+        # OneBot 11 的 group_decrease.leave/kick 在当前适配器中都先转换为
+        # GUILD_MEMBER_REMOVED；kick_me 转换为 GUILD_REMOVED。先注册退群
+        # 事件，再注册消息事件，保留原有消息回调作为最后一个可观察入口。
+        app.register_on(EventType.GUILD_MEMBER_REMOVED)(
+            self.message_handler.handle_member_removed
+        )
+        app.register_on(EventType.GUILD_REMOVED)(
+            self.message_handler.handle_member_removed
+        )
+        # OneBot 11 的适配器在退群事件补充信息的 action 失败时，会把原始
+        # notice 保留在 EventType.INTERNAL；处理器按已核实的 _type/_data
+        # 再识别一次，避免 kick_me 因“已被踢后无法查成员信息”丢失解绑。
+        app.register_on(EventType.INTERNAL)(self.message_handler.handle_member_removed)
         app.register_on(EventType.MESSAGE_CREATED)(self.message_handler.handle)
         app.lifecycle(self._on_lifecycle)
         self.app = app
@@ -163,6 +182,13 @@ class TenkoRuntime:
         # available before Launart starts.
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
+        exception_catcher = sys.modules.get("tenko.plugins.exception_catcher")
+        if exception_catcher is not None:
+            configure_evidence_directory = getattr(
+                exception_catcher, "configure_evidence_directory", None
+            )
+            if callable(configure_evidence_directory):
+                configure_evidence_directory(self.config.exception.evidence_dir)
         self.message_handler.command_policy = CommandPolicy(
             self.feature_service,
             self.rate_limiter,

@@ -8,7 +8,7 @@ from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
 from graia.amnesia.builtins.aiohttp import AiohttpClientService
 from launart import Launart
-from satori import LoginStatus
+from satori import EventType, LoginStatus
 
 from tenko import runtime as runtime_module
 from tenko.config import TenkoConfig
@@ -158,6 +158,7 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
             EntariConfig.instance.basic.nickname = "Tenko"
             self.event_callbacks = [self.handle_event]
             self.registered_message_handler = None
+            self.registered_handlers = {}
 
         async def handle_event(self, account, event):
             return None
@@ -165,6 +166,7 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
         def register_on(self, event_type):
             def register(callback):
                 self.registered_message_handler = callback
+                self.registered_handlers[event_type] = callback
                 return callback
 
             return register
@@ -199,6 +201,18 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
             is runtime.message_handler.handle.__func__
         )
         assert runtime.message_handler.debug_config is config.debug
+        assert (
+            app.registered_handlers[EventType.GUILD_MEMBER_REMOVED].__func__
+            is runtime.message_handler.handle_member_removed.__func__
+        )
+        assert (
+            app.registered_handlers[EventType.GUILD_REMOVED].__func__
+            is runtime.message_handler.handle_member_removed.__func__
+        )
+        assert (
+            app.registered_handlers[EventType.INTERNAL].__func__
+            is runtime.message_handler.handle_member_removed.__func__
+        )
     finally:
         runtime_module.configure_command_prefix("/")
         EntariConfig.instance.basic.superusers = original_superusers or {}

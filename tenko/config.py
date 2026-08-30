@@ -567,6 +567,30 @@ class RateLimitConfig:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ExceptionConfig:
+    """异常取证的环形消息缓冲和本地落盘目录。"""
+
+    message_buffer_size: int = 10
+    evidence_dir: str = ".tenko/exceptions"
+
+    def __post_init__(self) -> None:
+        if type(self.message_buffer_size) is not int or self.message_buffer_size <= 0:
+            raise ValueError("exception message_buffer_size 必须是正整数")
+        if not self.evidence_dir:
+            raise ValueError("exception evidence_dir 不能为空")
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> ExceptionConfig:
+        defaults = cls()
+        return cls(
+            message_buffer_size=_integer(
+                section, "message_buffer_size", defaults.message_buffer_size
+            ),
+            evidence_dir=_string(section, "evidence_dir", defaults.evidence_dir),
+        )
+
+
 # 允许调用方使用更自然的单数名称，同时配置字段保持 `[features]` / `[ratelimit]`。
 FeatureConfig = FeaturesConfig
 RatelimitConfig = RateLimitConfig
@@ -582,6 +606,7 @@ class TenkoConfig:
     accounts: AccountsConfig = AccountsConfig()
     features: FeaturesConfig = FeaturesConfig()
     ratelimit: RateLimitConfig = RateLimitConfig()
+    exception: ExceptionConfig = ExceptionConfig()
 
     def __post_init__(self) -> None:
         # 代码构造方式的旧兼容：直接传 RuntimeConfig(superusers=...) 时也
@@ -613,6 +638,7 @@ class TenkoConfig:
             accounts=AccountsConfig.from_mapping(_section(data, "accounts")),
             features=FeaturesConfig.from_mapping(_section(data, "features")),
             ratelimit=RateLimitConfig.from_mapping(_section(data, "ratelimit")),
+            exception=ExceptionConfig.from_mapping(_section(data, "exception")),
         )
 
     @classmethod

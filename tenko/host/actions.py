@@ -739,6 +739,24 @@ class ActionService:
 
     discover_groups = list_groups
 
+    async def verify_group_membership(
+        self, account_or_id: Account | str | int, group_id: str | int
+    ) -> bool:
+        """用标准 ``guild_get`` 对退群/被踢事件做可选二次确认。
+
+        退群事件本身已经足以驱动路由解绑；这个查询只为被踢事件提供
+        审计信息，因此不把查询失败学习为账号 capability 失败。
+        """
+
+        _, account = self._account(account_or_id)
+        group, _ = _numeric_id(group_id, "群 ID")
+        result = account.protocol.guild_get(group)
+        if inspect.isawaitable(result):
+            result = await result
+        if isinstance(result, Mapping) and _is_failed_receipt(result):
+            raise RuntimeError(f"群信息查询失败: {result}")
+        return bool(result)
+
     @staticmethod
     def _duration(value: object) -> int:
         if type(value) is not int:

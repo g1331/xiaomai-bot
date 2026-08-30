@@ -8,7 +8,17 @@ import pytest
 from arclet.entari import ExceptionEvent
 from arclet.entari.config import EntariConfig
 from arclet.letoderea import Subscriber
-from satori import Channel, ChannelType, EventType, Guild, Login, MessageObject, User
+from satori import (
+    Channel,
+    ChannelType,
+    EventType,
+    Guild,
+    Image,
+    Login,
+    MessageObject,
+    Text,
+    User,
+)
 from satori.model import Event
 
 from tenko.events import MessageLog
@@ -182,6 +192,67 @@ async def test_failed_exception_delivery_is_written_to_local_evidence(
     assert "message='ERR_NOT_GROUP_ADMIN'" in content
     assert "wording='ERR_NOT_GROUP_ADMIN'" in content
     assert "完整 traceback:" in content
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+async def test_exception_report_prefers_rendered_markdown_image(
+    loaded_plugin, monkeypatch
+) -> None:
+    class RecordingProtocol:
+        def __init__(self) -> None:
+            self.messages = []
+
+        async def send_private_message(self, user_id, content):
+            self.messages.append((str(user_id), content))
+            return []
+
+    protocol = RecordingProtocol()
+    origin = make_context_origin()
+    origin.account.protocol = protocol
+    renderer = AsyncMock(return_value=b"jpeg-bytes")
+    monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    original = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
+    try:
+        await loaded_plugin.send_error_report(RuntimeError("rendered"), origin)
+    finally:
+        EntariConfig.instance.basic.superusers = original
+
+    renderer.assert_awaited_once()
+    assert renderer.await_args.args[0] == "render_markdown"
+    assert renderer.await_args.args[1].startswith("[Tenko 异常]")
+    assert protocol.messages[0][0] == "90001"
+    assert isinstance(protocol.messages[0][1][0], Image)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+async def test_exception_report_falls_back_to_text_when_rendering_fails(
+    loaded_plugin, monkeypatch
+) -> None:
+    class RecordingProtocol:
+        def __init__(self) -> None:
+            self.messages = []
+
+        async def send_private_message(self, user_id, content):
+            self.messages.append((str(user_id), content))
+            return []
+
+    protocol = RecordingProtocol()
+    origin = make_context_origin()
+    origin.account.protocol = protocol
+    renderer = AsyncMock(return_value=None)
+    monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    original = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
+    try:
+        await loaded_plugin.send_error_report(RuntimeError("text fallback"), origin)
+    finally:
+        EntariConfig.instance.basic.superusers = original
+
+    assert protocol.messages[0][0] == "90001"
+    assert isinstance(protocol.messages[0][1][0], Text)
 
 
 @pytest.mark.asyncio

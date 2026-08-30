@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from arclet.entari.command import Query
@@ -11,6 +12,7 @@ from satori import (
     ChannelType,
     EventType,
     Guild,
+    Image,
     Login,
     MessageObject,
     Role,
@@ -149,6 +151,46 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
     assert "网络 IO" not in output
     assert loaded_plugin.status_command.parse("/-bot -t").matched
     assert loaded_plugin.status_command.parse("/状态 -t").matched
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+async def test_status_command_sends_rendered_image_when_available(
+    loaded_plugin, monkeypatch
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    patch_status_data(loaded_plugin, monkeypatch)
+    renderer = AsyncMock(return_value=b"jpeg-bytes")
+    monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+
+    result = await loaded_plugin.status.callable_target(
+        make_session("20001", "member"), Query("text.value", False)
+    )
+
+    renderer.assert_awaited_once()
+    assert renderer.await_args.args[:2] == ("render_template", "status.html")
+    assert renderer.await_args.args[2]["content"].startswith("开机时间：2026年")
+    assert isinstance(result[0], Image)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+async def test_status_command_falls_back_to_text_when_rendering_fails(
+    loaded_plugin, monkeypatch
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    patch_status_data(loaded_plugin, monkeypatch)
+    renderer = AsyncMock(return_value=None)
+    monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+
+    result = await loaded_plugin.status.callable_target(
+        make_session("20001", "member"), Query("text.value", False)
+    )
+
+    renderer.assert_awaited_once_with(
+        "render_template", "status.html", renderer.await_args.args[2]
+    )
+    assert str(result).startswith("开机时间：2026年")
 
 
 @pytest.mark.asyncio

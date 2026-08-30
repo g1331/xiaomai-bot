@@ -15,14 +15,16 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
     import tomli as tomllib
 
 from arclet.alconna import Alconna, CommandMeta, Option, store_true
-from arclet.entari import Session, command, plugin
+from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Query
 from arclet.entari.plugin import PluginRole
+from satori import Image
 
 from tenko.events import MessageMetrics, message_metrics
 from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import context_from_session, text_message
+from tenko.render import render_or_none
 
 try:
     import psutil
@@ -231,7 +233,7 @@ def _current_group_mute(context: Any, registry: AccountRegistry) -> str | None:
     return f"当前群禁言：{muted}/{len(accounts)}"
 
 
-def build_status(
+def build_status_data(
     context: Any,
     plugin_count: int,
     *,
@@ -241,8 +243,7 @@ def build_status(
     process: ProcessInfo | None = None,
     detailed: bool = False,
     version_details: tuple[str, ...] | None = None,
-) -> str:
-    del plugin_count
+) -> dict[str, Any]:
     registry = account_registry if registry is None else registry
     metrics = message_metrics if metrics is None else metrics
     resources = collect_system_resources() if resources is None else resources
@@ -291,7 +292,77 @@ def build_status(
                 f"↓ {_format_bytes(resources.net_received)}"
             )
         lines.extend(diagnostic_lines)
-    return "\n".join(lines)
+    content = "\n".join(lines)
+    return {
+        "title": "Tenko 状态",
+        "content": content,
+        "lines": tuple(lines),
+        "plugin_count": plugin_count,
+        "chat_type": context.chat_type,
+        "detailed": detailed,
+        "current_group_mute": current_group_mute,
+        "project_address": _PROJECT_ADDRESS,
+        "version_details": version_lines,
+        "metrics": {
+            "received_count": metrics.received_count,
+            "sent_count": metrics.sent_count,
+            "received_rate": received_rate,
+            "sent_rate": sent_rate,
+        },
+        "process": {
+            "start_time": _format_time(process.start_time),
+            "uptime_seconds": process.uptime_seconds,
+            "uptime": _format_duration(process.uptime_seconds),
+            "rss": process.rss,
+            "rss_display": (
+                _format_bytes(process.rss) if process.rss is not None else None
+            ),
+        },
+        "resources": (
+            None
+            if resources is None
+            else {
+                "cpu_percent": resources.cpu_percent,
+                "memory_used": resources.memory_used,
+                "memory_total": resources.memory_total,
+                "memory_percent": resources.memory_percent,
+                "disk_used": resources.disk_used,
+                "disk_total": resources.disk_total,
+                "disk_percent": resources.disk_percent,
+                "net_sent": resources.net_sent,
+                "net_received": resources.net_received,
+            }
+        ),
+        "online_bots": _online_bot_count(registry),
+        "active_groups": len(registry.group_ids),
+    }
+
+
+def build_status(
+    context: Any,
+    plugin_count: int,
+    *,
+    registry: AccountRegistry | None = None,
+    metrics: MessageMetrics | None = None,
+    resources: SystemResources | None = None,
+    process: ProcessInfo | None = None,
+    detailed: bool = False,
+    version_details: tuple[str, ...] | None = None,
+) -> str:
+    """Build the legacy text form from the shared status context."""
+
+    return str(
+        build_status_data(
+            context,
+            plugin_count,
+            registry=registry,
+            metrics=metrics,
+            resources=resources,
+            process=process,
+            detailed=detailed,
+            version_details=version_details,
+        )["content"]
+    )
 
 
 status_command = Alconna(
@@ -318,7 +389,6 @@ async def status(
     session: Session,
     text_mode: Query[bool] = Query("text.value", False),
 ):
-    del text_mode  # 图片渲染暂缓，保留旧命令的文本选项兼容性。
     context = context_from_session(session)
     if not await permission_checker.require_group_perm(
         context, Permission.ActiveGroup
@@ -328,10 +398,17 @@ async def status(
         context.chat_type == "private"
         and await permission_checker.require_perm(context, Permission.Master)
     )
-    return text_message(
-        build_status(
-            context,
-            len(plugin.get_plugins()),
-            detailed=is_master_private,
-        )
+    status_data = build_status_data(
+        context,
+        len(plugin.get_plugins()),
+        detailed=is_master_private,
     )
+    if not text_mode.result:
+        image = await render_or_none(
+            "render_template",
+            "status.html",
+            status_data,
+        )
+        if image is not None:
+            return MessageChain(Image.of(raw=image, mime="image/jpeg"))
+    return text_message(str(status_data["content"]))

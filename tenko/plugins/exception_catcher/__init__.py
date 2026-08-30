@@ -12,11 +12,12 @@ from arclet.entari import ExceptionEvent, plugin
 from arclet.entari.config import EntariConfig
 from arclet.entari.plugin import PluginRole
 from loguru import logger
-from satori import Text
+from satori import Image, Text
 
 from tenko.context import MessageContext
 from tenko.events import MessageLog, message_metrics
 from tenko.host.actions import ActionFailure
+from tenko.render import render_or_none
 
 
 plugin.metadata(
@@ -217,9 +218,15 @@ async def send_error_report(
                 getattr(account, "platform", "-"),
             )
         else:
+            image = await render_or_none("render_markdown", report)
             for user_id in user_ids:
                 try:
-                    await account.protocol.send_private_message(user_id, [Text(report)])
+                    content = (
+                        [Image.of(raw=image, mime="image/jpeg")]
+                        if image is not None
+                        else [Text(report)]
+                    )
+                    await account.protocol.send_private_message(user_id, content)
                 except Exception:
                     delivery_failed = True
                     failure = getattr(exception, "failure", None)

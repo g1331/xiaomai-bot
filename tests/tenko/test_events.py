@@ -5,6 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from arclet.entari import MessageChain, SendResponse
+from arclet.letoderea import es
 from satori import (
     Channel,
     ChannelType,
@@ -14,6 +16,7 @@ from satori import (
     MessageObject,
     User,
 )
+from satori.client import Account
 from satori.exception import ActionFailed
 from satori.model import Event
 
@@ -631,6 +634,30 @@ def test_message_metrics_records_entari_plugin_send_response() -> None:
     assert metrics.sent_count == 1
     record = metrics.recent_messages[0]
     assert record.direction == "sent"
+    assert record.text == "plugin reply"
+    assert record.message_id == "90001"
+
+
+@pytest.mark.asyncio
+async def test_entari_send_subscriber_records_via_dispatch(monkeypatch) -> None:
+    metrics = MessageMetrics()
+    monkeypatch.setattr(events_module, "message_metrics", metrics)
+    account = Mock(spec=Account)
+    account.self_id = "10001"
+    account.platform = "onebot"
+    account.channel_get = AsyncMock(return_value=Channel("40001", ChannelType.TEXT))
+    response = SendResponse(
+        account=account,
+        channel="40001",
+        message=MessageChain("plugin reply"),
+        result=[MessageObject("90001", "plugin reply")],
+    )
+
+    await es.dispatch(response)
+
+    account.channel_get.assert_awaited_once_with("40001")
+    assert metrics.sent_count == 1
+    record = metrics.recent_messages[0]
     assert record.text == "plugin reply"
     assert record.message_id == "90001"
 

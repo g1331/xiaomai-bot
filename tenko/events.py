@@ -349,10 +349,10 @@ def configure_message_metrics(buffer_size: int) -> MessageMetrics:
 
 
 @le.on(SendResponse)
-async def _record_entari_send(response: SendResponse) -> None:
+async def _record_entari_send(event: SendResponse) -> None:
     # Entari 的 Session.send 在 action 成功后发布 SendResponse；插件发送
     # 不会经过 Account.protocol.send，因此在这里补齐出站统计和取证日志。
-    message_metrics.record_send_response(response)
+    message_metrics.record_send_response(event)
 
 
 @dataclass(slots=True)

@@ -92,7 +92,8 @@ uv 会在项目根目录创建 .venv 并按锁文件安装依赖，之后通过 
     uv run python -m tenko
     uv run pytest -q
 
-如果不想使用 uv，也可以手动创建虚拟环境并按 requirements-entari.txt 安装：
+如果不想使用 uv，也可以手动创建虚拟环境并按 requirements-entari.txt 安装
+（该文件是 uv.lock 的 pip 兼容快照，依赖以 pyproject.toml 为准）：
 
     python -m venv .venv-entari
     source .venv-entari/bin/activate

@@ -173,7 +173,7 @@ class TenkoRuntime:
         self.connection.install(manager)
 
         logger.info(
-            "Tenko starting; NapCat reverse WebSocket endpoint: {}",
+            "Tenko starting; OneBot 11 reverse WebSocket endpoint: {}",
             self.config.onebot.reverse_ws_url,
         )
         logger.info(

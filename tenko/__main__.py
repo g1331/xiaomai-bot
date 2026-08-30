@@ -32,7 +32,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.dry_run:
         logger.info("Tenko dry-run: configuration loaded; no network connection opened")
         logger.info(
-            "NapCat reverse WebSocket endpoint: {}", config.onebot.reverse_ws_url
+            "OneBot 11 reverse WebSocket endpoint: {}", config.onebot.reverse_ws_url
         )
         logger.info(
             "Fixed replies: {}",

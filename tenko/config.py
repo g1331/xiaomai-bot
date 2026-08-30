@@ -150,7 +150,7 @@ def _capability_overrides(
 
 @dataclass(frozen=True, slots=True)
 class OneBotConfig:
-    """NapCat 反向 WebSocket 与内部 Satori 服务的配置。"""
+    """OneBot 11 反向 WebSocket 与内部 Satori 服务的配置。"""
 
     listen_host: str = "127.0.0.1"
     listen_port: int = 8080

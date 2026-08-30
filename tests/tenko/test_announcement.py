@@ -217,15 +217,19 @@ async def test_announcement_command_uses_switches_and_returns_group_summary(
     monkeypatch.setattr(loaded_plugin, "resolve_feature", lambda name: make_feature())
     monkeypatch.setattr(loaded_plugin, "feature_enabled", lambda feature, group: True)
 
+    session = make_session()
+    session.send = AsyncMock()
     result = await loaded_plugin.push_handle.callable_target(
-        make_session(),
+        session,
         Match("帮助系统", True),
         Match(("维护", "通知"), True),
         Match(None, False),
     )
 
-    assert str(result) == "已推送完毕（1 个群）"
+    assert str(result) == "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
     assert "40001" not in str(result)
+    session.send.assert_awaited_once()
+    assert str(session.send.await_args.args[0]) == "开始推送：目标数 1"
     service.authorize.assert_awaited_once()
     service.send_group_message.assert_awaited_once()
 
@@ -258,9 +262,44 @@ async def test_master_group_announcement_receives_full_results_privately(
         Match(None, False),
     )
 
-    assert str(result) == "已推送完毕（1 个群）"
+    assert str(result) == "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
     assert protocol.calls and protocol.calls[0][0] == "20001"
     assert "群40001: sent - 推送成功（账号10001）" in protocol.calls[0][1]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+async def test_announcement_progress_counts_muted_preflight_groups(
+    loaded_plugin, monkeypatch
+) -> None:
+    account = FakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=["40001", "40002"])
+    registry.set_muted(account, "40002", True)
+    service = SimpleNamespace(
+        authorize=AsyncMock(return_value=True),
+        send_group_message=AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(loaded_plugin, "account_registry", registry)
+    monkeypatch.setattr(loaded_plugin, "action_service", service)
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
+    monkeypatch.setattr(loaded_plugin, "resolve_feature", lambda name: make_feature())
+    monkeypatch.setattr(loaded_plugin, "feature_enabled", lambda feature, group: True)
+    session = make_session()
+    session.send = AsyncMock()
+
+    result = await loaded_plugin.push_handle.callable_target(
+        session,
+        Match("帮助系统", True),
+        Match(("维护",), True),
+        Match(None, False),
+    )
+
+    assert str(session.send.await_args.args[0]) == "开始推送：目标数 2"
+    assert str(result) == "公告推送完成：目标数 2；成功数 1；失败数 0；跳过数 1"
+    assert "40002" not in str(result)
 
 
 @pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
@@ -272,9 +311,22 @@ def test_format_results_hides_per_group_details(loaded_plugin) -> None:
 
     output = loaded_plugin.format_results(results)
 
-    assert output == "公告推送完成：目标数 2；成功数 1；失败数 1"
+    assert output == "公告推送完成：目标数 2；成功数 1；失败数 1；跳过数 0"
     assert "40001" not in output
     assert "内部失败详情" not in output
+
+
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+def test_format_results_counts_skipped_muted_groups_separately(loaded_plugin) -> None:
+    output = loaded_plugin.format_results(
+        (
+            loaded_plugin.PushResult("40001", "sent", "推送成功", "10001"),
+            loaded_plugin.PushResult("40002", "skipped_muted", "群内禁言"),
+            loaded_plugin.PushResult("40003", "failed", "动作失败"),
+        )
+    )
+
+    assert output == "公告推送完成：目标数 3；成功数 1；失败数 1；跳过数 1"
 
 
 @pytest.mark.asyncio

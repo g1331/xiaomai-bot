@@ -257,10 +257,12 @@ def format_results(results: Iterable[PushResult]) -> str:
 
     entries = tuple(results)
     succeeded = sum(result.status == "sent" for result in entries)
-    failed = len(entries) - succeeded
-    if not failed:
-        return f"已推送完毕（{succeeded} 个群）"
-    return f"公告推送完成：目标数 {len(entries)}；成功数 {succeeded}；失败数 {failed}"
+    skipped = sum(result.status.startswith("skipped_") for result in entries)
+    failed = len(entries) - succeeded - skipped
+    return (
+        f"公告推送完成：目标数 {len(entries)}；成功数 {succeeded}；"
+        f"失败数 {failed}；跳过数 {skipped}"
+    )
 
 
 def format_diagnostic_results(results: Iterable[PushResult]) -> str:
@@ -293,6 +295,12 @@ async def _confirm(session: Session, content: str, count: int, interval: int) ->
         return False
     answer = str(reply).strip().lower()
     return answer in {"是", "y", "yes", "确认"}
+
+
+async def _send_progress(session: Session, target_count: int) -> None:
+    sender = getattr(session, "send", None)
+    if callable(sender):
+        await sender(text_message(f"开始推送：目标数 {target_count}"))
 
 
 announcement_command = Alconna(
@@ -342,8 +350,11 @@ async def push_handle(
         return text_message(f"没有在运行插件中找到 {feature_name} 哦~")
 
     targets, preflight = collect_targets(feature)
+    target_count = len(targets) + len(preflight)
     if not targets:
         results = preflight
+        if target_count:
+            await _send_progress(session, target_count)
         if is_master:
             await send_private_message(
                 session,
@@ -354,6 +365,7 @@ async def push_handle(
     if not await _confirm(session, announcement_content, len(targets), interval):
         return text_message("未预期回复,操作退出")
 
+    await _send_progress(session, target_count)
     pushed = await pusher(
         targets,
         announcement_content,

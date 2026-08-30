@@ -71,6 +71,9 @@ Playwright 会把浏览器放在自己的缓存目录；升级 `playwright` 后�
 | `satori-python-core` | `1.3.9.post1` |
 | `satori-python-server` | `1.3.7` |
 | `psutil` | `>=5.9.8`（status 可选运行时依赖） |
+| `jinja2` | `>=3.1.4`（RenderService 模板渲染） |
+| `markdown-it-py` | `>=3.0.0`（RenderService Markdown 转换） |
+| `playwright` | 当前稳定版（RenderService Chromium 截图） |
 
 ## 配置 NapCat
 
@@ -352,8 +355,8 @@ Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
 | `tenko/plugins/perm_manager` | `modules/required/perm_manager` | 复用 `MemberPerm`、`GroupPerm`、`GroupSetting` 的权限管理、查询和成员权限同步；使用 `PermissionChecker` 做统一权限检查。成员加入、退群和管理员角色变化分别映射为 `GuildMemberAddedEvent`、`GuildMemberRemovedEvent`、`GuildMemberUpdatedEvent`。OneBot/Satori 当前无法确认的成员管理能力保留 `InternalEvent` 日志，并标记“待 NapCat capability 确认”。 |
 | `tenko/plugins/helper` | `modules/required/helper` | 使用 Entari/Alconna 当前注册命令表生成帮助和编号详情，不复制旧的文本解析或图片菜单生成逻辑。 |
 | `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询、邀请审批，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁和踢出；群精华/退群仍只在宿主动作层保留扩展入口。 |
-| `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供文本状态查询，报告系统资源、进程运行信息、收发消息统计、在线账号和账号×群禁言状态；图片渲染暂缓，不依赖旧的 Ariadne 对象。 |
-| `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送包含上下文和最近消息的文本取证报告；投递失败时落盘，不复制旧的 Graia 异常注入和图片报告路径。 |
+| `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供状态查询，默认在渲染启用且成功时发送 `status.html` 图片，否则返回文本；报告系统资源、进程运行信息、收发消息统计、在线账号和账号×群禁言状态，不依赖旧的 Ariadne 对象。 |
+| `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送包含上下文和最近消息的 Markdown 图片报告；渲染或投递失败时分别回退文本或落盘，不复制旧的 Graia 异常注入。 |
 
 权限插件的数据库写入仍只发生在明确的权限管理命令中；状态查询、帮助查询和群设置
 查询路径不会创建或更新旧表。未迁移的群管理平台动作不会注册为“看似可用”的命令，
@@ -671,7 +674,8 @@ uv pip install --python .venv-entari/bin/python psutil
 ```
 
 如果运行环境没有 `psutil`，状态命令仍返回会话、消息、账号和进程信息，只跳过
-“系统”资源段。图片渲染本批次明确暂缓，当前输出保持纯文本。
+“系统”资源段。渲染服务关闭、浏览器不可用、模板失败或超时都会回退为同一份文本状态；
+`-t`/`--text` 可显式跳过图片渲染。
 
 ### 退群和被踢感知
 
@@ -734,6 +738,35 @@ evidence_dir = ".tenko/exceptions"
 发送给 `EntariConfig.instance.basic.superusers`；没有可投递 superuser，或任一投递
 失败时，会在 `evidence_dir` 创建带时间和错误哈希的 `.log` 文件，并同时记录本地
 日志，避免异常证据只存在于一次失败的发送动作中。
+
+### 图片渲染服务（G2-P1）
+
+`tenko/render.py` 中的 `RenderService` 是普通的 Launart service。`TenkoRuntime` 仅在
+`[render].enabled = true` 时把它加入宿主；浏览器在准备阶段启动、宿主停止时关闭，单次
+渲染使用独立 BrowserContext，完成后立即关闭。默认超时为 10 秒、viewport 宽度为 800、
+JPEG quality 为 85、并发上限为 2。服务启动失败不会阻断 Tenko 启动，插件通过
+`render_or_none()` 将所有普通渲染错误统一转成 `None`。
+
+配置项位于 `config/tenko.toml.example`：
+
+```toml
+[render]
+enabled = false
+timeout = 10.0
+width = 800
+quality = 85
+```
+
+模板固定从 `tenko/templates/<name>.html` 查找。本批次的占位模板是
+`tenko/templates/status.html` 和 `tenko/templates/markdown.html`，后续视觉批次可以直接
+替换这两个文件，不需要修改服务 API。status 使用 `build_status_data()` 产生以下约定的
+context：顶层 `title`、`content`、`lines`、`plugin_count`、`chat_type`、`detailed`、
+`current_group_mute`、`project_address`、`version_details`、`online_bots`、
+`active_groups`；`metrics` 包含 `received_count`、`sent_count`、`received_rate`、
+`sent_rate`；`process` 包含 `start_time`、`uptime_seconds`、`uptime`、`rss`、
+`rss_display`；`resources` 为 `None` 或包含 CPU、内存、磁盘和网络原始数值的 mapping。
+异常模板的 `content` 是 markdown-it 生成的 HTML，模板需使用安全渲染；原始报告在
+`source` 字段中保留。
 
 ### 批次 E 校验
 

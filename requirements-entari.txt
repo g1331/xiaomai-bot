@@ -1,4 +1,4 @@
-# Tenko Entari 环境的完整、可复现依赖清单。
+# Tenko Entari 环境的运行依赖清单；Playwright 刻意跟随当前稳定版。
 # Linux/Python 3.11；使用 uv pip sync --python .venv-entari/bin/python requirements-entari.txt。
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.3

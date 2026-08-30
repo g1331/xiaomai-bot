@@ -372,7 +372,7 @@ status_command = Alconna(
         alias=["--text"],
         action=store_true,
         default=False,
-        help_text="使用文本输出（当前版本默认即为文本）",
+        help_text="强制使用文本输出",
     ),
     meta=CommandMeta(
         "查询 Tenko 运行状态",

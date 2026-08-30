@@ -322,6 +322,25 @@ async def test_group_event_guard_randomly_selects_one_online_account(
 
 
 @pytest.mark.asyncio
+async def test_group_event_guard_binds_unknown_account_as_message_fallback() -> None:
+    account = RoutedFakeAccount("10001")
+    registry = AccountRegistry()
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    event = make_group_event()
+
+    await handler.guard(callback)(account, event)
+
+    callback.assert_awaited_once_with(account, event)
+    assert registry.get(account.self_id) is account
+    assert registry.bound_accounts_for_group("40001") == (account,)
+
+
+@pytest.mark.asyncio
 async def test_group_event_guard_random_falls_back_to_the_only_online_account() -> None:
     first = RoutedFakeAccount("10001")
     second = RoutedFakeAccount("10002")

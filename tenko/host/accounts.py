@@ -556,7 +556,7 @@ class AccountRegistry:
             if selected in available:
                 return selected
         selected = random.choice(available)
-        self._event_selections[selection_key] = selected.self_id
+        self._event_selections[selection_key] = _account_id(selected)
         if len(self._event_selections) > _MAX_EVENT_SELECTIONS:
             oldest_key = next(iter(self._event_selections))
             del self._event_selections[oldest_key]

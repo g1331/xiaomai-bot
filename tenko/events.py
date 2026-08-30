@@ -90,11 +90,12 @@ class MessageEventHandler:
         ):
             return False
 
-        # 消息事件可能是启动时群列表发现之前抵达的第一条消息。先把事件
-        # 所属账号加入当前群路由，再执行统一选路；这样后续账号收到同一条
-        # 群消息时会在进入 Entari 原生命令分发前被过滤。
-        if self.account_registry.get(account.self_id) is not None:
-            self.account_registry.bind_group(group_id, account)
+        # 消息事件可能是启动时群列表发现之前抵达的第一条消息。事件本身
+        # 证明账号当前在线，因此先登记账号并加入当前群路由，再执行统一
+        # 选路；这样群列表拉取失败时仍保留消息触发绑定的兜底路径。
+        if self.account_registry.get(account.self_id) is None:
+            self.account_registry.register(account, available=True)
+        self.account_registry.bind_group(group_id, account)
 
         if not self.account_registry.is_muted(account.self_id, group_id):
             selected = self.account_registry.select_for_event(

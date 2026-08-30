@@ -92,6 +92,18 @@ def test_event_random_selection_is_cached_per_message() -> None:
     assert selected is registry.select_for_event(100, source_id="message-1")
 
 
+def test_event_random_selection_normalizes_account_id_in_cache() -> None:
+    registry = AccountRegistry()
+    first = FakeAccount(10001)
+    second = FakeAccount(10002)
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+
+    selected = registry.select_for_event(100, source_id="message-1")
+
+    assert selected is registry.select_for_event(100, source_id="message-1")
+
+
 def test_partial_group_mute_excludes_only_the_muted_account_from_selection() -> None:
     registry = AccountRegistry()
     first = FakeAccount("10001")

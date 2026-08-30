@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -171,6 +172,23 @@ async def test_debug_filter_applies_to_non_master_messages_and_commands(
     assert account.protocol.calls == []
 
 
+@pytest.mark.asyncio
+async def test_debug_skipped_message_is_still_counted() -> None:
+    account = FakeAccount()
+    metrics = MessageMetrics()
+    handler = MessageEventHandler(
+        send_replies=True,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+        metrics=metrics,
+    )
+
+    await handler.handle(account, make_private_event(user_id="30001"))
+
+    assert metrics.received_count == 1
+    assert account.protocol.calls == []
+
+
 def test_debug_mode_without_masters_warns(monkeypatch) -> None:
     warning = Mock()
     monkeypatch.setattr(events_module.logger, "warning", warning)
@@ -233,6 +251,26 @@ async def test_muted_group_event_is_skipped_before_message_handling() -> None:
 
     await handler.handle(account, make_group_event())
 
+    assert account.protocol.calls == []
+
+
+@pytest.mark.asyncio
+async def test_muted_group_message_is_still_counted() -> None:
+    account = FakeAccount()
+    metrics = MessageMetrics()
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    registry.set_muted(account, 40001, True)
+    handler = MessageEventHandler(
+        send_replies=True,
+        reply_text="收到",
+        account_registry=registry,
+        metrics=metrics,
+    )
+
+    await handler.handle(account, make_group_event())
+
+    assert metrics.received_count == 1
     assert account.protocol.calls == []
 
 
@@ -317,6 +355,23 @@ async def test_entari_event_guard_filters_non_master_events(
     await guarded(account, master_event)
 
     callback.assert_awaited_once_with(account, master_event)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_and_handle_count_the_same_message_once() -> None:
+    account = FakeAccount()
+    metrics = MessageMetrics()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        metrics=metrics,
+    )
+    event = make_private_event()
+
+    guarded = handler.guard(AsyncMock())
+    await asyncio.gather(guarded(account, event), handler.handle(account, event))
+
+    assert metrics.received_count == 1
 
 
 @pytest.mark.asyncio
@@ -533,10 +588,12 @@ async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() ->
     policy = CommandPolicy(features, plugin_runtime=FakePluginRuntime())
     callback = AsyncMock()
     account = FakeAccount()
+    metrics = MessageMetrics()
     handler = MessageEventHandler(
         send_replies=False,
         reply_text="收到",
         command_policy=policy,
+        metrics=metrics,
     )
 
     await handler.guard(callback)(account, make_group_event(text="/演示"))
@@ -554,6 +611,7 @@ async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() ->
 
     callback.assert_awaited_once()
     assert account.protocol.calls[-1][1] == "演示插件正在维护~"
+    assert metrics.received_count == 3
 
 
 @pytest.mark.asyncio
@@ -587,6 +645,60 @@ async def test_command_guard_applies_rate_limit_before_entari_dispatch() -> None
 
     callback.assert_awaited_once()
     assert "超过频率调用限制" in account.protocol.calls[-1][1]
+
+
+@pytest.mark.asyncio
+async def test_non_message_notice_is_not_counted() -> None:
+    account = FakeAccount()
+    metrics = MessageMetrics()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        metrics=metrics,
+    )
+    event = Event(
+        type=EventType.GUILD_REQUEST,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User(account.self_id)),
+        channel=Channel("40001", ChannelType.TEXT),
+        guild=Guild("40001", "Tenko"),
+        user=User("20001"),
+        message=MessageObject("request-1", "邀请机器人"),
+        _type="request.group.invite",
+        _data={"group_id": "40001", "user_id": "20001", "sub_type": "invite"},
+    )
+
+    await handler.guard(AsyncMock())(account, event)
+    await handler.handle(account, event)
+
+    assert metrics.received_count == 0
+
+
+@pytest.mark.asyncio
+async def test_received_rate_includes_messages_skipped_by_debug_filter() -> None:
+    current = [0.0]
+    metrics = MessageMetrics(
+        rate_window_seconds=3.0,
+        clock=lambda: current[0],
+    )
+    account = FakeAccount()
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        debug_config=DebugConfig(enabled=True, masters=["20001"]),
+        metrics=metrics,
+    )
+    guarded = handler.guard(callback)
+
+    await guarded(account, make_group_event(user_id="30001"))
+    current[0] = 1.0
+    await guarded(account, make_group_event(user_id="20001"))
+
+    assert metrics.received_count == 2
+    assert metrics.rates() == (2, 0)
+    current[0] = 4.0
+    assert metrics.rates() == (1, 0)
 
 
 def test_message_metrics_counts_rates_and_evicts_oldest_records() -> None:

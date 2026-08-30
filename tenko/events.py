@@ -16,7 +16,7 @@ from satori.exception import ActionFailed
 from satori.model import Event
 
 from .config import DebugConfig
-from .context import MessageContext
+from .context import MessageContext, is_message_created
 from .host.accounts import AccountRegistry
 
 
@@ -80,6 +80,7 @@ _MEMBER_REMOVAL_PROTOCOL_TYPES = {
 }
 _GUILD_INVITE_EVENT_TYPES = {EventType.GUILD_REQUEST.value}
 _GUILD_INVITE_PROTOCOL_TYPES = {"request.group.invite"}
+_RECEIVED_EVENT_CACHE_SIZE = 8192
 
 
 def _is_member_removed_event(event: Event) -> bool:
@@ -367,6 +368,20 @@ class MessageEventHandler:
     command_prefix: str = "/"
     metrics: MessageMetrics | None = None
     action_service: Any | None = None
+    # Keep origin references while they are in the bounded cache so an object
+    # id cannot be reused for a different event before the duplicate check.
+    _received_event_cache: deque[tuple[int, object]] = field(
+        init=False,
+        default_factory=lambda: deque(maxlen=_RECEIVED_EVENT_CACHE_SIZE),
+        repr=False,
+        compare=False,
+    )
+    _received_event_ids: set[int] = field(
+        init=False,
+        default_factory=set,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         if self.metrics is None:
@@ -475,12 +490,12 @@ class MessageEventHandler:
         """
 
         async def dispatch(account: Account, event: Event) -> Any:
+            self._record_received_event(event)
             if self.should_skip(account, event):
                 return None
             if self.command_policy is not None:
                 notice = await self.command_policy.check(account, event)
                 if notice:
-                    self._record_received_event(event)
                     try:
                         receipts = await account.protocol.send(event, notice)
                         self._record_sent_for_event(account, event, notice, receipts)
@@ -492,6 +507,7 @@ class MessageEventHandler:
         return dispatch
 
     async def handle(self, account: Account, event: Event) -> None:
+        self._record_received_event(event)
         if self.should_skip(account, event):
             return
 
@@ -500,8 +516,6 @@ class MessageEventHandler:
         except ValueError:
             logger.exception("Invalid message event received; event was ignored")
             return
-
-        self._record_received_event(event, context)
 
         if context.user_id == account.self_id:
             logger.debug(
@@ -646,7 +660,13 @@ class MessageEventHandler:
     def _record_received_event(
         self, event: Event, context: MessageContext | None = None
     ) -> None:
-        if self.metrics is None:
+        if self.metrics is None or not is_message_created(event):
+            return
+        origin = getattr(event, "_origin", None)
+        if origin is None:
+            origin = event
+        origin_id = id(origin)
+        if origin_id in self._received_event_ids:
             return
         if context is None:
             try:
@@ -656,6 +676,11 @@ class MessageEventHandler:
         self.metrics.record_received(
             context, timestamp=getattr(event, "timestamp", None)
         )
+        if len(self._received_event_cache) == _RECEIVED_EVENT_CACHE_SIZE:
+            expired_id, _ = self._received_event_cache.popleft()
+            self._received_event_ids.discard(expired_id)
+        self._received_event_cache.append((origin_id, origin))
+        self._received_event_ids.add(origin_id)
 
     @staticmethod
     def _receipt_count(receipts: object) -> int:

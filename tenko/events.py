@@ -54,6 +54,7 @@ class MessageEventHandler:
     account_registry: AccountRegistry | None = None
     debug_config: DebugConfig = DebugConfig()
     command_policy: Any | None = None
+    command_prefix: str = "/"
 
     def __post_init__(self) -> None:
         if self.debug_config.enabled and not self.debug_config.masters:
@@ -115,6 +116,14 @@ class MessageEventHandler:
                 )
             return True
 
+        if self._is_mute_recovery_event(event):
+            logger.debug(
+                "Allow mute recovery command for muted account={} group={}",
+                account.self_id,
+                group_id,
+            )
+            return False
+
         logger.debug(
             "Ignore event for muted account={} group={} protocol_type={}",
             account.self_id,
@@ -122,6 +131,13 @@ class MessageEventHandler:
             getattr(event, "_type", "-"),
         )
         return True
+
+    def _is_mute_recovery_event(self, event: Event) -> bool:
+        try:
+            context = MessageContext.from_event(event)
+        except ValueError:
+            return False
+        return context.text.strip() == f"{self.command_prefix}解禁自己"
 
     def guard(
         self,

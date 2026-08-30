@@ -362,6 +362,35 @@ async def unmute(
     return text_message(f"已解禁{target_id}!")
 
 
+unmute_self_command = Alconna(
+    "解禁自己",
+    meta=CommandMeta(
+        "解除当前 BOT 在本群的禁言状态",
+        usage="解禁自己",
+        compact=True,
+    ),
+)
+
+
+@command.on(unmute_self_command)
+async def unmute_self(session: Session):
+    checked = await _guard(session)
+    if not hasattr(checked, "user_id"):
+        return checked
+    context = checked
+    try:
+        await action_service.unmute_member(
+            context.account_id,
+            context.channel_id,
+            context.account_id,
+            context=context,
+            permission_checker=permission_checker,
+        )
+    except ActionServiceError as error:
+        return text_message(_action_error(error))
+    return text_message("已解除本BOT在当前群的禁言状态!")
+
+
 whole_mute_command = Alconna(
     "全体禁言",
     meta=CommandMeta("开启全体禁言", usage="全体禁言", compact=False),

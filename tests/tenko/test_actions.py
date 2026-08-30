@@ -277,6 +277,19 @@ async def test_send_failure_is_observed_by_account_mute_state_machine() -> None:
 
 
 @pytest.mark.asyncio
+async def test_successful_group_send_clears_stale_mute_state() -> None:
+    service, account, context, _ = make_service(role="bot_admin", user_id="20003")
+    service.registry.set_muted(account, "40001", True)
+
+    receipt = await service.send_group_message(
+        account, "40001", "恢复测试", context=context
+    )
+
+    assert receipt.account_id == account.self_id
+    assert not service.registry.is_muted(account, "40001")
+
+
+@pytest.mark.asyncio
 async def test_permission_and_account_checks_happen_before_protocol_call() -> None:
     service, account, _, protocol = make_service(role="member")
 

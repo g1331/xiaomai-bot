@@ -395,6 +395,27 @@ async def test_group_event_guard_deterministic_muted_account_has_no_fallback() -
 
 
 @pytest.mark.asyncio
+async def test_muted_account_can_receive_only_its_recovery_command() -> None:
+    account = FakeAccount()
+    registry = AccountRegistry()
+    registry.register(account, groups=[40001])
+    registry.set_muted(account, 40001, True)
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    guarded = handler.guard(callback)
+
+    await guarded(account, make_group_event(text="/解禁自己"))
+    await guarded(account, make_group_event(text="/帮助"))
+
+    callback.assert_awaited_once()
+    assert callback.await_args.args[1].message.content == "/解禁自己"
+
+
+@pytest.mark.asyncio
 async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() -> None:
     class FakePluginRuntime:
         def command_owner(self, text: str):

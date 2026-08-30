@@ -115,6 +115,7 @@ def install_action_service(loaded_plugin):
     permissions = PermissionRegistry()
     checker = PermissionChecker(registry=permissions)
     loaded_plugin.permission_checker = checker
+    loaded_plugin.account_registry = accounts
     loaded_plugin.action_service = ActionService(accounts, checker)
     return protocol
 
@@ -169,6 +170,21 @@ async def test_recall_uses_the_satori_quote_message_id(loaded_plugin) -> None:
 
     assert result is None
     assert protocol.calls == [("message_delete", ("40001", "60001"), {})]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_unmute_self_recovers_current_bot_mute_state(loaded_plugin) -> None:
+    protocol = install_action_service(loaded_plugin)
+    loaded_plugin.account_registry.set_muted("10001", "40001", True)
+
+    result = await loaded_plugin.unmute_self.callable_target(
+        make_session("20001", "admin")
+    )
+
+    assert str(result) == "已解除本BOT在当前群的禁言状态!"
+    assert not loaded_plugin.account_registry.is_muted("10001", "40001")
+    assert protocol.calls == [("guild_member_mute", ("40001", "10001", 0.0), {})]
 
 
 @pytest.mark.asyncio

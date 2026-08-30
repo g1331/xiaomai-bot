@@ -25,6 +25,10 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/解禁 20002", "/解禁"),
         "boundary": ("/解禁-1", "/ 解禁"),
     },
+    "解禁自己": {
+        "positive": ("/解禁自己",),
+        "boundary": ("/解禁自己-1", "/ 解禁自己"),
+    },
     "全体禁言": {
         "positive": ("/全体禁言",),
         "boundary": ("/全体禁言-1", "/ 全体禁言"),

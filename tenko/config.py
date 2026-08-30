@@ -34,6 +34,18 @@ def _optional_string(
     return value
 
 
+def _optional_identifier(
+    section: Mapping[str, Any], key: str, default: str | None
+) -> str | None:
+    value = section.get(key, default)
+    if value is None:
+        return None
+    if not isinstance(value, str | int) or isinstance(value, bool):
+        raise ValueError(f"配置项 {key!r} 必须是字符串、整数或 null")
+    normalized = str(value)
+    return normalized or None
+
+
 def _integer(section: Mapping[str, Any], key: str, default: int) -> int:
     value = section.get(key, default)
     if type(value) is not int:  # bool 是 int 的子类，但不是这里接受的类型。
@@ -591,6 +603,34 @@ class ExceptionConfig:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class DatabaseConfig:
+    """Tenko 数据库连接配置。"""
+
+    url: str = "sqlite+aiosqlite:///./.tenko/tenko.db"
+    echo: bool = False
+    create_table_at: str = "preparing"
+
+    def __post_init__(self) -> None:
+        if not self.url:
+            raise ValueError("database url 不能为空")
+        if self.create_table_at not in {"preparing", "prepared", "blocking"}:
+            raise ValueError(
+                "database create_table_at 必须是 preparing、prepared 或 blocking"
+            )
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> DatabaseConfig:
+        defaults = cls()
+        return cls(
+            url=_string(section, "url", defaults.url),
+            echo=_boolean(section, "echo", defaults.echo),
+            create_table_at=_string(
+                section, "create_table_at", defaults.create_table_at
+            ),
+        )
+
+
 # 允许调用方使用更自然的单数名称，同时配置字段保持 `[features]` / `[ratelimit]`。
 FeatureConfig = FeaturesConfig
 RatelimitConfig = RateLimitConfig
@@ -607,6 +647,8 @@ class TenkoConfig:
     features: FeaturesConfig = FeaturesConfig()
     ratelimit: RateLimitConfig = RateLimitConfig()
     exception: ExceptionConfig = ExceptionConfig()
+    database: DatabaseConfig = DatabaseConfig()
+    test_group: str | None = None
 
     def __post_init__(self) -> None:
         # 代码构造方式的旧兼容：直接传 RuntimeConfig(superusers=...) 时也
@@ -639,6 +681,8 @@ class TenkoConfig:
             features=FeaturesConfig.from_mapping(_section(data, "features")),
             ratelimit=RateLimitConfig.from_mapping(_section(data, "ratelimit")),
             exception=ExceptionConfig.from_mapping(_section(data, "exception")),
+            database=DatabaseConfig.from_mapping(_section(data, "database")),
+            test_group=_optional_identifier(data, "test_group", None),
         )
 
     @classmethod

@@ -15,12 +15,17 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.debug.masters == ()
     assert config.exception.message_buffer_size == 10
     assert config.exception.evidence_dir == ".tenko/exceptions"
+    assert config.database.url == "sqlite+aiosqlite:///./.tenko/tenko.db"
+    assert config.database.create_table_at == "preparing"
+    assert config.test_group is None
 
 
 def test_config_loads_reverse_ws_and_runtime_options(tmp_path) -> None:
     path = tmp_path / "tenko.toml"
     path.write_text(
         """
+test_group = 40001
+
 [onebot]
 listen_host = "0.0.0.0"
 listen_port = 9000
@@ -41,6 +46,11 @@ superusers = { onebot = [12345, "67890"] }
 [debug]
 enabled = true
 masters = [12345, "67890"]
+
+[database]
+url = "sqlite+aiosqlite:///tmp/tenko.db"
+echo = true
+create_table_at = "prepared"
 """,
         encoding="utf-8",
     )
@@ -62,6 +72,10 @@ masters = [12345, "67890"]
     }
     assert config.debug.enabled is True
     assert config.debug.masters == ("12345", "67890")
+    assert config.test_group == "40001"
+    assert config.database.url == "sqlite+aiosqlite:///tmp/tenko.db"
+    assert config.database.echo is True
+    assert config.database.create_table_at == "prepared"
 
 
 def test_empty_command_prefix_is_rejected() -> None:
@@ -83,6 +97,11 @@ def test_exception_evidence_configuration_is_loaded_and_validated() -> None:
     assert config.exception.evidence_dir == ".tenko/test-exceptions"
     with pytest.raises(ValueError, match="message_buffer_size"):
         TenkoConfig.from_mapping({"exception": {"message_buffer_size": 0}})
+
+
+def test_database_configuration_rejects_unknown_table_creation_stage() -> None:
+    with pytest.raises(ValueError, match="create_table_at"):
+        TenkoConfig.from_mapping({"database": {"create_table_at": "later"}})
 
 
 def test_entari_superusers_are_inherited_by_debug_and_upgrade() -> None:

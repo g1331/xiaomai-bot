@@ -246,10 +246,13 @@ dev = [
 ]
 entari = [
     "arclet-entari==0.18.6",
+    "aiosqlite>=0.21.0",
+    "entari-plugin-database==0.3.4",
     "satori-python-adapter-onebot11==0.5.0",
     "satori-python-client==1.3.7",
     "satori-python-core==1.3.9.post1",
     "satori-python-server==1.3.7",
+    "sqlalchemy[asyncio]>=2.0.42",
     "tomli==2.2.1",
 ]
 

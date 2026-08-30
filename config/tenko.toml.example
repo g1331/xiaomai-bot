@@ -33,9 +33,18 @@ log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"
 
+# 旧版语义中的测试群不可通过权限管理命令修改；留空表示不启用保护。
+test_group = ""
+
 [entari]
 # 超管唯一权威来源：键为平台名称，值为该平台的用户 ID 列表。
 superusers = { onebot = ["YOUR_QQ_ID"] }
+
+[database]
+# 与旧 Graia 数据库同构，默认直接使用 Tenko 数据目录中的 SQLite 文件。
+url = "sqlite+aiosqlite:///./.tenko/tenko.db"
+echo = false
+create_table_at = "preparing"
 
 [debug]
 # 开启后，Tenko 只处理 masters 中 QQ 号对应用户产生的事件。

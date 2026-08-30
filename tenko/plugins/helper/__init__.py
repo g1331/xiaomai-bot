@@ -68,6 +68,25 @@ def _native_plugin(info: PluginInfo):
     )
 
 
+def _help_plugins() -> tuple[tuple[PluginInfo, object], ...]:
+    plugins: list[tuple[PluginInfo, object]] = []
+    for info in plugin_runtime.discover():
+        native_plugin = _native_plugin(info)
+        if native_plugin is not None:
+            plugins.append((info, native_plugin))
+    return tuple(plugins)
+
+
+def _plugin_help(native_plugin: object) -> str:
+    commands = getattr(native_plugin, "_extra", {}).get("commands", ())
+    if not commands:
+        return "该插件未注册命令"
+    return "\n\n".join(
+        command_manager.get_command(command_name).get_help()
+        for _prefixes, command_name in commands
+    )
+
+
 def _metadata_value(native_plugin: object | None, field: str) -> object | None:
     return getattr(getattr(native_plugin, "metadata", None), field, None)
 
@@ -111,13 +130,7 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
     sections: dict[str, list[dict[str, Any]]] = {
         key: [] for key, _, _ in _HELP_SECTIONS
     }
-    number = 0
-    for info in plugin_runtime.discover():
-        native_plugin = _native_plugin(info)
-        if native_plugin is None:
-            continue
-
-        number += 1
+    for number, (info, native_plugin) in enumerate(_help_plugins(), 1):
         if "required" in _classifiers(native_plugin):
             key = "required"
             state_label = "内置"
@@ -182,13 +195,13 @@ def format_help_text(data: dict[str, Any]) -> str:
 
 
 def build_help(index: int | None = None, *, group_id: str | int | None = None) -> str:
-    """Build help from native command registrations, without parsing text."""
+    """Build the full plugin help or one plugin's native command help."""
 
-    commands = registered_commands()
     if index is not None:
-        if not 1 <= index <= len(commands):
+        plugins = _help_plugins()
+        if not 1 <= index <= len(plugins):
             return "编号不在范围内~"
-        return commands[index - 1].get_help()
+        return _plugin_help(plugins[index - 1][1])
     return format_help_text(build_help_data(group_id))
 
 

@@ -139,3 +139,105 @@ def test_help_data_partitions_required_available_and_maintenance(
     assert (
         text.index("内置插件：") < text.index("运行插件：") < text.index("维护插件：")
     )
+
+
+@pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
+def test_help_number_uses_plugin_commands_for_card_positions(
+    monkeypatch, loaded_plugin
+):
+    plugin_names = (
+        "announcement",
+        "exception_catcher",
+        "feature_manager",
+        "group_manager",
+        "helper",
+        "perm_manager",
+        "render",
+        "response_manager",
+        "status",
+        "updater",
+    )
+    commands_by_plugin = {
+        "group_manager": (
+            "同意邀请",
+            "拒绝邀请",
+            "待审邀请",
+            "重置能力",
+            "群设置",
+            "禁言",
+            "解禁",
+            "解禁自己",
+            "全体禁言",
+            "全体解禁",
+            "撤回",
+            "踢出",
+        ),
+        "updater": ("检查更新", "升级", "回滚"),
+    }
+    infos = tuple(
+        loaded_plugin.PluginInfo(
+            name=name,
+            path=Path(name),
+            is_package=True,
+            qualified_name=f"tenko.plugins.{name}",
+        )
+        for name in plugin_names
+    )
+
+    def make_native_plugin(name):
+        return SimpleNamespace(
+            id=f"tenko.plugins.{name}",
+            metadata=SimpleNamespace(
+                name=f"{name} plugin",
+                description=f"{name} description",
+                classifier=("required",),
+            ),
+            _extra={
+                "commands": [
+                    (["/"], command_name)
+                    for command_name in commands_by_plugin.get(name, ())
+                ]
+            },
+        )
+
+    native_plugins = tuple(make_native_plugin(name) for name in plugin_names)
+    command_help = {
+        command_name: SimpleNamespace(
+            get_help=lambda command_name=command_name: f"help<{command_name}>"
+        )
+        for commands in commands_by_plugin.values()
+        for command_name in commands
+    }
+    lookups = []
+
+    def get_command(command_name):
+        lookups.append(command_name)
+        return command_help[command_name]
+
+    monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: infos)
+    monkeypatch.setattr(
+        loaded_plugin, "get_plugins", lambda *, subplugged: native_plugins
+    )
+    monkeypatch.setattr(loaded_plugin.command_manager, "get_command", get_command)
+
+    data = loaded_plugin.build_help_data()
+    items = {
+        item["plugin"]: item
+        for section in data["sections"]
+        for item in section["items"]
+    }
+
+    assert items["group_manager"]["number"] == 4
+    assert items["updater"]["number"] == 10
+    assert loaded_plugin.build_help(4) == "\n\n".join(
+        f"help<{command_name}>" for command_name in commands_by_plugin["group_manager"]
+    )
+    assert loaded_plugin.build_help(10) == "\n\n".join(
+        f"help<{command_name}>" for command_name in commands_by_plugin["updater"]
+    )
+    assert loaded_plugin.build_help(2) == "该插件未注册命令"
+    assert loaded_plugin.build_help(11) == "编号不在范围内~"
+    assert lookups == [
+        *commands_by_plugin["group_manager"],
+        *commands_by_plugin["updater"],
+    ]

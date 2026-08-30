@@ -28,6 +28,7 @@ from tenko.host.actions import (
     ActionService,
 )
 from tenko.host.accounts import AccountRegistry
+from tenko.host.features import FeatureService
 from tenko.host.perm import PermissionChecker, PermissionRegistry
 from tenko.host.plugins import PluginInfo
 
@@ -203,6 +204,26 @@ async def test_announcement_command_uses_switches_and_returns_per_target_results
     assert "群40001: sent - 推送成功（账号10001）" in str(result)
     service.authorize.assert_awaited_once()
     service.send_group_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+async def test_announcement_preflight_honors_host_feature_switch(
+    loaded_plugin, tmp_path, monkeypatch
+) -> None:
+    account = FakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=["40001"])
+    service = FeatureService(tmp_path / "features.json")
+    service.disable("helper", "40001")
+    monkeypatch.setattr(loaded_plugin, "feature_service", service)
+
+    targets, results = loaded_plugin.collect_targets(make_feature(), registry)
+
+    assert targets == ()
+    assert results == (
+        loaded_plugin.PushResult("40001", "skipped_feature_disabled", "功能未开启"),
+    )
 
 
 @pytest.mark.asyncio

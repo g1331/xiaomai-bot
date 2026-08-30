@@ -91,7 +91,7 @@ enable_command = Alconna(
     meta=CommandMeta(
         "开启当前群的插件功能",
         usage="开启 <插件编号或名称>",
-        compact=True,
+        compact=False,
     ),
 )
 
@@ -107,7 +107,7 @@ disable_command = Alconna(
     meta=CommandMeta(
         "关闭当前群的插件功能",
         usage="关闭 <插件编号或名称>",
-        compact=True,
+        compact=False,
     ),
 )
 

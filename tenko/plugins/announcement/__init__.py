@@ -22,6 +22,7 @@ from tenko.host.actions import (
     action_service,
 )
 from tenko.host.accounts import AccountRegistry, account_registry
+from tenko.host.features import feature_service
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.host.plugins import PluginInfo, PluginRuntime
 from tenko.plugins._common import context_from_session, text_message
@@ -99,9 +100,11 @@ def resolve_feature(function_name: str) -> PluginInfo | None:
 
 
 def feature_enabled(feature: PluginInfo, group_id: str) -> bool:
-    """读取指定插件在群内的开关，不创建或更新旧状态。"""
+    """同时读取新宿主开关和旧状态兼容开关，不创建或更新任一状态。"""
 
-    return plugin_runtime.is_enabled(feature, group_id=group_id)
+    return feature_service.is_enabled(
+        feature.name, group_id
+    ) and plugin_runtime.is_enabled(feature, group_id=group_id)
 
 
 def _account_id(account: object) -> str:

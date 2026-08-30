@@ -17,6 +17,7 @@ from satori.exception import ActionFailed
 from satori.model import Event
 
 import tenko.events as events_module
+import tenko.host.accounts as accounts_module
 from tenko.events import MessageEventHandler
 from tenko.host.accounts import AccountRegistry
 from tenko.config import DebugConfig
@@ -39,6 +40,11 @@ class FakeAccount:
 
     def __init__(self) -> None:
         self.protocol = FakeProtocol()
+
+
+class RoutedFakeAccount:
+    def __init__(self, self_id: str) -> None:
+        self.self_id = self_id
 
 
 def make_private_event(user_id: str = "20001", text: str = "hello") -> Event:
@@ -283,5 +289,103 @@ async def test_debug_event_guard_filters_events_without_user_source() -> None:
     )
 
     await handler.guard(callback)(account, make_userless_event())
+
+    callback.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_group_event_guard_randomly_selects_one_online_account(
+    monkeypatch,
+) -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, groups=[40001])
+    monkeypatch.setattr(accounts_module.random, "choice", lambda accounts: second)
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+    guarded = handler.guard(callback)
+    event = make_group_event()
+
+    await guarded(first, event)
+    await guarded(second, event)
+
+    callback.assert_awaited_once_with(second, event)
+
+
+@pytest.mark.asyncio
+async def test_group_event_guard_random_falls_back_to_the_only_online_account() -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, available=False, groups=[40001])
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.guard(callback)(first, make_group_event())
+    await handler.guard(callback)(second, make_group_event())
+
+    callback.assert_awaited_once()
+    assert callback.await_args.args[0] is first
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("unavailable", [False, True])
+async def test_group_event_guard_deterministic_account_is_unique_and_has_no_fallback(
+    unavailable: bool,
+) -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, available=not unavailable, groups=[40001])
+    registry.set_response_type(40001, "deterministic")
+    registry.set_deterministic_account(40001, second)
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.guard(callback)(first, make_group_event())
+    await handler.guard(callback)(second, make_group_event())
+
+    if unavailable:
+        callback.assert_not_awaited()
+    else:
+        callback.assert_awaited_once()
+        assert callback.await_args.args[0] is second
+
+
+@pytest.mark.asyncio
+async def test_group_event_guard_deterministic_muted_account_has_no_fallback() -> None:
+    first = RoutedFakeAccount("10001")
+    second = RoutedFakeAccount("10002")
+    registry = AccountRegistry()
+    registry.register(first, groups=[40001])
+    registry.register(second, groups=[40001])
+    registry.set_response_type(40001, "deterministic")
+    registry.set_deterministic_account(40001, second)
+    registry.set_muted(second, 40001, True)
+    callback = AsyncMock()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        account_registry=registry,
+    )
+
+    await handler.guard(callback)(first, make_group_event())
+    await handler.guard(callback)(second, make_group_event())
 
     callback.assert_not_awaited()

@@ -81,8 +81,39 @@ class MessageEventHandler:
             or (group_id := _event_group_id(event)) is None
         ):
             return False
+
+        # 消息事件可能是启动时群列表发现之前抵达的第一条消息。先把事件
+        # 所属账号加入当前群路由，再执行统一选路；这样后续账号收到同一条
+        # 群消息时会在进入 Entari 原生命令分发前被过滤。
+        if self.account_registry.get(account.self_id) is not None:
+            self.account_registry.bind_group(group_id, account)
+
         if not self.account_registry.is_muted(account.self_id, group_id):
-            return False
+            selected = self.account_registry.select_account(group_id)
+            if selected is not None and selected.self_id == account.self_id:
+                return False
+            if selected is not None:
+                logger.debug(
+                    "Ignore event for non-selected account={} selected={} group={} "
+                    "protocol_type={}",
+                    account.self_id,
+                    selected.self_id,
+                    group_id,
+                    getattr(event, "_type", "-"),
+                )
+            else:
+                logger.debug(
+                    "Ignore event because no response account is available: "
+                    "account={} group={} response_type={} deterministic_account={} "
+                    "protocol_type={}",
+                    account.self_id,
+                    group_id,
+                    self.account_registry.response_type_for_group(group_id),
+                    self.account_registry.deterministic_account_for_group(group_id),
+                    getattr(event, "_type", "-"),
+                )
+            return True
+
         logger.debug(
             "Ignore event for muted account={} group={} protocol_type={}",
             account.self_id,

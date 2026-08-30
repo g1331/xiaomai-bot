@@ -1,16 +1,236 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <title>{{ title|default("Tenko 报告") }}</title>
-    <style>
-      body { font-family: sans-serif; margin: 24px; }
-      pre { white-space: pre-wrap; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <article>{{ content|safe }}</article>
-    </main>
-  </body>
+<head>
+<meta charset="UTF-8">
+<title>{{ title | default("Tenko 报告") }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    width: 800px;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    background: linear-gradient(160deg, #EAF4FD 0%, #F7FBFF 45%, #E3F0FB 100%);
+    color: #2C4A63;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { width: 800px; padding: 24px 28px 22px; }
+
+  /* ===== 页头 ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #2E5C9E 0%, #3D74C4 60%, #5B96DE 100%);
+    border-radius: 18px 18px 0 0;
+    padding: 18px 24px;
+    box-shadow: 0 6px 18px rgba(29, 63, 140, 0.45);
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: "";
+    position: absolute;
+    width: 130px; height: 130px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    right: -35px; top: -55px;
+  }
+  .header::after {
+    content: "✦ ✦ ✦";
+    position: absolute;
+    right: 26px; bottom: 8px;
+    font-size: 11px;
+    color: rgba(255, 247, 194, 0.85);
+    letter-spacing: 4px;
+  }
+  .avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: radial-gradient(circle at 35% 30%, #EAF6FF 0%, #7FA8D8 45%, #2E5C9E 100%);
+    border: 2.5px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 8px rgba(30, 80, 130, 0.3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 1;
+  }
+  .avatar span {
+    font-size: 18px; font-weight: 700; color: #FFF;
+    text-shadow: 0 1px 3px rgba(43, 95, 142, 0.6);
+  }
+  .head-title {
+    position: relative; z-index: 1;
+    font-size: 22px; font-weight: 800; color: #FFF;
+    text-shadow: 0 2px 5px rgba(43, 95, 142, 0.45);
+    letter-spacing: 1px;
+  }
+
+  /* ===== 正文容器 ===== */
+  .content {
+    background: #FFFFFF;
+    border-radius: 0 0 18px 18px;
+    padding: 24px 26px 22px;
+    border: 1px solid rgba(127, 196, 245, 0.45);
+    border-top: none;
+    box-shadow: 0 4px 14px rgba(91, 168, 232, 0.15);
+    font-size: 14.5px;
+    line-height: 1.75;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* ===== 标题层级 ===== */
+  .content h1, .content h2, .content h3,
+  .content h4, .content h5, .content h6 {
+    color: #1D3F8C;
+    font-weight: 800;
+    line-height: 1.4;
+    margin: 22px 0 10px;
+  }
+  .content h1 { font-size: 22px; padding-bottom: 8px; border-bottom: 2px solid rgba(127, 196, 245, 0.5); }
+  .content h1:first-child, .content h2:first-child, .content h3:first-child { margin-top: 0; }
+  .content h2 {
+    font-size: 18px;
+    padding-left: 12px;
+    border-left: 4px solid #3D74C4;
+    border-radius: 2px;
+  }
+  .content h3 { font-size: 16px; color: #3B76A8; }
+  .content h3::before { content: "❄ "; color: #5B96DE; font-size: 13px; }
+  .content h4, .content h5, .content h6 { font-size: 14.5px; color: #527A9C; }
+
+  /* ===== 段落与行内元素 ===== */
+  .content p { margin: 10px 0; }
+  .content strong, .content b { color: #1D3F8C; font-weight: 700; }
+  .content em, .content i { color: #2E5C9E; }
+  .content a { color: #2E5C9E; text-decoration: none; border-bottom: 1px dashed rgba(78, 150, 216, 0.6); }
+  .content del, .content s { color: #9BB8CE; }
+
+  .content code {
+    font-family: "SF Mono", "Consolas", "Menlo", "Noto Sans Mono CJK SC", monospace;
+    font-size: 13px;
+    background: rgba(127, 196, 245, 0.16);
+    color: #1D3F8C;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-weight: 600;
+  }
+
+  /* ===== 代码块（深色底）===== */
+  .content pre {
+    background: #1E3A52;
+    border: 1px solid #1D3F8C;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  .content pre::before {
+    content: "code";
+    position: absolute;
+    top: 8px; right: 14px;
+    font-size: 10px;
+    font-family: "SF Mono", "Consolas", monospace;
+    color: #3D74C4;
+    background: rgba(91, 168, 232, 0.15);
+    padding: 1px 8px;
+    border-radius: 999px;
+    letter-spacing: 1px;
+  }
+  .content pre code {
+    display: block;
+    background: none;
+    color: #C9E5F8;
+    padding: 0;
+    font-size: 12.5px;
+    line-height: 1.65;
+    font-weight: 400;
+    white-space: pre;
+  }
+
+  /* ===== 表格（天子蓝表头）===== */
+  .content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(91, 168, 232, 0.12);
+  }
+  .content thead th {
+    background: linear-gradient(135deg, #3D74C4, #5B96DE);
+    color: #FFFFFF;
+    font-weight: 700;
+    text-align: left;
+    padding: 9px 14px;
+    border: none;
+    letter-spacing: 0.5px;
+  }
+  .content tbody td {
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(127, 196, 245, 0.3);
+    color: #3A5A78;
+  }
+  .content tbody tr:nth-child(even) { background: rgba(234, 244, 253, 0.7); }
+  .content tbody tr:last-child td { border-bottom: none; }
+
+  /* ===== 引用块 ===== */
+  .content blockquote {
+    margin: 14px 0;
+    padding: 10px 16px;
+    background: rgba(234, 244, 253, 0.85);
+    border-left: 4px solid #3D74C4;
+    border-radius: 0 10px 10px 0;
+    color: #4E7396;
+  }
+  .content blockquote p { margin: 4px 0; }
+
+  /* ===== 列表 ===== */
+  .content ul, .content ol { margin: 10px 0; padding-left: 26px; }
+  .content li { margin: 4px 0; }
+  .content ul li::marker { color: #3D74C4; }
+  .content ol li::marker { color: #3D74C4; font-weight: 700; }
+
+  /* ===== 分割线 ===== */
+  .content hr {
+    border: none;
+    height: 2px;
+    margin: 20px 0;
+    background: linear-gradient(90deg, rgba(127, 196, 245, 0.1), rgba(127, 196, 245, 0.8), rgba(127, 196, 245, 0.1));
+    border-radius: 2px;
+  }
+
+  /* ===== 图片 ===== */
+  .content img { max-width: 100%; border-radius: 10px; }
+
+  /* ===== 页脚 ===== */
+  .footer {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 11.5px;
+    color: #7BA3C4;
+  }
+  .footer .star { color: #7FA8D8; margin: 0 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="avatar"><span>天子</span></div>
+    <div class="head-title">{{ title | default("Tenko 报告") }}</div>
+  </div>
+
+  <div class="content">
+    {{ content | safe }}
+  </div>
+
+  <div class="footer">
+    Powered by Tenko<span class="star">✦</span>そらにかわ、かわにそら<span class="star">✦</span>
+  </div>
+
+</div>
+</body>
 </html>

@@ -316,7 +316,7 @@ class RenderService(Service):
         if MarkdownIt is None:
             raise RenderUnavailableError("markdown-it-py 未安装")
         try:
-            markdown_html = MarkdownIt("commonmark", {"html": False}).render(md_text)
+            markdown_html = self._markdown_to_html(md_text)
         except Exception as error:
             raise RenderError("Markdown 转 HTML 失败") from error
         return await self.render_template(
@@ -327,6 +327,37 @@ class RenderService(Service):
                 "source": md_text,
             },
         )
+
+    @staticmethod
+    def _highlight_code(code: str, lang: str, _attrs: str) -> str | None:
+        """Pygments 代码高亮；按源码确认 markdown-it-py 会把返回值包进
+        <pre><code>，故用 nowrap=True 只输出带内联样式的 span。"""
+        if not lang:
+            return None
+        try:
+            from pygments import highlight as pygments_highlight
+            from pygments.formatters import HtmlFormatter
+            from pygments.lexers import get_lexer_by_name
+            from pygments.util import ClassNotFound
+        except ImportError:
+            return None
+        try:
+            lexer = get_lexer_by_name(lang, stripall=False)
+        except ClassNotFound:
+            return None
+        # one-dark：深底调色板，与 markdown.html 代码块深色底 #1E3A52 匹配；
+        # bg 属性单独关闭背景输出，避免覆盖模板自身的底色和圆角。
+        formatter = HtmlFormatter(
+            style="one-dark", noclasses=True, nowrap=True, nobackground=True
+        )
+        return pygments_highlight(code, lexer, formatter)
+
+    def _markdown_to_html(self, md_text: str) -> str:
+        md = MarkdownIt(
+            "commonmark",
+            {"html": False, "highlight": self._highlight_code},
+        ).enable("table")
+        return md.render(md_text)
 
 
 async def render_or_none(

@@ -1,17 +1,404 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8">
-    <title>{{ title|default("Tenko 状态") }}</title>
-    <style>
-      body { font-family: sans-serif; margin: 24px; }
-      pre { white-space: pre-wrap; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>{{ title|default("Tenko 状态") }}</h1>
-      <pre>{{ content }}</pre>
-    </main>
-  </body>
+<head>
+<meta charset="UTF-8">
+<title>{{ title }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    width: 800px;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(91, 168, 232, 0.10) 0 2.2px, transparent 3px),
+      radial-gradient(circle at 34% 62%, rgba(91, 168, 232, 0.08) 0 1.8px, transparent 2.6px),
+      radial-gradient(circle at 68% 30%, rgba(91, 168, 232, 0.10) 0 2.0px, transparent 2.8px),
+      radial-gradient(circle at 88% 74%, rgba(91, 168, 232, 0.08) 0 2.4px, transparent 3.2px),
+      radial-gradient(circle at 52% 88%, rgba(91, 168, 232, 0.07) 0 1.6px, transparent 2.4px),
+      radial-gradient(circle at 25% 82%, rgba(168, 216, 248, 0.12) 0 3px, transparent 4px),
+      linear-gradient(160deg, #EAF4FD 0%, #F7FBFF 45%, #E3F0FB 100%);
+    background-size: 260px 260px, 200px 200px, 300px 300px, 240px 240px, 220px 220px, 340px 340px, auto;
+    color: #2C4A63;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 星形弹幕点（东方弹幕纹 · 极淡不扰读） */
+  .danmaku {
+    position: fixed; top: 0; left: 0; width: 800px; height: 100%;
+    pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(circle, rgba(91,168,232,.16) 0 2px, transparent 2.5px),
+      radial-gradient(star, rgba(168,216,248,.22) 0 3px, transparent 3.6px);
+    background-size: 140px 140px, 180px 180px;
+    background-position: 20px 30px, 80px 100px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.8), transparent 30%);
+  }
+
+  .wrap { width: 800px; padding: 24px 28px 20px; }
+
+  /* ===== 页头 ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: linear-gradient(135deg, #2E5C9E 0%, #3D74C4 60%, #5B96DE 100%);
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 6px 18px rgba(29, 63, 140, 0.45);
+    position: relative;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    outline: 1px solid rgba(91, 168, 232, 0.35);
+    outline-offset: 3px;
+  }
+  /* 天子 sigil「最高度」：菱形徽记 */
+  .sigil {
+    position: absolute; right: 14px; top: 12px; z-index: 2;
+    width: 22px; height: 22px;
+    background: rgba(255, 255, 255, 0.85);
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.4), 0 0 10px rgba(255,255,255,0.6);
+  }
+  .sigil::after {
+    content: "天";
+    position: absolute; inset: 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #1D3F8C;
+  }
+  /* 云纹装饰 */
+  .header::before, .header::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .header::before { width: 150px; height: 150px; right: -40px; top: -60px; }
+  .header::after  { width: 90px;  height: 90px;  right: 110px; bottom: -50px; }
+
+  .avatar {
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background:
+      radial-gradient(circle at 35% 30%, #EAF6FF 0%, #7FA8D8 45%, #2E5C9E 100%);
+    border: 3px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 3px 10px rgba(30, 80, 130, 0.3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 1;
+  }
+  .avatar span {
+    font-size: 26px; font-weight: 700; color: #FFFFFF;
+    text-shadow: 0 1px 4px rgba(43, 95, 142, 0.6);
+    letter-spacing: 2px;
+  }
+  .avatar::after {
+    content: "✦";
+    position: absolute; top: -2px; right: -2px;
+    font-size: 16px; color: #FFF7C2;
+    text-shadow: 0 0 6px rgba(255, 240, 150, 0.9);
+  }
+
+  .head-main { position: relative; z-index: 1; flex: 1; }
+  .head-title {
+    font-size: 30px; font-weight: 800; color: #FFFFFF;
+    text-shadow: 0 2px 6px rgba(43, 95, 142, 0.45);
+    letter-spacing: 1px;
+    line-height: 1.2;
+  }
+  .head-sub {
+    margin-top: 5px;
+    font-size: 13px; color: rgba(255, 255, 255, 0.92);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .head-sub .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #C8F5C0;
+    box-shadow: 0 0 6px rgba(200, 245, 192, 0.9);
+    display: inline-block;
+  }
+
+  .badge-mute {
+    position: relative; z-index: 1;
+    background: rgba(255, 255, 255, 0.92);
+    color: #1D3F8C;
+    font-size: 13px; font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(30, 80, 130, 0.25);
+    white-space: nowrap;
+  }
+
+  /* ===== 分区标题（符卡宣言风） ===== */
+  .section-title {
+    display: flex; align-items: center; gap: 10px;
+    margin: 22px 4px 12px;
+    font-size: 15px; font-weight: 800; color: #1D3F8C;
+    letter-spacing: 2px;
+  }
+  /* 符卡花线：两侧对称符纹 */
+  .section-title::before, .section-title::after {
+    font-size: 11px; color: #7FA8D8; letter-spacing: 3px;
+  }
+  .section-title::before { content: "❄ ───"; color: #5B96DE; }
+  .section-title::after { content: ""; }
+  .section-title .sp-name {
+    font-size: 10.5px; font-weight: 600; color: #7FA8D8;
+    font-style: italic; letter-spacing: 1px; margin-left: 2px;
+    align-self: flex-end; transform: translateY(-2px);
+  }
+  .section-title .rule {
+    flex: 1; height: 2px;
+    background: linear-gradient(90deg, rgba(127, 196, 245, 0.7), rgba(127, 196, 245, 0));
+    border-radius: 2px;
+  }
+
+  /* ===== 核心指标卡片 ===== */
+  .metric-grid { display: flex; gap: 14px; }
+  .metric-card {
+    flex: 1;
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    border: 1px solid rgba(127, 196, 245, 0.45);
+    box-shadow: 0 4px 14px rgba(91, 168, 232, 0.15);
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::after {
+    content: "";
+    position: absolute; right: -22px; top: -22px;
+    width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(127, 196, 245, 0.14);
+  }
+  .metric-label {
+    font-size: 13px; color: #6E93B3; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .metric-label .ico {
+    width: 22px; height: 22px; border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #FFF;
+    background: linear-gradient(135deg, #3D74C4, #5B96DE);
+  }
+  .metric-value {
+    margin-top: 8px;
+    font-size: 34px; font-weight: 800; color: #1D3F8C;
+    line-height: 1.1; letter-spacing: 0.5px;
+  }
+  .metric-value .unit { font-size: 15px; font-weight: 600; color: #6E93B3; margin-left: 3px; }
+  .metric-rate {
+    margin-top: 6px;
+    font-size: 12.5px; color: #2E5C9E;
+    background: rgba(127, 196, 245, 0.16);
+    border-radius: 999px;
+    padding: 3px 10px;
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  /* ===== 资源进度条 ===== */
+  .res-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid rgba(127, 196, 245, 0.45);
+    box-shadow: 0 4px 14px rgba(91, 168, 232, 0.15);
+  }
+  .res-row { display: flex; align-items: center; gap: 14px; padding: 9px 0; }
+  .res-row + .res-row { border-top: 1px dashed rgba(127, 196, 245, 0.4); }
+  .res-name {
+    width: 88px; flex-shrink: 0;
+    font-size: 13.5px; font-weight: 700; color: #1D3F8C;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .res-track {
+    flex: 1; height: 14px;
+    background: #E4F1FB;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .res-fill {
+    height: 100%;
+    border-radius: 999px;
+    /* 緋想の剣意象：青白剑气光 */
+    background: linear-gradient(90deg, #C9E9FB 0%, #5B96DE 45%, #3D74C4 100%);
+    box-shadow:
+      inset 0 -2px 4px rgba(255,255,255,0.4),
+      0 0 6px rgba(127, 196, 245, 0.55);
+    position: relative;
+  }
+  /* 剑气光点：进度条前端高光 */
+  .res-fill::after {
+    content: "";
+    position: absolute; right: 0; top: 50%;
+    width: 6px; height: 6px; border-radius: 50%;
+    transform: translate(1px, -50%);
+    background: #EAF6FF;
+    box-shadow: 0 0 8px 2px rgba(234, 246, 255, 0.9);
+  }
+  .res-fill.warn { background: linear-gradient(90deg, #F5C97F 0%, #E8A85B 100%); }
+  .res-val {
+    width: 190px; flex-shrink: 0; text-align: right;
+    font-size: 12.5px; color: #527A9C; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .res-val b { color: #1D3F8C; font-size: 14px; }
+
+  /* ===== 信息区 ===== */
+  .info-grid {
+    display: flex; gap: 14px; margin-top: 2px;
+  }
+  /* 东方风卡片：细双边框 + 角部符纹收口 */
+  .info-card {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 4px;
+    padding: 14px 18px;
+    border: 1px solid rgba(91, 168, 232, 0.5);
+    outline: 1px solid rgba(127, 196, 245, 0.35);
+    outline-offset: 2px;
+    position: relative;
+  }
+  .info-card::before, .info-card::after {
+    content: "❖";
+    position: absolute;
+    font-size: 9px; color: #7FA8D8;
+  }
+  .info-card::before { top: 3px; left: 6px; }
+  .info-card::after  { bottom: 3px; right: 6px; }
+  .info-item {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 5px 0; font-size: 13px;
+  }
+  .info-item .k { color: #6E93B3; font-weight: 600; flex-shrink: 0; }
+  .info-item .v {
+    color: #1D3F8C; font-weight: 700; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .info-item .v.mono {
+    font-family: "SF Mono", "Consolas", "Menlo", "Noto Sans Mono CJK SC", monospace;
+    font-weight: 600; font-size: 12.5px;
+  }
+
+  .version-list { font-size: 12.5px; }
+  .version-list .v-item {
+    color: #1D3F8C; padding: 2.5px 0; font-weight: 600;
+    font-family: "SF Mono", "Consolas", "Menlo", "Noto Sans Mono CJK SC", monospace;
+  }
+  .version-list .v-item::before { content: "▸ "; color: #5B96DE; }
+
+  /* ===== 页脚 ===== */
+  .footer {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 12px;
+    color: #7BA3C4;
+    padding: 12px 0 4px;
+    border-top: 1px solid rgba(127, 196, 245, 0.4);
+  }
+  .footer .star { color: #7FA8D8; margin: 0 8px; }
+  .footer a { color: #2E5C9E; text-decoration: none; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  {# ===== 页头 ===== #}
+  <div class="header">
+    <div class="sigil"></div>
+    <div class="avatar"><span>天子</span></div>
+    <div class="head-main">
+      <div class="head-title">{{ title }}</div>
+      <div class="head-sub">
+        <span class="dot"></span>
+        {% if chat_type == "group" %}群聊模式运行中{% else %}私聊模式运行中{% endif %}
+        {% if detailed %} · 详细模式{% endif %}
+      </div>
+    </div>
+    {% if current_group_mute %}
+    <div class="badge-mute">🔇 {{ current_group_mute }}</div>
+    {% endif %}
+  </div>
+
+  {# ===== 核心指标 ===== #}
+  <div class="section-title">消息统计<span class="sp-name">Meteor Count</span><span class="rule"></span></div>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label"><span class="ico">↘</span>接收消息</div>
+      <div class="metric-value">{{ metrics.received_count }}</div>
+      <div class="metric-rate">{{ metrics.received_rate }}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label"><span class="ico">↗</span>发送消息</div>
+      <div class="metric-value">{{ metrics.sent_count }}</div>
+      <div class="metric-rate">{{ metrics.sent_rate }}</div>
+    </div>
+  </div>
+
+  {% if resources %}
+  {# ===== 资源监控 ===== #}
+  <div class="section-title">资源监控 <span class="rule"></span></div>
+  <div class="res-card">
+    {% if resources.cpu_percent is not none %}
+    <div class="res-row">
+      <div class="res-name">💠 CPU</div>
+      <div class="res-track">
+        <div class="res-fill{% if resources.cpu_percent > 80 %} warn{% endif %}" style="width: {{ resources.cpu_percent | round(1) }}%; min-width: 6px;"></div>
+      </div>
+      <div class="res-val"><b>{{ resources.cpu_percent | round(1) }}%</b></div>
+    </div>
+    {% endif %}
+    {% if resources.memory_percent is not none %}
+    <div class="res-row">
+      <div class="res-name">💠 内存</div>
+      <div class="res-track">
+        <div class="res-fill{% if resources.memory_percent > 80 %} warn{% endif %}" style="width: {{ resources.memory_percent | round(1) }}%; min-width: 6px;"></div>
+      </div>
+      <div class="res-val"><b>{{ resources.memory_percent | round(1) }}%</b> · {{ (resources.memory_used / 1024**3) | round(1) }} / {{ (resources.memory_total / 1024**3) | round(1) }} GB</div>
+    </div>
+    {% endif %}
+    {% if resources.disk_percent is not none %}
+    <div class="res-row">
+      <div class="res-name">💠 磁盘</div>
+      <div class="res-track">
+        <div class="res-fill{% if resources.disk_percent > 80 %} warn{% endif %}" style="width: {{ resources.disk_percent | round(1) }}%; min-width: 6px;"></div>
+      </div>
+      <div class="res-val"><b>{{ resources.disk_percent | round(1) }}%</b> · {{ resources.disk_used }} / {{ resources.disk_total }} GB</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ===== 信息区 ===== #}
+  <div class="section-title">运行信息 <span class="rule"></span></div>
+  <div class="info-grid">
+    <div class="info-card">
+      <div class="info-item"><span class="k">开机时间</span><span class="v">{{ process.start_time }}</span></div>
+      <div class="info-item"><span class="k">运行时长</span><span class="v">{{ process.uptime }}</span></div>
+      {% if process.rss_display %}
+      <div class="info-item"><span class="k">进程内存</span><span class="v">{{ process.rss_display }}</span></div>
+      {% endif %}
+      <div class="info-item"><span class="k">插件数量</span><span class="v">{{ plugin_count }} 个</span></div>
+    </div>
+    <div class="info-card">
+      {% if version_details %}
+      <div class="version-list">
+        {% for line in version_details %}
+        <div class="v-item">{{ line }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ===== 页脚 ===== #}
+  <div class="footer">
+    Tenko{% if project_address %} · <a href="{{ project_address }}">{{ project_address }}</a>{% endif %}
+    <span class="star">✦</span>そらにかわ、かわにそら<span class="star">✦</span>
+  </div>
+
+</div>
+</body>
 </html>

@@ -112,7 +112,30 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
             pytest.skip(str(error))
 
         status_image = await service.render_template(
-            "status.html", {"title": "Status", "content": "rendered status"}
+            "status.html",
+            {
+                "title": "Status",
+                "content": "rendered status",
+                "lines": (),
+                "plugin_count": 0,
+                "chat_type": "private",
+                "detailed": False,
+                "current_group_mute": None,
+                "project_address": None,
+                "version_details": (),
+                "metrics": {
+                    "received_count": 0,
+                    "sent_count": 0,
+                    "received_rate": "0条/m",
+                    "sent_rate": "0条/m",
+                },
+                "process": {
+                    "start_time": "2026-08-30 00:00:00",
+                    "uptime": "0秒",
+                    "rss_display": None,
+                },
+                "resources": None,
+            },
         )
         markdown_image = await service.render_markdown("# Report\n\nrendered")
     finally:

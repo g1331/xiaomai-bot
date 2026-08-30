@@ -154,6 +154,7 @@
     font-size: 13px;
   }
   .overview strong { color: #1D3F8C; font-size: 17px; }
+  .overview .usage { color: #6E93B3; font-size: 12px; }
   .overview .count { color: #6E93B3; white-space: nowrap; }
 
   /* ===== 插件分区 ===== */
@@ -302,6 +303,7 @@
 
   <div class="overview">
     <span>插件状态已按当前注册信息整理</span>
+    <span class="usage">{{ usage }}</span>
     <span class="count"><strong>{{ total }}</strong> 项 · <strong>{{ enabled_count }}</strong> 项可用</span>
   </div>
 

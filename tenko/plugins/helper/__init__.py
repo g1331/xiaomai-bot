@@ -148,6 +148,7 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
     return {
         "title": "Tenko 已注册命令",
         "subtitle": "按插件状态整理可用功能",
+        "usage": "/帮助 [编号] 查看单项命令详情",
         "group_id": None if group_id is None else str(group_id),
         "sections": section_data,
         "required": tuple(sections["required"]),
@@ -169,7 +170,7 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
 def format_help_text(data: dict[str, Any]) -> str:
     """Format the help model into its text fallback."""
 
-    lines = [str(data["title"])]
+    lines = [str(data["title"]), "用法：/帮助 [编号] 查看单项命令详情"]
     for section in data["sections"]:
         lines.extend(("", f"{section['title']}："))
         if not section["items"]:

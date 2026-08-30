@@ -143,6 +143,7 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
             {
                 "title": "Tenko 已注册命令",
                 "subtitle": "按插件状态整理可用功能",
+                "usage": "/帮助 [编号] 查看单项命令详情",
                 "group_id": "40001",
                 "sections": (
                     {

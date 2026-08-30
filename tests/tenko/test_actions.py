@@ -5,6 +5,7 @@ from typing import Any, Literal
 
 import pytest
 from satori.exception import ActionFailed
+from satori.model import IterablePageResult, PageResult
 
 from tenko.context import MessageContext
 from tenko.host.actions import (
@@ -14,6 +15,7 @@ from tenko.host.actions import (
     ActionFailure,
     ActionPermissionDenied,
     ActionService,
+    ActionServiceError,
 )
 from tenko.host.accounts import AccountRegistry
 from tenko.host.actions import ActionAccountUnavailable
@@ -34,6 +36,17 @@ class FakeProtocol:
             raise response
         return response
 
+    async def guild_member_get(self, *args: Any) -> Any:
+        self.calls.append(("guild_member_get", args, {}))
+        response = self.responses.get("guild_member_get")
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+    def guild_member_list(self, *args: Any) -> Any:
+        self.calls.append(("guild_member_list", args, {}))
+        return self.responses.get("guild_member_list", [])
+
     async def channel_mute(self, *args: Any) -> Any:
         self.calls.append(("channel_mute", args, {}))
         return self.responses.get("channel_mute")
@@ -48,7 +61,10 @@ class FakeProtocol:
 
     async def internal(self, *args: Any, **kwargs: Any) -> Any:
         self.calls.append(("internal", args, kwargs))
-        return self.responses.get("internal")
+        response = self.responses.get("internal")
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
     async def send_message(self, *args: Any) -> Any:
         self.calls.append(("send_message", args, {}))
@@ -135,6 +151,60 @@ async def test_standard_actions_use_satori_native_protocol_methods() -> None:
         ("message_delete", ("40001", "50002"), {}),
         ("guild_member_kick", ("40001", "20002"), {"permanent": False}),
     ]
+
+
+@pytest.mark.asyncio
+async def test_member_queries_prefer_onebot_data_and_collect_satori_pages() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "internal": {"user_id": 20002, "permission": "admin"},
+        }
+    )
+    service, account, _, _ = make_service(protocol)
+
+    member = await service.get_group_member(account, "40001", "20002")
+    assert member == {"user_id": 20002, "permission": "admin"}
+    assert protocol.calls == [
+        (
+            "internal",
+            ("get_group_member_info",),
+            {"group_id": 40001, "user_id": 20002},
+        )
+    ]
+
+    page_calls: list[str | None] = []
+
+    async def fetch_page(next_token: str | None) -> PageResult[dict[str, str]]:
+        page_calls.append(next_token)
+        if next_token is None:
+            return PageResult([{"user_id": "20002"}], next="page-2")
+        return PageResult([{"user_id": "20003"}], next=None)
+
+    protocol.responses["internal"] = None
+    protocol.responses["guild_member_list"] = IterablePageResult(fetch_page)
+    members = await service.list_group_members(account, "40001")
+
+    assert members == ({"user_id": "20002"}, {"user_id": "20003"})
+    assert page_calls == [None, "page-2"]
+    assert protocol.calls[-2:] == [
+        ("internal", ("get_group_member_list",), {"group_id": 40001}),
+        ("guild_member_list", ("40001",), {}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_member_query_failure_is_explicit_without_capability_learning() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "internal": RuntimeError("raw member API unavailable"),
+            "guild_member_get": RuntimeError("standard member API unavailable"),
+        }
+    )
+    service, account, _, _ = make_service(protocol)
+
+    with pytest.raises(ActionServiceError, match="查询群 40001 成员 20002 失败"):
+        await service.get_group_member(account, "40001", "20002")
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is None
 
 
 @pytest.mark.asyncio

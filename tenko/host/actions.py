@@ -749,23 +749,40 @@ class ActionService:
         raise ActionExecutionError("没有可用的平台动作执行账号")
 
     @staticmethod
-    async def _collect_group_ids(result: object) -> tuple[str, ...]:
-        """兼容 Satori IterablePageResult 和测试中的普通返回值。"""
+    async def _collect_page_items(
+        result: object, *, mapping_keys: tuple[str, ...]
+    ) -> tuple[object, ...]:
+        """收集 Satori 分页迭代器和 OneBot 原始列表返回值。"""
 
         items: list[object] = []
         if hasattr(result, "__aiter__"):
             async for item in result:  # type: ignore[union-attr]
                 items.append(item)
-        else:
-            data = getattr(result, "data", result)
-            if isinstance(data, Mapping):
-                data = data.get("data", data.get("groups", ()))
-            if isinstance(data, str | bytes) or data is None:
-                data = ()
-            elif isinstance(data, Iterable):
-                items.extend(data)
+            return tuple(items)
+
+        data = getattr(result, "data", result)
+        if isinstance(data, Mapping):
+            for key in mapping_keys:
+                if key in data:
+                    data = data[key]
+                    break
             else:
-                items.append(data)
+                data = (data,)
+        if isinstance(data, str | bytes) or data is None:
+            data = ()
+        elif isinstance(data, Iterable):
+            items.extend(data)
+        else:
+            items.append(data)
+        return tuple(items)
+
+    @staticmethod
+    async def _collect_group_ids(result: object) -> tuple[str, ...]:
+        """兼容 Satori IterablePageResult 和测试中的普通返回值。"""
+
+        items = await ActionService._collect_page_items(
+            result, mapping_keys=("data", "groups")
+        )
 
         group_ids: list[str] = []
         for item in items:
@@ -804,6 +821,102 @@ class ActionService:
             raise self._execution_error(failure, exc) from exc
         self._remember_success(account_id, capability)
         return group_ids
+
+    async def get_group_member(
+        self,
+        account_or_id: Account | str | int,
+        group_id: str | int,
+        user_id: str | int,
+    ) -> object | None:
+        """查询群成员；优先使用 OneBot 原始 action 保留成员角色字段。
+
+        成员查询不参与 capability 学习。OneBot 的 ``get_group_member_info``
+        能直接区分“不在群”和“查询失败”，而标准 Satori fallback 仍可兼容
+        其他 adapter。
+        """
+
+        account_id, account = self._account(account_or_id)
+        group, group_number = _numeric_id(group_id, "群 ID")
+        user, user_number = _numeric_id(user_id, "用户 ID")
+        protocol = account.protocol
+        errors: list[BaseException] = []
+
+        internal = getattr(protocol, "internal", None)
+        if callable(internal):
+            try:
+                result = internal(
+                    "get_group_member_info",
+                    group_id=group_number,
+                    user_id=user_number,
+                )
+                if inspect.isawaitable(result):
+                    result = await result
+            except Exception as error:
+                errors.append(error)
+            else:
+                if result:
+                    return result
+
+        member_get = getattr(protocol, "guild_member_get", None)
+        if callable(member_get):
+            try:
+                result = member_get(group, user)
+                if inspect.isawaitable(result):
+                    result = await result
+            except Exception as error:
+                errors.append(error)
+            else:
+                return result if result else None
+
+        detail = str(errors[-1]) if errors else "协议未提供群成员查询方法"
+        raise ActionServiceError(
+            f"账号 {account_id} 查询群 {group} 成员 {user} 失败: {detail}"
+        ) from (errors[-1] if errors else None)
+
+    async def list_group_members(
+        self, account_or_id: Account | str | int, group_id: str | int
+    ) -> tuple[object, ...]:
+        """读取完整群成员列表，并消费标准 Satori 的所有分页。"""
+
+        account_id, account = self._account(account_or_id)
+        group, group_number = _numeric_id(group_id, "群 ID")
+        protocol = account.protocol
+        errors: list[BaseException] = []
+
+        internal = getattr(protocol, "internal", None)
+        if callable(internal):
+            try:
+                result = internal(
+                    "get_group_member_list",
+                    group_id=group_number,
+                )
+                if inspect.isawaitable(result):
+                    result = await result
+            except Exception as error:
+                errors.append(error)
+            else:
+                if result is not None:
+                    return await self._collect_page_items(
+                        result, mapping_keys=("data", "members")
+                    )
+
+        member_list = getattr(protocol, "guild_member_list", None)
+        if callable(member_list):
+            try:
+                result = member_list(group)
+                if inspect.isawaitable(result) and not hasattr(result, "__aiter__"):
+                    result = await result
+            except Exception as error:
+                errors.append(error)
+            else:
+                return await self._collect_page_items(
+                    result, mapping_keys=("data", "members")
+                )
+
+        detail = str(errors[-1]) if errors else "协议未提供群成员列表查询方法"
+        raise ActionServiceError(
+            f"账号 {account_id} 查询群 {group} 成员列表失败: {detail}"
+        ) from (errors[-1] if errors else None)
 
     async def list_groups(self, account_or_id: Account | str | int) -> tuple[str, ...]:
         """``get_group_list`` 的业务友好别名。"""

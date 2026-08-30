@@ -22,6 +22,12 @@ from .perm import (
     PermissionChecker,
     PermissionRegistry,
 )
+from .features import (
+    CommandPolicy,
+    FeatureService,
+    configure_feature_service,
+    feature_service,
+)
 from .plugins import PluginInfo, PluginInterfaceError, PluginRuntime
 from .updater import (
     ArtifactAcquisitionError,
@@ -84,6 +90,10 @@ __all__ = [
     "Permission",
     "PermissionChecker",
     "PermissionRegistry",
+    "CommandPolicy",
+    "FeatureService",
+    "configure_feature_service",
+    "feature_service",
     "PluginInfo",
     "PluginInterfaceError",
     "PluginRuntime",

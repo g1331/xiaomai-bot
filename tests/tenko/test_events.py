@@ -20,6 +20,7 @@ import tenko.events as events_module
 import tenko.host.accounts as accounts_module
 from tenko.events import MessageEventHandler
 from tenko.host.accounts import AccountRegistry
+from tenko.host.features import CommandPolicy, FeatureService
 from tenko.config import DebugConfig
 
 
@@ -389,3 +390,35 @@ async def test_group_event_guard_deterministic_muted_account_has_no_fallback() -
     await handler.guard(callback)(second, make_group_event())
 
     callback.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() -> None:
+    class FakePluginRuntime:
+        def command_owner(self, text: str):
+            return (
+                type("Owner", (), {"name": "demo", "display_name": "演示"})()
+                if text.startswith("/演示")
+                else None
+            )
+
+    features = FeatureService()
+    features.disable("demo", "40001")
+    policy = CommandPolicy(features, plugin_runtime=FakePluginRuntime())
+    callback = AsyncMock()
+    account = FakeAccount()
+    handler = MessageEventHandler(
+        send_replies=False,
+        reply_text="收到",
+        command_policy=policy,
+    )
+
+    await handler.guard(callback)(account, make_group_event(text="/演示"))
+
+    callback.assert_not_awaited()
+    assert account.protocol.calls[-1][1].startswith("演示插件已关闭")
+
+    features.enable("demo", "40001")
+    await handler.guard(callback)(account, make_group_event(text="/演示"))
+
+    callback.assert_awaited_once()

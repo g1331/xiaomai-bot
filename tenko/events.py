@@ -45,7 +45,7 @@ def _event_user_id(event: Event) -> str | None:
     return None if user_id is None else str(user_id)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class MessageEventHandler:
     """最小消息闭环及事件入口过滤处理器。"""
 
@@ -53,6 +53,7 @@ class MessageEventHandler:
     reply_text: str
     account_registry: AccountRegistry | None = None
     debug_config: DebugConfig = DebugConfig()
+    command_policy: Any | None = None
 
     def __post_init__(self) -> None:
         if self.debug_config.enabled and not self.debug_config.masters:
@@ -136,6 +137,14 @@ class MessageEventHandler:
         async def dispatch(account: Account, event: Event) -> Any:
             if self.should_skip(account, event):
                 return None
+            if self.command_policy is not None:
+                notice = await self.command_policy.check(account, event)
+                if notice:
+                    try:
+                        await account.protocol.send(event, notice)
+                    except Exception:
+                        logger.exception("Failed to send command policy notice")
+                    return None
             return await callback(account, event)
 
         return dispatch
@@ -213,3 +222,15 @@ class MessageEventHandler:
             context.message_id,
             len(receipts),
         )
+        if (
+            context.chat_type == "group"
+            and self.account_registry is not None
+            and self.account_registry.get(account.self_id) is not None
+            and self.account_registry.is_muted(account, context.channel_id)
+        ):
+            self.account_registry.set_muted(account, context.channel_id, False)
+            logger.info(
+                "Cleared stale mute after successful group send: account={} group={}",
+                account.self_id,
+                context.channel_id,
+            )

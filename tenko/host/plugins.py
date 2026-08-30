@@ -7,12 +7,14 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from arclet.alconna import command_manager
 from arclet.entari.exceptions import RegisterNotInPluginError as PluginInterfaceError
 from arclet.entari.plugin import (
     Plugin,
     PluginMetadata,
     disable_plugin,
     enable_plugin,
+    get_plugin_commands,
     get_plugins,
     load_plugin,
     unload_plugin,
@@ -45,6 +47,18 @@ class PluginInfo:
     path: Path
     is_package: bool
     qualified_name: str
+
+    @property
+    def display_name(self) -> str:
+        """返回已加载插件的元数据名称，未加载时回退到目录名。"""
+
+        names = set(self.lookup_names)
+        native_plugin = next(
+            (plugin for plugin in get_plugins(subplugged=True) if plugin.id in names),
+            None,
+        )
+        metadata_name = getattr(getattr(native_plugin, "metadata", None), "name", None)
+        return str(metadata_name) if metadata_name else self.name
 
     @property
     def lookup_names(self) -> tuple[str, ...]:
@@ -218,6 +232,68 @@ class PluginRuntime:
 
     def is_loaded(self, plugin: str | PluginInfo) -> bool:
         return self._native_plugin(self._info(plugin)) is not None
+
+    @staticmethod
+    def _command_matches(text: str, candidate: str) -> bool:
+        return text == candidate or (
+            text.startswith(candidate)
+            and len(text) > len(candidate)
+            and text[len(candidate)] in " \t"
+        )
+
+    @staticmethod
+    def _shortcut_candidates(command: object) -> tuple[str, ...]:
+        get_shortcuts = getattr(command, "get_shortcuts", None)
+        if get_shortcuts is None:
+            return ()
+        candidates: list[str] = []
+        for shortcut in get_shortcuts() or ():
+            raw = str(shortcut).split(" ", 1)[0]
+            if raw.startswith("[") and "]" in raw:
+                prefix, alias = raw[1:].split("]", 1)
+                if alias:
+                    candidates.append(f"{prefix}{alias}")
+            elif raw:
+                candidates.append(raw)
+        return tuple(candidates)
+
+    def command_owner(self, text: str) -> PluginInfo | None:
+        """按当前 Entari 注册命令返回其插件目录项。
+
+        ``get_plugin_commands`` 是 Entari 保存的插件归属索引；命令 shortcut
+        则从对应的原生 Alconna 对象读取，因此 ``/状态`` 这类别名也会落到
+        正确插件。无法识别的消息返回 ``None``，不阻断 Entari 原生命令链。
+        """
+
+        if not isinstance(text, str) or not text:
+            return None
+        if not self._discovered:
+            self.discover()
+        native_commands = tuple(command_manager.get_commands())
+        for native_plugin in get_plugins(subplugged=True):
+            try:
+                plugin_commands = tuple(get_plugin_commands(native_plugin) or ())
+            except (PluginInterfaceError, TypeError, AttributeError):
+                plugin_commands = ()
+            command_names = {
+                str(command_name) for _prefixes, command_name in plugin_commands
+            }
+            command_candidates: set[str] = set()
+            for prefixes, command_name in plugin_commands:
+                for prefix in prefixes or ():
+                    command_candidates.add(f"{prefix}{command_name}")
+            for native_command in native_commands:
+                if getattr(native_command, "command", None) in command_names:
+                    command_candidates.update(self._shortcut_candidates(native_command))
+            if not any(
+                self._command_matches(text, candidate)
+                for candidate in command_candidates
+            ):
+                continue
+            for info in self._discovered.values():
+                if native_plugin.id in info.lookup_names:
+                    return info
+        return None
 
     async def _apply_legacy_state(self, info: PluginInfo, plugin: Plugin) -> None:
         enabled = self._legacy_global_enabled(info)

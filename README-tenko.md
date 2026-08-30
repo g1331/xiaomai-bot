@@ -385,8 +385,9 @@ command_prefix = "/"
 实现选择的是 Alconna 原生的默认命名空间前缀，而不是在各个插件中重新解析
 消息。具体接入集中在 `tenko/commands.py:configure_command_prefix()`：它设置
 `arclet.alconna.config.default_namespace.prefixes`，所有插件构造的 `Alconna`
-命令都会复制这一配置；helper 和 status 的旧顶层别名则使用 Alconna 原生
-`shortcut(..., prefix=True)` 注册。
+命令都会复制这一配置；跨迁移保留的旧顶层别名（例如 `/-公告`、
+`/关闭全体禁言`、`/-开启`、`/-关闭`、`/-upgrade`）以及 helper/status 的旧别名
+都使用 Alconna 原生 `shortcut(..., prefix=True)` 注册。
 
 选择依据是当前独立环境中的实际源码（Alconna 1.8.44、Entari 0.18.6）：
 
@@ -535,7 +536,7 @@ Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名�
 - `/禁言 [@成员|成员ID] [分钟] [-t <分钟>]`：默认 2 分钟，范围 `1..43200`；进入
   action service 后转换成标准秒数；
 - `/解禁 [@成员|成员ID]`：也支持回复目标消息；
-- `/全体禁言`、`/全体解禁`；
+- `/全体禁言`、`/全体解禁`（旧别名 `/关闭全体禁言`）；
 - `/撤回`：必须回复消息，使用 Satori `Quote.id`；
 - `/加精 [消息ID]`：优先使用显式消息 ID，否则使用回复消息的 Satori `Quote.id`；
   `/设精` 是同一处理路径的旧命令别名；
@@ -548,7 +549,8 @@ Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名�
 
 ### announcement 迁移
 
-`tenko/plugins/announcement/` 注册 `/公告 <功能名> <内容...> [-t <间隔分钟>]`。
+`tenko/plugins/announcement/` 注册 `/公告 <功能名> <内容...> [-t <间隔分钟>]`
+（旧别名 `/-公告`）。
 它先读取宿主 `FeatureService` 的群×插件开关，再只读兼容旧状态中的
 `modules -> groups -> switch`，按 `AccountRegistry` 的群路由每群选择一个可用账号，
 然后通过 `ActionService.send_group_message()` 发送。每个群都会得到一个
@@ -596,8 +598,8 @@ OneBot action 名称，所有平台动作都经过宿主服务。
 
 `FeatureService` 负责群×插件的显式开关和插件全局维护状态，写入
 `[features].state_path`（默认 `.tenko/features.json`）。未显式设置的群使用
-`default_enabled`。`tenko/plugins/feature_manager/` 提供 `/开启 <插件编号或名称>`
-和 `/关闭 <插件编号或名称>`，要求当前用户达到 `GroupAdmin`；必须的宿主插件不可
+`default_enabled`。`tenko/plugins/feature_manager/` 提供 `/开启 <插件编号或名称>`、
+`/关闭 <插件编号或名称>`（旧别名 `/-开启`、`/-关闭`），要求当前用户达到 `GroupAdmin`；必须的宿主插件不可
 关闭。命令归属由 `PluginRuntime` 从 Entari 当前命令注册表解析，事件入口统一在
 插件回调之前拦截关闭的功能并提示开启方式，因此不需要每个插件重复装饰器。
 公告插件同时读取该新开关和旧 `modules_data.json` 的只读兼容状态。
@@ -955,8 +957,8 @@ superuser_ids = [123456]
 `Permission.Master` 的用户：
 
 - `/检查更新`：执行版本发现并返回当前/候选版本、通道和来源；不下载制品。
-- `/升级`：执行一次检查，准备并校验候选版本，检查通过后生成外部 `activate`
-  handoff；返回制品目录和 handoff 路径，不热替换当前进程。
+- `/升级`（旧别名 `/-upgrade`）：执行一次检查，准备并校验候选版本，检查通过后
+  生成外部 `activate` handoff；返回制品目录和 handoff 路径，不热替换当前进程。
 - `/回滚`：检查是否存在上一可用版本，生成外部 `rollback` handoff；不存在时
   返回可见失败并写入审计，不伪造成功。
 
@@ -971,7 +973,7 @@ superuser_ids = [123456]
 | --- | --- | --- |
 | GitHub 当前分支 commit/compare 检查 | Git tag 源比较版本和 commit SHA；GitHub 源改为官方 Release + asset digest；manifest 可扩展 | 场景保留，数据协议升级 |
 | 24 小时自动检查 | `Ready` + Entari 原生 scheduler，周期可配置且默认 24 小时 | 保留 |
-| `-upgrade` 群消息触发 | 全局 `/升级`，仅超级用户，先准备再生成外部接管记录 | 能力保留，命令和权限收紧 |
+| `-upgrade` 群消息触发 | 全局 `/升级`（兼容 `/-upgrade`），仅超级用户，先准备再生成外部接管记录 | 能力保留，命令和权限收紧 |
 | `config.test_group`、最多三条 commit、OpenGraph 图片和 30 秒 y/n waiter | 返回结构化文本结果；检查、准备、安装请求和失败都写审计 | 明确不保留图片/等待器，避免把升级确认和消息会话生命周期绑定 |
 | `config.auto_upgrade` 布尔开关 | `[upgrade].enabled`、`channel`、`policy`、路径、健康检查和超级用户配置 | 不保留旧键，避免误把 `true` 解释成自动安装 |
 | `git pull` 原地更新 | 独立 staging/versions、强校验、原子 active 指针、外部重启 | 明确不保留；同一进程不做热替换 |

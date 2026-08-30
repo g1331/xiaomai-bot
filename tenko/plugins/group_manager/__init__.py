@@ -761,6 +761,7 @@ whole_unmute_command = Alconna(
     "全体解禁",
     meta=CommandMeta("关闭全体禁言", usage="全体解禁", compact=False),
 )
+whole_unmute_command.shortcut("关闭全体禁言", command="全体解禁", prefix=True)
 
 
 @command.on(whole_unmute_command)

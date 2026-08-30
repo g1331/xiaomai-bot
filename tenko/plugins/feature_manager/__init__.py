@@ -94,6 +94,7 @@ enable_command = Alconna(
         compact=False,
     ),
 )
+enable_command.shortcut("-开启", command="开启", prefix=True)
 
 
 @command.on(enable_command)
@@ -110,6 +111,7 @@ disable_command = Alconna(
         compact=False,
     ),
 )
+disable_command.shortcut("-关闭", command="关闭", prefix=True)
 
 
 @command.on(disable_command)

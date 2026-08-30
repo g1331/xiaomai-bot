@@ -63,6 +63,7 @@ upgrade_command = Alconna(
         compact=True,
     ),
 )
+upgrade_command.shortcut("-upgrade", command="升级", prefix=True)
 rollback_command = Alconna(
     "回滚",
     meta=CommandMeta(

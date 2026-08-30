@@ -118,6 +118,14 @@ def test_collect_targets_reports_each_unsupported_group(
     assert result.status == status
 
 
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+def test_announcement_keeps_legacy_prefixed_alias(loaded_plugin) -> None:
+    assert loaded_plugin.announcement_command.parse("/-公告 帮助系统 维护通知").matched
+    assert not loaded_plugin.announcement_command.parse(
+        "-公告 帮助系统 维护通知"
+    ).matched
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
 async def test_pusher_sends_one_payload_per_target_and_waits_between_targets(

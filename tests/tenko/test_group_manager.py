@@ -450,6 +450,13 @@ def test_essence_command_keeps_legacy_reply_alias_and_explicit_id(
     assert not command.parse("加精 60001").matched
 
 
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+def test_whole_unmute_keeps_legacy_command_alias(loaded_plugin) -> None:
+    assert loaded_plugin.whole_unmute_command.parse("/全体解禁").matched
+    assert loaded_plugin.whole_unmute_command.parse("/关闭全体禁言").matched
+    assert not loaded_plugin.whole_unmute_command.parse("关闭全体禁言").matched
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
 async def test_essence_uses_action_service_for_reply_target(loaded_plugin) -> None:

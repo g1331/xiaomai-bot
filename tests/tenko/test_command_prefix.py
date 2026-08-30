@@ -49,6 +49,10 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/撤回",),
         "boundary": ("/撤回-1", "/ 撤回"),
     },
+    "加精": {
+        "positive": ("/加精", "/加精 60001", "/设精"),
+        "boundary": ("/加精-1", "/ 加精"),
+    },
     "踢出": {
         "positive": ("/踢出 20002", "/踢出"),
         "boundary": ("/踢出-1", "/ 踢出"),
@@ -72,6 +76,18 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
     "公告": {
         "positive": ("/公告 帮助系统 维护通知", "/公告 帮助系统 维护 通知 -t 2"),
         "boundary": ("/公告-1", "/ 公告"),
+    },
+    "BOT列表": {
+        "positive": ("/BOT列表",),
+        "boundary": ("/BOT列表-1", "/ BOT列表"),
+    },
+    "BOT群列表": {
+        "positive": ("/BOT群列表", "/BOT群列表 10001"),
+        "boundary": ("/BOT群列表-1", "/ BOT群列表"),
+    },
+    "在线BOT": {
+        "positive": ("/在线BOT",),
+        "boundary": ("/在线BOT-1", "/ 在线BOT"),
     },
     "修改权限": {
         "positive": ("/修改权限 16 30001", "/修改权限 32 30001 30002"),
@@ -116,6 +132,14 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
         "positive": ("/-bot", "/状态 -t"),
         "boundary": ("/-bot-1", "/ -bot"),
     },
+    "设定响应": {
+        "positive": ("/设定响应", "/设定响应 random", "/设定响应 deterministic"),
+        "boundary": ("/设定响应-1", "/ 设定响应"),
+    },
+    "指定BOT": {
+        "positive": ("/指定BOT 10001", "/指定BOT 清除"),
+        "boundary": ("/指定BOT-1", "/ 指定BOT"),
+    },
 }
 
 
@@ -141,6 +165,7 @@ def _commands_for_loaded_plugin() -> Iterable[Alconna]:
         "status",
         "announcement",
         "feature_manager",
+        "response_manager",
     ],
     indirect=True,
 )

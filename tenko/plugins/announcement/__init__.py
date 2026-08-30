@@ -307,6 +307,7 @@ announcement_command = Alconna(
         compact=False,
     ),
 )
+announcement_command.shortcut("-公告", command="公告", prefix=True)
 
 
 @command.on(announcement_command)

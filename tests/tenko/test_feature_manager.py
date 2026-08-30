@@ -35,6 +35,14 @@ def make_session(user_id: str = "20001", role: str = "admin"):
     return SimpleNamespace(event=SimpleNamespace(_origin=event))
 
 
+@pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
+def test_feature_commands_keep_legacy_prefixed_aliases(loaded_plugin) -> None:
+    assert loaded_plugin.enable_command.parse("/-开启 1").matched
+    assert loaded_plugin.disable_command.parse("/-关闭 1").matched
+    assert not loaded_plugin.enable_command.parse("-开启 1").matched
+    assert not loaded_plugin.disable_command.parse("-关闭 1").matched
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
 async def test_feature_commands_persist_group_switch_and_restore(

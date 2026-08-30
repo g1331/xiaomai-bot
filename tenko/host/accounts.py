@@ -78,6 +78,7 @@ class AccountRegistry:
         self._deterministic_accounts: dict[str, str] = {}
         self._muted_until: dict[tuple[str, str], datetime | None] = {}
         self._group_permissions: dict[tuple[str, str], int] = {}
+        self._event_selections: dict[tuple[str, str], str] = {}
         self.state_path: Path | None = None
         if state_path is not None:
             self.configure_persistence(state_path)
@@ -523,6 +524,30 @@ class AccountRegistry:
         if source_id is None:
             return random.choice(available)
         return available[round(source_id) % len(available)]
+
+    def select_for_event(
+        self, group_id: str | int, *, source_id: object | None = None
+    ) -> Account | None:
+        """为同一消息事件缓存 random 选路，确保多账号只处理一次。"""
+
+        normalized_group = _key(group_id)
+        available = self.accounts_for_group(normalized_group)
+        if not available:
+            return None
+        if self._response_types.get(normalized_group, "random") == "deterministic":
+            return self.select_account(normalized_group)
+        if source_id is None:
+            return random.choice(available)
+
+        selection_key = (normalized_group, str(source_id))
+        selected_id = self._event_selections.get(selection_key)
+        if selected_id is not None:
+            selected = self._accounts.get(selected_id)
+            if selected in available:
+                return selected
+        selected = random.choice(available)
+        self._event_selections[selection_key] = selected.self_id
+        return selected
 
     def select_for_context(
         self, context: MessageContext, *, source_id: int | float | None = None

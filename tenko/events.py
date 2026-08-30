@@ -45,6 +45,12 @@ def _event_user_id(event: Event) -> str | None:
     return None if user_id is None else str(user_id)
 
 
+def _event_message_id(event: Event) -> str | None:
+    message = getattr(event, "message", None)
+    message_id = getattr(message, "id", None)
+    return None if message_id is None else str(message_id)
+
+
 @dataclass(slots=True)
 class MessageEventHandler:
     """最小消息闭环及事件入口过滤处理器。"""
@@ -91,7 +97,10 @@ class MessageEventHandler:
             self.account_registry.bind_group(group_id, account)
 
         if not self.account_registry.is_muted(account.self_id, group_id):
-            selected = self.account_registry.select_account(group_id)
+            selected = self.account_registry.select_for_event(
+                group_id,
+                source_id=_event_message_id(event),
+            )
             if selected is not None and selected.self_id == account.self_id:
                 return False
             if selected is not None:

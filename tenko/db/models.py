@@ -15,14 +15,14 @@ except (AttributeError, ImportError, LookupError) as error:  # pragma: no cover
 
 from sqlalchemy import BIGINT, Boolean, DateTime, Integer, String, Text
 
-_SCHEMA_REVISION = "tenko-g1-legacy-schema-v1"
+from .migration import LEGACY_SCHEMA_REVISION
 
 
 class MemberPerm(BaseOrm):
     """成员权限；``group_id=0`` 表示全局权限记录。"""
 
     __tablename__ = "MemberPerm"
-    __revision__ = _SCHEMA_REVISION
+    __revision__ = LEGACY_SCHEMA_REVISION
 
     group_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     qq: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -38,7 +38,7 @@ class GroupPerm(BaseOrm):
     """群等级和启用状态。"""
 
     __tablename__ = "GroupPerm"
-    __revision__ = _SCHEMA_REVISION
+    __revision__ = LEGACY_SCHEMA_REVISION
 
     group_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     group_name: Mapped[str] = mapped_column(String(length=60), nullable=False)
@@ -55,7 +55,7 @@ class GroupSetting(BaseOrm):
     """群频控、响应账号和成员权限同步策略。"""
 
     __tablename__ = "GroupSetting"
-    __revision__ = _SCHEMA_REVISION
+    __revision__ = LEGACY_SCHEMA_REVISION
 
     group_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     frequency_limitation: Mapped[bool] = mapped_column(
@@ -79,7 +79,7 @@ class ChatRecord(BaseOrm):
     """聊天记录表；G1 只保留结构，不接入业务写入。"""
 
     __tablename__ = "chat_record"
-    __revision__ = _SCHEMA_REVISION
+    __revision__ = LEGACY_SCHEMA_REVISION
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -93,7 +93,7 @@ class KeywordReply(BaseOrm):
     """关键词回复表；G1 只保留结构，不接入业务写入。"""
 
     __tablename__ = "keyword_reply"
-    __revision__ = _SCHEMA_REVISION
+    __revision__ = LEGACY_SCHEMA_REVISION
 
     keyword: Mapped[str] = mapped_column(String(length=200), primary_key=True)
     group: Mapped[int] = mapped_column(BIGINT, nullable=True, default=-1)

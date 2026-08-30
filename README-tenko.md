@@ -26,14 +26,15 @@ URL，并在宿主事件层维护有限长度的消息统计与取证环形缓�
 - `tenko/context.py`：消息上下文层，统一 `account_id`、事件类型、群/私聊、文本和图片 URL。
 - `tenko/host/accounts.py`：账号生命周期、群绑定、响应策略、禁言状态和管理账号候选。
 - `tenko/host/actions.py`：Satori/OneBot 动作接缝、能力学习、失败分类和群发现。
+- `tenko/db/`：官方 `entari-plugin-database` 的启动桥接、旧表同构模型和普通 repository。
 - `tenko/host/features.py`、`tenko/host/ratelimit.py`：群级插件开关、维护状态和命令限流。
 - `tenko/config.py`：只使用 Python 标准库 `tomllib` 读取 TOML 配置。
 - `tenko/runtime.py`、`tenko/__main__.py`：服务编排和入口。
 - `tests/tenko/`：事件类型解析、上下文提取、回复开关和 OneBot action JSON 测试。
 
 Tenko 不加载或修改旧的 `core/`、`modules/`、`utils/` 和 `main.py`。当前 JSON 状态
-文件是开关、限流黑名单和响应策略的临时持久化边界，真实数据库接入仍是后续任务；
-插件权限查询对旧数据库保持只读兼容。
+文件仍是开关、限流黑名单和响应策略的临时持久化边界；成员权限、群权限和群设置已
+通过官方数据库服务与 Tenko repository 接入 SQLite。
 
 ## 创建独立环境
 
@@ -90,6 +91,56 @@ superusers = { onebot = ["YOUR_QQ_ID"] }
 `EntariConfig.instance.basic.superusers`，异常捕获插件因此可以向这些用户发送报告，
 不需要另外维护 Entari 的 `entari.yml`。`PermissionChecker` 使用与 Entari 原生
 `filter.superusers` 相同的 platform→ID 判定，并将命中者视为 `Permission.Master`。
+
+### 数据库配置与旧库迁移（G1）
+
+Tenko 使用 `entari-plugin-database==0.3.4` 提供的异步 SQLAlchemy 服务，v1 默认配置
+为 SQLite + `aiosqlite`：
+
+```toml
+# 旧版测试群不可通过权限管理命令修改；留空表示不启用保护。
+test_group = ""
+
+[database]
+url = "sqlite+aiosqlite:///./.tenko/tenko.db"
+echo = false
+create_table_at = "preparing"
+```
+
+`test_group` 是顶层配置项，不属于 `[database]` table。数据库文件和官方迁移状态
+（`.entari/data/database/migrations_lock.json`）都属于运行数据，已加入忽略列表。
+运行时会先加载官方 database 插件、注册 `tenko/db/models.py`，再加载 Tenko 插件；
+官方服务在生命周期中初始化表并运行 Alembic 自动迁移。Tenko 的模型与旧
+`core/orm/tables.py` 保持以下表名、列名和主键不变：`MemberPerm`、`GroupPerm`、
+`GroupSetting`、`chat_record`、`keyword_reply`。其中 `MemberPerm` 仍使用
+`(group_id, qq)` 复合主键，成员权限值域仍是 `-1/0/16/32/64/128/256`，群等级仍是
+`0/1/2/3`。
+
+旧 Graia 库与当前模型同构，因此优先停掉旧进程后直接复用旧 SQLite 文件：
+
+```bash
+# 只指定旧文件：不复制，直接对该文件建表检查并写入官方迁移 baseline
+.venv-entari/bin/python -m scripts.migrate_tenko_db \
+  --source /path/to/old-graia.db
+
+# 如需复制到 Tenko 数据目录：目标存在时必须明确 --force
+.venv-entari/bin/python -m scripts.migrate_tenko_db \
+  --source /path/to/old-graia.db \
+  --target .tenko/tenko.db
+```
+
+也可以不运行脚本，直接把 `[database].url` 指向旧文件，例如绝对路径
+`sqlite+aiosqlite:////path/to/old-graia.db`，随后正常启动 Tenko。脚本不会删除旧文件，
+默认也不会覆盖已有目标文件；请在复制前停止旧机器人并按需备份 SQLite 的伴随文件。
+当前仓库不包含旧版真实数据库文件，因此本批次使用旧表结构 fixture 验证了五张表、
+全部成员权限等级和复合主键的保留；真实部署仍需由运维按上面的路径执行一次迁移。
+
+Satori/OneBot 的群号和用户号在 repository 边界必须是纯数字，并转换为旧列使用的
+整数；非数字 ID 会得到明确的 `DatabaseIdentifierError`。数据库连接、官方插件或
+session 工厂不可用时，repository 抛出 `DatabaseUnavailableError`：宿主权限读取回退
+到旧默认权限和运行时群角色，群设置查询回退到 `ActiveGroup`、`random`、`default`
+等旧默认值，并按群去重 warning；权限管理写操作返回“数据库暂不可用”提示，不会把
+未写入伪装成成功。
 
 `[debug].masters` 和 `[upgrade].superuser_ids` 在未显式配置时继承这份名单；显式配置
 （包括显式空列表）优先覆盖继承。旧 `[runtime].superusers` 仅作为迁移读取入口，解析后
@@ -203,15 +254,13 @@ allowed = await checker.require_perm(context, Permission.GroupAdmin)
 group_allowed = await checker.require_group_perm(context, GroupPermission.ActiveGroup)
 ```
 
-当没有提供运行时注册表时，检查器在第一次确实需要数据库读取时才延迟导入旧
-`core.orm.orm`；读取使用 `MemberPerm`、`GroupPerm` 的查询，不执行写入。数据库可用
-时行为保持不变：已有记录优先，没有群记录时使用旧实现的 `ActiveGroup = 1` 默认值。
-如果 Entari 隔离环境没有旧的 SQLAlchemy/数据库驱动，或数据库连接读取失败，权限层
-会把它视为正常的不可用分支：群权限仍回退到 `ActiveGroup = 1`，成员权限回退到
-运行时注册表或 Satori 群角色，命令继续执行；同一检查器对同一群只记录一次包含群
-ID 和原因的 warning，不会反复刷屏。该降级不要求、也不应通过向 `.venv-entari`
-安装 SQLAlchemy 来解决。权限不足由 `require_*` 返回 `False`，由插件决定如何处理，
-不再依赖 Graia 的事件注入异常。
+当没有提供运行时注册表时，检查器在第一次确实需要数据库读取时才延迟导入
+`tenko.db.repositories`；读取通过 `MemberPermRepository`、`GroupPermRepository` 完成，
+不执行写入。数据库可用时已有记录优先，没有群记录时使用旧实现的
+`ActiveGroup = 1` 默认值。如果数据库连接读取失败，权限层会把它视为正常的不可用
+分支：群权限仍回退到 `ActiveGroup = 1`，成员权限回退到运行时注册表或 Satori 群角色，
+命令继续执行；同一检查器对同一群只记录一次包含群 ID 和原因的 warning。权限不足由
+`require_*` 返回 `False`，由插件决定如何处理，不依赖 Graia 的事件注入异常。
 
 ### C：插件装载运行时
 
@@ -486,9 +535,9 @@ Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名�
 检查与发送失败后的状态观察都使用现有账号×群禁言状态机。
 
 旧仓库事实与任务描述存在一处边界差异：当前 `core/orm/tables.py` 没有群-功能开关
-表，旧实现实际由 `ModulesController` 维护 `modules_data.json`。因此本批次沿用该
-JSON 契约的只读适配，而不是在 `.venv-entari` 中导入旧 ORM 或调用会写回状态的旧
-控制器方法；真实数据库/部署数据验证仍“待第⑧步真实数据库验证”。
+表，旧实现实际由 `ModulesController` 维护 `modules_data.json`。因此本批次继续沿用
+该 JSON 契约的只读适配；权限和群设置的五张旧表则由 `tenko/db/` 的同构模型与
+repository 负责，不导入旧 ORM，也不调用会写回旧状态的控制器方法。
 
 ### 批次 C 校验
 

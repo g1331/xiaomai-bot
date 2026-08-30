@@ -6,6 +6,7 @@ from typing import Literal
 
 from satori.exception import ActionFailed
 
+import tenko.host.accounts as accounts_module
 from tenko.context import MessageContext
 from tenko.host.accounts import AccountRegistry
 
@@ -92,16 +93,19 @@ def test_event_random_selection_is_cached_per_message() -> None:
     assert selected is registry.select_for_event(100, source_id="message-1")
 
 
-def test_event_random_selection_normalizes_account_id_in_cache() -> None:
+def test_event_random_selection_normalizes_account_id_in_cache(monkeypatch) -> None:
     registry = AccountRegistry()
     first = FakeAccount(10001)
     second = FakeAccount(10002)
     registry.register(first, groups=[100])
     registry.register(second, groups=[100])
+    choices = iter((first, second))
+    monkeypatch.setattr(accounts_module.random, "choice", lambda _: next(choices))
 
     selected = registry.select_for_event(100, source_id="message-1")
 
-    assert selected is registry.select_for_event(100, source_id="message-1")
+    assert selected is first
+    assert registry.select_for_event(100, source_id="message-1") is first
 
 
 def test_partial_group_mute_excludes_only_the_muted_account_from_selection() -> None:

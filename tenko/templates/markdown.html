@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>{{ title|default("Tenko 报告") }}</title>
+    <style>
+      body { font-family: sans-serif; margin: 24px; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>{{ content|safe }}</article>
+    </main>
+  </body>
+</html>

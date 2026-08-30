@@ -26,6 +26,7 @@ from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
 from .host.ratelimit import configure_rate_limiter
 from .host.updater import UpgradeManager, configure_updater
+from .render import RenderService, configure_render_service
 
 
 def _configure_entari_superusers(
@@ -69,6 +70,13 @@ class TenkoRuntime:
             superuser_ids=config.upgrade.superuser_ids,
         )
         self.connection = OneBotConnection(config.onebot)
+        self.render_service = RenderService(
+            enabled=config.render.enabled,
+            timeout=config.render.timeout,
+            width=config.render.width,
+            quality=config.render.quality,
+        )
+        configure_render_service(self.render_service)
         self.message_metrics = configure_message_metrics(
             config.exception.message_buffer_size
         )
@@ -168,6 +176,8 @@ class TenkoRuntime:
         manager = Launart()
         self.manager = manager
         self.connection.install(manager)
+        if self.config.render.enabled:
+            manager.add_component(self.render_service)
 
         logger.info(
             "Tenko starting; NapCat reverse WebSocket endpoint: {}",

@@ -580,6 +580,34 @@ class RateLimitConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class RenderConfig:
+    """图片渲染服务配置。"""
+
+    enabled: bool = False
+    timeout: float = 10.0
+    width: int = 800
+    quality: int = 85
+
+    def __post_init__(self) -> None:
+        if self.timeout <= 0:
+            raise ValueError("render timeout 必须大于 0")
+        if type(self.width) is not int or self.width <= 0:
+            raise ValueError("render width 必须是正整数")
+        if type(self.quality) is not int or not 0 <= self.quality <= 100:
+            raise ValueError("render quality 必须是 0 到 100 的整数")
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> RenderConfig:
+        defaults = cls()
+        return cls(
+            enabled=_boolean(section, "enabled", defaults.enabled),
+            timeout=_number(section, "timeout", defaults.timeout),
+            width=_integer(section, "width", defaults.width),
+            quality=_integer(section, "quality", defaults.quality),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ExceptionConfig:
     """异常取证的环形消息缓冲和本地落盘目录。"""
 
@@ -646,6 +674,7 @@ class TenkoConfig:
     accounts: AccountsConfig = AccountsConfig()
     features: FeaturesConfig = FeaturesConfig()
     ratelimit: RateLimitConfig = RateLimitConfig()
+    render: RenderConfig = RenderConfig()
     exception: ExceptionConfig = ExceptionConfig()
     database: DatabaseConfig = DatabaseConfig()
     test_group: str | None = None
@@ -680,6 +709,7 @@ class TenkoConfig:
             accounts=AccountsConfig.from_mapping(_section(data, "accounts")),
             features=FeaturesConfig.from_mapping(_section(data, "features")),
             ratelimit=RateLimitConfig.from_mapping(_section(data, "ratelimit")),
+            render=RenderConfig.from_mapping(_section(data, "render")),
             exception=ExceptionConfig.from_mapping(_section(data, "exception")),
             database=DatabaseConfig.from_mapping(_section(data, "database")),
             test_group=_optional_identifier(data, "test_group", None),

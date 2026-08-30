@@ -72,6 +72,13 @@ cooldown_seconds = 5.0
 blacklist_seconds = 300.0
 override_permission = 32
 
+[render]
+# 默认关闭；开启后需要先执行 `python -m playwright install chromium`。
+enabled = false
+timeout = 10.0
+width = 800
+quality = 85
+
 [exception]
 # 异常报告最近消息环形缓冲条数；超出后按先进先出淘汰。
 message_buffer_size = 10

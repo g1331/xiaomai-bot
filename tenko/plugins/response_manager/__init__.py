@@ -427,3 +427,50 @@ async def set_response_strategy(
     account_registry.set_response_type(group_id, requested)
     await _persist_response_type(group_id, requested)
     return text_message(f"已将当前群响应策略设为 {requested}")
+
+
+specified_bot_command = Alconna(
+    "指定BOT",
+    Args["account_id", str],
+    meta=CommandMeta(
+        "指定或清除当前群的 deterministic 响应 BOT",
+        usage="指定BOT <账号ID|清除>",
+        example="/指定BOT 10001\n/指定BOT 清除",
+        compact=False,
+    ),
+)
+
+
+@command.on(specified_bot_command)
+async def choose_response_bot(
+    session: Session,
+    account_id: Query[str] = Query("account_id", None),
+):
+    if not await _authorized(session, Permission.GroupAdmin):
+        return text_message("权限不足")
+
+    if not account_id.available:
+        return text_message("请提供 BOT 账号 ID 或“清除”")
+    context = context_from_session(session)
+    group_id = str(context.channel_id)
+    if account_registry.response_type_for_group(group_id) is None:
+        return text_message("当前群未绑定可用BOT")
+
+    requested = str(account_id.result).strip()
+    if requested == "清除":
+        account_registry.clear_deterministic_account(group_id)
+        return text_message("已清除当前群指定响应BOT，恢复默认选路")
+    if not requested.isdigit():
+        return text_message("BOT账号必须为数字或“清除”")
+    if account_registry.get(requested) is None:
+        return text_message("当前账号列表中没有找到这个 BOT")
+    if requested not in {
+        str(account.self_id)
+        for account in account_registry.bound_accounts_for_group(group_id)
+    }:
+        return text_message("这个 BOT 尚未绑定当前群")
+
+    account_registry.set_deterministic_account(group_id, requested)
+    account_registry.set_response_type(group_id, "deterministic")
+    await _persist_response_type(group_id, "deterministic")
+    return text_message(f"已成功设定群指定响应BOT为{requested}")

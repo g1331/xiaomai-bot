@@ -139,6 +139,18 @@ def test_response_strategy_command_accepts_only_supported_values(loaded_plugin) 
     assert not command.parse("设定响应 random").matched
 
 
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+def test_specified_bot_command_accepts_numeric_id_or_clear(loaded_plugin) -> None:
+    command = loaded_plugin.specified_bot_command
+
+    assert command.prefixes == ["/"]
+    assert command.parse("/指定BOT 10001").matched
+    assert command.parse("/指定BOT 清除").matched
+    assert not command.parse("/指定BOT").matched
+    assert not command.parse("/指定BOT 10001 extra").matched
+    assert not command.parse("指定BOT 10001").matched
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
 async def test_query_handler_reads_the_shared_account_registry(loaded_plugin) -> None:
@@ -201,6 +213,57 @@ async def test_response_strategy_handler_rejects_private_and_unbound_contexts(
         make_session("admin"), Query("response_type", None)
     )
     assert str(unbound) == "当前群未绑定可用BOT"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+async def test_specified_bot_handler_validates_current_group_and_restores_default(
+    loaded_plugin, monkeypatch
+) -> None:
+    registry = AccountRegistry()
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry.register(first, groups=[40001])
+    registry.register(second, available=False, groups=[40001])
+    loaded_plugin.account_registry = registry
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    persist = AsyncMock()
+    monkeypatch.setattr(loaded_plugin, "_persist_response_type", persist)
+
+    selected = await loaded_plugin.choose_response_bot.callable_target(
+        make_session("admin"), make_query("account_id", "10002")
+    )
+
+    assert str(selected) == "已成功设定群指定响应BOT为10002"
+    assert registry.response_type_for_group("40001") == "deterministic"
+    assert registry.deterministic_account_for_group("40001") == "10002"
+    assert persist.await_args.args == ("40001", "deterministic")
+
+    cleared = await loaded_plugin.choose_response_bot.callable_target(
+        make_session("admin"), make_query("account_id", "清除")
+    )
+
+    assert str(cleared) == "已清除当前群指定响应BOT，恢复默认选路"
+    assert registry.deterministic_account_for_group("40001") == "10001"
+    assert registry.select_account("40001") is first
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+async def test_specified_bot_handler_hides_unknown_account_details(
+    loaded_plugin,
+) -> None:
+    registry = AccountRegistry()
+    registry.register(FakeAccount("10001"), groups=[40001])
+    loaded_plugin.account_registry = registry
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+
+    result = await loaded_plugin.choose_response_bot.callable_target(
+        make_session("admin"), make_query("account_id", "99999")
+    )
+
+    assert str(result) == "当前账号列表中没有找到这个 BOT"
+    assert "KeyError" not in str(result)
 
 
 @pytest.mark.asyncio

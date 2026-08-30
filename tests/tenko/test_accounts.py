@@ -198,3 +198,18 @@ def test_response_strategy_round_trip_restores_after_restart(tmp_path) -> None:
     assert restored.response_type_for_group(100) == "deterministic"
     assert restored.deterministic_account_for_group(100) == "10002"
     assert restored.select_account(100) is second
+
+
+def test_clear_deterministic_account_restores_group_default() -> None:
+    registry = AccountRegistry()
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+    registry.set_response_type(100, "deterministic")
+    registry.set_deterministic_account(100, second)
+
+    registry.clear_deterministic_account(100)
+
+    assert registry.deterministic_account_for_group(100) == "10001"
+    assert registry.select_account(100) is first

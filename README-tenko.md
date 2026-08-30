@@ -457,18 +457,21 @@ Entari 的 `handle_event`，再由 `tenko/events.py` 的 `MessageEventHandler` �
 
 ### 查询插件
 
-`tenko/plugins/response_manager/` 只注册以下只读命令：
+`tenko/plugins/response_manager/` 注册以下当前群查询与管理命令：
 
 - `/BOT列表 [群号]`：查看群绑定的全部账号、响应策略、在线状态和群内禁言状态；
 - `/BOT群列表 [BOT账号]`：查看一个账号的全部已知群绑定及各群状态；不带账号
   时汇总所有账号；
 - `/在线BOT [群号]`：查看全局或指定群的在线/可用比例，同时保留不可用账号
   的状态信息。
+- `/设定响应 [random|deterministic]`：群管理员查看或设置当前群响应策略；群内
+  不接受跨群参数；
+- `/指定BOT <账号ID|清除>`：群管理员在当前群设置 deterministic 响应账号，或
+  清除显式账号并恢复当前群绑定顺序的默认账号。
 
-插件只读取 `account_registry`，没有迁移旧版 `设定响应`、`指定BOT` 的运行时
-切换命令，也没有导入旧 `modules/required/response_manager`。群策略由宿主启动时从
-`.tenko/accounts.json` 恢复，因此查询命令展示的是持久化后的 `random` 或
-`deterministic` 以及指定账号。
+插件不导入旧 `modules/required/response_manager`；策略和 deterministic 账号由
+`account_registry` 写入宿主启动时使用的 `.tenko/accounts.json`，响应策略同时尝试
+同步 `GroupSetting`。数据库暂不可用时，账号状态文件仍保留本次策略修改。
 
 ## 批次 C：平台动作层与公告迁移
 

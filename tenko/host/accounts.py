@@ -502,6 +502,16 @@ class AccountRegistry:
         self._deterministic_accounts[normalized_group] = account_id
         self._persist_response_state()
 
+    def clear_deterministic_account(self, group_id: str | int) -> None:
+        """清除显式 deterministic 账号并恢复群绑定顺序的默认账号。"""
+
+        normalized_group = _key(group_id)
+        members = self._groups.get(normalized_group)
+        if not members:
+            raise KeyError(f"群未绑定账号: {normalized_group}")
+        self._deterministic_accounts[normalized_group] = members[0]
+        self._persist_response_state()
+
     def select_account(
         self,
         group_id: str | int,

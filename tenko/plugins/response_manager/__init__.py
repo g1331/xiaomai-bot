@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from arclet.alconna import Alconna, Args, CommandMeta
-from arclet.entari import Session, command, plugin
+from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Query
 from arclet.entari.plugin import PluginRole
+from satori import Image
 
 from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import context_from_session, text_message
+from tenko.plugins.render import RenderService  # entari: plugin
+from tenko.render import render_or_none
 
 
 plugin.metadata(
@@ -90,6 +93,178 @@ def format_online_bots(registry: AccountRegistry) -> str:
     return "\n".join(lines)
 
 
+def _list_data(
+    title: str,
+    subtitle: str,
+    badge: str,
+    summary: str,
+    items: tuple[dict[str, object], ...],
+    empty_text: str,
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "badge": badge,
+        "summary": summary,
+        "items": items,
+        "item_count": len(items),
+        "empty_text": empty_text,
+    }
+
+
+async def _render_list(
+    render_service: RenderService, data: dict[str, object]
+) -> MessageChain | None:
+    image = await render_or_none(
+        render_service,
+        "render_template",
+        "list.html",
+        data,
+    )
+    if image is None:
+        return None
+    return MessageChain(Image.of(raw=image, mime="image/jpeg"))
+
+
+def build_group_bots_data(
+    registry: AccountRegistry, group_id: str | int
+) -> dict[str, object] | None:
+    """Build current-group counts without exposing account identities."""
+
+    normalized_group = str(group_id)
+    bound = registry.bound_accounts_for_group(normalized_group)
+    if not bound:
+        return None
+    available = registry.accounts_for_group(normalized_group)
+    summary = f"群{normalized_group}BOT数: {len(bound)}；可用数: {len(available)}"
+    items = (
+        {
+            "number": 1,
+            "name": f"群{normalized_group}",
+            "meta": f"BOT 数量：{len(bound)}",
+            "detail": f"当前可用：{len(available)}",
+            "badge": "当前群",
+        },
+    )
+    return _list_data(
+        "BOT列表",
+        "当前群 · 多账号绑定数量",
+        f"群 {normalized_group}",
+        summary,
+        items,
+        f"没有找到目标群:{normalized_group}",
+    )
+
+
+def _account_group_labels(
+    registry: AccountRegistry, account_id: str
+) -> tuple[str, ...]:
+    return tuple(
+        f"群{group_id}: {registry.response_type_for_group(group_id) or 'random'}; "
+        f"{_account_label(registry, account_id, group_id)}"
+        for group_id in registry.groups_for_account(account_id)
+    )
+
+
+def build_account_groups_data(
+    registry: AccountRegistry, account_id: str | int
+) -> dict[str, object] | None:
+    """Build one Master-only account route card."""
+
+    normalized_account = str(account_id)
+    if registry.get(normalized_account) is None:
+        return None
+
+    groups = registry.groups_for_account(normalized_account)
+    items = [
+        {
+            "number": 1,
+            "name": f"BOT{normalized_account}",
+            "meta": _account_label(registry, normalized_account),
+            "detail": f"已绑定{len(groups)}个群",
+            "badge": "BOT",
+        }
+    ]
+    for index, group_id in enumerate(groups, 2):
+        response_type = registry.response_type_for_group(group_id) or "random"
+        items.append(
+            {
+                "number": index,
+                "name": f"群{group_id}",
+                "meta": f"响应策略：{response_type}",
+                "detail": _account_label(registry, normalized_account, group_id),
+                "badge": "绑定",
+            }
+        )
+    if not groups:
+        items[0]["detail"] = "暂无群绑定"
+    return _list_data(
+        "BOT群列表",
+        "Master 私聊 · 单个 BOT 群绑定",
+        f"BOT {normalized_account}",
+        f"BOT{normalized_account} · {_account_label(registry, normalized_account)}",
+        tuple(items),
+        "暂无群绑定",
+    )
+
+
+def build_all_account_groups_data(
+    registry: AccountRegistry, account_ids: tuple[str, ...]
+) -> dict[str, object]:
+    """Build all cross-group routes for the Master-only list view."""
+
+    items = []
+    for index, account_id in enumerate(account_ids, 1):
+        groups = _account_group_labels(registry, account_id)
+        items.append(
+            {
+                "number": index,
+                "name": f"BOT{account_id}",
+                "meta": _account_label(registry, account_id),
+                "detail": "\n".join(groups) if groups else "暂无群绑定",
+                "badge": "BOT",
+            }
+        )
+    return _list_data(
+        "BOT群列表",
+        "Master 私聊 · 全部群绑定与状态",
+        "MASTER",
+        f"共 {len(items)} 个 BOT",
+        tuple(items),
+        "当前没有注册BOT",
+    )
+
+
+def build_online_bots_data(
+    registry: AccountRegistry, group_id: str | int
+) -> dict[str, object] | None:
+    """Build current-group online counts without exposing account identities."""
+
+    normalized_group = str(group_id)
+    bound = registry.bound_accounts_for_group(normalized_group)
+    if not bound:
+        return None
+    available = registry.accounts_for_group(normalized_group)
+    summary = f"群{normalized_group}在线BOT: {len(available)}/{len(bound)}"
+    items = (
+        {
+            "number": 1,
+            "name": f"群{normalized_group}",
+            "meta": f"在线 BOT：{len(available)} / {len(bound)}",
+            "detail": "仅显示当前群汇总",
+            "badge": "当前群",
+        },
+    )
+    return _list_data(
+        "在线 BOT",
+        "当前群 · 在线数量",
+        f"群 {normalized_group}",
+        summary,
+        items,
+        f"没有找到目标群:{normalized_group}",
+    )
+
+
 async def _authorized(session: Session, required: int) -> bool:
     context = context_from_session(session)
     return (
@@ -111,11 +286,16 @@ bot_list_command = Alconna(
 
 
 @command.on(bot_list_command)
-async def bot_list(session: Session):
+async def bot_list(session: Session, *, render_service: RenderService):
     if not await _authorized(session, Permission.BotAdmin):
         return text_message("权限不足")
     context = context_from_session(session)
-    return text_message(format_group_bots(account_registry, context.channel_id))
+    result = format_group_bots(account_registry, context.channel_id)
+    data = build_group_bots_data(account_registry, context.channel_id)
+    if data is None:
+        return text_message(result)
+    image = await _render_list(render_service, data)
+    return image if image is not None else text_message(result)
 
 
 bot_group_list_command = Alconna(
@@ -134,6 +314,8 @@ bot_group_list_command = Alconna(
 async def bot_group_list(
     session: Session,
     account_id: Query[str] = Query("account_id", None),
+    *,
+    render_service: RenderService,
 ):
     context = context_from_session(session)
     if context.chat_type == "group":
@@ -141,16 +323,25 @@ async def bot_group_list(
     if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     if account_id.available:
-        return text_message(format_account_groups(account_registry, account_id.result))
+        result = format_account_groups(account_registry, account_id.result)
+        data = build_account_groups_data(account_registry, account_id.result)
+        if data is None:
+            return text_message(result)
+        image = await _render_list(render_service, data)
+        return image if image is not None else text_message(result)
 
     if not account_registry.accounts:
         return text_message("当前没有注册BOT")
-    return text_message(
-        "\n\n".join(
-            format_account_groups(account_registry, current_id)
-            for current_id in account_registry.accounts
-        )
+    account_ids = tuple(account_registry.accounts)
+    result = "\n\n".join(
+        format_account_groups(account_registry, current_id)
+        for current_id in account_ids
     )
+    image = await _render_list(
+        render_service,
+        build_all_account_groups_data(account_registry, account_ids),
+    )
+    return image if image is not None else text_message(result)
 
 
 online_bot_command = Alconna(
@@ -165,7 +356,7 @@ online_bot_command = Alconna(
 
 
 @command.on(online_bot_command)
-async def online_bot(session: Session):
+async def online_bot(session: Session, *, render_service: RenderService):
     if not await _authorized(session, Permission.User):
         return text_message("权限不足")
     context = context_from_session(session)
@@ -174,4 +365,9 @@ async def online_bot(session: Session):
     available = account_registry.accounts_for_group(normalized_group)
     if not bound:
         return text_message(f"没有找到目标群:{normalized_group}")
-    return text_message(f"群{normalized_group}在线BOT: {len(available)}/{len(bound)}")
+    result = f"群{normalized_group}在线BOT: {len(available)}/{len(bound)}"
+    image = await _render_list(
+        render_service,
+        build_online_bots_data(account_registry, normalized_group),
+    )
+    return image if image is not None else text_message(result)

@@ -16,6 +16,7 @@ from satori import Text
 
 from tenko.context import MessageContext
 from tenko.events import MessageLog, message_metrics
+from tenko.host.actions import ActionFailure
 
 
 plugin.metadata(
@@ -55,7 +56,10 @@ def _compact(value: object, limit: int = 160) -> str:
 
 
 def _context_details(origin: Any) -> tuple[str, ...]:
-    raw_event = getattr(origin, "_origin", origin)
+    event = getattr(origin, "_origin", None)
+    if event is None:
+        event = getattr(origin, "event", origin)
+    raw_event = getattr(event, "_origin", event)
     try:
         context = MessageContext.from_event(raw_event)
     except (AttributeError, TypeError, ValueError):
@@ -73,7 +77,7 @@ def _context_details(origin: Any) -> tuple[str, ...]:
             f"消息摘要={message or '<空消息>'}",
         )
 
-    account = getattr(origin, "account", None)
+    account = getattr(origin, "account", None) or getattr(event, "account", None)
     account_id = getattr(account, "self_id", "-")
     platform = getattr(account, "platform", "-")
     return (
@@ -108,6 +112,27 @@ def _recent_lines(
     return tuple(record.summary() for record in recent[-limit:])
 
 
+def _action_failure_lines(exception: BaseException) -> tuple[str, ...]:
+    failure = getattr(exception, "failure", None)
+    if not isinstance(failure, ActionFailure):
+        return ()
+    return (
+        "平台动作结构化失败:",
+        f"account_id={failure.account_id}",
+        f"capability={failure.capability.value}",
+        f"action={failure.action}",
+        f"status={failure.status!r}",
+        f"retcode={failure.retcode!r}",
+        f"data={failure.data!r}",
+        f"message={failure.message!r}",
+        f"wording={failure.wording!r}",
+        f"echo={failure.echo!r}",
+        f"error_type={failure.error_type!r}",
+        f"detail={failure.detail!r}",
+        f"raw={failure.raw!r}",
+    )
+
+
 def generate_error_report(
     exception: BaseException,
     origin: Any | None = None,
@@ -129,8 +154,9 @@ def generate_error_report(
         f"异常类型: {type(exception).__module__}.{type(exception).__qualname__}",
         f"异常消息: {exception}",
         "当前会话: " + " ".join(_context_details(origin)),
-        "最近消息（环形缓冲）:",
     ]
+    lines.extend(_action_failure_lines(exception))
+    lines.append("最近消息（环形缓冲）:")
     if recent:
         lines.extend(f"{index}. {line}" for index, line in enumerate(recent, 1))
     else:
@@ -194,7 +220,17 @@ async def send_error_report(
                     await account.protocol.send_private_message(user_id, [Text(report)])
                 except Exception:
                     delivery_failed = True
-                    logger.exception("发送异常报告给 {} 失败", user_id)
+                    failure = getattr(exception, "failure", None)
+                    logger.exception(
+                        "发送异常报告给 {} 失败: account={} action={} retcode={} "
+                        "message={} wording={}",
+                        user_id,
+                        getattr(failure, "account_id", None),
+                        getattr(failure, "action", None),
+                        getattr(failure, "retcode", None),
+                        getattr(failure, "message", None),
+                        getattr(failure, "wording", None),
+                    )
 
     if delivery_failed:
         _write_local_evidence(

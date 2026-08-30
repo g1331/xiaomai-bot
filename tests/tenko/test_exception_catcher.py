@@ -12,6 +12,7 @@ from satori import Channel, ChannelType, EventType, Guild, Login, MessageObject,
 from satori.model import Event
 
 from tenko.events import MessageLog
+from tenko.host.actions import ActionCapability, ActionExecutionError, ActionFailure
 
 
 def make_exception_event(message: str) -> ExceptionEvent:
@@ -104,6 +105,35 @@ def test_error_report_contains_context_traceback_and_recent_messages(
     assert "recent message" in report
 
 
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+def test_action_error_report_contains_structured_failure_fields(loaded_plugin) -> None:
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        data=None,
+        message="ERR_NOT_GROUP_ADMIN",
+        wording="ERR_NOT_GROUP_ADMIN",
+        echo="echo-1",
+        error_type="ActionFailed",
+        detail="1200: {'status': 'failed'}",
+    )
+    try:
+        raise ActionExecutionError("平台动作失败", failure=failure)
+    except ActionExecutionError as error:
+        report = loaded_plugin.generate_error_report(error, make_context_origin())
+
+    assert "账号=10001" in report
+    assert "群=40001" in report
+    assert "action=set_group_ban" in report
+    assert "retcode=1200" in report
+    assert "message='ERR_NOT_GROUP_ADMIN'" in report
+    assert "wording='ERR_NOT_GROUP_ADMIN'" in report
+    assert "完整 traceback:" in report
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
 async def test_failed_exception_delivery_is_written_to_local_evidence(
@@ -120,11 +150,21 @@ async def test_failed_exception_delivery_is_written_to_local_evidence(
         protocol=FailingProtocol(),
     )
     origin = SimpleNamespace(account=account)
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        message="ERR_NOT_GROUP_ADMIN",
+        wording="ERR_NOT_GROUP_ADMIN",
+    )
+    exception = ActionExecutionError("evidence required", failure=failure)
     original = EntariConfig.instance.basic.superusers
     EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
     try:
         await loaded_plugin.send_error_report(
-            RuntimeError("evidence required"),
+            exception,
             origin,
             evidence_dir=tmp_path,
         )
@@ -135,8 +175,12 @@ async def test_failed_exception_delivery_is_written_to_local_evidence(
     assert len(evidence) == 1
     content = evidence[0].read_text(encoding="utf-8")
     assert "发生时间:" in content
-    assert "异常类型: builtins.RuntimeError" in content
+    assert "异常类型: tenko.host.actions.ActionExecutionError" in content
     assert "evidence required" in content
+    assert "action=set_group_ban" in content
+    assert "retcode=1200" in content
+    assert "message='ERR_NOT_GROUP_ADMIN'" in content
+    assert "wording='ERR_NOT_GROUP_ADMIN'" in content
     assert "完整 traceback:" in content
 
 

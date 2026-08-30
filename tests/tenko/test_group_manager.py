@@ -21,7 +21,14 @@ from satori import (
 from satori.element import At, Author, Quote
 from satori.model import Event, Member
 
-from tenko.host.actions import ActionService
+from tenko.host.actions import (
+    ActionCapability,
+    ActionCapabilityUnavailable,
+    ActionExecutionError,
+    ActionFailure,
+    ActionPermissionDenied,
+    ActionService,
+)
 from tenko.host.accounts import AccountRegistry
 from tenko.host.perm import PermissionChecker, PermissionRegistry
 
@@ -171,6 +178,77 @@ def install_action_service(loaded_plugin):
     loaded_plugin.account_registry = accounts
     loaded_plugin.action_service = ActionService(accounts, checker)
     return protocol
+
+
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+def test_action_error_message_never_exposes_platform_details(loaded_plugin) -> None:
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        message="ERR_NOT_GROUP_ADMIN",
+        wording="ERR_NOT_GROUP_ADMIN",
+        echo="echo-1",
+    )
+    errors = (
+        (ActionPermissionDenied("internal permission detail"), "权限不足"),
+        (
+            ActionCapabilityUnavailable("账号 10001 不支持平台能力 member_mute"),
+            "该账号暂不支持此操作（或已被临时限制），已通知开发者",
+        ),
+        (
+            ActionExecutionError("平台动作失败: set_group_ban (1200)", failure=failure),
+            "该账号在此群没有管理员权限",
+        ),
+        (
+            ActionExecutionError("平台动作失败: opaque", failure=None),
+            "平台操作失败，已通知开发者",
+        ),
+    )
+
+    for error, expected in errors:
+        result = loaded_plugin._action_error(error)
+        assert result == expected
+        assert all(
+            field not in result
+            for field in ("retcode", "echo", "wording", "ActionFailed", "traceback")
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_group_action_error_reports_and_returns_safe_message(
+    loaded_plugin, monkeypatch
+) -> None:
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        message="ERR_NOT_GROUP_ADMIN",
+        wording="ERR_NOT_GROUP_ADMIN",
+    )
+    error = ActionExecutionError("平台动作失败: set_group_ban (1200)", failure=failure)
+    reporter = AsyncMock()
+    monkeypatch.setattr(loaded_plugin, "report_action_error", reporter)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.action_service = SimpleNamespace(
+        authorize=AsyncMock(return_value=True),
+        mute_member=AsyncMock(side_effect=error),
+    )
+    session = make_session("20001", "admin")
+
+    result = await loaded_plugin.mute.callable_target(
+        session,
+        Match(("20002", "5"), True),
+        Match(None, False),
+    )
+
+    assert str(result) == "该账号在此群没有管理员权限"
+    reporter.assert_awaited_once_with(error, session)
 
 
 @pytest.mark.asyncio

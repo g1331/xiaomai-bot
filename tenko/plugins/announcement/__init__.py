@@ -14,7 +14,6 @@ from arclet.entari.plugin import PluginRole, get_plugins
 from tenko.host.actions import (
     ActionAccountUnavailable,
     ActionCapabilityUnavailable,
-    ActionExecutionError,
     ActionPermissionDenied,
     ActionService,
     ActionServiceError,
@@ -25,7 +24,12 @@ from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.features import feature_service
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.host.plugins import PluginInfo, PluginRuntime
-from tenko.plugins._common import context_from_session, text_message
+from tenko.plugins._common import (
+    action_error_message,
+    context_from_session,
+    report_action_error,
+    text_message,
+)
 
 """公告插件。
 
@@ -192,18 +196,6 @@ def format_announcement(content: str, nonce: str | None = None) -> str:
     return f"    ===BOT公告推送===\n    {content}\n    ({nonce or _nonce()})"
 
 
-def _failure_detail(error: ActionServiceError) -> str:
-    if isinstance(error, ActionExecutionError) and error.failure is not None:
-        failure = error.failure
-        fields = [f"retcode={failure.retcode}"]
-        if failure.message:
-            fields.append(f"message={failure.message}")
-        if failure.wording:
-            fields.append(f"wording={failure.wording}")
-        return f"平台动作失败（{', '.join(fields)}）"
-    return str(error)
-
-
 async def pusher(
     push_list: Iterable[PushTarget],
     content: str,
@@ -212,6 +204,7 @@ async def pusher(
     context,
     service: ActionService | None = None,
     sleep: Callable[[float], Awaitable[Any]] | None = None,
+    report_origin: Any | None = None,
 ) -> tuple[PushResult, ...]:
     """逐群发送并返回每个目标结果；间隔只发生在两个目标之间。"""
 
@@ -228,57 +221,24 @@ async def pusher(
                 context=context,
                 permission_checker=permission_checker,
             )
-        except ActionTargetUnavailable as error:
-            results.append(
-                PushResult(
-                    target.group_id,
-                    "skipped_muted",
-                    str(error),
-                    target.account_id,
-                )
-            )
-        except ActionAccountUnavailable as error:
-            results.append(
-                PushResult(
-                    target.group_id,
-                    "skipped_account_unavailable",
-                    str(error),
-                    target.account_id,
-                )
-            )
-        except ActionCapabilityUnavailable as error:
-            results.append(
-                PushResult(
-                    target.group_id,
-                    "failed_capability_unavailable",
-                    str(error),
-                    target.account_id,
-                )
-            )
-        except ActionPermissionDenied as error:
-            results.append(
-                PushResult(
-                    target.group_id,
-                    "failed_permission",
-                    str(error),
-                    target.account_id,
-                )
-            )
-        except ActionExecutionError as error:
-            results.append(
-                PushResult(
-                    target.group_id,
-                    "failed",
-                    _failure_detail(error),
-                    target.account_id,
-                )
-            )
         except ActionServiceError as error:
+            if report_origin is not None:
+                await report_action_error(error, report_origin)
+            if isinstance(error, ActionTargetUnavailable):
+                status = "skipped_muted"
+            elif isinstance(error, ActionAccountUnavailable):
+                status = "skipped_account_unavailable"
+            elif isinstance(error, ActionCapabilityUnavailable):
+                status = "failed_capability_unavailable"
+            elif isinstance(error, ActionPermissionDenied):
+                status = "failed_permission"
+            else:
+                status = "failed"
             results.append(
                 PushResult(
                     target.group_id,
-                    "failed",
-                    _failure_detail(error),
+                    status,
+                    action_error_message(error),
                     target.account_id,
                 )
             )
@@ -352,7 +312,7 @@ async def push_handle(
             checker=permission_checker,
         )
     except ActionPermissionDenied as error:
-        return text_message(str(error))
+        return text_message(action_error_message(error))
 
     interval = time.result if time.available else 1
     if not 0 < interval < 10:
@@ -376,6 +336,7 @@ async def push_handle(
         announcement_content,
         interval,
         context=context,
+        report_origin=session,
     )
     return text_message(format_results((*preflight, *pushed)))
 

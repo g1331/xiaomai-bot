@@ -16,16 +16,18 @@ from satori import Text
 from satori.element import At, Author, Element, Quote
 
 from tenko.host.actions import (
-    ActionAccountUnavailable,
-    ActionCapabilityUnavailable,
-    ActionExecutionError,
     ActionPermissionDenied,
     ActionServiceError,
     action_service,
 )
 from tenko.context import MessageContext
 from tenko.host.perm import Permission, PermissionChecker
-from tenko.plugins._common import context_from_session, text_message
+from tenko.plugins._common import (
+    action_error_message,
+    context_from_session,
+    report_action_error,
+    text_message,
+)
 
 
 plugin.metadata(
@@ -294,7 +296,8 @@ async def approve_invite(session: Session, request_id: Match[str]):
         await _apply_invite_decision(pending, True, "已同意您的邀请~")
     except Exception as error:
         logger.exception("Failed to approve invite {}", pending.request_id)
-        return text_message(f"处理邀请失败: {error}")
+        await report_action_error(error, session)
+        return text_message("处理邀请失败，已通知开发者")
     pending_invites.pop(pending.request_id, None)
     _cancel_invite_expiry(pending.request_id)
     return text_message(f"已同意邀请 {pending.request_id}")
@@ -331,7 +334,8 @@ async def reject_invite(
         await _apply_invite_decision(pending, False, comment)
     except Exception as error:
         logger.exception("Failed to reject invite {}", pending.request_id)
-        return text_message(f"处理邀请失败: {error}")
+        await report_action_error(error, session)
+        return text_message("处理邀请失败，已通知开发者")
     pending_invites.pop(pending.request_id, None)
     _cancel_invite_expiry(pending.request_id)
     return text_message(f"已拒绝邀请 {pending.request_id}")
@@ -595,15 +599,7 @@ def _moderation_target(
 
 
 def _action_error(error: ActionServiceError) -> str:
-    if isinstance(error, ActionPermissionDenied):
-        return str(error)
-    if isinstance(error, ActionAccountUnavailable):
-        return f"账号不可用: {error}"
-    if isinstance(error, ActionCapabilityUnavailable):
-        return f"平台能力不可用: {error}"
-    if isinstance(error, ActionExecutionError):
-        return f"平台操作失败: {error}"
-    return f"平台操作失败: {error}"
+    return action_error_message(error)
 
 
 async def _guard(session: Session, required: Permission = Permission.GroupAdmin):
@@ -617,7 +613,7 @@ async def _guard(session: Session, required: Permission = Permission.GroupAdmin)
             checker=permission_checker,
         )
     except ActionPermissionDenied as error:
-        return text_message(str(error))
+        return text_message(action_error_message(error))
     return context
 
 
@@ -673,6 +669,7 @@ async def mute(
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message(f"已设置【{target_id}】{minutes}分钟的禁言!")
 
@@ -712,6 +709,7 @@ async def unmute(
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message(f"已解禁{target_id}!")
 
@@ -741,6 +739,7 @@ async def unmute_self(session: Session):
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message("已解除本BOT在当前群的禁言状态!")
 
@@ -766,6 +765,7 @@ async def mute_all(session: Session):
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message("开启全体禁言成功!")
 
@@ -790,6 +790,7 @@ async def unmute_all(session: Session):
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message("关闭全体禁言成功!")
 
@@ -822,6 +823,7 @@ async def recall(session: Session):
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return None
 
@@ -865,5 +867,6 @@ async def kick(
             permission_checker=permission_checker,
         )
     except ActionServiceError as error:
+        await report_action_error(error, session)
         return text_message(_action_error(error))
     return text_message(f"已将{target_id}踢出群聊!")

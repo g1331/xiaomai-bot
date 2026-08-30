@@ -171,7 +171,7 @@ async def test_pusher_exposes_structured_action_failure_per_target(
         loaded_plugin.PushResult(
             "40001",
             "failed",
-            "平台动作失败（retcode=1200, message=没有权限, wording=permission denied）",
+            "该账号在此群没有管理员权限",
             "10001",
         ),
     )

@@ -43,30 +43,15 @@ def _account_label(
 
 
 def format_group_bots(registry: AccountRegistry, group_id: str | int) -> str:
-    """Format one group's bound accounts, retaining unavailable account details."""
+    """Format one group's binding and availability counts."""
 
     normalized_group = str(group_id)
     accounts = registry.bound_accounts_for_group(normalized_group)
     if not accounts:
         return f"没有找到目标群:{normalized_group}"
 
-    response_type = registry.response_type_for_group(normalized_group)
-    if response_type == "deterministic":
-        selected = registry.deterministic_account_for_group(normalized_group)
-        response_label = f"指定({selected})"
-    else:
-        response_label = "随机"
-
-    lines = [
-        f"群{normalized_group}响应账号:",
-        f"响应类型: {response_label}",
-        f"当前群绑定BOT: {len(accounts)}",
-    ]
-    lines.extend(
-        f"{account.self_id}: {_account_label(registry, account.self_id, normalized_group)}"
-        for account in accounts
-    )
-    return "\n".join(lines)
+    available = registry.accounts_for_group(normalized_group)
+    return f"群{normalized_group}BOT数: {len(accounts)}；可用数: {len(available)}"
 
 
 def format_account_groups(registry: AccountRegistry, account_id: str | int) -> str:
@@ -95,21 +80,13 @@ def format_account_groups(registry: AccountRegistry, account_id: str | int) -> s
 
 
 def format_online_bots(registry: AccountRegistry) -> str:
-    """Format all registered accounts and their current host availability."""
+    """Format the aggregate availability of all registered accounts."""
 
     accounts = tuple(registry.accounts.items())
     online_count = sum(registry.is_available(account_id) for account_id, _ in accounts)
     lines = [f"在线BOT列表:{online_count}/{len(accounts)}"]
     if not accounts:
         lines.append("当前没有注册BOT")
-        return "\n".join(lines)
-
-    for account_id, _ in accounts:
-        groups = registry.groups_for_account(account_id)
-        group_label = f"已绑定{len(groups)}个群"
-        lines.append(
-            f"{account_id}: {_account_label(registry, account_id)}，{group_label}"
-        )
     return "\n".join(lines)
 
 
@@ -124,26 +101,21 @@ async def _authorized(session: Session, required: int) -> bool:
 
 bot_list_command = Alconna(
     "BOT列表",
-    Args["group_id?", int],
     meta=CommandMeta(
-        "查询指定群的多账号绑定和禁言状态",
-        usage="BOT列表 [群号]",
-        example="$BOT列表\n$BOT列表 40001",
+        "查询当前群的多账号绑定和可用数量",
+        usage="BOT列表",
+        example="$BOT列表",
         compact=True,
     ),
 )
 
 
 @command.on(bot_list_command)
-async def bot_list(
-    session: Session,
-    group_id: Query[int] = Query("group_id", None),
-):
+async def bot_list(session: Session):
     if not await _authorized(session, Permission.BotAdmin):
         return text_message("权限不足")
     context = context_from_session(session)
-    target_group = str(group_id.result) if group_id.available else context.channel_id
-    return text_message(format_group_bots(account_registry, target_group))
+    return text_message(format_group_bots(account_registry, context.channel_id))
 
 
 bot_group_list_command = Alconna(
@@ -163,7 +135,10 @@ async def bot_group_list(
     session: Session,
     account_id: Query[str] = Query("account_id", None),
 ):
-    if not await _authorized(session, Permission.BotAdmin):
+    context = context_from_session(session)
+    if context.chat_type == "group":
+        return text_message("该指令仅支持 Master 私聊执行")
+    if not await permission_checker.require_perm(context, Permission.Master):
         return text_message("权限不足")
     if account_id.available:
         return text_message(format_account_groups(account_registry, account_id.result))
@@ -180,31 +155,23 @@ async def bot_group_list(
 
 online_bot_command = Alconna(
     "在线BOT",
-    Args["group_id?", int],
     meta=CommandMeta(
-        "查询在线 BOT 及其群绑定状态",
-        usage="在线BOT [群号]",
-        example="$在线BOT\n$在线BOT 40001",
+        "查询当前群在线 BOT 数量",
+        usage="在线BOT",
+        example="$在线BOT",
         compact=True,
     ),
 )
 
 
 @command.on(online_bot_command)
-async def online_bot(
-    session: Session,
-    group_id: Query[int] = Query("group_id", None),
-):
+async def online_bot(session: Session):
     if not await _authorized(session, Permission.User):
         return text_message("权限不足")
     context = context_from_session(session)
-    target_group = str(group_id.result) if group_id.available else context.channel_id
-    normalized_target = str(target_group)
-    bound = account_registry.bound_accounts_for_group(normalized_target)
-    available = account_registry.accounts_for_group(normalized_target)
+    normalized_group = str(context.channel_id)
+    bound = account_registry.bound_accounts_for_group(normalized_group)
+    available = account_registry.accounts_for_group(normalized_group)
     if not bound:
-        return text_message(f"没有找到目标群:{normalized_target}")
-    result = format_group_bots(account_registry, normalized_target)
-    return text_message(
-        f"群{normalized_target}在线BOT: {len(available)}/{len(bound)}\n{result}"
-    )
+        return text_message(f"没有找到目标群:{normalized_group}")
+    return text_message(f"群{normalized_group}在线BOT: {len(available)}/{len(bound)}")

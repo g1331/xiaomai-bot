@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 
@@ -83,6 +83,65 @@ async def test_lifecycle_delegates_to_entari(monkeypatch, tmp_path: Path) -> Non
     assert await runtime.disable("file_plugin")
     enable_plugin.assert_awaited_once_with("tenko.plugins.file_plugin")
     disable_plugin.assert_awaited_once_with("tenko.plugins.file_plugin")
+
+
+@pytest.mark.asyncio
+async def test_load_all_forwards_explicit_plugin_configs(
+    monkeypatch, tmp_path: Path
+) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
+    native_plugins = {
+        "file_plugin": FakePlugin("tenko.plugins.file_plugin"),
+        "package_plugin": FakePlugin("tenko.plugins.package_plugin"),
+    }
+
+    def load_plugin(name: str, *args):
+        return native_plugins[name.rsplit(".", 1)[-1]]
+
+    load_plugin_mock = Mock(side_effect=load_plugin)
+    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin_mock)
+    monkeypatch.setattr(
+        plugin_host,
+        "get_plugins",
+        lambda subplugged=False: list(native_plugins.values()),
+    )
+
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+
+    await runtime.load_all({"file_plugin": {"enabled": True}})
+
+    assert load_plugin_mock.call_args_list == [
+        call("tenko.plugins.file_plugin", {"enabled": True}),
+        call("tenko.plugins.package_plugin"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_load_all_loads_explicit_configs_before_default_plugins(
+    monkeypatch, tmp_path: Path
+) -> None:
+    plugin_dir = make_plugin_dir(tmp_path)
+    native_plugins = {
+        "file_plugin": FakePlugin("tenko.plugins.file_plugin"),
+        "package_plugin": FakePlugin("tenko.plugins.package_plugin"),
+    }
+    load_plugin_mock = Mock(
+        side_effect=lambda name, *args: native_plugins[name.rsplit(".", 1)[-1]]
+    )
+    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin_mock)
+    monkeypatch.setattr(
+        plugin_host,
+        "get_plugins",
+        lambda subplugged=False: list(native_plugins.values()),
+    )
+
+    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    await runtime.load_all({"package_plugin": {"enabled": True}})
+
+    assert load_plugin_mock.call_args_list == [
+        call("tenko.plugins.package_plugin", {"enabled": True}),
+        call("tenko.plugins.file_plugin"),
+    ]
 
 
 @pytest.mark.asyncio

@@ -318,8 +318,27 @@ class PluginRuntime:
             await self._apply_legacy_state(info, loaded)
         return loaded
 
-    async def load_all(self) -> Mapping[str, Plugin]:
-        for info in self.discover():
+    async def load_all(
+        self,
+        configs: Mapping[str, Mapping[str, Any]] | None = None,
+    ) -> Mapping[str, Plugin]:
+        """发现并加载插件，可为指定插件传入 Entari 配置。
+
+        显式配置的插件先于其他插件加载，避免某个插件的依赖导入以默认
+        配置抢先创建它，之后无法再替换已注册的 Entari 服务实例。
+        """
+
+        configs = {} if configs is None else configs
+        infos = self.discover()
+        configured_names = set(configs)
+        for info in infos:
+            if info.name not in configured_names:
+                continue
+            config = configs.get(info.name)
+            await self.load(info, config=dict(config))
+        for info in infos:
+            if info.name in configured_names:
+                continue
             await self.load(info)
         return self.loaded_plugins
 

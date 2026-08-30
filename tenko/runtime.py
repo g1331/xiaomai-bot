@@ -9,6 +9,7 @@ from pathlib import Path
 from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
 from arclet.letoderea.utils import set_event_loop
+from creart import it
 from launart import Launart
 from loguru import logger
 from satori import EventType, LoginStatus
@@ -26,7 +27,6 @@ from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
 from .host.ratelimit import configure_rate_limiter
 from .host.updater import UpgradeManager, configure_updater
-from .render import RenderService, configure_render_service
 
 
 def _configure_entari_superusers(
@@ -70,13 +70,6 @@ class TenkoRuntime:
             superuser_ids=config.upgrade.superuser_ids,
         )
         self.connection = OneBotConnection(config.onebot)
-        self.render_service = RenderService(
-            enabled=config.render.enabled,
-            timeout=config.render.timeout,
-            width=config.render.width,
-            quality=config.render.quality,
-        )
-        configure_render_service(self.render_service)
         self.message_metrics = configure_message_metrics(
             config.exception.message_buffer_size
         )
@@ -173,11 +166,11 @@ class TenkoRuntime:
             )
 
     async def run_async(self) -> None:
-        manager = Launart()
+        # Entari's service provider resolves components through creart's
+        # Launart instance; use the same manager that App.run_async receives.
+        manager = it(Launart)
         self.manager = manager
         self.connection.install(manager)
-        if self.config.render.enabled:
-            manager.add_component(self.render_service)
 
         logger.info(
             "Tenko starting; NapCat reverse WebSocket endpoint: {}",
@@ -201,7 +194,16 @@ class TenkoRuntime:
         # Keep it after database model registration and before run_async: the
         # official database service is then added by Entari's plugin manager.
         self.plugin_runtime = PluginRuntime()
-        await self.plugin_runtime.load_all()
+        await self.plugin_runtime.load_all(
+            {
+                "render": {
+                    "enabled": self.config.render.enabled,
+                    "timeout": self.config.render.timeout,
+                    "width": self.config.render.width,
+                    "quality": self.config.render.quality,
+                }
+            }
+        )
         permission_manager = sys.modules.get("tenko.plugins.perm_manager")
         configure_test_group = getattr(permission_manager, "configure_test_group", None)
         if callable(configure_test_group):

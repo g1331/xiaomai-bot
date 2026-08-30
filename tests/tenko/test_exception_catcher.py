@@ -33,6 +33,23 @@ def make_exception_event(message: str) -> ExceptionEvent:
     )
 
 
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+def test_exception_listener_declares_render_service_for_entari_injection(
+    loaded_plugin,
+) -> None:
+    parameter = next(
+        parameter
+        for parameter in loaded_plugin.except_handle.params
+        if parameter.name == "render_service"
+    )
+
+    assert parameter.annotation is loaded_plugin.RenderService
+    assert any(
+        getattr(provider, "origin", None) is loaded_plugin.RenderService
+        for provider in parameter.providers
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
 async def test_exception_event_trigger_reports_once(loaded_plugin) -> None:
@@ -40,10 +57,16 @@ async def test_exception_event_trigger_reports_once(loaded_plugin) -> None:
     loaded_plugin.send_error_report = AsyncMock()
     event = make_exception_event("boom")
 
-    await loaded_plugin.except_handle.callable_target(event)
+    render_service = loaded_plugin.RenderService()
+    await loaded_plugin.except_handle.callable_target(
+        event,
+        render_service=render_service,
+    )
 
     loaded_plugin.send_error_report.assert_awaited_once_with(
-        event.exception, event.origin
+        event.exception,
+        event.origin,
+        render_service=render_service,
     )
 
 
@@ -54,8 +77,15 @@ async def test_exception_cooldown_filters_duplicate_error(loaded_plugin) -> None
     loaded_plugin.send_error_report = AsyncMock()
     event = make_exception_event("same error")
 
-    await loaded_plugin.except_handle.callable_target(event)
-    await loaded_plugin.except_handle.callable_target(event)
+    render_service = loaded_plugin.RenderService()
+    await loaded_plugin.except_handle.callable_target(
+        event,
+        render_service=render_service,
+    )
+    await loaded_plugin.except_handle.callable_target(
+        event,
+        render_service=render_service,
+    )
 
     loaded_plugin.send_error_report.assert_awaited_once()
 
@@ -212,16 +242,22 @@ async def test_exception_report_prefers_rendered_markdown_image(
     origin.account.protocol = protocol
     renderer = AsyncMock(return_value=b"jpeg-bytes")
     monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    render_service = loaded_plugin.RenderService()
     original = EntariConfig.instance.basic.superusers
     EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
     try:
-        await loaded_plugin.send_error_report(RuntimeError("rendered"), origin)
+        await loaded_plugin.send_error_report(
+            RuntimeError("rendered"),
+            origin,
+            render_service=render_service,
+        )
     finally:
         EntariConfig.instance.basic.superusers = original
 
     renderer.assert_awaited_once()
-    assert renderer.await_args.args[0] == "render_markdown"
-    assert renderer.await_args.args[1].startswith("[Tenko 异常]")
+    assert renderer.await_args.args[0] is render_service
+    assert renderer.await_args.args[1] == "render_markdown"
+    assert renderer.await_args.args[2].startswith("[Tenko 异常]")
     assert protocol.messages[0][0] == "90001"
     assert isinstance(protocol.messages[0][1][0], Image)
 
@@ -244,10 +280,15 @@ async def test_exception_report_falls_back_to_text_when_rendering_fails(
     origin.account.protocol = protocol
     renderer = AsyncMock(return_value=None)
     monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    render_service = loaded_plugin.RenderService()
     original = EntariConfig.instance.basic.superusers
     EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
     try:
-        await loaded_plugin.send_error_report(RuntimeError("text fallback"), origin)
+        await loaded_plugin.send_error_report(
+            RuntimeError("text fallback"),
+            origin,
+            render_service=render_service,
+        )
     finally:
         EntariConfig.instance.basic.superusers = original
 

@@ -17,6 +17,7 @@ from satori import Image, Text
 from tenko.context import MessageContext
 from tenko.events import MessageLog, message_metrics
 from tenko.host.actions import ActionFailure
+from tenko.plugins.render import RenderService  # entari: plugin
 from tenko.render import render_or_none
 
 
@@ -200,9 +201,15 @@ async def send_error_report(
     exception: BaseException,
     origin: Any,
     *,
+    render_service: RenderService | None = None,
     evidence_dir: str | Path | None = None,
 ) -> None:
-    """先向所有 superusers 发送报告，投递不完整时保留本地证据。"""
+    """先向所有 superusers 发送报告，投递不完整时保留本地证据。
+
+    ``render_service=None`` 仅覆盖直接调用这个工具函数、无法经过 Entari
+    listener 注入的边界；生产 listener ``except_handle`` 总是显式传入注入的
+    服务实例。
+    """
 
     report = generate_error_report(exception, origin)
     account = getattr(origin, "account", None)
@@ -218,7 +225,7 @@ async def send_error_report(
                 getattr(account, "platform", "-"),
             )
         else:
-            image = await render_or_none("render_markdown", report)
+            image = await render_or_none(render_service, "render_markdown", report)
             for user_id in user_ids:
                 try:
                     content = (
@@ -250,7 +257,11 @@ async def send_error_report(
 
 
 @plugin.listen(ExceptionEvent)
-async def except_handle(event: ExceptionEvent):
+async def except_handle(
+    event: ExceptionEvent,
+    *,
+    render_service: RenderService,
+):
     """Handle the exception event emitted by Entari's dispatcher."""
 
     if isinstance(event.origin, ExceptionEvent):
@@ -261,4 +272,8 @@ async def except_handle(event: ExceptionEvent):
     if last_time is not None and now - last_time < ERROR_COOLDOWN:
         return
     last_error_time[error_hash] = now
-    await send_error_report(event.exception, event.origin)
+    await send_error_report(
+        event.exception,
+        event.origin,
+        render_service=render_service,
+    )

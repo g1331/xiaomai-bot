@@ -40,12 +40,13 @@ async def test_run_async_loads_plugins_before_starting_entari(
 
     plugin_runtime = Mock()
 
-    async def load_all():
+    async def load_all(configs):
         lifecycle.append("plugins")
         return {}
 
     plugin_runtime.load_all = AsyncMock(side_effect=load_all)
-    monkeypatch.setattr(runtime_module, "Launart", Mock(return_value=manager))
+    manager_provider = Mock(return_value=manager)
+    monkeypatch.setattr(runtime_module, "it", manager_provider)
     monkeypatch.setattr(
         runtime_module, "PluginRuntime", Mock(return_value=plugin_runtime)
     )
@@ -60,8 +61,18 @@ async def test_run_async_loads_plugins_before_starting_entari(
     await runtime.run_async()
 
     app.ensure_manager.assert_not_called()
+    manager_provider.assert_called_once_with(runtime_module.Launart)
     connection.install.assert_called_once_with(manager)
-    plugin_runtime.load_all.assert_awaited_once_with()
+    plugin_runtime.load_all.assert_awaited_once_with(
+        {
+            "render": {
+                "enabled": False,
+                "timeout": 10.0,
+                "width": 800,
+                "quality": 85,
+            }
+        }
+    )
     assert runtime.plugin_runtime is plugin_runtime
     database_loader.assert_called_once_with(runtime.config.database)
     assert runtime.database_service is database_loader.return_value
@@ -71,6 +82,38 @@ async def test_run_async_loads_plugins_before_starting_entari(
     )
     assert lifecycle == ["connection", "plugins", "app"]
     assert app.required == {"tenko.ready"}
+
+
+@pytest.mark.asyncio
+async def test_run_async_does_not_manually_register_render_service(
+    monkeypatch,
+) -> None:
+    connection = Mock()
+    connection.ready_service.id = "tenko.ready"
+    monkeypatch.setattr(
+        runtime_module, "OneBotConnection", Mock(return_value=connection)
+    )
+    config = TenkoConfig.from_mapping({"render": {"enabled": True}})
+    runtime = TenkoRuntime(config)
+    manager = Mock()
+    app = Mock()
+    app.required = set()
+    app.connections = []
+    app.run_async = AsyncMock()
+    runtime.build_app = Mock(return_value=app)
+    runtime.connection.install = Mock()
+    plugin_runtime = Mock()
+    plugin_runtime.load_all = AsyncMock(return_value={})
+    monkeypatch.setattr(runtime_module, "it", Mock(return_value=manager))
+    monkeypatch.setattr(
+        runtime_module, "PluginRuntime", Mock(return_value=plugin_runtime)
+    )
+    monkeypatch.setattr(runtime_module, "load_database_plugin", Mock(return_value=None))
+
+    await runtime.run_async()
+
+    manager.add_component.assert_not_called()
+    plugin_runtime.load_all.assert_awaited_once()
 
 
 @pytest.mark.asyncio

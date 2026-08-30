@@ -113,6 +113,21 @@ def patch_status_data(loaded_plugin, monkeypatch) -> None:
     )
 
 
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+def test_status_declares_render_service_for_entari_injection(loaded_plugin) -> None:
+    parameter = next(
+        parameter
+        for parameter in loaded_plugin.status.params
+        if parameter.name == "render_service"
+    )
+
+    assert parameter.annotation is loaded_plugin.RenderService
+    assert any(
+        getattr(provider, "origin", None) is loaded_plugin.RenderService
+        for provider in parameter.providers
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
 async def test_status_command_reports_legacy_group_fields_without_context_details(
@@ -123,7 +138,9 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
     patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(
-        make_session("20001", "member"), Query("text.value", False)
+        make_session("20001", "member"),
+        Query("text.value", False),
+        render_service=loaded_plugin.RenderService(),
     )
 
     output = str(result)
@@ -162,14 +179,21 @@ async def test_status_command_sends_rendered_image_when_available(
     patch_status_data(loaded_plugin, monkeypatch)
     renderer = AsyncMock(return_value=b"jpeg-bytes")
     monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    render_service = loaded_plugin.RenderService()
 
     result = await loaded_plugin.status.callable_target(
-        make_session("20001", "member"), Query("text.value", False)
+        make_session("20001", "member"),
+        Query("text.value", False),
+        render_service=render_service,
     )
 
     renderer.assert_awaited_once()
-    assert renderer.await_args.args[:2] == ("render_template", "status.html")
-    assert renderer.await_args.args[2]["content"].startswith("开机时间：2026年")
+    assert renderer.await_args.args[:3] == (
+        render_service,
+        "render_template",
+        "status.html",
+    )
+    assert renderer.await_args.args[3]["content"].startswith("开机时间：2026年")
     assert isinstance(result[0], Image)
 
 
@@ -182,13 +206,19 @@ async def test_status_command_falls_back_to_text_when_rendering_fails(
     patch_status_data(loaded_plugin, monkeypatch)
     renderer = AsyncMock(return_value=None)
     monkeypatch.setattr(loaded_plugin, "render_or_none", renderer)
+    render_service = loaded_plugin.RenderService()
 
     result = await loaded_plugin.status.callable_target(
-        make_session("20001", "member"), Query("text.value", False)
+        make_session("20001", "member"),
+        Query("text.value", False),
+        render_service=render_service,
     )
 
     renderer.assert_awaited_once_with(
-        "render_template", "status.html", renderer.await_args.args[2]
+        render_service,
+        "render_template",
+        "status.html",
+        renderer.await_args.args[3],
     )
     assert str(result).startswith("开机时间：2026年")
 
@@ -203,7 +233,9 @@ async def test_status_permission_filter_blocks_global_blacklisted_user(
     loaded_plugin.permission_checker = PermissionChecker(registry=registry)
 
     result = await loaded_plugin.status.callable_target(
-        make_session("20001", "member"), Query("text.value", False)
+        make_session("20001", "member"),
+        Query("text.value", False),
+        render_service=loaded_plugin.RenderService(),
     )
 
     assert str(result) == "权限不足"
@@ -221,7 +253,9 @@ async def test_master_private_status_appends_only_operational_diagnostic(
     patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(
-        make_private_session("90001", protocol), Query("text.value", False)
+        make_private_session("90001", protocol),
+        Query("text.value", False),
+        render_service=loaded_plugin.RenderService(),
     )
 
     output = str(result)
@@ -250,7 +284,9 @@ async def test_master_group_status_never_pushes_private_diagnostic(
     patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(
-        make_session("90001", "member", protocol), Query("text.value", False)
+        make_session("90001", "member", protocol),
+        Query("text.value", False),
+        render_service=loaded_plugin.RenderService(),
     )
 
     output = str(result)

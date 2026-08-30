@@ -24,6 +24,7 @@ from tenko.events import MessageMetrics, message_metrics
 from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import context_from_session, text_message
+from tenko.plugins.render import RenderService  # entari: plugin
 from tenko.render import render_or_none
 
 try:
@@ -388,6 +389,8 @@ status_command.shortcut("状态", command="-bot", prefix=True)
 async def status(
     session: Session,
     text_mode: Query[bool] = Query("text.value", False),
+    *,
+    render_service: RenderService,
 ):
     context = context_from_session(session)
     if not await permission_checker.require_group_perm(
@@ -405,6 +408,7 @@ async def status(
     )
     if not text_mode.result:
         image = await render_or_none(
+            render_service,
             "render_template",
             "status.html",
             status_data,

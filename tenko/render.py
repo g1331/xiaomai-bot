@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +37,6 @@ class RenderTimeoutError(RenderError):
     """Raised when one rendering operation exceeds its configured timeout."""
 
 
-RenderCallable = Callable[..., Awaitable[bytes] | bytes]
 _TEMPLATE_DIR = Path(__file__).with_name("templates")
 
 
@@ -330,53 +329,22 @@ class RenderService(Service):
         )
 
 
-render_service: RenderService | None = None
-
-
-def configure_render_service(service: RenderService | None) -> None:
-    """Set the process-wide renderer used by Tenko plugins."""
-
-    global render_service
-    render_service = service
-
-
-def get_render_service() -> RenderService | None:
-    """Return the renderer configured by the current Tenko host."""
-
-    return render_service
-
-
 async def render_or_none(
-    renderer: RenderService | RenderCallable | str | None = None,
+    service: RenderService | None,
+    method_name: str,
     *args: Any,
     **kwargs: Any,
 ) -> bytes | None:
     """Run a render operation and turn every ordinary failure into ``None``.
 
-    ``renderer`` may be an async render method, the configured method name, or
-    a ``RenderService``. The latter defaults to ``render_template`` and also
-    accepts an explicit method name as its first positional argument.
+    ``service`` is deliberately explicit so callers use Entari's injected
+    service rather than a process-wide renderer. ``None`` is reserved for
+    utility or unit-test callers that explicitly have no injected service.
     """
 
-    target: Any = renderer
-    if renderer is None:
-        target = getattr(render_service, "render_template", None)
-    elif isinstance(renderer, str):
-        target = getattr(render_service, renderer, None)
-    elif isinstance(renderer, RenderService):
-        method_name = "render_template"
-        if (
-            args
-            and isinstance(args[0], str)
-            and args[0]
-            in {
-                "render_template",
-                "render_markdown",
-            }
-        ):
-            method_name = args[0]
-            args = args[1:]
-        target = getattr(renderer, method_name, None)
+    if service is None or not isinstance(method_name, str):
+        return None
+    target: Any = getattr(service, method_name, None)
 
     if not callable(target):
         return None
@@ -403,8 +371,5 @@ __all__ = [
     "RenderService",
     "RenderTimeoutError",
     "RenderUnavailableError",
-    "configure_render_service",
-    "get_render_service",
     "render_or_none",
-    "render_service",
 ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
+from arclet.entari.plugin import get_plugins
 
 from tenko.config import RenderConfig, TenkoConfig
 from tenko.render import (
@@ -35,17 +36,46 @@ def test_render_config_rejects_invalid_values(field: str, value: int) -> None:
 async def test_render_or_none_returns_none_when_disabled_or_unavailable() -> None:
     disabled = RenderService()
 
-    assert await render_or_none(disabled, "status.html", {"content": "text"}) is None
-    assert await render_or_none(None, "status.html", {}) is None
+    assert (
+        await render_or_none(
+            disabled,
+            "render_template",
+            "status.html",
+            {"content": "text"},
+        )
+        is None
+    )
+    # Direct unit tests bypass Entari's listener injector, so absence is passed
+    # explicitly instead of being resolved through a module-level fallback.
+    assert await render_or_none(None, "render_template", "status.html", {}) is None
 
     unavailable = RenderService(enabled=True)
     unavailable._startup_error = RuntimeError("browser missing")
     assert (
         await render_or_none(
-            unavailable.render_template, "status.html", {"content": "text"}
+            unavailable,
+            "render_template",
+            "status.html",
+            {"content": "text"},
         )
         is None
     )
+
+
+@pytest.mark.parametrize("loaded_plugin", ["render"], indirect=True)
+def test_render_plugin_registers_service_with_entari(loaded_plugin) -> None:
+    native_plugin = next(
+        plugin
+        for plugin in get_plugins(subplugged=True)
+        if plugin.id == "tenko.plugins.render"
+    )
+
+    service = native_plugin._services["tenko.render"]
+    assert isinstance(service, loaded_plugin.RenderService)
+    assert service.enabled is False
+    assert service.timeout == 10.0
+    assert service.width == 800
+    assert service.quality == 85
 
 
 @pytest.mark.asyncio
@@ -59,7 +89,10 @@ async def test_render_timeout_falls_back_to_none(monkeypatch) -> None:
 
     assert (
         await render_or_none(
-            service.render_template, "status.html", {"content": "slow"}
+            service,
+            "render_template",
+            "status.html",
+            {"content": "slow"},
         )
         is None
     )

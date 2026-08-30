@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
+import os
 import random
+import tempfile
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
+from pathlib import Path
 from types import MappingProxyType
 from typing import Literal
 
@@ -13,6 +17,7 @@ from ..context import MessageContext
 
 ResponseType = Literal["random", "deterministic"]
 _NO_MUTE = object()
+_STATE_VERSION = 1
 _GROUP_PERMISSION_LEVELS = {
     "member": 16,
     "user": 16,
@@ -65,7 +70,7 @@ class AccountRegistry:
     :meth:`bind_group` 提供，注册表本身不主动调用协议 API。
     """
 
-    def __init__(self) -> None:
+    def __init__(self, state_path: str | Path | None = None) -> None:
         self._accounts: dict[str, Account] = {}
         self._availability: dict[str, bool] = {}
         self._groups: dict[str, list[str]] = {}
@@ -73,6 +78,76 @@ class AccountRegistry:
         self._deterministic_accounts: dict[str, str] = {}
         self._muted_until: dict[tuple[str, str], datetime | None] = {}
         self._group_permissions: dict[tuple[str, str], int] = {}
+        self.state_path: Path | None = None
+        if state_path is not None:
+            self.configure_persistence(state_path)
+
+    def configure_persistence(self, state_path: str | Path | None) -> None:
+        """配置响应策略状态文件并恢复已有群策略。"""
+
+        self.state_path = None if state_path is None else Path(state_path)
+        self._response_types = {}
+        self._deterministic_accounts = {}
+        if self.state_path is None or not self.state_path.is_file():
+            return
+        try:
+            data = json.loads(self.state_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"账号响应状态不是有效 JSON: {self.state_path}") from exc
+        if not isinstance(data, Mapping):
+            raise ValueError(f"账号响应状态必须是 JSON object: {self.state_path}")
+        if data.get("version", _STATE_VERSION) != _STATE_VERSION:
+            raise ValueError(f"不支持的账号响应状态版本: {data.get('version')}")
+        groups = data.get("groups", {})
+        if not isinstance(groups, Mapping):
+            raise ValueError(
+                f"账号响应状态的 groups 必须是 JSON object: {self.state_path}"
+            )
+        for group_id, raw_state in groups.items():
+            if not isinstance(raw_state, Mapping):
+                raise ValueError(f"群 {group_id} 的响应状态必须是 JSON object")
+            normalized_group = _key(group_id)
+            response_type = raw_state.get("response_type", "random")
+            if response_type not in {"random", "deterministic"}:
+                raise ValueError(f"群 {normalized_group} 的响应类型非法")
+            self._response_types[normalized_group] = response_type
+            deterministic = raw_state.get("deterministic_account")
+            if deterministic is not None:
+                self._deterministic_accounts[normalized_group] = _key(deterministic)
+
+    def _persist_response_state(self) -> None:
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "version": _STATE_VERSION,
+            "groups": {
+                group_id: {
+                    "response_type": self._response_types.get(group_id, "random"),
+                    "deterministic_account": self._deterministic_accounts.get(group_id),
+                }
+                for group_id in self._groups
+            },
+        }
+        temporary_path: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w",
+                encoding="utf-8",
+                dir=self.state_path.parent,
+                prefix=f".{self.state_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary:
+                json.dump(data, temporary, ensure_ascii=False, indent=2, sort_keys=True)
+                temporary.write("\n")
+                temporary.flush()
+                os.fsync(temporary.fileno())
+                temporary_path = temporary.name
+            os.replace(temporary_path, self.state_path)
+        finally:
+            if temporary_path is not None and os.path.exists(temporary_path):
+                os.unlink(temporary_path)
 
     @property
     def accounts(self) -> Mapping[str, Account]:
@@ -132,6 +207,7 @@ class AccountRegistry:
                 self._deterministic_accounts.pop(group_id, None)
             elif self._deterministic_accounts.get(group_id) == account_id:
                 self._deterministic_accounts[group_id] = self._groups[group_id][0]
+        self._persist_response_state()
         return account
 
     def get(self, account_id: str | int) -> Account | None:
@@ -256,10 +332,13 @@ class AccountRegistry:
         if account_id not in self._accounts:
             raise KeyError(f"账号未注册: {account_id}")
         members = self._groups.setdefault(normalized_group, [])
+        changed = account_id not in members
         if account_id not in members:
             members.append(account_id)
         self._deterministic_accounts.setdefault(normalized_group, account_id)
         self._response_types.setdefault(normalized_group, "random")
+        if changed:
+            self._persist_response_state()
 
     def unbind_group(
         self, group_id: str | int, account_or_id: Account | str | int
@@ -281,6 +360,7 @@ class AccountRegistry:
             self._deterministic_accounts.pop(normalized_group, None)
         elif self._deterministic_accounts.get(normalized_group) == account_id:
             self._deterministic_accounts[normalized_group] = members[0]
+        self._persist_response_state()
         return True
 
     def bound_accounts_for_group(self, group_id: str | int) -> tuple[Account, ...]:
@@ -397,6 +477,7 @@ class AccountRegistry:
         if normalized_group not in self._groups:
             raise KeyError(f"群未绑定账号: {normalized_group}")
         self._response_types[normalized_group] = response_type
+        self._persist_response_state()
 
     def set_deterministic_account(
         self, group_id: str | int, account_or_id: Account | str | int
@@ -408,6 +489,7 @@ class AccountRegistry:
         if account_id not in self._groups.get(normalized_group, ()):
             raise KeyError(f"账号未绑定到群 {normalized_group}: {account_id}")
         self._deterministic_accounts[normalized_group] = account_id
+        self._persist_response_state()
 
     def select_account(
         self,

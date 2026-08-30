@@ -134,3 +134,22 @@ def test_group_send_action_failure_is_an_explicit_mute_source() -> None:
     assert registry.observe_send_failure(account, 100, failed)
     assert registry.is_muted(account, 100)
     assert not registry.observe_send_failure(account, 100, succeeded)
+
+
+def test_response_strategy_round_trip_restores_after_restart(tmp_path) -> None:
+    state_path = tmp_path / "accounts.json"
+    first = FakeAccount("10001")
+    second = FakeAccount("10002")
+    registry = AccountRegistry(state_path)
+    registry.register(first, groups=[100])
+    registry.register(second, groups=[100])
+    registry.set_response_type(100, "deterministic")
+    registry.set_deterministic_account(100, second)
+
+    restored = AccountRegistry(state_path)
+    restored.register(first, groups=[100])
+    restored.register(second, groups=[100])
+
+    assert restored.response_type_for_group(100) == "deterministic"
+    assert restored.deterministic_account_for_group(100) == "10002"
+    assert restored.select_account(100) is second

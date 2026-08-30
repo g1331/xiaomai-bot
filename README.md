@@ -1,439 +1,288 @@
-<div align="center">
+# Tenko
 
-<pre style="color: rgb(227,122,80); line-height: 1.2;">
- ___  ___  _____ ______   ________  ________  ___  ___          ________  ________  _________   
-|\  \|\  \|\   _ \  _   \|\   __  \|\   __  \|\  \|\  \        |\   __  \|\   __  \|\___   ___\ 
-\ \  \\\  \ \  \\\__\ \  \ \  \|\  \ \  \|\  \ \  \\\  \       \ \  \|\ /\ \  \|\  \|___ \  \_| 
- \ \  \\\  \ \  \\|__| \  \ \   __  \ \   _  _\ \  \\\  \       \ \   __  \ \  \\\  \   \ \  \  
-  \ \  \\\  \ \  \    \ \  \ \  \ \  \ \  \\  \\ \  \\\  \       \ \  \|\  \ \  \\\  \   \ \  \ 
-   \ \_______\ \__\    \ \__\ \__\ \__\ \__\\ _\\ \_______\       \ \_______\ \_______\   \ \__\
-    \|_______|\|__|     \|__|\|__|\|__|\|__|\|__|\|_______|        \|_______|\|_______|    \|__|
-</pre>
+Tenko 是一个面向 QQ 群的管理 bot，基于 Entari、Satori 和 OneBot 11
+构建，使用 NapCat 作为协议端。它提供权限、群管理、账号响应策略、功能开关、
+状态查询和宿主升级等能力。
 
-![Python 3.10-3.12](https://img.shields.io/badge/python-3.10--3.12-blue.svg)
+## 功能概览
 
-一个基于 [Graia Ariadne](https://github.com/GraiaProject/Ariadne) 框架的 QQ 机器人
+Tenko 的命令统一使用 / 前缀。下面的命令名称与 tenko/plugins/ 中当前注册的
+插件保持一致；尖括号表示需要替换的参数。
 
-<br>
+| 插件 | 能力 | 常用命令 |
+| --- | --- | --- |
+| perm_manager | 管理成员权限、群权限，并同步群成员的平台管理角色 | /修改权限、/修改群权限、/权限列表 |
+| helper | 从当前 command_manager 注册表生成帮助列表和命令详情 | /帮助、/帮助 <编号> |
+| group_manager | 查询群设置、审批加群请求，以及执行禁言、解禁、撤回、加精和踢出等群管理动作 | /群设置、/同意邀请 <请求ID>、/禁言、/解禁 |
+| status | 查看会话、进程资源、消息收发统计、在线账号和群路由状态 | /状态 |
+| exception_catcher | 捕获全局异常，向超级用户发送带会话上下文的报告，必要时保存本地证据 | 无命令 |
+| response_manager | 查询多账号在线状态、群绑定、禁言状态，并设置群响应策略 | /BOT列表、/在线BOT、/设定响应 |
+| announcement | 向已开启指定功能的群推送公告，并返回逐群结果 | /公告 <功能名> <内容...> |
+| updater | 按配置通道检查、准备和回滚 Tenko 宿主版本 | /检查更新、/升级、/回滚 |
+| feature_manager | 按群启用或停用插件功能 | /开启 <插件编号或名称>、/关闭 <插件编号或名称> |
+| render | 提供 HTML 和 Markdown 的离线图片渲染服务，供状态和异常报告使用 | 无命令 |
 
-若您在使用过程中发现了 bug
-或有建议，欢迎提出 [Issue](https://github.com/g1331/xiaomai-bot/issues)、[PR](https://github.com/g1331/xiaomai-bot/pulls)
-或加入 QQ 群聊：[749094683](https://jq.qq.com/?_wv=1027&k=1YEq9zks)
+涉及权限变更、群管理或宿主升级的命令会按照当前群权限、账号能力和超级用户
+配置执行。渲染不可用时，状态和异常报告使用文本路径。
 
-</div>
+## 架构
 
----
+NapCat 通过 OneBot 11 反向 WebSocket 连接 Tenko，Satori 负责协议对象和动作
+抽象，Entari 负责事件分发、插件生命周期和命令处理：
 
-## 📊 状态
+    NapCat
+      │ OneBot 11
+      ▼
+    Satori adapter ──► Entari runtime ──► command_manager ──► Tenko plugins
+                                          │
+                                          ├── account / permission / feature services
+                                          ├── SQLite database + repositories
+                                          └── RenderService (optional)
 
-![Repobeats analytics](https://repobeats.axiom.co/api/embed/eebef43ecb6c77ef043dcb65c4cda7e9dfd29af7.svg)
+- 插件在 Entari 生命周期中加载和卸载；插件通过原生命令注册表接收命令，
+  通过宿主服务访问账号路由、权限、功能开关、限流和升级控制平面。
+- command_manager 是帮助系统读取命令列表的来源，因此帮助内容会随当前已注册
+  插件变化。
+- RenderService 由 tenko/plugins/render 注册为 Entari 服务，使用 Playwright 在本地
+  离线渲染 HTML/Markdown。渲染默认关闭，可通过 [render].enabled 开启；服务异常
+  不会阻断文本功能。
+- 数据层使用 SQLite、SQLAlchemy 和 entari-plugin-database。新 ORM 位于
+  tenko/db/models.py，repository 位于 tenko/db/repositories.py；应用启动时会创建
+  或迁移所需表，已有 SQLite 数据库文件可以继续使用。
 
-## ✨ 功能简览
+## 安装与运行
 
-> **注意！** 当前 BOT 还有许多不完善之处，处于持续开发更新状态中~
+### 环境要求
 
-### 🔧 主要功能
+- Python >=3.10,<3.13；
+- NapCat，以及可连接到 NapCat OneBot 11 端点的网络环境；
+- 启用图片渲染时，需要 Chromium 浏览器运行时。
 
-- **🤖 AI 聊天对话**：支持 OpenAI/DeepSeek 等多种 AI 提供商，具备工具调用、多模态输入等高级功能
-- **🎮 战地一功能**：战绩查询、服务器管理、玩家统计等完整的战地一生态
-- **🖼️ 图片功能**：识图搜索、随机图片、头像趣图、风格图片生成等
-- **🎯 娱乐功能**：随机老婆、塔罗牌、ASCII艺术生成、表情包制作等
-- **⚙️ 管理功能**：权限管理、插件管理、群管理、自动更新等
-- **🔧 工具功能**：Steam游戏查询、GitHub卡片、MC服务器状态等
+### 创建独立环境
 
-> 更多功能请查看 `modules` 文件夹中的各个插件
+在项目根目录执行：
 
-### 🛠️ 待办事项
+    python --version
+    python -m venv .venv-entari
+    source .venv-entari/bin/activate
+    pip install -r requirements-entari.txt
 
-- 分群组的 alias 自定义指令前缀处理
-- ~~抄其他 bot 的功能~~
+Windows PowerShell 的激活命令为：
 
-## 🚀 快速搭建步骤
+    .venv-entari\Scripts\Activate.ps1
 
-> _快速启动：Windows 使用 `run.bat`，Linux 使用 `run.sh`_
+复制配置模板：
 
-### 1. 安装 Mirai
+    cp config/tenko.toml.example config/tenko.toml
 
-- 下载 [MCL 2.1.0](https://docs.mirai.mamoe.net/ConsoleTerminal.html)
-- 配置 [Mirai API HTTP (MAH)](https://docs.mirai.mamoe.net/mirai-api-http/)
+然后按下节说明编辑 config/tenko.toml。启动：
 
-### 2. 设置 Python 环境
+    python -m tenko
 
-本项目需要 **Python >=3.10, <3.13** (即 3.10, 3.11, 3.12) 版本。推荐使用 `uv` 作为 Python 的依赖包管理工具，并通过 `uv` 创建虚拟环境，安装依赖包。
+### NapCat 连接
+
+默认反向 WebSocket 地址为：
 
-#### 2.1 安装 `uv`
+    ws://127.0.0.1:8080/onebot/v11/ws
 
-- **Windows 用户**：
+在 NapCat 的 OneBot 11 反向 WebSocket 配置中填写相同地址。若配置了
+[onebot].access_token，NapCat 必须使用相同的 token；示例文件和下方最小
+配置只使用占位符，部署时请替换为实际值。
 
-  ```powershell
-  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-  ```
+### 启用图片渲染
 
-- **Linux 用户**：
+保持 [render].enabled = false 时无需安装浏览器。需要状态图片或异常图片时，
+在已激活的 .venv-entari 中执行：
 
-  ```bash
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  ```
-
-- **验证安装**：
-
-  ```bash
-  uv help
-  ```
-
-#### 2.2 安装 `Python`
-
-如果尚未安装 `Python`，可通过 `uv` 安装：
-
-- **列出可用的 Python 版本**：
-
-  ```bash
-  uv python list
-  ```
-
-- **安装指定版本**（例如 3.11.10）：
-
-  ```bash
-  uv python install 3.12
-  ```
-（您可以选择满足 `>=3.10,<3.13` 范围的任何兼容 Python 版本进行安装。）
-
-- **查找系统中已安装的 Python 路径**：
-
-  ```bash
-  uv python find
-  ```
-
-#### 2.3 创建虚拟环境
-
-使用指定版本的 `Python` 创建虚拟环境：
-
-```bash
-uv venv --python 3.12
-```
-（建议使用您计划为此项目开发和运行所对应的 Python 版本，需满足 `>=3.10,<3.13` 要求。）
-
-#### 2.4 安装依赖
-
-从 `pyproject.toml` 安装依赖：
-
-```bash
-uv sync
-```
-
-#### 2.5 运行项目
-
-```bash
-uv run main.py
-```
-
-### 3. 配置文件
-
-- 打开 `config_demo.yaml` 文件填写配置信息
-- 填写完成后重命名为 `config.yaml`
-
-### 4. 启动 Bot
-
-在 Bot 根目录下运行：
-
-```bash
-uv run main.py
-```
-
-### 5. 处理报错
-
-根据报错信息进行相应处理。
-
-## 🔐 使用环境变量初始化
-
-| 变量名称              | 解释              | 示例                            |
-|-------------------|-----------------|-------------------------------|
-| `bot_accounts`    | Bot 使用的账户，逗号分隔  | `1111111111,222222222`        |
-| `default_account` | 默认 Bot 账户       | `1111111111`                  |
-| `Master`          | Bot 管理者账户       | `3333333333`                  |
-| `mirai_host`      | MAH 服务器地址       | `http://localhost:8080`       |
-| `verify_key`      | MAH 服务器验证 token | `123456789`                   |
-| `test_group`      | 发送调试信息的群组       | `5555555555`                  |
-| `db_link`         | SQLite3 数据库位置   | `sqlite+aiosqlite:///data.db` |
-
-> Docker 及 Docker Compose 部署请使用环境变量进行配置。
-
-## 🐳 使用 Docker 部署
-
-1. **安装 Docker**
-
-2. **克隆项目并构建镜像**
-
-   ```bash
-   git clone https://github.com/g1331/xiaomai-bot
-   cd xiaomai-bot
-   docker build -t xiaomai-bot .
-   ```
-
-3. **配置文件**
-   （注意：请确保您在项目的根目录下执行这些命令。）
-   ```bash
-   cp config/config_demo.yaml config/config.yaml
-   # 手动创建数据库 (如果需要)
-   sqlite3 data.db
-   sqlite> .database
-   sqlite> .quit
-   ```
-
-4. **运行容器**
-   （注意：请确保您在项目的根目录下执行此命令，或者将 `$(pwd)` 替换为您的项目根目录的绝对路径。）
-   ```bash
-   docker run -d --name xiaomai-bot \
-     --net=host \
-     -v $(pwd)/config/config.yaml:/xiaomai-bot/config/config.yaml \
-     -v $(pwd)/data.db:/xiaomai-bot/data.db \
-     -v $(pwd)/data:/xiaomai-bot/data \
-     -v $(pwd)/statics:/xiaomai-bot/statics \
-     xiaomai-bot
-   ```
-
-   > **提示**：根据需要添加环境变量，例如：
-   >
-   > `-e bot_accounts=1111111111,222222222`
-   >
-   > `-e default_account=1111111111`
-   >
-   > `-e Master=3333333333`
-   >
-   > `-e mirai_host=http://localhost:8080`
-   >
-   > `-e verify_key=123456789`
-   >
-   > `-e test_group=5555555555`
-   >
-   > `-e db_link=sqlite+aiosqlite:///data.db`
-
-## 🐳 使用 Docker Compose 部署
-
-1. **安装 Docker 与 Docker Compose**
-
-2. **克隆项目并设置数据库**
-   （注意：请确保您在克隆后的项目根目录下执行这些命令。）
-   ```bash
-   git clone https://github.com/g1331/xiaomai-bot
-   cd xiaomai-bot
-   cp config/config_demo.yaml config/config.yaml
-   # 手动创建数据库 (如果需要)
-   sqlite3 data.db
-   sqlite> .database
-   sqlite> .quit
-   ```
-
-3. **启动服务**
-
-   ```bash
-   docker-compose up -d
-   ```
-
----
-
-## 📂 项目结构与核心内容
-
-### 项目结构
-
-```
-xiaomai-bot/
-├── core/                   # 核心 - 机器人配置与信息
-│   ├── orm/                # 对象关系映射 - 数据库处理
-│   │   ├── __init__.py
-│   │   └── tables.py       # 内置表
-│   ├── models/             # 辅助控制组件
-│   │   └── ...
-│   ├── bot.py              # 机器人核心代码 - 统一调度资源
-│   ├── config.py           # 机器人配置访问接口
-│   ├── control.py          # 控制组件 - 鉴权、开关前置、冷却
-│   └── ...
-├── data/                   # 存放数据文件
-│   └── ...
-├── statics/                # 存放项目静态资源
-│   └── ...
-├── utils/                  # 存放运行工具
-│   └── ...
-├── log/                    # 机器人日志目录
-│   ├── xxxx-xx-xx/
-│   │   ├── common.log      # 常规日志
-│   │   └── error.log       # 错误日志
-│   └── ...
-├── modules/                # 机器人插件目录
-│   ├── required/           # 必须插件
-│   │   └── ...
-│   ├── self_contained/     # 内置插件
-│   │   └── ...
-│   └── ...
-├── config.yaml             # 机器人主配置文件
-├── main.py                 # 应用执行入口
-├── pyproject.toml          # 项目依赖关系和打包信息
-├── uv.lock                 # 依赖锁文件
-├── README.md               # 项目说明文件
-└── ...
-```
-
-![项目结构图](diagram.svg)
-
-### 核心模块
-
-#### 🗄️ ORM
-
-- **AsyncORM**：异步对象关系映射工具
-
-#### ⚙️ 配置
-
-Bot 基础配置：
-
-- `bot_accounts`: 机器人账号列表
-- `default_account`: 默认账户
-- `Master`: 管理者 QQ
-- `mirai_host`: Mirai HTTP 服务器地址
-- `verify_key`: Mirai HTTP 验证密钥
-- `db_link`: 数据库连接字符串
-
-#### 🔒 控制组件（Control）
-
-##### 权限判断（Permission）
-
-- 成员权限判断
-- 群权限判断
-
-##### 频率限制（Frequency）
-
-- 当前权重 / 总权重
-
-##### 配置判断（Config）
-
-- 需要的配置信息
-
-##### 消息分发（Distribute）
-
-- 分发需求
-- 多账户响应模式：
-    - 随机响应（默认）
-    - 指定 Bot 响应
-
-##### 功能开关（Function）
-
-- 开关判断：`Function.require("模块名")`
-
-### 🔌 插件结构
-
-#### `metadata.json`
-
-```json
-{
-  "level": "插件等级1/2/3",
-  "name": "文件名",
-  "display_name": "显示名字",
-  "version": "0.0.1",
-  "authors": [
-    "作者"
-  ],
-  "description": "描述",
-  "usage": [
-    "用法"
-  ],
-  "example": [
-    "例子"
-  ],
-  "default_switch": true,
-  "default_notice": false
-}
-```
-
-#### `modules` 配置
-
-```python
-modules = {
-    "module_name": {
-        "groups": {
-            "group_id": {
-                "switch": bool,
-                "notice": bool
-            }
-        },
-        "available": bool
-    }
-}
-```
-
-### 🛠️ 内置插件 (`modules.required`)
-
-#### 🔄 auto_upgrade（自动检测更新）
-
-- 自动检测 GitHub 仓库更新
-- 手动指令执行 `git pull`
-
-#### 🧩 saya_manager（插件管理）
-
-- 插件列表
-- 已加载插件
-- 未加载插件
-- 加载插件
-- 卸载插件
-- 重载插件
-- 开启插件
-- 关闭插件
-
-#### 🔐 perm_manager（权限管理）
-
-管理与查询权限：
-
-- 更改用户权限
-- 查询用户权限
-- 更改群权限
-- 查询群权限
-- 增删 Bot 管理
-
-#### 🔁 response_manager（响应管理）
-
-管理与查询多账户响应模式：
-
-- 查询 Bot 列表
-- 查询指定群的 Bot
-- 设定多账户响应模式（随机 / 指定 Bot）
-- 设定指定响应 Bot
-
-#### 🆘 helper（帮助菜单/功能管理）
-
-生成帮助菜单，开启/关闭群功能：
-
-- 帮助
-- 开启功能
-- 关闭功能
-
-#### 📈 status（运行状态）
-
-- 查询 Bot 运行状态
-
----
-
-## 🙏 鸣谢 & 相关项目
-
-### 感谢
-
-- [`mirai`](https://github.com/mamoe/mirai) & [`mirai-console`](https://github.com/mamoe/mirai-console)：一个跨平台运行，支持
-  QQ Android 和 TIM PC 协议的高效机器人框架
-- [`GraiaProject`](https://github.com/GraiaProject) 提供的项目：
-    - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl)：高性能、高可扩展性，基于 asyncio 的事件系统
-    - [`Ariadne`](https://github.com/GraiaProject/Ariadne)：设计精巧、协议实现完备，基于 mirai-api-http v2 的即时聊天软件自动化框架
-    - [`Saya`](https://github.com/GraiaProject/Saya)：简洁的模块管理系统
-    - [`Scheduler`](https://github.com/GraiaProject/Scheduler)：基于 `asyncio` 的定时任务实现
-    - [`Application`](https://github.com/GraiaProject/Application)：Ariadne 的前身，基于 mirai-api-http 的即时聊天软件自动化框架
-
-### 参考项目
-
-本 BOT 在开发中参考了以下项目：
-
-- [`SAGIRI BOT`](https://github.com/SAGIRI-kawaii/sagiri-bot)：基于 Mirai
-  和 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne) 的 QQ 机器人
-- [`ABot`](https://github.com/djkcyl/ABot-Graia/)：使用 [Graia-Ariadne](https://github.com/GraiaProject/Ariadne)
-  搭建的功能性机器人
-- [`redbot`](https://github.com/Redlnn/redbot)：基于 [Graia Ariadne](https://github.com/GraiaProject/Ariadne) 框架的 QQ
-  机器人
-
-## ⭐ Stargazers Over Time
-
-[![Stargazers over time](https://starchart.cc/g1331/xiaomai-bot.svg)](https://starchart.cc/g1331/xiaomai-bot)
+    python -m playwright install chromium
+
+Linux 主机缺少 Chromium 系统依赖时，需要由运维按主机权限安装对应依赖。
+
+## 最小配置
+
+config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖连接、权限、
+数据库、渲染和升级的基本入口；所有敏感字段和账号标识都是占位符：
+
+    [onebot]
+    listen_host = "127.0.0.1"
+    listen_port = 8080
+    reverse_ws_prefix = "/"
+    reverse_ws_path = "onebot/v11"
+    reverse_ws_endpoint = "ws"
+    access_token = "<NAPCAT_ACCESS_TOKEN>"
+    api_timeout = 60
+    satori_host = "127.0.0.1"
+    satori_path = "satori"
+    satori_token = "<SATORI_TOKEN>"
+
+    [runtime]
+    send_replies = false
+    reply_text = "Tenko 已收到消息。"
+    log_level = "INFO"
+    command_prefix = "/"
+
+    [entari]
+    superusers = { onebot = ["<QQ_ID>"] }
+
+    [debug]
+    enabled = false
+
+    [database]
+    url = "sqlite+aiosqlite:///./.tenko/tenko.db"
+    echo = false
+    create_table_at = "preparing"
+
+    [render]
+    enabled = false
+    timeout = 10.0
+    width = 800
+    quality = 85
+
+    [upgrade]
+    enabled = true
+    source = "git_tag"
+    repository = "."
+    channel = "stable"
+    policy = "check"
+
+不要把真实 token、QQ 号、GitHub 凭据或其他密钥写入版本库。需要保护的测试群
+可以在 TOML 顶层设置 test_group；留空或省略表示不启用该保护。
+
+## 配置参考
+
+配置读取自 tenko/config.py。未写出的配置项使用代码中的默认值；配置表中的
+路径相对于启动目录解析。
+
+### [onebot]
+
+| 字段 | 说明 |
+| --- | --- |
+| listen_host | 反向 WebSocket 监听地址，默认 127.0.0.1 |
+| listen_port | 监听端口，默认 8080 |
+| reverse_ws_prefix | 反向 WebSocket 路径前缀，默认 / |
+| reverse_ws_path | OneBot 11 路径，默认 onebot/v11 |
+| reverse_ws_endpoint | WebSocket 端点名，默认 ws |
+| access_token | 可选的 OneBot 访问 token；不设置时可留空 |
+| api_timeout | OneBot action 超时时间，默认 60 秒 |
+| satori_host | 内部 Satori 服务地址；省略时根据监听地址推导 |
+| satori_path | 内部 Satori 路径，默认 satori |
+| satori_token | 内部 Satori token，可留空关闭鉴权 |
+| capability_overrides | 按账号覆盖平台能力学习结果的映射，值为布尔开关 |
+
+### [runtime]、[entari] 与 [debug]
+
+| 配置 | 说明 |
+| --- | --- |
+| runtime.send_replies | 是否对收到的消息发送固定回复，默认关闭 |
+| runtime.reply_text | 固定回复文本，默认是 Tenko 已收到消息。 |
+| runtime.log_level | 日志级别，默认 INFO |
+| runtime.command_prefix | 命令前缀；Tenko 的对外命令约定固定为 / |
+| runtime.superusers | 平台到用户 ID 的兼容输入；实际生效名单统一来自 entari.superusers |
+| entari.superusers | 超级用户唯一权威来源，格式为“平台名到用户 ID 列表”的映射 |
+| debug.enabled | 是否只处理 debug.masters 中用户产生的事件，默认关闭 |
+| debug.masters | 调试白名单；省略时继承 entari.superusers，显式空列表表示不放行用户 |
+
+例如，OneBot 11 的超级用户配置为：
+
+    [entari]
+    superusers = { onebot = ["<QQ_ID>"] }
+
+### [database]、[accounts]、[features] 与 [exception]
+
+| 配置 | 说明 |
+| --- | --- |
+| database.url | SQLAlchemy 数据库 URL，默认 sqlite+aiosqlite:///./.tenko/tenko.db |
+| database.echo | 是否输出 SQL，默认关闭 |
+| database.create_table_at | 建表时机，可选 preparing、prepared 或 blocking |
+| accounts.state_path | 多账号路由状态文件，默认 .tenko/accounts.json |
+| features.state_path | 群功能开关状态文件，默认 .tenko/features.json |
+| features.default_enabled | 新群或未记录功能的默认开关，默认开启 |
+| exception.message_buffer_size | 异常报告保留的最近消息数量，默认 10 |
+| exception.evidence_dir | 报告无法投递时的本地证据目录，默认 .tenko/exceptions |
+
+### [ratelimit]
+
+| 字段 | 说明 |
+| --- | --- |
+| enabled | 是否启用命令限流，默认开启 |
+| state_path | 限流状态文件，默认 .tenko/ratelimit.json |
+| window_seconds | 滚动窗口长度，默认 15.0 秒 |
+| max_weight | 窗口允许的最大权重，默认 24 |
+| default_weight | 未单独指定命令的默认权重，默认 1 |
+| cooldown_seconds | 同一来源冷却时间，默认 5.0 秒 |
+| blacklist_seconds | 触发限制后的黑名单时间，默认 300.0 秒 |
+| override_permission | 可豁免限流的最低权限等级，默认 32 |
+
+### [render]
+
+| 字段 | 说明 |
+| --- | --- |
+| enabled | 是否启用 Playwright 离线渲染，默认关闭 |
+| timeout | 单次渲染超时时间，默认 10.0 秒 |
+| width | 图片 viewport 宽度，默认 800 |
+| quality | JPEG 质量，范围为 0 到 100，默认 85 |
+
+### [upgrade]
+
+升级配置控制版本发现、制品准备和外部重启接管。默认策略只检查，不会自动下载
+或安装。
+
+| 字段 | 说明 |
+| --- | --- |
+| enabled | 是否启用升级功能，默认开启 |
+| source | 版本源：git_tag、github_release 或 manifest |
+| repository | Git 版本源的仓库路径，默认当前目录 . |
+| github_repository | GitHub 版本源的仓库标识 |
+| manifest_url | manifest 版本源的地址 |
+| github_token | 可选的 GitHub 访问 token |
+| asset_name | 可选的发布制品名称 |
+| tag_prefix | Git tag 前缀，默认 v |
+| channel | 更新通道；stable 排除预发布版本，prerelease 同时接受正式和预发布版本 |
+| policy | 执行策略；常用值为 check、download、install |
+| current_version | 当前版本；留空时从项目版本读取 |
+| config_version | 配置兼容版本，默认 1.0.0 |
+| install_root | 版本和升级状态目录，默认 .tenko/upgrades |
+| config_path | 外部配置路径，默认 config/tenko.toml |
+| data_dir | 外部数据目录，默认 data |
+| health_command | 可选健康检查命令参数列表 |
+| launch_command | 可选外部启动命令参数列表 |
+| health_timeout | 健康检查超时时间，默认 30 秒 |
+| check_interval_hours | 定时检查间隔，默认 24 小时 |
+| superuser_ids | 可执行升级命令的用户 ID；省略时继承 entari.superusers |
+
+通道选择建议：
+
+- stable 只选择正式版本，适合生产实例；
+- prerelease 允许选择预发布版本，适合验证实例；
+- policy = "check" 只发现并记录候选版本；
+- policy = "download" 自动准备制品；
+- policy = "install" 生成外部安装接管记录。进程切换仍由稳定的外部启动器完成。
+
+## 更新机制
+
+升级命令只允许配置的超级用户执行：
+
+    /检查更新
+    /升级
+    /回滚
+
+- /检查更新 查询配置通道中的候选版本，返回当前版本、候选版本和来源，
+  不下载制品。
+- /升级 获取并校验候选制品，完成兼容性和健康检查后生成外部安装接管记录；
+  它不会在当前进程中热替换代码。
+- /回滚 请求回到上一可用版本；不存在可回滚版本时会返回明确失败。
+
+启用周期检查时，check_interval_hours 控制定时检查间隔。升级目录、配置目录和
+数据目录彼此分离，升级过程不会覆盖用户配置或运行数据。
+
+## 测试
+
+在项目根目录、并使用已安装依赖的环境执行：
+
+    ./.venv-entari/bin/ruff check tenko tests/tenko
+    ./.venv-entari/bin/python -m pytest tests/tenko
+
+如果只使用已激活的虚拟环境，也可以执行：
+
+    ruff check tenko tests/tenko
+    python -m pytest tests/tenko

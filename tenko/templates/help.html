@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{ title }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 800px;
+    margin: 0;
+    color: #2C4A63;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(91, 168, 232, .10) 0 2px, transparent 3px),
+      radial-gradient(circle at 72% 32%, rgba(91, 168, 232, .09) 0 2px, transparent 3px),
+      radial-gradient(circle at 32% 82%, rgba(168, 216, 248, .12) 0 3px, transparent 4px),
+      linear-gradient(160deg, #EAF4FD 0%, #F7FBFF 45%, #E3F0FB 100%);
+    background-size: 260px 260px, 300px 300px, 340px 340px, auto;
+  }
+
+  .wrap { width: 800px; padding: 24px 28px 20px; }
+
+  /* ===== 页头：沿用状态卡的天子蓝渐变和徽记 ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    padding: 20px 24px;
+    border: 2px solid rgba(255, 255, 255, .55);
+    border-radius: 20px;
+    outline: 1px solid rgba(91, 168, 232, .35);
+    outline-offset: 3px;
+    background: linear-gradient(135deg, #2E5C9E 0%, #3D74C4 60%, #5B96DE 100%);
+    box-shadow: 0 6px 18px rgba(29, 63, 140, .45);
+  }
+  .header::before, .header::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .17);
+  }
+  .header::before { width: 150px; height: 150px; right: -44px; top: -64px; }
+  .header::after { width: 92px; height: 92px; right: 104px; bottom: -52px; }
+
+  .sigil {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    right: 14px;
+    width: 22px;
+    height: 22px;
+    background: rgba(255, 255, 255, .86);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .4), 0 0 10px rgba(255, 255, 255, .6);
+    transform: rotate(45deg);
+  }
+  .sigil::after {
+    content: "天";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1D3F8C;
+    font-size: 12px;
+    font-weight: 800;
+    transform: rotate(-45deg);
+  }
+
+  .avatar {
+    display: flex;
+    z-index: 1;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 68px;
+    height: 68px;
+    border: 3px solid rgba(255, 255, 255, .85);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #EAF6FF 0%, #7FA8D8 45%, #2E5C9E 100%);
+    box-shadow: 0 3px 10px rgba(30, 80, 130, .3);
+    position: relative;
+  }
+  .avatar span {
+    color: #FFFFFF;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-shadow: 0 1px 4px rgba(43, 95, 142, .6);
+  }
+  .avatar::after {
+    content: "✦";
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    color: #FFF7C2;
+    font-size: 16px;
+    text-shadow: 0 0 6px rgba(255, 240, 150, .9);
+  }
+  .head-main { position: relative; z-index: 1; flex: 1; }
+  .head-title {
+    color: #FFFFFF;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    line-height: 1.2;
+    text-shadow: 0 2px 6px rgba(43, 95, 142, .45);
+  }
+  .head-sub {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-top: 6px;
+    color: rgba(255, 255, 255, .92);
+    font-size: 13px;
+  }
+  .head-sub .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #C8F5C0;
+    box-shadow: 0 0 6px rgba(200, 245, 192, .9);
+  }
+  .head-badge {
+    position: relative;
+    z-index: 1;
+    padding: 7px 13px;
+    color: #1D3F8C;
+    background: rgba(255, 255, 255, .92);
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(30, 80, 130, .25);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ===== 总览条 ===== */
+  .overview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 20px 2px 4px;
+    padding: 13px 18px;
+    border: 1px solid rgba(127, 196, 245, .45);
+    border-radius: 13px;
+    color: #3A6389;
+    background: rgba(255, 255, 255, .82);
+    box-shadow: 0 3px 11px rgba(91, 168, 232, .12);
+    font-size: 13px;
+  }
+  .overview strong { color: #1D3F8C; font-size: 17px; }
+  .overview .count { color: #6E93B3; white-space: nowrap; }
+
+  /* ===== 插件分区 ===== */
+  .section { margin-top: 20px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 4px 10px;
+    color: #1D3F8C;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+  }
+  .section-head::before {
+    content: "❄";
+    color: #5B96DE;
+    font-size: 13px;
+  }
+  .section-head .section-subtitle {
+    color: #7FA8D8;
+    font-size: 11px;
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+  .section-head .section-rule {
+    flex: 1;
+    height: 2px;
+    margin-left: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(127, 196, 245, .7), rgba(127, 196, 245, 0));
+  }
+  .section-head .section-count {
+    min-width: 25px;
+    padding: 2px 8px;
+    color: #2E5C9E;
+    background: rgba(127, 196, 245, .18);
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-align: center;
+  }
+  .plugin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 13px; }
+  .plugin-card {
+    display: flex;
+    gap: 11px;
+    min-height: 92px;
+    padding: 13px 14px 12px 12px;
+    border: 1px solid rgba(127, 196, 245, .42);
+    border-radius: 13px;
+    background: #FFFFFF;
+    box-shadow: 0 3px 11px rgba(91, 168, 232, .12);
+  }
+  .plugin-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 31px;
+    height: 31px;
+    margin-top: 1px;
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #3D74C4, #5B96DE);
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(61, 116, 196, .28);
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .plugin-body { min-width: 0; flex: 1; }
+  .plugin-title { display: flex; align-items: center; gap: 7px; }
+  .plugin-name {
+    overflow: hidden;
+    color: #1D3F8C;
+    font-size: 14px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .state {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .state-required { color: #2E5C9E; background: #E4F1FB; }
+  .state-available { color: #28724A; background: #E4F6E8; }
+  .state-unavailable { color: #8A5A28; background: #FFF1D8; }
+  .plugin-id {
+    overflow: hidden;
+    margin-top: 3px;
+    color: #7BA3C4;
+    font-family: "SF Mono", "Consolas", "Menlo", monospace;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .plugin-description {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 6px;
+    color: #5B7894;
+    font-size: 11.5px;
+    line-height: 1.45;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .empty {
+    padding: 17px;
+    border: 1px dashed rgba(127, 196, 245, .6);
+    border-radius: 12px;
+    color: #7BA3C4;
+    background: rgba(255, 255, 255, .58);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .footer {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(127, 196, 245, .4);
+    color: #7BA3C4;
+    font-size: 12px;
+    text-align: center;
+  }
+  .footer .star { margin: 0 8px; color: #7FA8D8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="sigil"></div>
+    <div class="avatar"><span>天子</span></div>
+    <div class="head-main">
+      <div class="head-title">{{ title }}</div>
+      <div class="head-sub">
+        <span class="dot"></span>
+        {{ subtitle }} · {% if group_id %}群 {{ group_id }}{% else %}全局视图{% endif %}
+      </div>
+    </div>
+    <div class="head-badge">帮助索引</div>
+  </div>
+
+  <div class="overview">
+    <span>插件状态已按当前注册信息整理</span>
+    <span class="count"><strong>{{ total }}</strong> 项 · <strong>{{ enabled_count }}</strong> 项可用</span>
+  </div>
+
+  {% for section in sections %}
+  <section class="section section-{{ section.key }}">
+    <div class="section-head">
+      {{ section.title }}
+      <span class="section-subtitle">{{ section.subtitle }}</span>
+      <span class="section-rule"></span>
+      <span class="section-count">{{ section.count }}</span>
+    </div>
+    {% if section["items"] %}
+    <div class="plugin-grid">
+      {% for item in section["items"] %}
+      <article class="plugin-card">
+        <div class="plugin-number">{{ "%02d" | format(item.number) }}</div>
+        <div class="plugin-body">
+          <div class="plugin-title">
+            <span class="plugin-name">{{ item.name }}</span>
+            <span class="state state-{{ item.state }}">{{ item.state_label }}</span>
+          </div>
+          <div class="plugin-id">{{ item.plugin }}</div>
+          {% if item.description %}
+          <div class="plugin-description">{{ item.description }}</div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">本分区暂无插件</div>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <div class="footer">Tenko <span class="star">✦</span> そらにかわ、かわにそら <span class="star">✦</span></div>
+</div>
+</body>
+</html>

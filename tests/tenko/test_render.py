@@ -138,8 +138,63 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
             },
         )
         markdown_image = await service.render_markdown("# Report\n\nrendered")
+        help_image = await service.render_template(
+            "help.html",
+            {
+                "title": "Tenko 已注册命令",
+                "subtitle": "按插件状态整理可用功能",
+                "group_id": "40001",
+                "sections": (
+                    {
+                        "key": "required",
+                        "title": "内置插件",
+                        "subtitle": "系统必需功能",
+                        "count": 1,
+                        "items": (
+                            {
+                                "number": 1,
+                                "name": "帮助系统",
+                                "plugin": "helper",
+                                "description": "生成分区帮助列表。",
+                                "state": "required",
+                                "state_label": "内置",
+                            },
+                        ),
+                    },
+                    {
+                        "key": "available",
+                        "title": "运行插件",
+                        "subtitle": "当前可用功能",
+                        "count": 1,
+                        "items": (
+                            {
+                                "number": 2,
+                                "name": "状态查询",
+                                "plugin": "status",
+                                "description": "查询 Tenko 运行状态。",
+                                "state": "available",
+                                "state_label": "运行中",
+                            },
+                        ),
+                    },
+                    {
+                        "key": "unavailable",
+                        "title": "维护插件",
+                        "subtitle": "暂不可用功能",
+                        "count": 0,
+                        "items": (),
+                    },
+                ),
+                "required": (),
+                "available": (),
+                "unavailable": (),
+                "total": 2,
+                "enabled_count": 2,
+            },
+        )
     finally:
         await service.close()
 
     assert status_image.startswith(b"\xff\xd8")
     assert markdown_image.startswith(b"\xff\xd8")
+    assert help_image.startswith(b"\xff\xd8")

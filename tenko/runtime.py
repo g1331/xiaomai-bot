@@ -42,6 +42,7 @@ class TenkoRuntime:
         self.config = config
         configure_command_prefix(config.runtime.command_prefix)
         self.accounts = account_registry
+        self.accounts.configure_persistence(config.accounts.state_path)
         self.actions = action_service
         self.actions.configure_capability_overrides(config.onebot.capability_overrides)
         self.feature_service = configure_feature_service(

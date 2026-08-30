@@ -128,6 +128,18 @@ def test_entari_run_async_registration_keeps_connection_components(
     )
 
 
+def test_runtime_configures_account_response_state_path(tmp_path, monkeypatch) -> None:
+    accounts = Mock()
+    monkeypatch.setattr(runtime_module, "account_registry", accounts)
+    state_path = tmp_path / "accounts.json"
+    config = TenkoConfig.from_mapping({"accounts": {"state_path": str(state_path)}})
+
+    runtime = TenkoRuntime(config)
+
+    assert runtime.accounts is accounts
+    accounts.configure_persistence.assert_called_once_with(str(state_path))
+
+
 @pytest.mark.asyncio
 async def test_build_app_reapplies_prefix_after_entari_initialization(
     monkeypatch,

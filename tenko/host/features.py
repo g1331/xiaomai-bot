@@ -268,6 +268,10 @@ class CommandPolicy:
             "插件编号请使用‘帮助’获取"
         )
 
+    @staticmethod
+    def _maintenance_notice(owner: object) -> str:
+        return f"{_plugin_label(owner)}插件正在维护~"
+
     async def check(self, account: object, event: object) -> str | None:
         del account
         try:
@@ -280,6 +284,18 @@ class CommandPolicy:
         if owner is None:
             return None
         plugin_name = _plugin_name(owner)
+        if (
+            plugin_name not in _FEATURE_MANAGER_NAMES
+            and self.feature_service.is_maintenance(plugin_name)
+        ):
+            logger.debug(
+                "Ignore plugin command in maintenance mode: plugin={} group={} "
+                "text={!r}",
+                plugin_name,
+                context.channel_id,
+                context.text,
+            )
+            return self._maintenance_notice(owner)
         if (
             plugin_name not in _FEATURE_MANAGER_NAMES
             and not self.feature_service.is_enabled(plugin_name, context.channel_id)

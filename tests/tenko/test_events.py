@@ -446,6 +446,12 @@ async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() ->
 
     callback.assert_awaited_once()
 
+    features.set_maintenance("demo", True)
+    await handler.guard(callback)(account, make_group_event(text="/演示"))
+
+    callback.assert_awaited_once()
+    assert account.protocol.calls[-1][1] == "演示插件正在维护~"
+
 
 @pytest.mark.asyncio
 async def test_command_guard_applies_rate_limit_before_entari_dispatch() -> None:

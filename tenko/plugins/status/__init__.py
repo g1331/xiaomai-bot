@@ -377,6 +377,7 @@ status_command = Alconna(
     ),
     meta=CommandMeta(
         "查询 Tenko 运行状态",
+        hide_shortcut=True,
         usage="状态 [-t]",
         example="/状态 -t",
         compact=True,

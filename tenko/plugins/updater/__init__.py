@@ -58,6 +58,7 @@ upgrade_command = Alconna(
     "升级",
     meta=CommandMeta(
         "下载并准备经过校验的 Tenko 宿主版本",
+        hide_shortcut=True,
         usage="升级",
         example="/升级",
         compact=True,

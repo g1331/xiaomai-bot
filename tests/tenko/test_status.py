@@ -117,6 +117,7 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
     loaded_plugin, monkeypatch
 ) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    monkeypatch.setattr(loaded_plugin, "message_metrics", MessageMetrics())
     patch_status_data(loaded_plugin, monkeypatch)
 
     result = await loaded_plugin.status.callable_target(

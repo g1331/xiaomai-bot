@@ -60,7 +60,8 @@ class RenderService(Service):
         enabled: bool = False,
         timeout: float = 10.0,
         width: int = 800,
-        quality: int = 85,
+        quality: int = 90,
+        device_scale_factor: int = 2,
         max_concurrency: int = 2,
         template_dir: str | Path | None = None,
     ) -> None:
@@ -77,11 +78,14 @@ class RenderService(Service):
             raise ValueError("render quality 必须是 0 到 100 的整数")
         if type(max_concurrency) is not int or max_concurrency <= 0:
             raise ValueError("render max_concurrency 必须是正整数")
+        if type(device_scale_factor) is not int or device_scale_factor <= 0:
+            raise ValueError("render device_scale_factor 必须是正整数")
 
         self.enabled = enabled
         self.timeout = float(timeout)
         self.width = width
         self.quality = quality
+        self.device_scale_factor = device_scale_factor
         self.max_concurrency = max_concurrency
         self.template_dir = (
             Path(template_dir) if template_dir is not None else _TEMPLATE_DIR
@@ -245,7 +249,8 @@ class RenderService(Service):
             browser_context = None
             try:
                 browser_context = await self.browser.new_context(
-                    viewport={"width": self.width, "height": 800}
+                    viewport={"width": self.width, "height": 800},
+                    device_scale_factor=self.device_scale_factor,
                 )
                 page = await browser_context.new_page()
                 await page.set_content(html, wait_until="load")

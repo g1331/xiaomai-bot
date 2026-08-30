@@ -75,7 +75,8 @@ def test_render_plugin_registers_service_with_entari(loaded_plugin) -> None:
     assert service.enabled is False
     assert service.timeout == 10.0
     assert service.width == 800
-    assert service.quality == 85
+    assert service.quality == 90
+    assert service.device_scale_factor == 2
 
 
 @pytest.mark.asyncio

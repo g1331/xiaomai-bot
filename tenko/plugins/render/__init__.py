@@ -23,7 +23,8 @@ add_service(
         enabled=_config.get("enabled", False),
         timeout=_config.get("timeout", 10.0),
         width=_config.get("width", 800),
-        quality=_config.get("quality", 85),
+        quality=_config.get("quality", 90),
+        device_scale_factor=_config.get("device_scale_factor", 2),
     )
 )
 

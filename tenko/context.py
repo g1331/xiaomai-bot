@@ -47,6 +47,7 @@ class MessageContext:
     text: str
     image_urls: tuple[str, ...]
     member_role: str | None = None
+    platform: str = "onebot"
 
     @classmethod
     def from_event(cls, event: Event) -> MessageContext:
@@ -89,6 +90,7 @@ class MessageContext:
             member_role=(
                 _member_role(event.member) if event.member is not None else None
             ),
+            platform=_value(event.login.platform),
         )
 
 

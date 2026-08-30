@@ -6,6 +6,8 @@ from collections.abc import Iterable
 from enum import IntEnum
 from typing import Any
 
+from arclet.entari.config import EntariConfig
+
 from ..context import MessageContext
 from loguru import logger
 
@@ -330,10 +332,24 @@ class PermissionChecker:
             }
         return self._bot_admins_from_database
 
+    @staticmethod
+    def _is_native_superuser(context: MessageContext, user_id: str) -> bool:
+        """复用 Entari filter.superusers 使用的 basic.superusers 配置。"""
+
+        if not getattr(EntariConfig, "_inited", False):
+            return False
+        basic = getattr(EntariConfig.instance, "basic", None)
+        configured = getattr(basic, "superusers", {})
+        if not isinstance(configured, dict):
+            return False
+        return user_id in {str(value) for value in configured.get(context.platform, ())}
+
     async def get_user_perm(self, context: MessageContext) -> int:
         """获取上下文发送者的有效成员权限数值。"""
 
         user_id = _key(context.user_id)
+        if self._is_native_superuser(context, user_id):
+            return Permission.Master
         global_level: int | None = None
         if self._database is not None or self._legacy_database:
             global_level = await self._database_member_level(0, user_id)

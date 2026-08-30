@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import builtins
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 from unittest.mock import Mock
 
 import pytest
+from arclet.entari.config import EntariConfig
 
 import tenko.host.perm as perm_module
 from tenko.context import MessageContext
@@ -191,3 +193,25 @@ async def test_runtime_global_blacklist_applies_to_group_context() -> None:
     assert await checker.get_user_perm(make_context("20001", member_role="owner")) == (
         Permission.GlobalBlack
     )
+
+
+@pytest.mark.asyncio
+async def test_entari_native_superuser_has_master_permission(monkeypatch) -> None:
+    if not EntariConfig._inited:
+        EntariConfig(Path("/tmp/tenko-native-superuser-test.yml"))
+    original = EntariConfig.instance.basic.superusers
+    monkeypatch.setattr(
+        EntariConfig.instance.basic,
+        "superusers",
+        {"onebot": ["native-master"]},
+    )
+    try:
+        checker = PermissionChecker(registry=PermissionRegistry())
+        assert await checker.get_user_perm(make_context("native-master")) == (
+            Permission.Master
+        )
+        assert await checker.require_perm(
+            make_context("native-master"), Permission.Master
+        )
+    finally:
+        EntariConfig.instance.basic.superusers = original

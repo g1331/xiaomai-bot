@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import sys
 from arclet.entari import MessageChain, Session
 from loguru import logger
@@ -30,6 +31,39 @@ def text_message(content: str) -> MessageChain:
     """Build a native Entari message from a Satori text element."""
 
     return MessageChain(Text(content))
+
+
+async def send_private_message(session: Session, user_id: str, content: str) -> bool:
+    """向指定用户发送文本，失败时只记录日志并返回 False。"""
+
+    sender = getattr(session, "send_private_message", None)
+    if callable(sender):
+        try:
+            result = sender([Text(content)], user_id=str(user_id))
+            if inspect.isawaitable(result):
+                await result
+            return True
+        except Exception:
+            logger.exception("私聊消息发送失败: user_id={}", user_id)
+            logger.error("私聊消息内容如下:\n{}", content)
+            return False
+
+    account = getattr(session, "account", None)
+    protocol = getattr(account, "protocol", None)
+    sender = getattr(protocol, "send_private_message", None)
+    if not callable(sender):
+        logger.error("当前会话没有私聊发送能力: user_id={}", user_id)
+        logger.error("私聊消息内容如下:\n{}", content)
+        return False
+    try:
+        result = sender(str(user_id), [Text(content)])
+        if inspect.isawaitable(result):
+            await result
+        return True
+    except Exception:
+        logger.exception("私聊消息发送失败: user_id={}", user_id)
+        logger.error("私聊消息内容如下:\n{}", content)
+        return False
 
 
 def action_error_message(error: BaseException) -> str:

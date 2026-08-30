@@ -23,7 +23,7 @@ from tenko.host.accounts import AccountRegistry
 from tenko.host.perm import Permission, PermissionChecker, PermissionRegistry
 
 
-def make_session(user_id: str, role: str):
+def make_session(user_id: str, role: str, protocol=None):
     event = Event(
         type=EventType.MESSAGE_CREATED,
         timestamp=datetime.now(),
@@ -35,13 +35,45 @@ def make_session(user_id: str, role: str):
         message=MessageObject.from_elements("50001", []),
     )
     return SimpleNamespace(
+        account=SimpleNamespace(protocol=protocol),
         event=SimpleNamespace(
             _origin=event,
             channel=event.channel,
             guild=event.guild,
             user=event.user,
-        )
+        ),
     )
+
+
+def make_private_session(user_id: str, protocol=None):
+    event = Event(
+        type=EventType.MESSAGE_CREATED,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User("10001")),
+        channel=Channel(f"private:{user_id}", ChannelType.DIRECT),
+        guild=None,
+        member=None,
+        user=User(user_id),
+        message=MessageObject.from_elements("50001", []),
+    )
+    return SimpleNamespace(
+        account=SimpleNamespace(protocol=protocol),
+        event=SimpleNamespace(
+            _origin=event,
+            channel=event.channel,
+            guild=event.guild,
+            user=event.user,
+        ),
+    )
+
+
+class PrivateMessageProtocol:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def send_private_message(self, user_id, content):
+        self.calls.append((str(user_id), str(content[0])))
+        return []
 
 
 @pytest.mark.asyncio
@@ -55,6 +87,10 @@ async def test_status_command_reports_native_runtime_context(loaded_plugin) -> N
 
     assert "Tenko 状态" in str(result)
     assert "账号: 10001" in str(result)
+    assert "当前群BOT在线:" in str(result)
+    assert "在线账号:" not in str(result)
+    assert "账号×群禁言:" not in str(result)
+    assert "进程: 启动" not in str(result)
     assert loaded_plugin.status_command.parse("/-bot -t").matched
     assert loaded_plugin.status_command.parse("/状态 -t").matched
 
@@ -73,6 +109,47 @@ async def test_status_permission_filter_blocks_global_blacklisted_user(
     )
 
     assert str(result) == "权限不足"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+async def test_master_private_status_receives_full_diagnostic(loaded_plugin) -> None:
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+
+    result = await loaded_plugin.status.callable_target(
+        make_private_session("90001"), Query("text.value", False)
+    )
+
+    output = str(result)
+    assert "在线账号:" in output
+    assert "账号×群禁言:" in output
+    assert "进程: 启动" in output
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+async def test_master_group_status_keeps_group_summary_and_pushes_diagnostic(
+    loaded_plugin,
+) -> None:
+    protocol = PrivateMessageProtocol()
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="90001")
+    )
+
+    result = await loaded_plugin.status.callable_target(
+        make_session("90001", "member", protocol), Query("text.value", False)
+    )
+
+    output = str(result)
+    assert "当前群BOT在线:" in output
+    assert "详情已发送给维护者" in output
+    assert "在线账号:" not in output
+    assert "账号×群禁言:" not in output
+    assert protocol.calls and protocol.calls[0][0] == "90001"
+    assert "在线账号:" in protocol.calls[0][1]
+    assert "账号×群禁言:" in protocol.calls[0][1]
 
 
 @pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
@@ -127,6 +204,7 @@ def test_build_status_reports_resources_metrics_and_account_mute_state(
             uptime_seconds=3661,
             rss=64 * 1024**2,
         ),
+        detailed=True,
     )
 
     assert "消息: 收 1 / 发 1" in output
@@ -159,7 +237,7 @@ def test_status_skips_system_resource_section_when_psutil_is_missing(
     )
 
     output = loaded_plugin.build_status(
-        context, 1, registry=registry, metrics=MessageMetrics()
+        context, 1, registry=registry, metrics=MessageMetrics(), detailed=True
     )
 
     assert "进程: 启动" in output

@@ -13,7 +13,11 @@ from arclet.entari.plugin import PluginRole
 from tenko.events import MessageMetrics, message_metrics
 from tenko.host.accounts import AccountRegistry, account_registry
 from tenko.host.perm import Permission, PermissionChecker
-from tenko.plugins._common import context_from_session, text_message
+from tenko.plugins._common import (
+    context_from_session,
+    send_private_message,
+    text_message,
+)
 
 try:
     import psutil
@@ -160,6 +164,22 @@ def _registry_lines(registry: AccountRegistry) -> tuple[str, str, str]:
     return f"{len(online_ids)}/{len(accounts)}", online, mute_summary
 
 
+def _current_group_summary(context: Any, registry: AccountRegistry) -> str:
+    if context.chat_type != "group":
+        return "群健康: 不适用"
+
+    accounts = registry.bound_accounts_for_group(context.channel_id)
+    available = sum(registry.is_available(account) for account in accounts)
+    muted = sum(
+        registry.is_muted(getattr(account, "self_id", account), context.channel_id)
+        for account in accounts
+    )
+    return (
+        f"当前群BOT在线: {available}/{len(accounts)}；"
+        f"当前群禁言: {muted}/{len(accounts)}"
+    )
+
+
 def build_status(
     context: Any,
     plugin_count: int,
@@ -168,11 +188,13 @@ def build_status(
     metrics: MessageMetrics | None = None,
     resources: SystemResources | None = None,
     process: ProcessInfo | None = None,
+    detailed: bool = False,
 ) -> str:
     registry = account_registry if registry is None else registry
     metrics = message_metrics if metrics is None else metrics
-    resources = collect_system_resources() if resources is None else resources
-    process = collect_process_info() if process is None else process
+    if detailed:
+        resources = collect_system_resources() if resources is None else resources
+        process = collect_process_info() if process is None else process
     location = (
         f"群聊 {context.channel_id}"
         if context.chat_type == "group"
@@ -195,16 +217,26 @@ def build_status(
             f" / 发 {sent_rate} ({sent_rate / _RATE_WINDOW_SECONDS:.2f}/秒)"
         ),
         f"账号在线: {online_count}",
-        f"在线账号: {online_ids}",
         f"活跃群: {len(registry.group_ids)}",
-        f"账号×群禁言: {mute_summary}",
-        (
-            f"进程: 启动 {_format_time(process.start_time)}；"
-            f"运行 {_format_duration(process.uptime_seconds)}"
-            + (f"；RSS {_format_bytes(process.rss)}" if process.rss is not None else "")
-        ),
+        _current_group_summary(context, registry),
     ]
-    if resources is not None:
+    if detailed:
+        lines.extend(
+            [
+                f"在线账号: {online_ids}",
+                f"账号×群禁言: {mute_summary}",
+                (
+                    f"进程: 启动 {_format_time(process.start_time)}；"
+                    f"运行 {_format_duration(process.uptime_seconds)}"
+                    + (
+                        f"；RSS {_format_bytes(process.rss)}"
+                        if process is not None and process.rss is not None
+                        else ""
+                    )
+                ),
+            ]
+        )
+    if detailed and resources is not None:
         lines.extend(
             [
                 (
@@ -255,4 +287,21 @@ async def status(
         context, Permission.ActiveGroup
     ) or not await permission_checker.require_perm(context, Permission.User):
         return text_message("权限不足")
-    return text_message(build_status(context, len(plugin.get_plugins())))
+    is_master = await permission_checker.require_perm(context, Permission.Master)
+    if context.chat_type == "private" and is_master:
+        return text_message(
+            build_status(context, len(plugin.get_plugins()), detailed=True)
+        )
+
+    summary = build_status(context, len(plugin.get_plugins()))
+    if context.chat_type == "group" and is_master:
+        diagnostic = build_status(
+            context,
+            len(plugin.get_plugins()),
+            detailed=True,
+        )
+        if await send_private_message(session, context.user_id, diagnostic):
+            summary += "\n详情已发送给维护者"
+        else:
+            summary += "\n详情发送失败，请查看日志"
+    return text_message(summary)

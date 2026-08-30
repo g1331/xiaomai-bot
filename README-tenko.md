@@ -741,11 +741,19 @@ evidence_dir = ".tenko/exceptions"
 
 ### 图片渲染服务（G2-P1）
 
-`tenko/render.py` 中的 `RenderService` 是普通的 Launart service。`TenkoRuntime` 仅在
-`[render].enabled = true` 时把它加入宿主；浏览器在准备阶段启动、宿主停止时关闭，单次
-渲染使用独立 BrowserContext，完成后立即关闭。默认超时为 10 秒、viewport 宽度为 800、
-JPEG quality 为 85、并发上限为 2。服务启动失败不会阻断 Tenko 启动，插件通过
-`render_or_none()` 将所有普通渲染错误统一转成 `None`。
+`tenko/render.py` 中的 `RenderService` 由 `tenko/plugins/render` 这个 Entari
+library plugin 提供。该插件在自己的加载上下文中调用官方 `add_service()` 注册服务；
+`TenkoRuntime` 只把 `[render]` 配置传给插件，不再手动构造或加入 Launart 组件。浏览器
+在准备阶段启动、宿主停止时关闭，单次渲染使用独立 BrowserContext，完成后立即关闭。
+默认超时为 10 秒、viewport 宽度为 800、JPEG quality 为 85、并发上限为 2。服务启动
+失败不会阻断 Tenko 启动。
+
+`status` 命令和 `exception_catcher` listener 直接在处理函数参数中声明
+`RenderService`，由 Entari 的服务 Provider 注入；调用 `render_or_none()` 时显式传入
+这个实例和目标方法。这样服务的注册、依赖跟踪和卸载都属于 Entari 原生插件生命周期，
+不会再通过模块级单例获取服务。直接调用 `send_error_report()` 的测试或工具代码若没有
+经过 listener 注入，可以显式传入 `render_service=None`，此边界只表示不进行图片增强，
+不会建立第二套服务获取机制。
 
 配置项位于 `config/tenko.toml.example`：
 

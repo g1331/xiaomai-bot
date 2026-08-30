@@ -91,8 +91,10 @@ def load_database_plugin(config: DatabaseConfig):
 
     try:
         from . import models  # noqa: F401  # 注册所有 Tenko ORM 模型
+        from .repositories import configure_database_service
 
         service = plugin._services[_DATABASE_SERVICE]
+        configure_database_service(service)
     except (AttributeError, KeyError, ImportError) as error:
         raise DatabaseUnavailableError(
             "官方数据库插件未提供 database/sqlalchemy 服务"

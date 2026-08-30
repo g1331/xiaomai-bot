@@ -171,6 +171,7 @@ cython_debug/
 
 # 配置文件、日志
 /config/config.yaml
+/config/tenko.toml
 /log
 
 # 测试文件
@@ -188,6 +189,8 @@ alembic.ini
 
 # 数据文件
 /data/
+/.entari/
+/.tenko/
 /modules/self_contained/bilibili_dynamic/dynamic_list.json
 /modules/self_contained/emoji_mix/assets/update.json
 /modules/self_contained/chat_gpt/gpt_mode.json

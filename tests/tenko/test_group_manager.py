@@ -239,6 +239,9 @@ class FakeProtocol:
     async def guild_member_kick(self, *args, **kwargs):
         self.calls.append(("guild_member_kick", args, kwargs))
 
+    async def internal(self, *args, **kwargs):
+        self.calls.append(("internal", args, kwargs))
+
 
 class InviteProtocol:
     def __init__(self, approval_error: BaseException | None = None) -> None:
@@ -434,6 +437,64 @@ async def test_recall_uses_the_satori_quote_message_id(loaded_plugin) -> None:
     assert protocol.calls == [("message_delete", ("40001", "60001"), {})]
 
 
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+def test_essence_command_keeps_legacy_reply_alias_and_explicit_id(
+    loaded_plugin,
+) -> None:
+    command = loaded_plugin.essence_command
+
+    assert command.parse("/加精 60001").matched
+    assert command.parse("/加精").matched
+    assert command.parse("/设精").matched
+    assert not command.parse("/加精 60001 extra").matched
+    assert not command.parse("加精 60001").matched
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_essence_uses_action_service_for_reply_target(loaded_plugin) -> None:
+    protocol = install_action_service(loaded_plugin)
+    session = make_session(
+        "20001",
+        "admin",
+        [Quote("60001", content=[Author("20002")])],
+    )
+
+    result = await loaded_plugin.set_essence.callable_target(
+        session, Query("message_id", None)
+    )
+
+    assert str(result) == "加精成功"
+    assert protocol.calls == [("internal", ("set_essence_msg",), {"message_id": 60001})]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_essence_capability_failure_returns_safe_message(
+    loaded_plugin, monkeypatch
+):
+    error = ActionCapabilityUnavailable("set_essence_msg unsupported")
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    loaded_plugin.action_service = SimpleNamespace(
+        authorize=AsyncMock(return_value=True),
+        set_essence=AsyncMock(side_effect=error),
+    )
+    reporter = AsyncMock()
+    monkeypatch.setattr(loaded_plugin, "report_action_error", reporter)
+
+    result = await loaded_plugin.set_essence.callable_target(
+        make_session(
+            "20001",
+            "admin",
+            [Quote("60001", content=[Author("20002")])],
+        ),
+        Query("message_id", None),
+    )
+
+    assert str(result) == "该账号暂不支持此操作（或已被临时限制），已通知开发者"
+    reporter.assert_awaited_once()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
 async def test_unmute_self_recovers_current_bot_mute_state(loaded_plugin) -> None:
@@ -458,6 +519,7 @@ async def test_unmute_self_recovers_current_bot_mute_state(loaded_plugin) -> Non
         ("mute_all", ()),
         ("unmute_all", ()),
         ("recall", ()),
+        ("set_essence", (Query("message_id", None),)),
         ("kick", (Match(("20002",), True),)),
     ],
 )

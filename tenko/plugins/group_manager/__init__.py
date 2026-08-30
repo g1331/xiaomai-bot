@@ -815,6 +815,47 @@ async def recall(session: Session):
     return None
 
 
+essence_command = Alconna(
+    "加精",
+    Args["message_id?", str],
+    meta=CommandMeta(
+        "设置回复消息或指定消息为群精华",
+        usage="加精 [消息ID]（或回复消息）",
+        example="/加精 60001\n/设精（回复消息）",
+        compact=False,
+    ),
+)
+essence_command.shortcut("设精", command="加精", prefix=True)
+
+
+@command.on(essence_command)
+async def set_essence(
+    session: Session,
+    message_id: Query[str] = Query("message_id", None),
+):
+    checked = await _guard(session)
+    if not hasattr(checked, "user_id"):
+        return checked
+    context = checked
+    target_message_id = str(message_id.result).strip() if message_id.available else None
+    if target_message_id is None:
+        quote = _quoted_message(session)
+        target_message_id = str(quote.id).strip() if quote and quote.id else None
+    if not target_message_id or not target_message_id.isdigit():
+        return text_message("请提供数字消息ID或回复需要加精的消息")
+    try:
+        await action_service.set_essence(
+            context.account_id,
+            target_message_id,
+            context=context,
+            permission_checker=permission_checker,
+        )
+    except ActionServiceError as error:
+        await report_action_error(error, session)
+        return text_message(_action_error(error))
+    return text_message("加精成功")
+
+
 kick_command = Alconna(
     "踢出",
     _MODERATION_ARGS,

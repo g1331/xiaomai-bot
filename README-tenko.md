@@ -354,7 +354,7 @@ Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
 | --- | --- | --- |
 | `tenko/plugins/perm_manager` | `modules/required/perm_manager` | 复用 `MemberPerm`、`GroupPerm`、`GroupSetting` 的权限管理、查询和成员权限同步；使用 `PermissionChecker` 做统一权限检查。成员加入、退群和管理员角色变化分别映射为 `GuildMemberAddedEvent`、`GuildMemberRemovedEvent`、`GuildMemberUpdatedEvent`。OneBot/Satori 当前无法确认的成员管理能力保留 `InternalEvent` 日志，并标记“待 NapCat capability 确认”。 |
 | `tenko/plugins/helper` | `modules/required/helper` | 使用 Entari/Alconna 当前注册命令表生成帮助和编号详情，不复制旧的文本解析或图片菜单生成逻辑。 |
-| `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询、邀请审批，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁和踢出；群精华/退群仍只在宿主动作层保留扩展入口。 |
+| `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询、邀请审批，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁、加精和踢出；退群仍只在宿主动作层保留扩展入口。 |
 | `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供状态查询，默认在渲染启用且成功时发送 `status.html` 图片，否则返回文本；报告系统资源、进程运行信息、收发消息统计、在线账号和账号×群禁言状态，不依赖旧的 Ariadne 对象。 |
 | `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送包含上下文和最近消息的 Markdown 图片报告；渲染或投递失败时分别回退文本或落盘，不复制旧的 Graia 异常注入。 |
 
@@ -537,6 +537,8 @@ Entari 教程没有覆盖本批次所需的全部动作映射，动作方法名�
 - `/解禁 [@成员|成员ID]`：也支持回复目标消息；
 - `/全体禁言`、`/全体解禁`；
 - `/撤回`：必须回复消息，使用 Satori `Quote.id`；
+- `/加精 [消息ID]`：优先使用显式消息 ID，否则使用回复消息的 Satori `Quote.id`；
+  `/设精` 是同一处理路径的旧命令别名；
 - `/踢出 [@成员|成员ID]`：也支持回复目标消息。
 
 目标为机器人自身或已知管理权限成员时，插件会在发出动作前拦截；平台返回的权限

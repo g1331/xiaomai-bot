@@ -1,111 +1,22 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Tenko 是一个基于 Entari、Satori 和 OneBot 11 的 QQ 群管理 bot。
 
-## Project Overview
+开始修改前请先阅读 [AGENTS.md](AGENTS.md)，其中包含项目结构、开发命令、插件
+约定、测试要求和提交规范。
 
-This is a QQ bot built on the Graia Ariadne framework, named "xiaomai-bot" (小麦机器人). It's a comprehensive chatbot with AI integration, gaming features (especially Battlefield 1), image processing, entertainment functions, and management capabilities.
+## 常用命令
 
-## Development Commands
+```text
+./.venv-entari/bin/ruff check tenko tests/tenko
+./.venv-entari/bin/python -m pytest -q
+./.venv-entari/bin/python -m tenko --dry-run
+```
 
-### Core Commands
-- **Run the bot**: `uv run main.py`
-- **Install dependencies**: `uv sync` (using uv package manager)
-- **Linting**: `ruff check` (configured in pyproject.toml)
-- **Formatting**: `ruff format` (configured in pyproject.toml)  
-- **Tests**: `pytest` (test files in tests/ directory)
+## 实现约定
 
-### Convenience Scripts
-- **Windows**: `run.bat` - Quick start script for Windows
-- **Linux**: `run.sh` - Quick start script for Linux
-
-### Version Management
-- **Bump version**: Uses `bump-my-version` tool (configured in pyproject.toml)
-- **Changelog generation**: Uses `git-cliff` (configured in pyproject.toml)
-
-## Architecture Overview
-
-### Core Components
-- **main.py**: Application entry point with message listeners and bot initialization
-- **core/**: Contains the bot's core functionality
-  - **bot.py**: Main bot class (Umaru) with module loading and initialization
-  - **config.py**: Global configuration access interface  
-  - **control.py**: Permission, frequency, and feature control components
-  - **orm/**: Database ORM layer with SQLAlchemy + Alembic migrations
-  - **models/**: Control component models (frequency, response, saya)
-
-### Module System
-The bot uses a plugin-based architecture organized into:
-- **modules/required/**: Essential plugins (auto_upgrade, saya_manager, perm_manager, helper, status, etc.)
-- **modules/self_contained/**: Built-in feature plugins (AI chat, BF1 features, image processing, entertainment)
-- **modules/third_party/**: External plugins
-
-Each module has a `metadata.json` file defining its configuration, permissions, and usage.
-
-### Database Architecture
-- Uses SQLAlchemy ORM with async support (AsyncORM)
-- SQLite database by default (`data.db`)
-- Alembic for database migrations
-- Tables defined in `core/orm/tables.py`
-
-### Key Features
-- **AI Chat**: Multi-provider support (OpenAI, DeepSeek) with plugin system for tools
-- **Battlefield 1 Integration**: Complete server management and player statistics
-- **Image Processing**: Search, generation, meme creation using Playwright
-- **Permission System**: Granular user and group permissions
-- **Multi-Account Support**: Supports multiple bot accounts with response management
-
-## Configuration
-
-### Primary Config
-- **config.yaml**: Main configuration file (copy from config_demo.yaml)
-- Environment variables supported for Docker deployment
-- Critical settings: bot_accounts, mirai_host, verify_key, Master (admin user)
-
-### Prerequisites
-- Python 3.10-3.12
-- Mirai Console with Mirai API HTTP plugin
-- UV package manager (recommended)
-
-## Important Patterns
-
-### Module Development
-- Each module should have proper metadata.json configuration
-- Use the control system for permissions and rate limiting
-- Follow the existing patterns for message handling and command parsing
-
-### Database Operations
-- Use the AsyncORM from `core.orm` for database operations  
-- All database models should inherit from Base in `core.orm`
-- Use Alembic migrations for schema changes
-
-### Error Handling
-- Comprehensive logging with loguru
-- Error logs stored in `log/` directory organized by date
-- Exception catcher module handles unhandled exceptions
-
-## Testing
-
-- Test files located in `tests/` directory
-- Uses pytest with async support
-- Includes specialized tests for components like md2img, Minecraft integration
-
-## Deployment
-
-Supports multiple deployment methods:
-- Direct Python execution
-- Docker containers  
-- Docker Compose
-- All methods support environment variable configuration
-
-## Dependencies
-
-Major dependencies include:
-- graia-ariadne: Core bot framework
-- SQLAlchemy + Alembic: Database ORM and migrations  
-- FastAPI: Web interface
-- Playwright: Browser automation for image generation
-- httpx: HTTP client
-- Various AI providers (openai, etc.)
-
-The project uses UV for dependency management with lock file support.
+- 插件使用 Entari 原生生命周期和命令注册机制，所有对外命令使用 `/` 前缀。
+- 账号、权限、功能开关、限流、升级和平台动作优先复用 `tenko/host/` 中的服务。
+- 配置使用 TOML，数据库访问使用 `tenko/db/` 的现有抽象；不要把 token 或其他
+  敏感值写入仓库。
+- 修改保持局部，并在提交前执行 Ruff 和完整 pytest。

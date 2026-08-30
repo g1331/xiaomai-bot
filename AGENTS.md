@@ -1,84 +1,85 @@
-# AGENTS.md - AI 代理开发指南
+# AGENTS.md - Tenko 开发指南
 
-本文档为参与 xiaomai-bot 项目开发的 AI 代理提供核心指导。
+本文档为参与 Tenko 项目开发的协作者提供约定和必要上下文。
 
-## 项目概览
+## 项目定位
 
-xiaomai-bot 是基于 Graia Ariadne 框架的 QQ 机器人，采用模块化插件架构。
+Tenko 是面向 QQ 群的管理 bot，使用 Entari 作为运行时，以 Satori 协议抽象承接
+消息、事件和平台动作，并通过 OneBot 11 接入 QQ。业务能力以插件形式组织，覆盖
+权限、群管理、账号响应策略、功能开关、状态查询和宿主升级。
 
-### 核心技术栈
-- **框架**: Graia Ariadne (QQ 机器人框架)
-- **Python**: >=3.10, <3.13
-- **数据库**: SQLite + SQLAlchemy (异步 ORM)
-- **依赖管理**: uv
-- **插件系统**: Saya
+协议接入应以 OneBot 11 和 Satori 为边界，插件逻辑不要绑定到某一个具体协议端。
+持久化数据使用 SQLite；数据库访问集中在 repository 和数据库服务中，避免在插件
+里直接管理连接生命周期。
 
-### 项目结构
+## 目录结构
+
+```text
+tenko/
+├── __main__.py              # 命令行入口和 dry-run
+├── config.py                # TOML 配置模型
+├── connection.py            # OneBot 11 / Satori 连接服务
+├── runtime.py               # Entari 运行时装配
+├── context.py               # 消息上下文和身份转换
+├── db/                      # 模型、迁移、数据库启动和 repositories
+├── host/                    # 账号、权限、功能、限流和升级服务
+├── plugins/                 # Tenko 原生插件
+└── templates/               # 离线渲染模板和资源
+tests/tenko/                  # 单元测试和集成式调用点测试
+config/tenko.toml.example    # 配置模板
+requirements-entari.txt      # 运行环境依赖
 ```
-xiaomai-bot/
-├── core/                   # 核心框架代码
-│   ├── bot.py             # 主控制器 (Umaru 类)
-│   ├── config.py          # 配置模型
-│   ├── control.py         # 权限控制
-│   └── orm/               # 数据库模型
-├── modules/               # 插件目录
-│   ├── required/          # 必需插件 (权限管理、帮助等)
-│   ├── self_contained/    # 内置插件 (AI聊天、战地一等)
-│   └── third_party/       # 第三方插件
-├── utils/                 # 工具库
-├── config/               # 配置文件目录
-└── main.py               # 启动入口
-```
 
-## 开发规范
+## 开发环境与命令
 
-### 代码风格
-- **格式化**: 使用 Ruff (88字符行长度，双引号)
-- **规范检查**: Ruff Linter (E, F, W, UP 规则集)
-- **提交前**: 运行 `pre-commit run --all-files`
+- 支持 Python `>=3.10,<3.13`。
+- 在项目根目录创建独立环境并安装依赖：
 
-### 依赖管理
-- **安装**: `uv sync`
-- **添加**: `uv add <package>`
-- **移除**: `uv remove <package>`
+  ```text
+  python -m venv .venv-entari
+  ./.venv-entari/bin/python -m pip install -r requirements-entari.txt
+  ```
 
-### 分支与提交
-- **分支命名**: `type/description` (如 `feat/ai-chat`, `fix/bf1-bug`)
-- **提交格式**: `type(scope): description` (遵循 Conventional Commits)
-- **类型**: feat, fix, docs, style, refactor, test, chore
+- 提交前至少执行：
 
-## 插件开发
+  ```text
+  ./.venv-entari/bin/ruff check tenko tests/tenko
+  ./.venv-entari/bin/python -m pytest -q
+  ```
 
-### 插件结构
-每个插件需要：
-1. **metadata.json**: 插件元信息
-2. **__init__.py**: 主要逻辑
-3. **事件监听**: 使用 `@channel.use(ListenerSchema(...))`
+- 只检查配置和连接信息、不启动网络服务：
 
-### 核心 API
-- **配置访问**: `config = create(GlobalConfig)`
-- **数据库操作**: `await orm.fetch_one()`, `await orm.insert()`
-- **消息发送**: `await app.send_message(target, MessageChain(...))`
-- **权限检查**: `Permission.require()`, `Function.require()`
+  ```text
+  ./.venv-entari/bin/python -m tenko --dry-run
+  ```
 
-### 主要功能模块
-- **AI 聊天**: 支持 OpenAI/DeepSeek，工具调用，多模态
-- **战地一**: 玩家查询、服务器管理、统计分析
-- **图片功能**: 识图、随机图片、头像趣图、风格生成
-- **管理功能**: 权限管理、插件管理、群管理
+- 全量钩子检查使用 `pre-commit run --all-files`。测试默认只收集
+  `tests/tenko`，新增测试应放在该目录并保持测试可重复、无真实外部连接。
 
-## 数据库
-- **模型定义**: `core/orm/tables.py`
-- **迁移**: 使用 Alembic (`alembic revision --autogenerate`)
-- **操作**: 通过 `core.orm.orm` 封装的异步方法
+## 插件开发要点
 
-## 测试与部署
-- **本地运行**: `uv run main.py`
-- **Docker**: `docker build -t xiaomai-bot .`
-- **配置**: 复制 config/config_demo.yaml 为 config/config.yaml
+1. 插件放在 `tenko/plugins/` 下，使用 Entari 原生插件生命周期和命令注册机制，
+   并通过 `plugin.metadata` 声明名称、版本、作者和能力。
+2. 对外命令统一使用 `/` 前缀。命令解析、帮助内容和权限检查应复用现有的
+   command manager、`tenko.context` 以及 `tenko.host` 服务。
+3. 平台动作通过宿主动作服务执行，先确认账号能力、目标可用性和权限，再处理
+   失败结果；不要在插件中复制协议层调用或吞掉未知异常。
+4. 配置从 `tenko.config` 读取，数据库操作通过 `tenko.db.repositories` 等现有
+   抽象完成。新增状态需要明确持久化路径、迁移策略和测试覆盖。
+5. 插件加载和卸载都必须释放自己创建的资源。渲染、网络和定时任务应遵循宿主
+   生命周期，不在模块导入阶段启动副作用。
 
-## 注意事项
-- 新功能优先考虑插件形式实现
-- 重大变更前先创建 Issue 讨论
-- 确保 CI 检查通过后再合并 PR
-- 遵循项目的权限和功能开关机制
+## 代码与提交规范
+
+- Ruff 使用 88 列、双引号，并启用 E、F、W、UP 规则集；遵循现有命名、异常处理和
+  类型标注风格。
+- 先理解调用链和已有测试，再做局部修改；不要为了顺手清理而扩大变更范围。
+- 提交消息使用 Conventional Commits，例如
+  `fix(commands): correct command boundary handling`。
+- 功能、修复、文档和清理尽量分成可独立验证的小提交。每个提交前运行 Ruff 和
+  pytest，并在交接时说明已验证内容与剩余风险。
+
+## 配置与安全
+
+使用 `config/tenko.toml.example` 创建本地配置。真实 token、QQ 号、Git 凭据和
+其他敏感信息不得写入版本库；测试和 dry-run 应使用占位值或隔离的临时路径。

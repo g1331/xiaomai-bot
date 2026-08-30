@@ -9,9 +9,10 @@
   <img src="https://img.shields.io/badge/Stack-Entari%20%7C%20Satori%20%7C%20NapCat-C7A45B?style=flat-square&labelColor=102D47" alt="Entari Satori NapCat stack">
 </p>
 
-Tenko 是一个面向 QQ 群的管理 bot，基于 Entari、Satori 和 OneBot 11
-构建，使用 NapCat 作为协议端。它提供权限、群管理、账号响应策略、功能开关、
-状态查询和宿主升级等能力。
+Tenko 是一个面向 QQ 群的管理 bot，基于 Entari 与 Satori 协议抽象构建，通过
+OneBot 11 协议接入 QQ；协议端推荐使用 NapCat，也可替换为任何兼容 OneBot 11 /
+Satori 的实现。它提供权限、群管理、账号响应策略、功能开关、状态查询和宿主升级
+等能力。
 
 <p align="center">
   <img src="docs/assets/sections.png" alt="Tenko feature sections" width="100%">
@@ -46,8 +47,8 @@ Tenko 的命令统一使用 / 前缀。下面的命令名称与 tenko/plugins/ �
 <summary>文本版架构图</summary>
 
 ```text
-NapCat
-  │ OneBot 11
+OneBot 11 endpoint (e.g. NapCat)
+  │
   ▼
 Satori adapter ──► Entari runtime ──► command_manager ──► Tenko plugins
                                       │
@@ -58,8 +59,8 @@ Satori adapter ──► Entari runtime ──► command_manager ──► Tenk
 
 </details>
 
-NapCat 通过 OneBot 11 反向 WebSocket 连接 Tenko，Satori 负责协议对象和动作
-抽象，Entari 负责事件分发、插件生命周期和命令处理：
+兼容 OneBot 11 的协议端（以下以 NapCat 为例）通过反向 WebSocket 连接 Tenko，
+Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生命周期和命令处理：
 
 - 插件在 Entari 生命周期中加载和卸载；插件通过原生命令注册表接收命令，
   通过宿主服务访问账号路由、权限、功能开关、限流和升级控制平面。
@@ -77,7 +78,7 @@ NapCat 通过 OneBot 11 反向 WebSocket 连接 Tenko，Satori 负责协议对�
 ### 环境要求
 
 - Python >=3.10,<3.13；
-- NapCat，以及可连接到 NapCat OneBot 11 端点的网络环境；
+- 可连接到 OneBot 11 端点的协议端（例如 NapCat）及网络环境；
 - 启用图片渲染时，需要 Chromium 浏览器运行时。
 
 ### 创建独立环境
@@ -101,15 +102,16 @@ Windows PowerShell 的激活命令为：
 
     python -m tenko
 
-### NapCat 连接
+### 协议端连接（以 NapCat 为例）
 
 默认反向 WebSocket 地址为：
 
     ws://127.0.0.1:8080/onebot/v11/ws
 
-在 NapCat 的 OneBot 11 反向 WebSocket 配置中填写相同地址。若配置了
-[onebot].access_token，NapCat 必须使用相同的 token；示例文件和下方最小
-配置只使用占位符，部署时请替换为实际值。
+在所选 OneBot 11 协议端的反向 WebSocket 配置中填写相同地址。下面以 NapCat
+为例，在 NapCat 的 OneBot 11 反向 WebSocket 配置中填写相同地址。若配置了
+[onebot].access_token，该协议端必须使用相同的 token；示例文件和下方最小配置
+只使用占位符，部署时请替换为实际值。
 
 ### 启用图片渲染
 
@@ -131,7 +133,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     reverse_ws_prefix = "/"
     reverse_ws_path = "onebot/v11"
     reverse_ws_endpoint = "ws"
-    access_token = "<NAPCAT_ACCESS_TOKEN>"
+    access_token = "<ONEBOT_ACCESS_TOKEN>"
     api_timeout = 60
     satori_host = "127.0.0.1"
     satori_path = "satori"

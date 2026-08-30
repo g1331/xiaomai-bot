@@ -19,6 +19,7 @@ from satori import (
     Text,
     User,
 )
+from satori.exception import NotFoundException
 from satori.model import Event
 
 from tenko.events import MessageLog
@@ -88,6 +89,56 @@ async def test_exception_cooldown_filters_duplicate_error(loaded_plugin) -> None
     )
 
     loaded_plugin.send_error_report.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+async def test_exception_listener_filters_legacy_unreportable_platform_errors(
+    loaded_plugin,
+) -> None:
+    loaded_plugin.last_error_time.clear()
+    loaded_plugin.send_error_report = AsyncMock()
+    failures = (
+        NotFoundException("target not found"),
+        loaded_plugin.ActionTargetUnavailable("account muted in group"),
+        ActionExecutionError(
+            "platform action failed",
+            failure=ActionFailure(
+                account_id="10001",
+                capability=ActionCapability.SEND_GROUP_MESSAGE,
+                action="send_group_msg",
+                error_type="UnknownTarget",
+            ),
+        ),
+    )
+
+    for exception in failures:
+        event = ExceptionEvent(
+            origin=SimpleNamespace(account=SimpleNamespace(platform="onebot")),
+            subscriber=SimpleNamespace(spec=Subscriber),
+            exception=exception,
+        )
+        await loaded_plugin.except_handle.callable_target(
+            event,
+            render_service=loaded_plugin.RenderService(),
+        )
+
+    loaded_plugin.send_error_report.assert_not_awaited()
+
+
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+def test_exception_filter_does_not_hide_unrelated_action_failure(loaded_plugin) -> None:
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        error_type="ActionFailed",
+        message="ERR_NOT_GROUP_ADMIN",
+    )
+
+    assert not loaded_plugin.is_ignored_exception(
+        ActionExecutionError("permission failed", failure=failure)
+    )
 
 
 def make_context_origin():

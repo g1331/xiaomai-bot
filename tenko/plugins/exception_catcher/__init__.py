@@ -13,10 +13,15 @@ from arclet.entari.config import EntariConfig
 from arclet.entari.plugin import PluginRole
 from loguru import logger
 from satori import Image, Text
+from satori.exception import NotFoundException
 
 from tenko.context import MessageContext
 from tenko.events import MessageLog, message_metrics
-from tenko.host.actions import ActionFailure
+from tenko.host.actions import (
+    ActionExecutionError,
+    ActionFailure,
+    ActionTargetUnavailable,
+)
 from tenko.plugins.render import RenderService  # entari: plugin
 from tenko.render import render_or_none
 
@@ -37,6 +42,20 @@ plugin.get_plugin().metadata.default_switch = True
 ERROR_COOLDOWN = 30.0
 last_error_time: dict[str, float] = {}
 EVIDENCE_DIR = Path(".tenko/exceptions")
+_IGNORED_EXCEPTION_NAMES = frozenset(
+    {"AccountMuted", "UnknownTarget", "ActionTargetUnavailable"}
+)
+_IGNORED_EXCEPTION_PHRASES = (
+    "account muted",
+    "unknown target",
+    "target not found",
+    "目标不存在",
+    "目标不可用",
+    "对象位置未知",
+    "对象不存在或不可及",
+    "账号在对象所在聊天区域被封禁",
+    "账号在群内禁言",
+)
 
 
 def configure_evidence_directory(path: str | Path) -> None:
@@ -50,6 +69,41 @@ def get_error_hash(exception: BaseException) -> str:
     return hashlib.md5(
         f"{exception.__class__.__name__}:{exception}".encode()
     ).hexdigest()
+
+
+def _ignored_exception_details(exception: BaseException) -> str:
+    failure = getattr(exception, "failure", None)
+    if not isinstance(failure, ActionFailure):
+        return ""
+    return " ".join(
+        str(value).lower()
+        for value in (
+            failure.error_type,
+            failure.message,
+            failure.wording,
+            failure.detail,
+        )
+        if value
+    )
+
+
+def is_ignored_exception(exception: BaseException) -> bool:
+    """匹配旧版不报告的“目标不可达/账号被禁言”异常。"""
+
+    if isinstance(exception, ActionTargetUnavailable | NotFoundException):
+        return True
+    if type(exception).__name__ in _IGNORED_EXCEPTION_NAMES:
+        return True
+    details = _ignored_exception_details(exception)
+    if isinstance(exception, ActionExecutionError) and details:
+        if any(phrase in details for phrase in _IGNORED_EXCEPTION_PHRASES):
+            return True
+        if "notfoundexception" in details or "unknowntarget" in details:
+            return True
+        if "accountmuted" in details:
+            return True
+    cause = exception.__cause__
+    return cause is not None and cause is not exception and is_ignored_exception(cause)
 
 
 def _compact(value: object, limit: int = 160) -> str:
@@ -265,6 +319,8 @@ async def except_handle(
     """Handle the exception event emitted by Entari's dispatcher."""
 
     if isinstance(event.origin, ExceptionEvent):
+        return
+    if is_ignored_exception(event.exception):
         return
     error_hash = get_error_hash(event.exception)
     now = time.monotonic()

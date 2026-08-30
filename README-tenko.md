@@ -749,6 +749,9 @@ evidence_dir = ".tenko/exceptions"
 失败时，会在 `evidence_dir` 创建带时间和错误哈希的 `.log` 文件，并同时记录本地
 日志，避免异常证据只存在于一次失败的发送动作中。
 
+与旧版一致，递归异常事件、目标不可达（`NotFoundException`/`UnknownTarget`）和账号在
+群内禁言异常不会进入报告或本地取证；其他平台权限、网络和未知动作失败仍会保留。
+
 ### 图片渲染服务（G2-P1）
 
 `tenko/render.py` 中的 `RenderService` 由 `tenko/plugins/render` 这个 Entari

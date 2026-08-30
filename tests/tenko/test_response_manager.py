@@ -46,14 +46,14 @@ def make_registry() -> AccountRegistry:
     return registry
 
 
-def make_session():
+def make_session(role: str = "member"):
     event = Event(
         type=EventType.MESSAGE_CREATED,
         timestamp=datetime.now(),
         login=Login(platform="onebot", user=User("10001")),
         channel=Channel("40001", ChannelType.TEXT),
         guild=Guild("40001", "Tenko"),
-        member=Member(user=User("20001"), roles=[Role("member")]),
+        member=Member(user=User("20001"), roles=[Role(role)]),
         user=User("20001"),
         message=MessageObject.from_elements("50001", []),
     )
@@ -88,6 +88,12 @@ def make_private_session(user_id: str):
     )
 
 
+def make_query(path: str, result):
+    query = Query(path, result)
+    query.available = True
+    return query
+
+
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
 def test_query_format_only_includes_aggregate_counts(loaded_plugin) -> None:
     registry = make_registry()
@@ -120,6 +126,19 @@ def test_query_commands_use_prefix_and_reject_bare_words(loaded_plugin) -> None:
         assert not command.parse(f"/ {first.removeprefix('/')}").matched
 
 
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+def test_response_strategy_command_accepts_only_supported_values(loaded_plugin) -> None:
+    command = loaded_plugin.response_strategy_command
+
+    assert command.prefixes == ["/"]
+    assert command.parse("/设定响应").matched
+    assert command.parse("/设定响应 random").matched
+    assert command.parse("/设定响应 deterministic").matched
+    assert not command.parse("/设定响应 invalid").matched
+    assert not command.parse("/设定响应 random extra").matched
+    assert not command.parse("设定响应 random").matched
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
 async def test_query_handler_reads_the_shared_account_registry(loaded_plugin) -> None:
@@ -135,6 +154,53 @@ async def test_query_handler_reads_the_shared_account_registry(loaded_plugin) ->
 
     assert "群40001BOT数: 2；可用数: 0" in str(result)
     assert "禁言至" not in str(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+async def test_response_strategy_handler_reads_and_persists_current_group_only(
+    loaded_plugin, monkeypatch
+) -> None:
+    registry = AccountRegistry()
+    registry.register(FakeAccount("10001"), groups=[40001])
+    loaded_plugin.account_registry = registry
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    persist = AsyncMock()
+    monkeypatch.setattr(loaded_plugin, "_persist_response_type", persist)
+
+    current = await loaded_plugin.set_response_strategy.callable_target(
+        make_session("admin"), Query("response_type", None)
+    )
+
+    assert str(current) == "当前群响应策略：random"
+    assert persist.await_count == 0
+
+    changed = await loaded_plugin.set_response_strategy.callable_target(
+        make_session("admin"), make_query("response_type", "deterministic")
+    )
+
+    assert str(changed) == "已将当前群响应策略设为 deterministic"
+    assert registry.response_type_for_group("40001") == "deterministic"
+    persist.assert_awaited_once_with("40001", "deterministic")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
+async def test_response_strategy_handler_rejects_private_and_unbound_contexts(
+    loaded_plugin,
+) -> None:
+    loaded_plugin.permission_checker = PermissionChecker()
+    loaded_plugin.account_registry = AccountRegistry()
+
+    private = await loaded_plugin.set_response_strategy.callable_target(
+        make_private_session("90001"), Query("response_type", None)
+    )
+    assert str(private) == "权限不足"
+
+    unbound = await loaded_plugin.set_response_strategy.callable_target(
+        make_session("admin"), Query("response_type", None)
+    )
+    assert str(unbound) == "当前群未绑定可用BOT"
 
 
 @pytest.mark.asyncio

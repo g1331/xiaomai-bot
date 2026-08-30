@@ -4,6 +4,7 @@ from arclet.alconna import Alconna, Args, CommandMeta
 from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Query
 from arclet.entari.plugin import PluginRole
+from loguru import logger
 from satori import Image
 
 from tenko.host.accounts import AccountRegistry, account_registry
@@ -18,7 +19,7 @@ plugin.metadata(
     PluginRole.NORMAL,
     author=["13"],
     version="0.1.0",
-    description="查询 Tenko 多账号在线、群绑定和禁言状态；不提供运行时切换。",
+    description="查询并管理 Tenko 多账号在线、群绑定、响应策略和禁言状态。",
     classifier=["required"],
 )
 # Entari 0.18.6 has no constructor field for default_switch.  Keep the
@@ -371,3 +372,58 @@ async def online_bot(session: Session, *, render_service: RenderService):
         build_online_bots_data(account_registry, normalized_group),
     )
     return image if image is not None else text_message(result)
+
+
+async def _persist_response_type(group_id: str, response_type: str) -> None:
+    """同步更新群设置表；数据库不可用时保留账号状态文件作为持久化源。"""
+
+    from tenko.db.errors import DatabaseUnavailableError
+    from tenko.db.repositories import group_setting_repository
+
+    try:
+        await group_setting_repository.set_response_type(group_id, response_type)
+    except DatabaseUnavailableError as error:
+        logger.warning(
+            "群 {} 的响应策略已写入账号状态，但群设置数据库不可用: {}",
+            group_id,
+            error,
+        )
+
+
+response_strategy_command = Alconna(
+    "设定响应",
+    Args["response_type?", "random|deterministic"],
+    meta=CommandMeta(
+        "查询或设置当前群响应策略",
+        usage="设定响应 [random|deterministic]",
+        example="/设定响应\n/设定响应 deterministic",
+        compact=False,
+    ),
+)
+
+
+@command.on(response_strategy_command)
+async def set_response_strategy(
+    session: Session,
+    response_type: Query[str] = Query("response_type", None),
+):
+    if not await _authorized(session, Permission.GroupAdmin):
+        return text_message("权限不足")
+
+    context = context_from_session(session)
+    group_id = str(context.channel_id)
+    current = account_registry.response_type_for_group(group_id)
+    if current is None:
+        return text_message("当前群未绑定可用BOT")
+    if not response_type.available:
+        return text_message(f"当前群响应策略：{current}")
+
+    requested = str(response_type.result).strip().lower()
+    if requested not in {"random", "deterministic"}:
+        return text_message("响应策略只能是 random 或 deterministic")
+    if requested == current:
+        return text_message("响应模式与当前相同!")
+
+    account_registry.set_response_type(group_id, requested)
+    await _persist_response_type(group_id, requested)
+    return text_message(f"已将当前群响应策略设为 {requested}")

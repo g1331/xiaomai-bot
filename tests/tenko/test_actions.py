@@ -11,6 +11,7 @@ from tenko.host.actions import (
     ActionCapability,
     ActionCapabilityUnavailable,
     ActionExecutionError,
+    ActionFailure,
     ActionPermissionDenied,
     ActionService,
 )
@@ -28,7 +29,10 @@ class FakeProtocol:
 
     async def guild_member_mute(self, *args: Any) -> Any:
         self.calls.append(("guild_member_mute", args, {}))
-        return self.responses.get("guild_member_mute")
+        response = self.responses.get("guild_member_mute")
+        if isinstance(response, BaseException):
+            raise response
+        return response
 
     async def channel_mute(self, *args: Any) -> Any:
         self.calls.append(("channel_mute", args, {}))
@@ -182,6 +186,74 @@ async def test_permission_failed_receipt_does_not_latch_capability() -> None:
     with pytest.raises(ActionExecutionError):
         await service.mute_member(account, "40001", "20002", 90, context=context)
     assert len(protocol.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_napcat_permission_error_text_does_not_latch_capability() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "guild_member_mute": ActionFailed(
+                "1200: {'status': 'failed', 'retcode': 1200, "
+                "'message': 'ERR_NOT_GROUP_ADMIN', "
+                "'wording': 'ERR_NOT_GROUP_ADMIN', 'echo': '1'}"
+            )
+        }
+    )
+    service, account, context, _ = make_service(protocol)
+
+    with pytest.raises(ActionExecutionError) as caught:
+        await service.mute_member(account, "40001", "20002", 90, context=context)
+
+    failure = caught.value.failure
+    assert failure is not None
+    assert failure.status == "failed"
+    assert failure.retcode == 1200
+    assert failure.message == "ERR_NOT_GROUP_ADMIN"
+    assert failure.wording == "ERR_NOT_GROUP_ADMIN"
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is None
+
+    protocol.responses["guild_member_mute"] = None
+    receipt = await service.mute_member(account, "40001", "20002", 90, context=context)
+    assert receipt.account_id == "10001"
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is True
+    assert len(protocol.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "code",
+    ["ERR_NOT_GROUP_ADMIN", "ERR_NOT_GROUP_OWNER", "ERR_NOT_FRIEND"],
+)
+def test_napcat_permission_error_codes_are_classified(code: str) -> None:
+    service, _, _, _ = make_service()
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        message=code,
+        wording=code,
+    )
+
+    assert service._is_permission_failure(failure)
+
+
+def test_permission_failure_clears_stale_learned_capability() -> None:
+    service, _, _, _ = make_service()
+    service.set_capability("10001", ActionCapability.MEMBER_MUTE, False)
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.MEMBER_MUTE,
+        action="set_group_ban",
+        status="failed",
+        retcode=1200,
+        message="ERR_NOT_GROUP_ADMIN",
+        wording="ERR_NOT_GROUP_ADMIN",
+    )
+
+    service._remember_failure(failure)
+
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is None
 
 
 @pytest.mark.asyncio

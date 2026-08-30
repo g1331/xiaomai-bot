@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import inspect
 import re
 from collections.abc import Awaitable, Callable, Iterable, Mapping
@@ -61,6 +62,24 @@ _CAPABILITY_ALIASES = {
 }
 _MAX_BAN_SECONDS = 30 * 24 * 60 * 60
 _ID_PATTERN = re.compile(r"^\d+$")
+_PERMISSION_ERROR_CODES = frozenset(
+    {
+        "ERR_NOT_GROUP_ADMIN",
+        "ERR_NOT_GROUP_OWNER",
+        "ERR_NOT_FRIEND",
+    }
+)
+# NapCat's current ``SetGroupBan`` source explicitly records
+# ``120101005 / ERR_NOT_GROUP_ADMIN`` for a bot without group-admin access:
+# https://github.com/NapNeko/NapCatQQ/blob/main/packages/napcat-onebot/action/group/SetGroupBan.ts
+# OneBot transports the underlying ``errMsg`` as the free-form ``message`` /
+# ``wording`` fields, not as a standard symbolic enum.  The two other names
+# below are compatibility variants, not a claim of a complete official list;
+# keep the generic ERR_NOT_* and *_ADMIN/*_OWNER rules because NapCat's source
+# does not publish a stable symbolic error-code enum.
+_PERMISSION_ERROR_CODE_PATTERN = re.compile(
+    r"\bERR_NOT_[A-Z0-9_]+\b|\b[A-Z0-9_]+_(?:ADMIN|OWNER)\b"
+)
 
 
 def _key(value: object, label: str) -> str:
@@ -105,6 +124,20 @@ def _is_failed_receipt(value: Mapping[str, object]) -> bool:
     return retcode is not None and str(retcode).lower() not in {"0", "ok"}
 
 
+def _mapping_from_text(detail: str) -> Mapping[str, object] | None:
+    """从 ``ActionFailed`` 文本中的 Python 字典字面量取出回执。"""
+
+    start = detail.find("{")
+    end = detail.rfind("}")
+    if start < 0 or end < start:
+        return None
+    try:
+        value = ast.literal_eval(detail[start : end + 1])
+    except (SyntaxError, ValueError):
+        return None
+    return value if isinstance(value, Mapping) else None
+
+
 def _mapping_from(
     value: object, *, failed_only: bool = False
 ) -> Mapping[str, object] | None:
@@ -120,6 +153,10 @@ def _mapping_from(
         if isinstance(candidate, Mapping):
             if not failed_only or _is_failed_receipt(candidate):
                 return candidate
+        if isinstance(candidate, str):
+            parsed = _mapping_from_text(candidate)
+            if parsed is not None and (not failed_only or _is_failed_receipt(parsed)):
+                return parsed
         if isinstance(candidate, BaseException):
             nested = _mapping_from(candidate, failed_only=failed_only)
             if nested is not None:
@@ -128,10 +165,21 @@ def _mapping_from(
 
 
 def _fields_from_text(detail: str) -> tuple[str | None, int | str | None]:
-    status_match = re.search(r"status[=:]['\"]?(\w+)", detail, re.IGNORECASE)
-    retcode_match = re.search(r"retcode[=:]['\"]?([\w-]+)", detail, re.IGNORECASE)
+    status_match = re.search(
+        r"['\"]?status['\"]?\s*[=:]\s*['\"]?([\w-]+)",
+        detail,
+        re.IGNORECASE,
+    )
+    retcode_match = re.search(
+        r"['\"]?retcode['\"]?\s*[=:]\s*['\"]?([\w-]+)",
+        detail,
+        re.IGNORECASE,
+    )
     status = status_match.group(1).lower() if status_match else None
     raw_retcode = retcode_match.group(1) if retcode_match else None
+    if raw_retcode is None:
+        prefix_match = re.match(r"\s*(\d+)\s*:", detail)
+        raw_retcode = prefix_match.group(1) if prefix_match else None
     if raw_retcode is not None and raw_retcode.isdigit():
         return status, int(raw_retcode)
     return status, raw_retcode
@@ -406,10 +454,24 @@ class ActionService:
         if status in {"forbidden", "unauthorized", "permission_denied", "403"}:
             return True
         details = " ".join(
-            value.lower()
-            for value in (failure.message, failure.wording, failure.detail)
+            value.upper()
+            for value in (
+                failure.error_type,
+                failure.message,
+                failure.wording,
+                failure.detail,
+            )
             if value
         )
+        error_codes = _PERMISSION_ERROR_CODE_PATTERN.findall(details)
+        if any(
+            code in _PERMISSION_ERROR_CODES
+            or code.startswith("ERR_NOT_")
+            or code.endswith(("_ADMIN", "_OWNER"))
+            for code in error_codes
+        ):
+            return True
+        details = details.lower()
         return any(
             phrase in details
             for phrase in (
@@ -453,11 +515,13 @@ class ActionService:
     def _remember_failure(self, failure: ActionFailure) -> None:
         self._failures.append(failure)
         key = (failure.account_id, failure.capability)
-        if (
-            key not in self._overrides
-            and not self._is_permission_failure(failure)
-            and not self._is_transient_failure(failure)
-        ):
+        permission_failure = self._is_permission_failure(failure)
+        if permission_failure:
+            # 权限是账号×群的运行时条件，不是账号能力；清理历史误判的
+            # learned=False，让下一次有权限的调用重新探测该能力。
+            if key not in self._overrides:
+                self._learned.pop(key, None)
+        elif key not in self._overrides and not self._is_transient_failure(failure):
             self._learned[key] = False
         logger.warning(
             "platform action failed: account={} capability={} action={} "

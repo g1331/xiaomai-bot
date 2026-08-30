@@ -62,7 +62,7 @@ def make_context() -> MessageContext:
     )
 
 
-def make_session():
+def make_session(protocol=None):
     context = make_context()
     event = Event(
         type=EventType.MESSAGE_CREATED,
@@ -74,7 +74,19 @@ def make_session():
         user=User(context.user_id),
         message=MessageObject.from_elements(context.message_id, []),
     )
-    return SimpleNamespace(event=SimpleNamespace(_origin=event))
+    return SimpleNamespace(
+        account=SimpleNamespace(protocol=protocol),
+        event=SimpleNamespace(_origin=event),
+    )
+
+
+class PrivateMessageProtocol:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def send_private_message(self, user_id, content):
+        self.calls.append((str(user_id), str(content[0])))
+        return []
 
 
 @pytest.mark.parametrize(
@@ -179,7 +191,7 @@ async def test_pusher_exposes_structured_action_failure_per_target(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
-async def test_announcement_command_uses_switches_and_returns_per_target_results(
+async def test_announcement_command_uses_switches_and_returns_group_summary(
     loaded_plugin, monkeypatch
 ) -> None:
     account = FakeAccount("10001")
@@ -191,6 +203,9 @@ async def test_announcement_command_uses_switches_and_returns_per_target_results
     )
     monkeypatch.setattr(loaded_plugin, "account_registry", registry)
     monkeypatch.setattr(loaded_plugin, "action_service", service)
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(bot_admin_ids=["20001"])
+    )
     monkeypatch.setattr(loaded_plugin, "resolve_feature", lambda name: make_feature())
     monkeypatch.setattr(loaded_plugin, "feature_enabled", lambda feature, group: True)
 
@@ -201,9 +216,57 @@ async def test_announcement_command_uses_switches_and_returns_per_target_results
         Match(None, False),
     )
 
-    assert "群40001: sent - 推送成功（账号10001）" in str(result)
+    assert str(result) == "已推送完毕（1 个群）"
+    assert "40001" not in str(result)
     service.authorize.assert_awaited_once()
     service.send_group_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+async def test_master_group_announcement_receives_full_results_privately(
+    loaded_plugin, monkeypatch
+) -> None:
+    protocol = PrivateMessageProtocol()
+    account = FakeAccount("10001")
+    registry = AccountRegistry()
+    registry.register(account, groups=["40001"])
+    service = SimpleNamespace(
+        authorize=AsyncMock(return_value=True),
+        send_group_message=AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(loaded_plugin, "account_registry", registry)
+    monkeypatch.setattr(loaded_plugin, "action_service", service)
+    monkeypatch.setattr(loaded_plugin, "resolve_feature", lambda name: make_feature())
+    monkeypatch.setattr(loaded_plugin, "feature_enabled", lambda feature, group: True)
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry(master_id="20001")
+    )
+
+    result = await loaded_plugin.push_handle.callable_target(
+        make_session(protocol),
+        Match("帮助系统", True),
+        Match(("维护",), True),
+        Match(None, False),
+    )
+
+    assert str(result) == "已推送完毕（1 个群）"
+    assert protocol.calls and protocol.calls[0][0] == "20001"
+    assert "群40001: sent - 推送成功（账号10001）" in protocol.calls[0][1]
+
+
+@pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
+def test_format_results_hides_per_group_details(loaded_plugin) -> None:
+    results = (
+        loaded_plugin.PushResult("40001", "sent", "推送成功", "10001"),
+        loaded_plugin.PushResult("40002", "failed", "内部失败详情", "10002"),
+    )
+
+    output = loaded_plugin.format_results(results)
+
+    assert output == "公告推送完成：目标数 2；成功数 1；失败数 1"
+    assert "40001" not in output
+    assert "内部失败详情" not in output
 
 
 @pytest.mark.asyncio

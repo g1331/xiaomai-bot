@@ -28,6 +28,7 @@ from tenko.plugins._common import (
     action_error_message,
     context_from_session,
     report_action_error,
+    send_private_message,
     text_message,
 )
 
@@ -252,9 +253,22 @@ async def pusher(
 
 
 def format_results(results: Iterable[PushResult]) -> str:
+    """Format an announcement result summary safe for the source group."""
+
+    entries = tuple(results)
+    succeeded = sum(result.status == "sent" for result in entries)
+    failed = len(entries) - succeeded
+    if not failed:
+        return f"已推送完毕（{succeeded} 个群）"
+    return f"公告推送完成：目标数 {len(entries)}；成功数 {succeeded}；失败数 {failed}"
+
+
+def format_diagnostic_results(results: Iterable[PushResult]) -> str:
+    """Format the full per-group result for a Master private message."""
+
     entries = tuple(results)
     if not entries:
-        return "没有满足条件的群哦~"
+        return "公告推送结果：没有满足条件的群哦~"
     lines = ["公告推送结果:"]
     lines.extend(
         f"群{result.group_id}: {result.status} - {result.detail}"
@@ -313,6 +327,7 @@ async def push_handle(
         )
     except ActionPermissionDenied as error:
         return text_message(action_error_message(error))
+    is_master = await permission_checker.require_perm(context, Permission.Master)
 
     interval = time.result if time.available else 1
     if not 0 < interval < 10:
@@ -327,7 +342,14 @@ async def push_handle(
 
     targets, preflight = collect_targets(feature)
     if not targets:
-        return text_message(format_results(preflight))
+        results = preflight
+        if is_master:
+            await send_private_message(
+                session,
+                context.user_id,
+                format_diagnostic_results(results),
+            )
+        return text_message(format_results(results))
     if not await _confirm(session, announcement_content, len(targets), interval):
         return text_message("未预期回复,操作退出")
 
@@ -338,7 +360,14 @@ async def push_handle(
         context=context,
         report_origin=session,
     )
-    return text_message(format_results((*preflight, *pushed)))
+    results = (*preflight, *pushed)
+    if is_master:
+        await send_private_message(
+            session,
+            context.user_id,
+            format_diagnostic_results(results),
+        )
+    return text_message(format_results(results))
 
 
 __all__ = [
@@ -348,6 +377,7 @@ __all__ = [
     "collect_targets",
     "feature_enabled",
     "format_announcement",
+    "format_diagnostic_results",
     "format_results",
     "plugin_runtime",
     "pusher",

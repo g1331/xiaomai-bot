@@ -141,6 +141,47 @@ def test_exception_filter_does_not_hide_unrelated_action_failure(loaded_plugin) 
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+async def test_direct_exception_report_filters_legacy_unreportable_errors(
+    loaded_plugin, tmp_path
+) -> None:
+    class RecordingProtocol:
+        def __init__(self) -> None:
+            self.calls = []
+
+        async def send_private_message(self, user_id, content):
+            self.calls.append((user_id, content))
+
+    origin = make_context_origin()
+    origin.account.protocol = RecordingProtocol()
+    failure = ActionFailure(
+        account_id="10001",
+        capability=ActionCapability.SEND_GROUP_MESSAGE,
+        action="send_group_msg",
+        error_type="UnknownTarget",
+    )
+    exceptions = (
+        NotFoundException("target not found"),
+        loaded_plugin.ActionTargetUnavailable("account muted in group"),
+        ActionExecutionError("platform action failed", failure=failure),
+    )
+    original = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {"onebot": ["90001"]}
+    try:
+        for exception in exceptions:
+            await loaded_plugin.send_error_report(
+                exception,
+                origin,
+                evidence_dir=tmp_path,
+            )
+    finally:
+        EntariConfig.instance.basic.superusers = original
+
+    assert origin.account.protocol.calls == []
+    assert tuple(tmp_path.glob("*.log")) == ()
+
+
 def make_context_origin():
     event = Event(
         type=EventType.MESSAGE_CREATED,

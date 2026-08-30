@@ -265,6 +265,8 @@ async def send_error_report(
     服务实例。
     """
 
+    if is_ignored_exception(exception):
+        return
     report = generate_error_report(exception, origin)
     account = getattr(origin, "account", None)
     delivery_failed = account is None

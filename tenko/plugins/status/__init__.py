@@ -50,8 +50,8 @@ permission_checker = PermissionChecker()
 _PROCESS_START_TIME = time.time()
 _RATE_WINDOW_SECONDS = 60.0
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_PROJECT_NAME = "bot-xiaomai-open"
-_PROJECT_ADDRESS = "项目地址：https://github.com/g1331/xiaomai-bot"
+_PROJECT_NAME = "tenko"
+_PROJECT_ADDRESS = "项目地址：https://github.com/g1331/tenko"
 
 
 @dataclass(frozen=True, slots=True)

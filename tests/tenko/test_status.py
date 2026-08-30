@@ -154,7 +154,7 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
     assert "在线bot数量：0/0" in output
     assert "活动群组数量：0" in output
     assert "当前群禁言：0/0" in output
-    assert "项目地址：https://github.com/g1331/xiaomai-bot" in output
+    assert "项目地址：https://github.com/g1331/tenko" in output
     assert "Tenko 状态" not in output
     assert "10001" not in output
     assert "20001" not in output

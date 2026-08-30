@@ -1,70 +1,30 @@
 [project]
-name = "bot-xiaomai-open"
+name = "tenko"
 version = "3.0.1"
-description = "GNU GENERAL PUBLIC LICENSE"
+description = "QQ group management bot built on Entari and Satori protocol abstraction (OneBot 11)"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "graia-ariadne[standard]>=0.11.7",
-    "graia-amnesia>=0.7.1",
-    "graia-saya>=0.0.19",
-    "graia-scheduler>=0.2.0",
-    "graiax-fastapi>=0.3.1",
-    "graiax-playwright>=0.2.7",
-    "graiax-text2img-playwright>=0.4.2",
-    "launart==0.6.4",
-    "httpx>=0.27.0",
-    "httpx>=0.27.0",
-    "h11>=0.14.0",
-    "creart>=0.3.0",
-    "sqlalchemy>=2.0.30",
+    "arclet-entari==0.18.6",
+    "arclet-alconna==1.8.44",
+    "arclet-alconna-tools==0.7.12",
+    "arclet-letoderea==0.21.3",
+    "satori-python-adapter-onebot11==0.5.0",
+    "satori-python-client==1.3.7",
+    "satori-python-server==1.3.7",
+    "entari-plugin-database==0.3.4",
+    "launart==0.8.2",
+    "creart==0.3.0",
+    "sqlalchemy==2.0.52",
+    "aiosqlite==0.22.1",
+    "alembic==1.19.1",
     "pyyaml>=6.0.1",
-    "aiosqlite>=0.20.0",
     "psutil>=5.9.8",
-    "arclet-alconna-graia>=0.18.2",
     "jinja2>=3.1.4",
-    "markdown-it-py>=3.0.0",
-    "mdit-py-plugins>=0.4.0",
-    "unwind==0.4.0",
-    "aiofiles>=23.2.1",
-    "zhconv>=1.4.0",
-    "bs4>=0.0.2",
-    "requests>=2.31.0",
-    "jieba>=0.42.1",
-    "picimagesearch>=3.10.2",
-    "imageio>=2.34.1",
-    "bilireq>=0.2.13",
-    "qrcode>=7.4.2",
-    "grpcio>=1.63.0",
-    "grpcio-status==1.63.0",
-    "pypinyin>=0.51.0",
-    "gitpython>=3.1.43",
-    "revchatgpt>=6.8.6",
-    "rapidfuzz>=3.9.0",
-    "noneprompt>=0.1.9",
-    "alembic>=1.13.1",
-    "uvicorn>=0.29.0",
-    "pillow>=10.3.0",
-    "matplotlib>=3.8.4",
-    "pandas>=2.2.2",
-    "seaborn>=0.13.2",
-    "pexpect>=4.9.0",
-    "starlette>=0.37.2",
-    "playwright==1.41.2",
-    "curl-cffi>=0.7.1",
-    "markdown>=3.7",
-    "selenium>=4.28.1",
-    "webdriver-manager>=4.0.2",
+    "playwright==1.62.0",
     "pygments>=2.19.1",
-    "python-markdown-math>=0.8",
-    "pymdown-extensions>=10.14.2",
-    "openai>=1.65.0",
-    "duckduckgo-search>=7.3.1",
-    "mcstatus>=11.1.1",
-    "restrictedpython>=8.0",
-    "scipy>=1.15.1",
-    "tomli>=2.2.1",
-    "websockets>=15.0.1",
+    "loguru==0.7.3",
+    "httpx>=0.27.0",
 ]
 
 [tool.uv]
@@ -140,7 +100,7 @@ footer = """
 
 ### 🔍 相关链接
 - 问题反馈：[Issues](<REPO>/issues)
-- 项目主页：[g1331/xiaomai-bot](<REPO>)
+- 项目主页：[g1331/tenko](<REPO>)
 
 > 本文档由 [git-cliff](https://git-cliff.org) 根据 Git 提交记录自动生成
 """
@@ -150,7 +110,7 @@ trim = true
 
 # 后处理器（例如替换链接）
 postprocessors = [
-    { pattern = '<REPO>', replace = "https://github.com/g1331/xiaomai-bot" }, # 替换仓库地址
+    { pattern = '<REPO>', replace = "https://github.com/g1331/tenko" }, # 替换仓库地址
 ]
 
 # 即使没有版本也强制渲染 changelog 主体

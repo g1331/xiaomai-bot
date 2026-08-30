@@ -14,14 +14,15 @@ Satori OneBot 11 adapter ──► Satori Server ──► Entari client
 ```
 
 收到 OneBot 11 的群聊或私聊消息后，Tenko 会记录账号、会话类型、用户、文本和图片
-URL。群消息在多账号同时在线时按群策略只交给一个账号处理；命令进入 Entari 前统一
-经过群级功能开关和频率限制。固定回复默认关闭；开启后，会通过 Satori protocol
-发送 `Tenko 已收到消息。`（或配置的文案）。
+URL，并在宿主事件层维护有限长度的消息统计与取证环形缓冲。群消息在多账号同时在线
+时按群策略只交给一个账号处理；命令进入 Entari 前统一经过群级功能开关和频率限制。
+固定回复默认关闭；开启后，会通过 Satori protocol 发送 `Tenko 已收到消息。`（或配置
+的文案）。
 
 ## 边界与文件
 
 - `tenko/connection.py`：连接层，组装官方 Satori Server、OneBot 11 反向适配器和 Entari 使用的内部 WebSocket。
-- `tenko/events.py`：事件层，在插件分发前执行调试白名单和禁言过滤，记录消息并按开关发送固定文案。
+- `tenko/events.py`：事件层，在插件分发前执行调试白名单和禁言过滤，记录消息、收发统计、取证缓冲，并按开关发送固定文案。
 - `tenko/context.py`：消息上下文层，统一 `account_id`、事件类型、群/私聊、文本和图片 URL。
 - `tenko/host/accounts.py`：账号生命周期、群绑定、响应策略、禁言状态和管理账号候选。
 - `tenko/host/actions.py`：Satori/OneBot 动作接缝、能力学习、失败分类和群发现。
@@ -54,6 +55,7 @@ uv pip sync --python .venv-entari/bin/python requirements-entari.txt
 | `satori-python-client` | `1.3.7` |
 | `satori-python-core` | `1.3.9.post1` |
 | `satori-python-server` | `1.3.7` |
+| `psutil` | `>=5.9.8`（status 可选运行时依赖） |
 
 ## 配置 NapCat
 
@@ -286,9 +288,9 @@ Graia 的 Listener、Twilight、Depend、Waiter 或 Ariadne `MessageChain`。
 | --- | --- | --- |
 | `tenko/plugins/perm_manager` | `modules/required/perm_manager` | 复用 `MemberPerm`、`GroupPerm`、`GroupSetting` 的权限管理、查询和成员权限同步；使用 `PermissionChecker` 做统一权限检查。成员加入、退群和管理员角色变化分别映射为 `GuildMemberAddedEvent`、`GuildMemberRemovedEvent`、`GuildMemberUpdatedEvent`。OneBot/Satori 当前无法确认的成员管理能力保留 `InternalEvent` 日志，并标记“待 NapCat capability 确认”。 |
 | `tenko/plugins/helper` | `modules/required/helper` | 使用 Entari/Alconna 当前注册命令表生成帮助和编号详情，不复制旧的文本解析或图片菜单生成逻辑。 |
-| `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁和踢出；群精华/退群仍只在宿主动作层保留扩展入口。 |
-| `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供文本状态查询，报告当前会话和已注册 Entari 插件数量；不再依赖旧的进程监控、图片渲染或 Ariadne 对象。 |
-| `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送 Satori 文本报告；不复制旧的 Graia 异常注入和图片报告路径。 |
+| `tenko/plugins/group_manager` | `modules/required/group_manager` | 提供 `群设置` 只读查询、邀请审批，以及通过 `tenko/host/actions.py` 发出的禁言、解禁、撤回、全体禁言、全体解禁和踢出；群精华/退群仍只在宿主动作层保留扩展入口。 |
+| `tenko/plugins/status` | `modules/required/status` | 以 `-bot`/`状态` 命令提供文本状态查询，报告系统资源、进程运行信息、收发消息统计、在线账号和账号×群禁言状态；图片渲染暂缓，不依赖旧的 Ariadne 对象。 |
+| `tenko/plugins/exception_catcher` | `modules/required/exception_catcher` | 订阅 Entari 全局 `ExceptionEvent`，按错误哈希冷却并向 Entari 配置的 superusers 发送包含上下文和最近消息的文本取证报告；投递失败时落盘，不复制旧的 Graia 异常注入和图片报告路径。 |
 
 权限插件的数据库写入仍只发生在明确的权限管理命令中；状态查询、帮助查询和群设置
 查询路径不会创建或更新旧表。未迁移的群管理平台动作不会注册为“看似可用”的命令，
@@ -516,8 +518,8 @@ OneBot action 名称，所有平台动作都经过宿主服务。
   消息的选择按消息 ID 缓存，多个账号同时收到该消息时只有选中账号继续分发；
 - `deterministic`：只允许指定账号处理；指定账号离线或在该群被禁言时不回退到其他
   账号，相关事件跳过并记录 debug 日志；
-- 单账号群和私聊保持原有路径。消息触发的首次绑定仍保留，因此上线群发现失败时
-  不会阻断后续消息兜底。
+- 单账号群和私聊保持原有路径。退群/被踢事件会主动解除账号×群绑定；消息触发的
+  首次绑定仍保留，因此上线群发现失败或事件遗漏时不会阻断后续消息兜底。
 
 ### 群级功能开关与命令限流
 
@@ -580,6 +582,100 @@ OneBot action 名称，所有平台动作都经过宿主服务。
 
 ```bash
 ./.venv-entari/bin/ruff check .
+./.venv-entari/bin/python -m pytest tests/tenko -q
+./.venv-entari/bin/python -m tenko --dry-run
+```
+
+## 批次 E：功能补全
+
+本批次继续只修改 `tenko/`、`tests/tenko/`、`config/tenko.toml.example` 和本文件，
+不改旧 `core/`、`modules/`、`utils/`。事件名、请求字段和审批 API 均以当前
+`.venv-entari` 中的 Entari 0.18.6、Satori OneBot 11 adapter 源码为准。
+
+### status 文本状态
+
+`/状态`（也保留 `/-bot -t`）现在输出以下轻量信息：
+
+- `psutil` 采集的 CPU、内存、磁盘和网络 IO；
+- Bot 进程启动时间、运行时长和 RSS；
+- 宿主事件层的收发总数、最近 60 秒收发速率和活跃群数；
+- `AccountRegistry` 中的在线账号，以及每个账号×群的禁言状态。
+
+项目声明已经包含 `psutil>=5.9.8`；独立环境安装时可执行：
+
+```bash
+uv pip install --python .venv-entari/bin/python psutil
+```
+
+如果运行环境没有 `psutil`，状态命令仍返回会话、消息、账号和进程信息，只跳过
+“系统”资源段。图片渲染本批次明确暂缓，当前输出保持纯文本。
+
+### 退群和被踢感知
+
+当前 OneBot 11 adapter 的实际映射是：
+
+- `notice.group_decrease.leave`、`notice.group_decrease.kick` →
+  `EventType.GUILD_MEMBER_REMOVED`；
+- `notice.group_decrease.kick_me` → `EventType.GUILD_REMOVED`。
+
+Tenko 在宿主层监听这两个 Satori 事件。当事件中的成员 ID 命中已注册账号的
+`self_id` 时，只解除该账号在当前群的绑定，保留它的其他群；普通成员退群不会改变
+账号路由。解绑复用 `AccountRegistry.unbind_group()`，因此 deterministic 指定账号
+被移除时仍由注册表回退到剩余成员的首个账号，空群则清理群路由状态。若是被踢事件，
+宿主会在具备 `guild_get` 且账号可用时通过 `ActionService` 做一次群信息确认；确认失败
+只记 debug 日志，不阻塞解绑。
+
+如果 OneBot adapter 在构造退群事件时所需的补充查询失败，adapter 会保留原始
+`_type`/`_data` 并发布 `EventType.INTERNAL`；宿主也会按上述已核实的三个 raw event
+类型读取 `group_id`/`user_id`，因此不会把“已被踢后无法查询成员信息”误当成无事件。
+
+消息入口的首次绑定兜底仍保留，所以语义是“退群/被踢事件感知 + 消息触发兜底”，而
+不是只依赖下一条消息才发现状态变化。
+
+### 群邀请审批
+
+当前适配器把 `request.group.invite` 转换为 Satori `GuildRequestEvent`，并保留请求
+`flag` 为 `event.message.id`；审批使用安装版本提供的 `protocol.guild_approve()`，
+由 adapter 转换为 OneBot `set_group_add_request` 的 `sub_type=invite`。因此 Tenko
+不会虚构 `get_friend_requests` 轮询或不存在的事件名。
+
+行为与旧群管理插件对齐：邀请人拥有 `BotAdmin`（包括 `Master`）时自动同意并使用
+“已同意您的邀请~”备注；其他邀请进入进程内待审队列，默认等待 1 小时后以
+“拒绝了你的入群邀请!” 自动拒绝。待审通知发送给 `[entari].superusers`，通知不可达
+时队列仍保留。
+
+审批命令使用全局 `/` 前缀：
+
+- `/同意邀请 <请求ID>`（别名 `/同意`）：目标群内的 `GroupAdmin`，或群外/私聊的
+  `Master`；
+- `/拒绝邀请 <请求ID> [理由]`（别名 `/拒绝`）：同上；省略理由时使用旧版拒绝备注；
+- `/待审邀请`：仅 `Master` 查看当前进程待审列表。
+
+OneBot adapter 当前还把 `request.group.add` 映射成 `GUILD_MEMBER_ADDED` 通知，而不是
+`GuildMemberRequestEvent`；本批次只对实际可观测的 bot 邀请请求注册审批监听，不把该
+通知误当成另一个待审请求。
+
+### 异常取证
+
+`exception_catcher` 的报告现在包含发生时间、完整异常类型和 traceback、当前会话的
+账号/平台/群/用户/消息摘要，以及宿主 `events.py` 环形缓冲中的最近消息。缓冲默认
+保留 10 条，可在配置中调整：
+
+```toml
+[exception]
+message_buffer_size = 10
+evidence_dir = ".tenko/exceptions"
+```
+
+环形缓冲使用固定 `maxlen`，超限时先进先出淘汰，不把消息无限留在内存中。报告先
+发送给 `EntariConfig.instance.basic.superusers`；没有可投递 superuser，或任一投递
+失败时，会在 `evidence_dir` 创建带时间和错误哈希的 `.log` 文件，并同时记录本地
+日志，避免异常证据只存在于一次失败的发送动作中。
+
+### 批次 E 校验
+
+```bash
+./.venv-entari/bin/ruff check tenko tests/tenko
 ./.venv-entari/bin/python -m pytest tests/tenko -q
 ./.venv-entari/bin/python -m tenko --dry-run
 ```

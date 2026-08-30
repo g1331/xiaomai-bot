@@ -18,6 +18,7 @@ from satori import (
     Role,
     User,
 )
+from satori.element import At
 from satori.model import Event, Member
 
 from tenko.context import MessageContext
@@ -226,8 +227,12 @@ async def test_announcement_command_uses_switches_and_returns_group_summary(
         Match(None, False),
     )
 
-    assert str(result) == "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
+    assert result.extract_plain_text() == (
+        "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
+    )
     assert "40001" not in str(result)
+    assert isinstance(result[0], At)
+    assert result[0].id == "20001"
     session.send.assert_awaited_once()
     assert str(session.send.await_args.args[0]) == "开始推送：目标数 1"
     service.authorize.assert_awaited_once()
@@ -262,7 +267,9 @@ async def test_master_group_announcement_receives_full_results_privately(
         Match(None, False),
     )
 
-    assert str(result) == "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
+    assert result.extract_plain_text() == (
+        "公告推送完成：目标数 1；成功数 1；失败数 0；跳过数 0"
+    )
     assert protocol.calls and protocol.calls[0][0] == "20001"
     assert "群40001: sent - 推送成功（账号10001）" in protocol.calls[0][1]
 
@@ -298,7 +305,9 @@ async def test_announcement_progress_counts_muted_preflight_groups(
     )
 
     assert str(session.send.await_args.args[0]) == "开始推送：目标数 2"
-    assert str(result) == "公告推送完成：目标数 2；成功数 1；失败数 0；跳过数 1"
+    assert result.extract_plain_text() == (
+        "公告推送完成：目标数 2；成功数 1；失败数 0；跳过数 1"
+    )
     assert "40002" not in str(result)
 
 

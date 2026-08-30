@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from arclet.alconna import Alconna, Args, CommandMeta, MultiVar, Option
-from arclet.entari import Session, command, plugin
+from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Match
 from arclet.entari.plugin import PluginRole, get_plugins
+from satori import Text
+from satori.element import At
 
 from tenko.host.actions import (
     ActionAccountUnavailable,
@@ -380,7 +382,7 @@ async def push_handle(
             context.user_id,
             format_diagnostic_results(results),
         )
-    return text_message(format_results(results))
+    return MessageChain([At(context.user_id), Text(format_results(results))])
 
 
 __all__ = [

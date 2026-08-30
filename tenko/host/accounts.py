@@ -13,6 +13,16 @@ from ..context import MessageContext
 
 ResponseType = Literal["random", "deterministic"]
 _NO_MUTE = object()
+_GROUP_PERMISSION_LEVELS = {
+    "member": 16,
+    "user": 16,
+    "admin": 32,
+    "administrator": 32,
+    "owner": 64,
+    "群员": 16,
+    "管理员": 32,
+    "群主": 64,
+}
 
 
 def _key(value: object) -> str:
@@ -62,6 +72,7 @@ class AccountRegistry:
         self._response_types: dict[str, ResponseType] = {}
         self._deterministic_accounts: dict[str, str] = {}
         self._muted_until: dict[tuple[str, str], datetime | None] = {}
+        self._group_permissions: dict[tuple[str, str], int] = {}
 
     @property
     def accounts(self) -> Mapping[str, Account]:
@@ -107,6 +118,9 @@ class AccountRegistry:
         for mute_key in tuple(self._muted_until):
             if mute_key[0] == account_id:
                 del self._muted_until[mute_key]
+        for permission_key in tuple(self._group_permissions):
+            if permission_key[0] == account_id:
+                del self._group_permissions[permission_key]
         for group_id in tuple(self._groups):
             members = self._groups[group_id]
             self._groups[group_id] = [
@@ -260,6 +274,7 @@ class AccountRegistry:
 
         members.remove(account_id)
         self._muted_until.pop((account_id, normalized_group), None)
+        self._group_permissions.pop((account_id, normalized_group), None)
         if not members:
             del self._groups[normalized_group]
             self._response_types.pop(normalized_group, None)
@@ -287,6 +302,59 @@ class AccountRegistry:
             group_id
             for group_id, members in self._groups.items()
             if normalized_account in members
+        )
+
+    @staticmethod
+    def _group_permission_level(permission: int | str) -> int:
+        if isinstance(permission, str):
+            normalized = permission.strip().lower()
+            if normalized in _GROUP_PERMISSION_LEVELS:
+                return _GROUP_PERMISSION_LEVELS[normalized]
+            try:
+                permission = int(normalized)
+            except ValueError as exc:
+                raise ValueError(f"未知群成员权限: {permission}") from exc
+        if isinstance(permission, bool) or not isinstance(permission, int):
+            raise TypeError("群成员权限必须是整数或角色名称")
+        return permission
+
+    def set_group_permission(
+        self,
+        account_or_id: Account | str | int,
+        group_id: str | int,
+        permission: int | str,
+    ) -> None:
+        """记录账号在群内的管理权限，供管理动作选择执行账号。"""
+
+        account_id = _account_id(account_or_id)
+        normalized_group = _key(group_id)
+        if account_id not in self._accounts:
+            raise KeyError(f"账号未注册: {account_id}")
+        self._group_permissions[(account_id, normalized_group)] = (
+            self._group_permission_level(permission)
+        )
+
+    # 这些别名保持调用方对“账号×群”关系的自然命名，不复制第二份状态。
+    set_account_group_permission = set_group_permission
+
+    def group_permission(
+        self, account_or_id: Account | str | int, group_id: str | int
+    ) -> int | None:
+        return self._group_permissions.get((_account_id(account_or_id), _key(group_id)))
+
+    account_group_permission = group_permission
+
+    def management_accounts_for_group(
+        self, group_id: str | int, *, minimum: int = 32
+    ) -> tuple[Account, ...]:
+        """返回在线、未被禁言且已知达到管理权限的群账号。"""
+
+        normalized_group = _key(group_id)
+        return tuple(
+            account
+            for account in self.accounts_for_group(normalized_group)
+            if (level := self.group_permission(account, normalized_group)) is not None
+            and level >= minimum
         )
 
     def response_type_for_group(self, group_id: str | int) -> ResponseType | None:

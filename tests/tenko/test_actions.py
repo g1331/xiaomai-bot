@@ -16,7 +16,7 @@ from tenko.host.actions import (
 )
 from tenko.host.accounts import AccountRegistry
 from tenko.host.actions import ActionAccountUnavailable
-from tenko.host.perm import PermissionChecker, PermissionRegistry
+from tenko.host.perm import Permission, PermissionChecker, PermissionRegistry
 
 
 @dataclass
@@ -145,7 +145,7 @@ async def test_extension_actions_share_the_native_internal_entry() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_receipt_is_recorded_and_latches_capability_unavailable() -> None:
+async def test_permission_failed_receipt_does_not_latch_capability() -> None:
     protocol = FakeProtocol(
         responses={
             "guild_member_mute": {
@@ -169,11 +169,64 @@ async def test_failed_receipt_is_recorded_and_latches_capability_unavailable() -
     assert failure.retcode == 1200
     assert failure.message == "没有权限"
     assert failure.wording == "permission denied"
-    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is False
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is None
 
+    with pytest.raises(ActionExecutionError):
+        await service.mute_member(account, "40001", "20002", 90, context=context)
+    assert len(protocol.calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_platform_failed_receipt_latches_capability_unavailable() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "guild_member_mute": {
+                "status": "failed",
+                "retcode": 1200,
+                "data": None,
+            }
+        }
+    )
+    service, account, context, _ = make_service(protocol)
+
+    with pytest.raises(ActionExecutionError):
+        await service.mute_member(account, "40001", "20002", 90, context=context)
+
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is False
     with pytest.raises(ActionCapabilityUnavailable):
         await service.mute_member(account, "40001", "20002", 90, context=context)
     assert len(protocol.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_group_manager_action_falls_back_to_another_admin_account() -> None:
+    first_protocol = FakeProtocol(
+        responses={
+            "guild_member_mute": {
+                "status": "failed",
+                "retcode": 1200,
+                "message": "没有权限",
+            }
+        }
+    )
+    second_protocol = FakeProtocol()
+    first = FakeAccount("10001", first_protocol)
+    second = FakeAccount("10002", second_protocol)
+    accounts = AccountRegistry()
+    accounts.register(first, groups=["40001"])
+    accounts.register(second, groups=["40001"])
+    accounts.set_group_permission(second, "40001", Permission.GroupAdmin)
+    permissions = PermissionChecker(registry=PermissionRegistry())
+    service = ActionService(accounts, permissions)
+    context = make_context(account_id="10001")
+
+    receipt = await service.mute_member(first, "40001", "20002", 90, context=context)
+
+    assert receipt.account_id == "10002"
+    assert len(first_protocol.calls) == 1
+    assert len(second_protocol.calls) == 1
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is None
+    assert service.capability_status("10002", ActionCapability.MEMBER_MUTE) is True
 
 
 @pytest.mark.asyncio

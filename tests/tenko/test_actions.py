@@ -181,6 +181,37 @@ async def test_permission_failed_receipt_does_not_latch_capability() -> None:
 
 
 @pytest.mark.asyncio
+async def test_permission_failure_does_not_contaminate_another_group() -> None:
+    protocol = FakeProtocol(
+        responses={
+            "guild_member_mute": {
+                "status": "failed",
+                "retcode": 1200,
+                "message": "没有权限",
+            }
+        }
+    )
+    service, account, context, _ = make_service(protocol)
+    service.registry.bind_group("40002", account)
+
+    with pytest.raises(ActionExecutionError):
+        await service.mute_member(account, "40001", "20002", 90, context=context)
+
+    protocol.responses["guild_member_mute"] = None
+    other_context = make_context(group_id="40002")
+    receipt = await service.mute_member(
+        account, "40002", "20002", 90, context=other_context
+    )
+
+    assert receipt.account_id == "10001"
+    assert service.capability_status("10001", ActionCapability.MEMBER_MUTE) is True
+    assert [call[0] for call in protocol.calls] == [
+        "guild_member_mute",
+        "guild_member_mute",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_platform_failed_receipt_latches_capability_unavailable() -> None:
     protocol = FakeProtocol(
         responses={

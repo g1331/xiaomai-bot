@@ -220,6 +220,50 @@ async def test_successful_exception_delivery_does_not_write_duplicate_evidence(
     assert tuple(tmp_path.glob("*.log")) == ()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
+async def test_exception_report_only_uses_configured_platform_superusers(
+    loaded_plugin, tmp_path
+) -> None:
+    class RecordingProtocol:
+        def __init__(self) -> None:
+            self.private_calls: list[tuple[str, str]] = []
+            self.group_calls = 0
+
+        async def send_private_message(self, user_id, content):
+            self.private_calls.append((str(user_id), str(content[0])))
+            return []
+
+        async def send_message(self, *args, **kwargs):
+            self.group_calls += 1
+            raise AssertionError("exception reports must not use group delivery")
+
+    protocol = RecordingProtocol()
+    account = SimpleNamespace(
+        self_id="10001",
+        platform="onebot",
+        protocol=protocol,
+    )
+    origin = SimpleNamespace(account=account)
+    original = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {
+        "onebot": [90001],
+        "satori": [90002],
+    }
+    try:
+        await loaded_plugin.send_error_report(
+            RuntimeError("private only"),
+            origin,
+            evidence_dir=tmp_path,
+        )
+    finally:
+        EntariConfig.instance.basic.superusers = original
+
+    assert [user_id for user_id, _ in protocol.private_calls] == ["90001"]
+    assert protocol.group_calls == 0
+    assert tuple(tmp_path.glob("*.log")) == ()
+
+
 @pytest.mark.parametrize("loaded_plugin", ["exception_catcher"], indirect=True)
 def test_error_report_respects_recent_message_limit(loaded_plugin) -> None:
     records = [

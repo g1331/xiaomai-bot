@@ -190,7 +190,9 @@ def _superuser_ids(account: Any) -> tuple[str, ...]:
         return ()
     configured = EntariConfig.instance.basic.superusers
     platform = getattr(account, "platform", None)
-    return tuple(configured.get(platform, ())) if platform else ()
+    return (
+        tuple(str(value) for value in configured.get(platform, ())) if platform else ()
+    )
 
 
 async def send_error_report(

@@ -38,14 +38,28 @@ Tenko 不加载或修改旧的 `core/`、`modules/`、`utils/` 和 `main.py`。�
 
 ## 创建独立环境
 
-旧 `.venv` 是 Graia 基线环境，不能与当前 Entari 依赖混装；`uv.lock` 也刻意保持不变。使用独立环境和已提交的完整依赖清单：
+旧 `.venv` 是 Graia 基线环境，不能与当前 Entari 依赖混装；`uv.lock` 也刻意保持不变。使用独立环境和已提交的运行依赖清单：
 
 ```bash
 uv venv --no-project --python 3.11 .venv-entari
 uv pip sync --python .venv-entari/bin/python requirements-entari.txt
 ```
 
-核心直接依赖已在 `pyproject.toml` 的独立 `[dependency-groups]` 下的 `entari` 组中固定版本；`requirements-entari.txt` 进一步锁定了运行时、测试和 Ruff 所需的完整解析结果。当前清单按 Linux/Python 3.11 生成。
+核心直接依赖已在 `pyproject.toml` 的独立 `[dependency-groups]` 下的 `entari` 组中固定版本；`requirements-entari.txt` 提供运行时、测试和 Ruff 所需的解析结果。渲染链的 `playwright` 有意不锁旧版本，安装时取当前稳定版；当前清单按 Linux/Python 3.11 生成。
+
+启用图片渲染前，需要安装 Playwright 浏览器运行时。推荐使用与 Tenko 相同的解释器执行：
+
+```bash
+./.venv-entari/bin/python -m playwright install chromium
+```
+
+Linux 部署机如果缺少 Chromium 系统依赖，可以在具备相应系统权限时使用：
+
+```bash
+./.venv-entari/bin/python -m playwright install --with-deps chromium
+```
+
+Playwright 会把浏览器放在自己的缓存目录；升级 `playwright` 后应重新执行浏览器安装命令。没有浏览器环境时保持 `[render].enabled = false`，Tenko 继续使用文本回退路径。
 
 核心包版本如下：
 

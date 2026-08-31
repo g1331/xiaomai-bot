@@ -355,7 +355,7 @@
       <div class="res-track">
         <div class="res-fill{% if resources.disk_percent > 80 %} warn{% endif %}" style="width: {{ resources.disk_percent | round(1) }}%; min-width: 6px;"></div>
       </div>
-      <div class="res-val"><b>{{ resources.disk_percent | round(1) }}%</b> · {{ resources.disk_used }} / {{ resources.disk_total }} GB</div>
+      <div class="res-val"><b>{{ resources.disk_percent | round(1) }}%</b> · {{ (resources.disk_used / 1024**3) | round(2) }} / {{ (resources.disk_total / 1024**3) | round(2) }} GB</div>
     </div>
     {% endif %}
   </div>

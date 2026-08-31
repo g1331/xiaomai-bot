@@ -177,7 +177,8 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     [upgrade]
     enabled = true
     source = "git_tag"
-    repository = "."
+    repository = "https://github.com/g1331/tenko.git"
+    tag_prefix = "v"
     channel = "stable"
     policy = "check"
 
@@ -279,13 +280,13 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | --- | --- |
 | enabled | 是否启用升级功能，默认开启 |
 | source | 版本源：git_tag、github_release 或 manifest |
-| repository | Git 版本源的仓库路径，默认当前目录 . |
+| repository | `git_tag` 源使用的 Git 仓库地址；默认值 `.` 只适合本地 refs，远端部署必须填写完整 URL，例如 `https://github.com/g1331/tenko.git` |
 | github_repository | GitHub 版本源的仓库标识 |
 | manifest_url | manifest 版本源的地址 |
 | github_token | 可选的 GitHub 访问 token |
 | asset_name | 可选的发布制品名称 |
 | tag_prefix | Git tag 前缀，默认 v |
-| channel | 更新通道；stable 排除预发布版本，prerelease 同时接受正式和预发布版本 |
+| channel | 更新通道；stable 只接受正式版本，prerelease 同时接受正式和预发布版本 |
 | policy | 执行策略；常用值为 check、download、install |
 | current_version | 当前版本；留空时从项目版本读取 |
 | config_version | 配置兼容版本，默认 1.0.0 |
@@ -298,17 +299,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | check_interval_hours | 定时检查间隔，默认 24 小时 |
 | superuser_ids | 可执行升级命令的用户 ID；省略时继承 basic.superusers |
 
-通道选择建议：
-
-- stable 只选择正式版本，适合生产实例；
-- prerelease 允许选择预发布版本，适合验证实例；
-- policy = "check" 只发现并记录候选版本；
-- policy = "download" 自动准备制品；
-- policy = "install" 生成外部安装接管记录。进程切换仍由稳定的外部启动器完成；
-  `/升级` 和 `/回滚` 成功写入 handoff 后会 arm 一次性 detached watcher，若 watcher
-  未能启动则需要手动重新运行标准启动器。
-
-
 ## 更新机制
 
 升级命令只允许配置的超级用户执行：
@@ -317,11 +307,71 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     /升级
     /回滚
 
-- /检查更新 查询配置通道中的候选版本，返回当前版本、候选版本和来源，
-  不下载制品。
-- /升级 获取并校验候选制品，完成兼容性和健康检查后生成外部安装接管记录；
-  它不会在当前进程中热替换代码。
-- /回滚 请求回到上一可用版本；不存在可回滚版本时会返回明确失败。
+### 版本源与更新通道
+
+当 `source = "git_tag"` 时，`repository` 是用于 `git ls-remote --tags` 和
+`git clone` 的仓库地址。需要从远端发现新版本的部署必须填写完整 Git URL，例如：
+
+    [upgrade]
+    source = "git_tag"
+    repository = "https://github.com/g1331/tenko.git"
+    tag_prefix = "v"
+    channel = "stable"
+
+不要把 `repository = "."` 当作远端地址：它指向当前本地工作树，`git_tag` 只会看到
+本地已有的 refs，不会联网发现远端 tag。当前实现兼容已有 Git 工作树中的 named
+remote（例如 `origin`），会在加载配置时用 `git remote get-url` 将其解析为 URL；但
+直接填写完整 URL 不依赖部署目录中的 remote 配置，也能保证检查和下载使用同一个远端。
+
+`tag_prefix` 默认是 `v`，因此 `v4.0.0` 会被解析为版本 `4.0.0`。通道决定预发布
+版本是否进入候选集合，并且候选版本仍必须高于当前版本：
+
+- `stable` 只选择正式版本，适合生产实例；`4.0.0-rc.1` 等预发布 tag 会被排除。
+- `prerelease` 同时接受正式版和预发布版，适合验证实例或需要跟进预发布版本的部署。
+
+执行策略的含义是：`policy = "check"` 只发现并记录候选版本，`policy = "download"`
+自动准备制品，`policy = "install"` 生成外部安装接管记录。进程切换仍由稳定的外部
+启动器完成。
+
+### `/升级`：下载、接管与重启
+
+`/检查更新` 只查询当前通道中高于当前版本的最高候选版本，返回当前版本、候选版本、
+标签和来源，不下载制品。
+
+`/升级` 不会在当前进程中热替换代码，完整流程如下：
+
+1. 检查当前通道并选择候选版本。
+2. 获取候选制品；`git_tag` 源会按 tag 做浅克隆，并校验 commit SHA。随后升级器
+   检查配置兼容性和切换前健康状态，成功后把制品提升到
+   `.tenko/upgrades/versions/`，写入 `pending.json`。
+3. 写入 `handoff.json`，请求外部重启时执行 `activate`。命令会尝试 arm 一次性
+   detached watcher；watcher 只等待当前进程退出，不负责读取或应用升级状态。
+4. 收到成功回复后使用 `Ctrl+C` 让当前 Tenko 进程优雅退出。watcher 检测到旧进程
+   退出后只启动一次标准启动器 `scripts/launcher.sh`。
+5. 启动器固定以部署根目录为工作目录，并使用共享的 uv 环境启动 Tenko。启动早期
+   会消费 `handoff.json`，原子更新 `active.json`，执行切换后的健康检查，然后在
+   fresh Python 进程中重新执行 active 版本。配置、SQLite 数据库和 `.tenko/` 下的
+   运行状态仍使用稳定根目录中的原有路径。
+
+如果 watcher 未能 arm，`/升级` 的回复会提示手动接管；此时退出当前进程后运行
+`./scripts/launcher.sh`。如果切换后的健康检查失败，升级器会恢复原 active 指针并
+清理本次接管记录，避免失败 handoff 在后续启动中反复执行。
+
+`/回滚` 请求回到 `.tenko/upgrades/previous.json` 指向的上一可用版本：
+
+1. 命令检查是否存在上一版本和当前 `active` 指针。
+2. 写入 `action = "rollback"` 的 `handoff.json`，并按与 `/升级` 相同的方式尝试
+   arm watcher。
+3. 使用 `Ctrl+C` 退出当前进程；下一次由标准启动器启动时，启动早期消费回滚 handoff，
+   将 `active.json` 切换到上一版本并执行健康检查。
+
+回滚也不会在当前进程中立即替换代码。回滚后的健康检查失败会恢复原 active 指针并
+隔离失败的 handoff；如果不存在上一可用版本，命令会返回“没有可回滚的上一可用版本”。
+
+`[upgrade]` 配置在 Tenko 启动时读取并构造升级管理器，运行期间不会自动重新读取配置。
+因此修改 `channel`、`repository`、`source`、`policy` 或其他升级配置后，必须重启
+Tenko 才会生效；若配置修改本身需要先停止服务，应按部署方式退出当前进程，再使用
+标准启动器（或原有的 `uv run python -m tenko` 启动命令）启动。
 
 启用周期检查时，check_interval_hours 控制定时检查间隔。升级目录、配置目录和
 数据目录彼此分离，升级过程不会覆盖用户配置或运行数据；`data_dir` 不会改变

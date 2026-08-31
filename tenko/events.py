@@ -527,7 +527,7 @@ class MessageEventHandler:
         ):
             self.account_registry.bind_group(context.channel_id, account)
 
-        logger.info(
+        logger.debug(
             "Message received: account={} chat={} channel={} user={} message={} "
             "text={!r} images={} protocol_type={}",
             context.account_id,

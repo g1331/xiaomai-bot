@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import signal
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from arclet.entari import Entari
@@ -13,6 +15,7 @@ from loguru import logger
 from satori import EventType, LoginStatus
 from satori.client import Account
 
+from . import _process_start_monotonic
 from .config import TenkoConfig
 from .commands import configure_command_prefix
 from .connection import OneBotConnection
@@ -77,7 +80,20 @@ class TenkoRuntime:
         self.app: Entari | None = None
         self.manager: Launart | None = None
         self.plugin_runtime: PluginRuntime | None = None
+        self._startup_notify_module: object | None = None
         self.database_service = None
+
+    @staticmethod
+    def _plugin_module(loaded_plugins: object, name: str) -> object | None:
+        """从 Entari loader 的结果取模块，兼容旧的 sys.modules 查找。"""
+
+        loaded = (
+            loaded_plugins.get(name) if isinstance(loaded_plugins, Mapping) else None
+        )
+        if loaded is not None:
+            module = getattr(loaded, "module", None)
+            return loaded if module is None else module
+        return sys.modules.get(f"tenko.plugins.{name}")
 
     def request_graceful_shutdown(self) -> bool:
         """沿 Launart 的 SIGINT 生命周期路径请求当前运行时退出。"""
@@ -165,6 +181,20 @@ class TenkoRuntime:
 
         if state == LoginStatus.ONLINE:
             logger.info("OneBot account {} is online", account.self_id)
+            startup_notify = self._startup_notify_module
+            if startup_notify is None:
+                # 保留对测试替身和直接导入插件的兼容；正常的 Entari 插件
+                # 由自定义 loader 管理，不一定留在 sys.modules 中。
+                startup_notify = sys.modules.get("tenko.plugins.startup_notify")
+            on_account_online = getattr(startup_notify, "on_account_online", None)
+            if callable(on_account_online):
+                try:
+                    result = on_account_online(account)
+                    if inspect.isawaitable(result):
+                        await result
+                except Exception:
+                    # 启动通知是就绪后的附加动作，不能影响账号已上线的主流程。
+                    logger.exception("Could not dispatch Tenko startup notification")
         elif state in (LoginStatus.CONNECT, LoginStatus.RECONNECT):
             logger.info("OneBot account {} is connecting/reconnecting", account.self_id)
         elif state in (LoginStatus.DISCONNECT, LoginStatus.OFFLINE):
@@ -212,18 +242,32 @@ class TenkoRuntime:
         # 插件，因此不需要注册 Launart 组件。将其放在数据库模型和
         # RenderService 注册之后、run_async 之前。
         self.plugin_runtime = PluginRuntime()
-        await self.plugin_runtime.load_all()
-        group_manager = sys.modules.get("tenko.plugins.group_manager")
+        loaded_plugins = await self.plugin_runtime.load_all()
+        self._startup_notify_module = self._plugin_module(
+            loaded_plugins, "startup_notify"
+        )
+        group_manager = self._plugin_module(loaded_plugins, "group_manager")
         configure_notify_group = getattr(group_manager, "configure_notify_group", None)
         if callable(configure_notify_group):
             configure_notify_group(self.config.notify_group)
-        permission_manager = sys.modules.get("tenko.plugins.perm_manager")
+        startup_notify = self._startup_notify_module
+        if startup_notify is None:
+            startup_notify = self._plugin_module(loaded_plugins, "startup_notify")
+        configure_startup_notification = getattr(
+            startup_notify, "configure_startup_notification", None
+        )
+        if callable(configure_startup_notification):
+            configure_startup_notification(
+                self.config.notify_group,
+                started_at=_process_start_monotonic,
+            )
+        permission_manager = self._plugin_module(loaded_plugins, "perm_manager")
         configure_notify_group = getattr(
             permission_manager, "configure_notify_group", None
         )
         if callable(configure_notify_group):
             configure_notify_group(self.config.notify_group)
-        exception_catcher = sys.modules.get("tenko.plugins.exception_catcher")
+        exception_catcher = self._plugin_module(loaded_plugins, "exception_catcher")
         if exception_catcher is not None:
             configure_evidence_directory = getattr(
                 exception_catcher, "configure_evidence_directory", None

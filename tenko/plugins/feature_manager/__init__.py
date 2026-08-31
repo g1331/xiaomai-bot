@@ -63,6 +63,12 @@ def _is_protected(info: PluginInfo) -> bool:
     return "host" in classifiers
 
 
+def _is_global_feature(info: PluginInfo) -> bool:
+    native = _native_plugin(info)
+    metadata = getattr(native, "metadata", None)
+    return getattr(metadata, "feature_scope", "group") == "global"
+
+
 async def _change(session: Session, operation: str, feature: Match[str]):
     context = context_from_session(session)
     if context.chat_type != "group":
@@ -79,13 +85,21 @@ async def _change(session: Session, operation: str, feature: Match[str]):
     if _is_protected(info):
         return text_message(f"无法操作必须插件<{target_name}>")
 
-    enabled = feature_service.is_enabled(info.name, context.channel_id)
+    is_global = _is_global_feature(info)
+    enabled = (
+        feature_service.is_enabled(info.name)
+        if is_global
+        else feature_service.is_enabled(info.name, context.channel_id)
+    )
     requested_enabled = operation == "开启"
     if enabled == requested_enabled:
         return text_message(
             f"功能{target_name}已处于{operation}状态请不要重复{operation}!"
         )
-    feature_service.set_enabled(info.name, context.channel_id, requested_enabled)
+    if is_global:
+        feature_service.set_global_enabled(info.name, requested_enabled)
+    else:
+        feature_service.set_enabled(info.name, context.channel_id, requested_enabled)
     return text_message(
         f"功能<{target_name}>{'已开启' if requested_enabled else '已关闭'}~"
     )

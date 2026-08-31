@@ -119,6 +119,40 @@ async def test_feature_commands_can_disable_required_function_plugin(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
+async def test_feature_commands_toggle_global_feature(
+    loaded_plugin, tmp_path, monkeypatch
+):
+    info = loaded_plugin.PluginInfo(
+        name="startup_notify",
+        path=Path("startup_notify"),
+        is_package=True,
+        qualified_name="tenko.plugins.startup_notify",
+    )
+    native = SimpleNamespace(
+        id="tenko.plugins.startup_notify",
+        metadata=SimpleNamespace(
+            name="启动通知",
+            classifier=("required",),
+            feature_scope="global",
+        ),
+    )
+    monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: (info,))
+    monkeypatch.setattr(loaded_plugin, "get_plugins", lambda *, subplugged: (native,))
+    service = FeatureService(tmp_path / "features.json")
+    monkeypatch.setattr(loaded_plugin, "feature_service", service)
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+
+    result = await loaded_plugin.disable.callable_target(
+        make_session(), Match("startup_notify", True)
+    )
+
+    assert result.extract_plain_text() == "功能<startup_notify>已关闭~"
+    assert not service.is_enabled("startup_notify", "40001")
+    assert not service.is_enabled("startup_notify", "40002")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
 async def test_feature_commands_reject_non_admin_and_unknown_plugin(loaded_plugin):
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry()

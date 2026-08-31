@@ -26,11 +26,12 @@ def _key(value: object, label: str) -> str:
 
 
 class FeatureService:
-    """维护群×插件开关和插件维护状态。
+    """维护插件开关和插件维护状态。
 
     该服务只拥有 Tenko 新宿主的功能状态，不调用 Entari 插件生命周期 API，
-    也不读写旧的 ``modules_data.json``。JSON 文件是当前阶段的持久化边界，
-    后续接入真实数据库时可以替换本服务而不改变事件入口协议。
+    也不读写旧的 ``modules_data.json``。普通插件使用群级开关；需要宿主级
+    开关的插件可以使用可选的 ``global_enabled`` 字段。JSON 文件是当前阶段
+    的持久化边界，后续接入真实数据库时可以替换本服务而不改变事件入口协议。
     """
 
     def __init__(
@@ -70,6 +71,11 @@ class FeatureService:
         maintenance = value.get("maintenance", False)
         if type(maintenance) is not bool:
             raise ValueError(f"功能状态 {plugin!r} 的 maintenance 必须是布尔值")
+        global_enabled = value.get("global_enabled")
+        if global_enabled is not None and type(global_enabled) is not bool:
+            raise ValueError(
+                f"功能状态 {plugin!r} 的 global_enabled 必须是布尔值或 null"
+            )
         groups = value.get("groups", {})
         if not isinstance(groups, Mapping):
             raise ValueError(f"功能状态 {plugin!r} 的 groups 必须是 JSON object")
@@ -78,7 +84,10 @@ class FeatureService:
             if type(enabled) is not bool:
                 raise ValueError(f"功能状态 {plugin!r} 的群开关必须是布尔值")
             normalized_groups[_key(group_id, "群 ID")] = enabled
-        return {"maintenance": maintenance, "groups": normalized_groups}
+        normalized = {"maintenance": maintenance, "groups": normalized_groups}
+        if global_enabled is not None:
+            normalized["global_enabled"] = global_enabled
+        return normalized
 
     def _load(self) -> None:
         if self.state_path is None or not self.state_path.is_file():
@@ -146,6 +155,9 @@ class FeatureService:
             return self.default_enabled
         if state["maintenance"]:
             return False
+        global_enabled = state.get("global_enabled")
+        if global_enabled is not None:
+            return global_enabled
         normalized_group = self._group_id(group_id)
         if normalized_group is not None:
             enabled = state["groups"].get(normalized_group)
@@ -168,6 +180,15 @@ class FeatureService:
 
     def disable(self, plugin: str, group_id: str | int) -> bool:
         return self.set_enabled(plugin, group_id, False)
+
+    def set_global_enabled(self, plugin: str, enabled: bool) -> bool:
+        """设置宿主级插件开关并立即持久化。"""
+
+        if type(enabled) is not bool:
+            raise TypeError("enabled 必须是布尔值")
+        self._plugin_state(plugin)["global_enabled"] = enabled
+        self._persist()
+        return enabled
 
     def set_maintenance(self, plugin: str, maintenance: bool) -> bool:
         """设置全局维护状态；维护中等价于所有群关闭。"""
@@ -195,13 +216,17 @@ class FeatureService:
     def state(self) -> Mapping[str, Mapping[str, Any]]:
         """返回用于查询/测试的只读快照。"""
 
-        return {
+        snapshot = {
             plugin: {
                 "maintenance": value["maintenance"],
                 "groups": dict(value["groups"]),
             }
             for plugin, value in self._plugins.items()
         }
+        for plugin, value in self._plugins.items():
+            if "global_enabled" in value:
+                snapshot[plugin]["global_enabled"] = value["global_enabled"]
+        return snapshot
 
 
 feature_service = FeatureService()

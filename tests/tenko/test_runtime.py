@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -95,16 +96,25 @@ async def test_run_async_loads_plugins_before_starting_entari(
     )
 
     plugin_runtime = Mock()
+    startup_notify = Mock()
+    startup_plugin = SimpleNamespace(module=startup_notify)
 
     async def load_all():
         lifecycle.append("plugins")
-        return {}
+        return {
+            "startup_notify": startup_plugin,
+            "group_manager": SimpleNamespace(module=group_manager),
+            "perm_manager": SimpleNamespace(module=permission_manager),
+        }
 
     plugin_runtime.load_all = AsyncMock(side_effect=load_all)
     group_manager = Mock()
     permission_manager = Mock()
     monkeypatch.setitem(
         runtime_module.sys.modules, "tenko.plugins.group_manager", group_manager
+    )
+    monkeypatch.setitem(
+        runtime_module.sys.modules, "tenko.plugins.startup_notify", startup_notify
     )
     monkeypatch.setitem(
         runtime_module.sys.modules, "tenko.plugins.perm_manager", permission_manager
@@ -132,9 +142,14 @@ async def test_run_async_loads_plugins_before_starting_entari(
     assert registered.id == "tenko.render"
     plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
+    assert runtime._startup_notify_module is startup_notify
     database_loader.assert_called_once_with(runtime.config.database)
     assert runtime.database_service is database_loader.return_value
     group_manager.configure_notify_group.assert_called_once_with("40002")
+    startup_notify.configure_startup_notification.assert_called_once_with(
+        "40002",
+        started_at=runtime_module._process_start_monotonic,
+    )
     permission_manager.configure_notify_group.assert_called_once_with("40002")
     app.run_async.assert_awaited_once_with(
         manager,
@@ -192,7 +207,9 @@ async def test_run_async_registers_render_service(
 
 
 @pytest.mark.asyncio
-async def test_online_lifecycle_discovers_groups_through_action_service() -> None:
+async def test_online_lifecycle_discovers_groups_through_action_service(
+    monkeypatch,
+) -> None:
     runtime = TenkoRuntime(TenkoConfig())
     accounts = Mock()
     actions = Mock()
@@ -201,6 +218,11 @@ async def test_online_lifecycle_discovers_groups_through_action_service() -> Non
     runtime.actions = actions
     account = Mock()
     account.self_id = "10001"
+    startup_notify = Mock()
+    startup_notify.on_account_online = AsyncMock()
+    monkeypatch.setitem(
+        runtime_module.sys.modules, "tenko.plugins.startup_notify", startup_notify
+    )
 
     await runtime._on_lifecycle(account, LoginStatus.ONLINE)
 
@@ -210,6 +232,7 @@ async def test_online_lifecycle_discovers_groups_through_action_service() -> Non
         (("40002", account), {}),
     ]
     actions.get_group_list.assert_awaited_once_with(account)
+    startup_notify.on_account_online.assert_awaited_once_with(account)
 
 
 @pytest.mark.asyncio

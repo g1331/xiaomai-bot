@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import inspect
 import sys
+from collections.abc import Mapping
+
+from arclet.entari.config import EntariConfig
 from arclet.entari import MessageChain, Session
 from loguru import logger
 from satori import Text
@@ -31,6 +34,32 @@ def text_message(content: str) -> MessageChain:
     """从 Satori 文本元素构造 Entari 原生消息。"""
 
     return MessageChain(Text(content))
+
+
+def master_id_for_account(account: object, permission_checker: object) -> str | None:
+    """按现有通知策略解析账号对应的第一个 Master。"""
+
+    def normalize(value: object) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    registry = getattr(permission_checker, "registry", None)
+    configured_master = normalize(getattr(registry, "master_id", None))
+    if configured_master is not None:
+        return configured_master
+    if not EntariConfig._inited:
+        return None
+    configured = EntariConfig.instance.basic.superusers
+    platform = getattr(account, "platform", "onebot")
+    if not isinstance(configured, Mapping):
+        return None
+    for value in configured.get(platform, ()):
+        master_id = normalize(value)
+        if master_id is not None:
+            return master_id
+    return None
 
 
 async def send_private_message(session: Session, user_id: str, content: str) -> bool:

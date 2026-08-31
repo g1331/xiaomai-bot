@@ -9,7 +9,6 @@ from typing import Any
 from arclet.alconna import Alconna, Args, CommandMeta, MultiVar, Option
 from arclet.entari import Session, command, plugin
 from arclet.entari.command import Match, Query
-from arclet.entari.config import EntariConfig
 from arclet.entari.event.base import GuildRequestEvent
 from arclet.entari.plugin import PluginRole, collect_disposes
 from loguru import logger
@@ -26,6 +25,7 @@ from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import (
     action_error_message,
     context_from_session,
+    master_id_for_account,
     report_action_error,
     text_message,
 )
@@ -161,19 +161,7 @@ async def _is_privileged_inviter(
 
 
 def _master_id(account: Any) -> str | None:
-    registry = getattr(permission_checker, "registry", None)
-    configured_master = _normalize_id(getattr(registry, "master_id", None))
-    if configured_master is not None:
-        return configured_master
-    if not EntariConfig._inited:
-        return None
-    configured = EntariConfig.instance.basic.superusers
-    platform = getattr(account, "platform", "onebot")
-    for value in configured.get(platform, ()):
-        master_id = _normalize_id(value)
-        if master_id is not None:
-            return master_id
-    return None
+    return master_id_for_account(account, permission_checker)
 
 
 def _ensure_action_account(pending: PendingInvite) -> None:

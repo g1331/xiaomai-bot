@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -88,6 +89,8 @@ class FakeUpdater:
         self.request_install_calls = 0
         self.rollback_calls = 0
         self.spawn_restart_watcher_calls = 0
+        self.shutdown_calls = 0
+        self.watcher_armed = True
 
     async def check(self):
         self.check_calls += 1
@@ -108,6 +111,10 @@ class FakeUpdater:
 
     def spawn_restart_watcher(self):
         self.spawn_restart_watcher_calls += 1
+        return self.watcher_armed
+
+    def request_graceful_shutdown(self):
+        self.shutdown_calls += 1
         return True
 
 
@@ -169,19 +176,22 @@ async def test_check_update_reports_candidate_for_superuser(loaded_plugin, tmp_p
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
 async def test_upgrade_command_prepares_and_requests_external_install(
-    loaded_plugin, tmp_path
+    loaded_plugin, monkeypatch, tmp_path
 ):
     authorize_master(loaded_plugin)
     fake = FakeUpdater(tmp_path)
     loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_RESTART_SHUTDOWN_DELAY_SECONDS", 0)
 
     result = await loaded_plugin.upgrade.callable_target(make_session("90001"))
 
-    assert "已生成外部重启接管记录" in str(result)
+    assert str(result) == "版本 2.0.0 已下载、校验通过，正在自动重启进入新版本。"
     assert fake.check_calls == 1
     assert fake.prepare_calls == 1
     assert fake.request_install_calls == 1
     assert fake.spawn_restart_watcher_calls == 1
+    await asyncio.sleep(0.01)
+    assert fake.shutdown_calls == 1
 
 
 @pytest.mark.asyncio
@@ -205,16 +215,39 @@ async def test_upgrade_command_reports_no_update_without_preparing(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
-async def test_rollback_command_requests_external_rollback(loaded_plugin, tmp_path):
+async def test_rollback_command_requests_external_rollback(
+    loaded_plugin, monkeypatch, tmp_path
+):
     authorize_master(loaded_plugin)
     fake = FakeUpdater(tmp_path)
     loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_RESTART_SHUTDOWN_DELAY_SECONDS", 0)
 
     result = await loaded_plugin.rollback.callable_target(make_session("90001"))
 
-    assert "已请求回滚到版本 1.0.0" in str(result)
+    assert str(result) == "已请求回滚到版本 1.0.0，正在自动重启。"
     assert fake.rollback_calls == 1
     assert fake.spawn_restart_watcher_calls == 1
+    await asyncio.sleep(0.01)
+    assert fake.shutdown_calls == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_upgrade_command_only_mentions_manual_restart_when_watcher_arm_fails(
+    loaded_plugin, tmp_path
+):
+    authorize_master(loaded_plugin)
+    fake = FakeUpdater(tmp_path)
+    fake.watcher_armed = False
+    loaded_plugin.updater = fake
+
+    result = await loaded_plugin.upgrade.callable_target(make_session("90001"))
+
+    message = str(result)
+    assert "请手动重启" in message
+    assert str(tmp_path) not in message
+    assert fake.shutdown_calls == 0
 
 
 @pytest.mark.asyncio

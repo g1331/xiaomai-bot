@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
@@ -8,7 +9,7 @@ import arclet.entari.core as entari_core
 from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
 from graia.amnesia.builtins.aiohttp import AiohttpClientService
-from launart import Launart
+from launart import Launart, Service
 from satori import EventType, LoginStatus
 
 from tenko import runtime as runtime_module
@@ -16,6 +17,59 @@ from tenko.config import TenkoConfig
 from tenko.connection import OneBotConnection
 from tenko.render import RenderService
 from tenko.runtime import TenkoRuntime
+
+
+def test_runtime_shutdown_callback_stops_launart_lifecycle(monkeypatch) -> None:
+    connection = Mock()
+    monkeypatch.setattr(
+        runtime_module, "OneBotConnection", Mock(return_value=connection)
+    )
+    runtime = TenkoRuntime(TenkoConfig())
+    manager = Mock()
+    manager.task_group.blocking_task = Mock()
+    runtime.manager = manager
+
+    assert runtime.updater.request_graceful_shutdown() is True
+    assert manager.status.exiting is True
+    assert manager.task_group.stop is True
+    manager.task_group.blocking_task.cancel.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_runtime_shutdown_callback_completes_launart_cleanup() -> None:
+    class LifecycleProbe(Service):
+        id = "tenko.test-lifecycle-probe"
+
+        @property
+        def required(self):
+            return set()
+
+        @property
+        def stages(self):
+            return {"blocking", "cleanup"}
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.cleaned = False
+
+        async def launch(self, manager):
+            async with self.stage("blocking"):
+                await manager.status.wait_for_sigexit()
+            async with self.stage("cleanup"):
+                self.cleaned = True
+
+    manager = Launart()
+    probe = LifecycleProbe()
+    manager.add_component(probe)
+    launch_task = asyncio.create_task(manager.launch())
+    await manager.status.wait_for_blocking()
+
+    runtime = object.__new__(TenkoRuntime)
+    runtime.manager = manager
+    assert runtime.request_graceful_shutdown() is True
+
+    await launch_task
+    assert probe.cleaned is True
 
 
 @pytest.mark.asyncio

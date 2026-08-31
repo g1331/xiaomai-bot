@@ -744,10 +744,15 @@ def test_from_config_current_version_prefers_active_then_config_then_project(
 
     layout = UpgradeLayout(upgrade_root)
     layout.write_pointer(candidate, Version(2, 0, 0))
-    configured = UpgradeConfig(current_version="1.5.0", install_root=str(upgrade_root))
+    configured = UpgradeConfig(
+        current_version="1.5.0",
+        install_root=str(upgrade_root),
+        restart_watch_timeout=37,
+    )
 
     manager = UpgradeManager.from_config(configured, project_root=stable_root)
     assert manager.current_version == Version(2, 0, 0)
+    assert manager.restart_watch_timeout == 37
 
     layout.active_file.unlink()
     manager = UpgradeManager.from_config(configured, project_root=stable_root)
@@ -800,6 +805,30 @@ def test_upgrade_manager_restart_command_uses_stable_launcher(
         "--config",
         "config/custom.toml",
     )
+
+
+def test_upgrade_manager_passes_configured_watch_timeout(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import tenko.host.updater as updater_module
+
+    captured: dict[str, object] = {}
+
+    def fake_spawn(old_pid, command, **kwargs):
+        captured.update(old_pid=old_pid, command=command, kwargs=kwargs)
+        return True
+
+    monkeypatch.setattr(updater_module, "spawn_restart_watcher", fake_spawn)
+    manager = UpgradeManager(
+        Version(1, 0, 0),
+        project_root=tmp_path,
+        layout=UpgradeLayout(tmp_path / ".tenko" / "upgrades"),
+        restart_watch_timeout=17,
+    )
+
+    assert manager.spawn_restart_watcher(old_pid=12345) is True
+    assert isinstance(captured["kwargs"], dict)
+    assert captured["kwargs"]["timeout"] == 17
 
 
 @pytest.mark.asyncio
@@ -912,10 +941,55 @@ def test_restart_watcher_restarts_once_after_old_pid_exits(tmp_path: Path) -> No
             old_process.wait(timeout=5)
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_restart_watcher_records_timeout_without_restarting(tmp_path: Path) -> None:
+    old_process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(5)"])
+    watcher_dir = tmp_path / "restart-watchers"
+    timeout_log = tmp_path / f"watcher-timeout-{old_process.pid}.log"
+    restart_marker = tmp_path / "restarted.txt"
+    command = (
+        sys.executable,
+        "-c",
+        "from pathlib import Path; "
+        f"Path({str(restart_marker)!r}).write_text('started', encoding='utf-8')",
+    )
+    record = watcher_dir / f"{old_process.pid}.json"
+
+    try:
+        assert spawn_restart_watcher(
+            old_process.pid,
+            command,
+            stable_root=tmp_path,
+            watcher_dir=watcher_dir,
+            timeout=1,
+            poll_interval=0.05,
+        )
+
+        deadline = time.monotonic() + 5
+        while not timeout_log.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert timeout_log.is_file()
+        entry = json.loads(timeout_log.read_text(encoding="utf-8").splitlines()[0])
+        assert entry["event"] == "watcher-timeout"
+        assert entry["old_pid"] == old_process.pid
+        assert entry["command"] == list(command)
+        assert not restart_marker.exists()
+
+        deadline = time.monotonic() + 5
+        while record.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not record.exists()
+    finally:
+        if old_process.poll() is None:
+            old_process.terminate()
+        old_process.wait(timeout=5)
+
+
 def test_tenko_upgrade_config_defaults_to_conservative_policy() -> None:
     config = TenkoConfig()
     assert config.upgrade.policy == "check"
     assert config.upgrade.channel == "stable"
+    assert config.upgrade.restart_watch_timeout == 300
     assert config.upgrade.check_interval_hours == 24
 
 
@@ -929,12 +1003,14 @@ def test_tenko_upgrade_config_parses_source_policy_and_superusers() -> None:
                 "policy": "auto-download",
                 "superuser_ids": [123, "456"],
                 "health_command": ["{python}", "-c", "pass"],
+                "restart_watch_timeout": 42,
             }
         }
     )
     assert config.upgrade.channel == "prerelease"
     assert config.upgrade.policy == "auto-download"
     assert config.upgrade.superuser_ids == ("123", "456")
+    assert config.upgrade.restart_watch_timeout == 42
 
 
 @pytest.mark.asyncio

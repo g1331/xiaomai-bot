@@ -23,6 +23,7 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.exception.evidence_dir == ".tenko/exceptions"
     assert config.database.url == "sqlite+aiosqlite:///./.tenko/tenko.db"
     assert config.database.create_table_at == "preparing"
+    assert config.upgrade.restart_watch_timeout == 300
     assert config.test_group is None
 
 

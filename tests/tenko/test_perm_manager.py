@@ -130,7 +130,7 @@ async def test_permission_list_rejects_cross_group_target_in_group(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
 async def test_master_private_permission_list_can_query_requested_group(
-    loaded_plugin,
+    loaded_plugin, monkeypatch
 ) -> None:
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
@@ -138,6 +138,7 @@ async def test_master_private_permission_list_can_query_requested_group(
     loaded_plugin._group_member_permissions = AsyncMock(
         return_value=[SimpleNamespace(qq=30001, perm=32)]
     )
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
 
     result = await loaded_plugin.get_perm_list.callable_target(
         make_private_session("90001"),
@@ -175,7 +176,7 @@ async def test_non_master_private_permission_list_is_denied(loaded_plugin) -> No
 )
 @pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
 async def test_sensitive_permission_lists_are_master_private_only(
-    loaded_plugin, handler_name: str, data_name: str, expected: str
+    loaded_plugin, monkeypatch, handler_name: str, data_name: str, expected: str
 ) -> None:
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
@@ -188,6 +189,7 @@ async def test_sensitive_permission_lists_are_master_private_only(
         loaded_plugin._global_black_ids = AsyncMock(return_value={"20002"})
     else:
         loaded_plugin._bot_admin_ids = AsyncMock(return_value={"20003"})
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
 
     handler = getattr(loaded_plugin, handler_name)
     group_result = await handler.callable_target(

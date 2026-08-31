@@ -139,7 +139,7 @@ async def test_status_command_reports_legacy_group_fields_without_context_detail
 
     result = await loaded_plugin.status.callable_target(
         make_session("20001", "member"),
-        Query("text.value", False),
+        Query("text.value", True),
         render_service=loaded_plugin.RenderService(),
     )
 
@@ -254,7 +254,7 @@ async def test_master_private_status_appends_only_operational_diagnostic(
 
     result = await loaded_plugin.status.callable_target(
         make_private_session("90001", protocol),
-        Query("text.value", False),
+        Query("text.value", True),
         render_service=loaded_plugin.RenderService(),
     )
 
@@ -285,7 +285,7 @@ async def test_master_group_status_never_pushes_private_diagnostic(
 
     result = await loaded_plugin.status.callable_target(
         make_session("90001", "member", protocol),
-        Query("text.value", False),
+        Query("text.value", True),
         render_service=loaded_plugin.RenderService(),
     )
 

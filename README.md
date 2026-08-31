@@ -58,7 +58,7 @@ Tenko 围绕聊天群组的日常运营提供一组开箱即用的能力：
 
 涉及权限变更、群管理或宿主升级的命令会按照当前群权限、账号能力和超级用户
 配置执行。渲染不可用或未安装浏览器时，状态和异常报告自动回退文本。
-RenderService 是由 Tenko runtime 直接注册的可选宿主服务，不属于插件清单。
+RenderService 是由 Tenko runtime 直接注册的内置宿主服务，不属于插件清单。
 
 
 ## 使用指南
@@ -67,7 +67,7 @@ RenderService 是由 Tenko runtime 直接注册的可选宿主服务，不属于
 
 - Python >=3.10,<3.13；
 - 可连接到 OneBot 11 端点的协议端（例如 NapCat）及网络环境；
-- 启用图片渲染时，需要 Chromium 浏览器运行时。
+- 图片输出需要 Chromium 浏览器运行时；浏览器不可用时会回退文本。
 
 ### 创建独立环境
 
@@ -121,9 +121,9 @@ watcher 会等待当前进程退出，再调用这个启动器一次；因此 Ct
 [onebot].access_token，该协议端必须使用相同的 token；示例文件和下方最小配置
 只使用占位符，部署时请替换为实际值。
 
-### 启用图片渲染
+### 图片渲染
 
-图片渲染默认启用（[render].enabled = true），需要 Chromium 浏览器运行时，
+图片渲染由内置 RenderService 提供，需要 Chromium 浏览器运行时，
 在当前虚拟环境中执行（uv 环境可写为 uv run python -m playwright ...）：
 
     python -m playwright install chromium
@@ -169,7 +169,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     create_table_at = "preparing"
 
     [render]
-    enabled = true
     timeout = 10.0
     width = 800
     quality = 85
@@ -266,7 +265,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 
 | 字段 | 说明 |
 | --- | --- |
-| enabled | 是否启用 Playwright 离线渲染，默认开启 |
 | timeout | 单次渲染超时时间，默认 10.0 秒 |
 | width | 图片 viewport 宽度，默认 800 |
 | quality | JPEG 质量，范围为 0 到 100，默认 85 |
@@ -433,7 +431,7 @@ Satori adapter ──► Entari runtime ──► command_manager ──► Tenk
                                       │
                                       ├── account / permission / feature services
                                       ├── SQLite database + repositories
-                                      └── RenderService (optional)
+                                      └── RenderService
 ```
 
 </details>
@@ -446,7 +444,7 @@ Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生
 - command_manager 是帮助系统读取命令列表的来源，因此帮助内容会随当前已注册
   插件变化。
 - RenderService 由 Tenko runtime 直接注册到 Launart，使用 Playwright 在本地离线
-  渲染 HTML/Markdown。渲染默认开启，可通过 [render].enabled 关闭；服务异常不会
+  渲染 HTML/Markdown；服务异常不会
   阻断文本功能。
 - 数据层使用 SQLite、SQLAlchemy 和 entari-plugin-database。新 ORM 位于
   tenko/db/models.py，repository 位于 tenko/db/repositories.py；应用启动时会创建

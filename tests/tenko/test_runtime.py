@@ -81,7 +81,7 @@ async def test_run_async_loads_plugins_before_starting_entari(
 
 
 @pytest.mark.asyncio
-async def test_run_async_registers_enabled_render_service(
+async def test_run_async_registers_render_service(
     monkeypatch,
 ) -> None:
     connection = Mock()
@@ -92,7 +92,6 @@ async def test_run_async_registers_enabled_render_service(
     config = TenkoConfig.from_mapping(
         {
             "render": {
-                "enabled": True,
                 "timeout": 4.5,
                 "width": 1024,
                 "quality": 91,
@@ -121,7 +120,6 @@ async def test_run_async_registers_enabled_render_service(
     manager.add_component.assert_called_once()
     service = manager.add_component.call_args.args[0]
     assert isinstance(service, RenderService)
-    assert service.enabled is True
     assert service.timeout == 4.5
     assert service.width == 1024
     assert service.quality == 91

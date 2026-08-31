@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from arclet.entari.command import Query
@@ -44,8 +45,11 @@ def make_session(user_id: str, role: str):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
-async def test_helper_trigger_uses_native_command_registry(loaded_plugin) -> None:
+async def test_helper_trigger_uses_native_command_registry(
+    loaded_plugin, monkeypatch
+) -> None:
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
 
     result = await loaded_plugin.helper.callable_target(
         make_session("20001", "member"),

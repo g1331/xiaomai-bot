@@ -30,7 +30,7 @@ class RenderError(RuntimeError):
 
 
 class RenderUnavailableError(RenderError):
-    """渲染被禁用或浏览器无法启动时抛出。"""
+    """浏览器无法启动时抛出。"""
 
 
 class RenderTimeoutError(RenderError):
@@ -43,9 +43,9 @@ _TEMPLATE_DIR = Path(__file__).with_name("templates")
 class RenderService(Service):
     """使用一个共享的 Chromium 浏览器渲染 Tenko 模板。
 
-    启用该服务时，浏览器会在 Launart 的 preparing 阶段启动。``render_template``
-    也会按需启动浏览器，使该服务在没有 manager 的隔离测试和小型宿主集成中仍
-    可使用。每个请求都会创建新的浏览器上下文，并在请求返回前关闭。
+    浏览器会在 Launart 的 preparing 阶段启动。``render_template`` 也会按需启动
+    浏览器，使该服务在没有 manager 的隔离测试和小型宿主集成中仍可使用。每个
+    请求都会创建新的浏览器上下文，并在请求返回前关闭。
     """
 
     id = "tenko.render"
@@ -55,7 +55,6 @@ class RenderService(Service):
     def __init__(
         self,
         *,
-        enabled: bool = False,
         timeout: float = 10.0,
         width: int = 800,
         quality: int = 90,
@@ -64,8 +63,6 @@ class RenderService(Service):
         template_dir: str | Path | None = None,
     ) -> None:
         super().__init__()
-        if type(enabled) is not bool:
-            raise TypeError("render enabled 必须是布尔值")
         if isinstance(timeout, bool) or not isinstance(timeout, int | float):
             raise TypeError("render timeout 必须是数字")
         if timeout <= 0:
@@ -79,7 +76,6 @@ class RenderService(Service):
         if type(device_scale_factor) is not int or device_scale_factor <= 0:
             raise ValueError("render device_scale_factor 必须是正整数")
 
-        self.enabled = enabled
         self.timeout = float(timeout)
         self.width = width
         self.quality = quality
@@ -99,7 +95,7 @@ class RenderService(Service):
     def available(self) -> bool:
         """返回此服务当前是否持有可用浏览器。"""
 
-        return self.enabled and self.browser is not None
+        return self.browser is not None
 
     def _get_start_lock(self) -> asyncio.Lock:
         if self._start_lock is None:
@@ -114,8 +110,6 @@ class RenderService(Service):
     async def start(self) -> bool:
         """启动共享的 Playwright 浏览器，并返回其是否已就绪。"""
 
-        if not self.enabled:
-            return False
         if self.browser is not None:
             return True
         if self._startup_error is not None:
@@ -195,12 +189,11 @@ class RenderService(Service):
         """将浏览器启动和清理接入宿主生命周期。"""
 
         async with self.stage("preparing"):
-            if self.enabled:
-                try:
-                    await self.start()
-                except RenderError as error:
-                    # 渲染是可选的输出增强功能。缺少浏览器不能阻止消息宿主启动。
-                    logger.warning("图片渲染不可用，将使用文本回退：{}", error)
+            try:
+                await self.start()
+            except RenderError as error:
+                # 渲染是可选的输出增强功能。缺少浏览器不能阻止消息宿主启动。
+                logger.warning("图片渲染不可用，将使用文本回退：{}", error)
 
         async with self.stage("blocking"):
             await manager.status.wait_for_sigexit()
@@ -283,8 +276,6 @@ class RenderService(Service):
     ) -> bytes:
         """将指定的 HTML 模板渲染为整页 JPEG 缓冲区。"""
 
-        if not self.enabled:
-            raise RenderUnavailableError("图片渲染未启用")
         try:
             image = await asyncio.wait_for(
                 self._render_html_to_image(template_name, context),

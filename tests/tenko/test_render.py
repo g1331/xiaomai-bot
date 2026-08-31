@@ -17,7 +17,7 @@ def test_render_config_defaults_and_mapping() -> None:
     config = TenkoConfig.from_mapping(
         {
             "render": {
-                "enabled": True,
+                "enabled": False,
                 "timeout": 4.5,
                 "width": 1024,
                 "quality": 90,
@@ -27,7 +27,6 @@ def test_render_config_defaults_and_mapping() -> None:
     ).render
 
     assert config == RenderConfig(
-        enabled=True,
         timeout=4.5,
         width=1024,
         quality=90,
@@ -46,23 +45,12 @@ def test_render_config_rejects_invalid_values(field: str, value: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_render_or_none_returns_none_when_disabled_or_unavailable() -> None:
-    disabled = RenderService()
-
-    assert (
-        await render_or_none(
-            disabled,
-            "render_template",
-            "status.html",
-            {"content": "text"},
-        )
-        is None
-    )
+async def test_render_or_none_returns_none_when_unavailable() -> None:
     # 直接单元测试会绕过 Entari 的 listener injector，因此显式传入缺失值，
     # 而不是通过模块级 fallback 解析。
     assert await render_or_none(None, "render_template", "status.html", {}) is None
 
-    unavailable = RenderService(enabled=True)
+    unavailable = RenderService()
     unavailable._startup_error = RuntimeError("browser missing")
     assert (
         await render_or_none(
@@ -77,7 +65,7 @@ async def test_render_or_none_returns_none_when_disabled_or_unavailable() -> Non
 
 @pytest.mark.asyncio
 async def test_render_timeout_falls_back_to_none(monkeypatch) -> None:
-    service = RenderService(enabled=True, timeout=0.01)
+    service = RenderService(timeout=0.01)
 
     async def slow_render(*args, **kwargs):
         await asyncio.sleep(1)
@@ -101,7 +89,7 @@ async def test_render_timeout_falls_back_to_none(monkeypatch) -> None:
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_placeholder_templates_render_to_jpeg() -> None:
-    service = RenderService(enabled=True)
+    service = RenderService()
     try:
         try:
             await service.start()

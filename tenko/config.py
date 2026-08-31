@@ -735,7 +735,6 @@ class RateLimitConfig:
 class RenderConfig:
     """图片渲染服务配置。"""
 
-    enabled: bool = True
     timeout: float = 10.0
     width: int = 800
     quality: int = 85
@@ -755,7 +754,6 @@ class RenderConfig:
     def from_mapping(cls, section: Mapping[str, Any]) -> RenderConfig:
         defaults = cls()
         return cls(
-            enabled=_boolean(section, "enabled", defaults.enabled),
             timeout=_number(section, "timeout", defaults.timeout),
             width=_integer(section, "width", defaults.width),
             quality=_integer(section, "quality", defaults.quality),

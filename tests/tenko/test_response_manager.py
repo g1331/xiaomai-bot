@@ -153,12 +153,15 @@ def test_specified_bot_command_accepts_numeric_id_or_clear(loaded_plugin) -> Non
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
-async def test_query_handler_reads_the_shared_account_registry(loaded_plugin) -> None:
+async def test_query_handler_reads_the_shared_account_registry(
+    loaded_plugin, monkeypatch
+) -> None:
     registry = make_registry()
     loaded_plugin.account_registry = registry
     permissions = PermissionRegistry()
     permissions.set_user_level(None, "20001", Permission.BotAdmin)
     loaded_plugin.permission_checker = PermissionChecker(registry=permissions)
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
 
     result = await loaded_plugin.bot_list.callable_target(
         make_session(), render_service=loaded_plugin.RenderService()
@@ -268,11 +271,14 @@ async def test_specified_bot_handler_hides_unknown_account_details(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
-async def test_online_bot_uses_only_current_group_counts(loaded_plugin) -> None:
+async def test_online_bot_uses_only_current_group_counts(
+    loaded_plugin, monkeypatch
+) -> None:
     registry = make_registry()
     loaded_plugin.account_registry = registry
     permissions = PermissionRegistry()
     loaded_plugin.permission_checker = PermissionChecker(registry=permissions)
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
 
     result = await loaded_plugin.online_bot.callable_target(
         make_session(), render_service=loaded_plugin.RenderService()
@@ -283,7 +289,9 @@ async def test_online_bot_uses_only_current_group_counts(loaded_plugin) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["response_manager"], indirect=True)
-async def test_bot_group_list_is_master_private_only(loaded_plugin) -> None:
+async def test_bot_group_list_is_master_private_only(
+    loaded_plugin, monkeypatch
+) -> None:
     registry = make_registry()
     second = FakeAccount("10003")
     registry.register(second, groups=[40002])
@@ -292,6 +300,7 @@ async def test_bot_group_list_is_master_private_only(loaded_plugin) -> None:
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
     )
+    monkeypatch.setattr(loaded_plugin, "render_or_none", AsyncMock(return_value=None))
     group_result = await loaded_plugin.bot_group_list.callable_target(
         make_session(),
         Query("account_id", None),

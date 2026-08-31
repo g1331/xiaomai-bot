@@ -178,19 +178,17 @@ class TenkoRuntime:
             # 保持宿主存活，使临时数据库故障不会阻止消息到达 Entari。
             self.database_service = None
             logger.error("Tenko database is unavailable: {}", error)
-        if self.config.render.enabled:
-            manager.add_component(
-                RenderService(
-                    enabled=self.config.render.enabled,
-                    timeout=self.config.render.timeout,
-                    width=self.config.render.width,
-                    quality=self.config.render.quality,
-                    device_scale_factor=self.config.render.device_scale_factor,
-                )
+        manager.add_component(
+            RenderService(
+                timeout=self.config.render.timeout,
+                width=self.config.render.width,
+                quality=self.config.render.quality,
+                device_scale_factor=self.config.render.device_scale_factor,
             )
+        )
 
         # PluginRuntime.load_all() 只通过 Entari 的 load_plugin API 导入 Tenko
-        # 插件，因此不需要注册 Launart 组件。将其放在数据库模型和可选
+        # 插件，因此不需要注册 Launart 组件。将其放在数据库模型和
         # RenderService 注册之后、run_async 之前。
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()

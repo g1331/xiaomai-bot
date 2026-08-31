@@ -1,6 +1,6 @@
 [project]
 name = "tenko"
-version = "4.0.0-pre1"
+version = "4.0.0-pre2"
 description = "Chat group management bot built on Entari and Satori protocol abstraction"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -32,7 +32,7 @@ package = false # ⚠️ 禁用“本项目安装”以便只安装第三方依�
 
 # bump-my-version 配置
 [tool.bumpversion]
-current_version = "4.0.0-pre1"
+current_version = "4.0.0-pre2"
 commit = false
 tag = false
 parse = """(?x)

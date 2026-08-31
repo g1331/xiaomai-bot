@@ -146,9 +146,7 @@ _POSITIVE_CASES: dict[str, dict[str, tuple[str, ...]]] = {
 def _parse(command: Alconna, text: str):
     try:
         return command.parse(text)
-    except (
-        Exception
-    ) as exc:  # pragma: no cover - 将解析器回归转换为断言输出
+    except Exception as exc:  # pragma: no cover - 将解析器回归转换为断言输出
         pytest.fail(f"解析 {text!r} 时不应抛出 {exc!r}")
 
 

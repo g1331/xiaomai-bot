@@ -159,6 +159,16 @@ class RenderService(Service):
             self.browser = browser
             return True
 
+    @staticmethod
+    def _is_driver_dead(error: Exception) -> bool:
+        text = str(error)
+        return (
+            "connection closed" in text.lower()
+            or "target closed" in text.lower()
+            or "driver" in text.lower()
+            and "closed" in text.lower()
+        )
+
     async def close(self) -> None:
         """Close Chromium and the Playwright driver held by this service."""
 
@@ -170,8 +180,13 @@ class RenderService(Service):
         if browser is not None:
             try:
                 await browser.close()
-            except Exception:
-                logger.exception("关闭 RenderService Chromium 失败")
+            except Exception as error:
+                # 宿主退出时 Playwright driver 可能已被先行终止，此时浏览器进程
+                # 会随驱动一同消失，关闭 RPC 失败属预期，不作为故障记录。
+                if self._is_driver_dead(error):
+                    logger.debug("Playwright driver 已先于浏览器关闭，跳过 close RPC")
+                else:
+                    logger.exception("关闭 RenderService Chromium 失败")
         if playwright is not None:
             try:
                 await playwright.stop()

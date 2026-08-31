@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from tenko import __main__ as main_module
+from tenko.config import TenkoConfig
+from tenko.host.updater import InstallResult, UpgradeLayout, Version
+
+
+def _write_project_version(root: Path, version: str = "1.0.0") -> None:
+    (root / "pyproject.toml").write_text(
+        f'[project]\nversion = "{version}"\n', encoding="utf-8"
+    )
+
+
+def test_main_without_active_release_runs_stable_code(
+    monkeypatch, tmp_path: Path
+) -> None:
+    _write_project_version(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    calls: list[TenkoConfig] = []
+
+    from tenko import runtime as runtime_module
+
+    monkeypatch.setattr(runtime_module, "run", calls.append)
+
+    assert main_module.main([]) == 0
+    assert len(calls) == 1
+    assert calls[0].upgrade.current_version is None
+
+
+def test_main_dry_run_does_not_consume_handoff(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    handoff = tmp_path / ".tenko" / "upgrades" / "handoff.json"
+    handoff.parent.mkdir(parents=True)
+    handoff.write_text('{"action":"activate"}\n', encoding="utf-8")
+    before = handoff.read_bytes()
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("dry-run must not enter startup bootstrap")
+
+    monkeypatch.setattr(main_module, "_run_startup_bootstrap", fail_if_called)
+
+    assert main_module.main(["--dry-run"]) == 0
+    assert handoff.read_bytes() == before
+    assert not (tmp_path / ".tenko" / "upgrades" / "failed-handoffs").exists()
+
+
+def test_main_applies_handoff_and_reexecutes_active_release(
+    monkeypatch, tmp_path: Path
+) -> None:
+    candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "2.0.0"
+    (candidate / "tenko").mkdir(parents=True)
+    layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
+    layout.write_pointer(candidate, Version(2, 0, 0))
+    layout.handoff_file.write_text('{"action":"activate"}\n', encoding="utf-8")
+    calls: dict[str, object] = {"apply": []}
+
+    class FakeManager:
+        def __init__(self) -> None:
+            self.layout = layout
+
+        @classmethod
+        def from_config(cls, _config, *, project_root):
+            calls["project_root"] = project_root
+            return cls()
+
+        async def apply_handoff(self, *, start_process: bool):
+            calls["apply"].append(start_process)
+            return InstallResult(True, Version(2, 0, 0), candidate, False, "ok")
+
+    import tenko.host.updater as updater_module
+
+    monkeypatch.setattr(updater_module, "UpgradeManager", FakeManager)
+    reexec: list[tuple[Path, Path, list[str]]] = []
+    monkeypatch.setattr(
+        main_module,
+        "_exec_release_root",
+        lambda release, stable, arguments: reexec.append(
+            (release, stable, list(arguments))
+        ),
+    )
+    monkeypatch.chdir(tmp_path)
+
+    arguments = ["--config", "config/tenko.toml"]
+    assert main_module.main(arguments) == 0
+    assert calls["apply"] == [False]
+    assert calls["project_root"] == tmp_path.resolve()
+    assert reexec == [
+        (candidate.resolve(), tmp_path.resolve(), arguments),
+    ]
+
+
+def test_main_continues_with_recovered_active_after_rolled_back_handoff(
+    monkeypatch, tmp_path: Path
+) -> None:
+    candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "1.0.0"
+    (candidate / "tenko").mkdir(parents=True)
+    layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
+    layout.write_pointer(candidate, Version(1, 0, 0))
+    layout.handoff_file.write_text('{"action":"activate"}\n', encoding="utf-8")
+    calls: list[bool] = []
+
+    class FakeManager:
+        def __init__(self) -> None:
+            self.layout = layout
+
+        @classmethod
+        def from_config(cls, _config, *, project_root):
+            assert project_root == tmp_path.resolve()
+            return cls()
+
+        async def apply_handoff(self, *, start_process: bool):
+            calls.append(start_process)
+            return InstallResult(
+                False, Version(2, 0, 0), candidate, True, "health check failed"
+            )
+
+    import tenko.host.updater as updater_module
+
+    monkeypatch.setattr(updater_module, "UpgradeManager", FakeManager)
+    reexec: list[Path] = []
+    monkeypatch.setattr(
+        main_module,
+        "_exec_release_root",
+        lambda release, _stable, _arguments: reexec.append(release),
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert main_module.main([]) == 0
+    assert calls == [False]
+    assert reexec == [candidate.resolve()]

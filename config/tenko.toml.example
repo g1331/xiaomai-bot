@@ -105,6 +105,7 @@ current_version = ""
 config_version = "1.0.0"
 install_root = ".tenko/upgrades"
 config_path = "config/tenko.toml"
+# 仅传给自定义健康检查/启动命令的外部目录；Tenko 自身数据仍使用 .tenko。
 data_dir = "data"
 # 可选健康检查命令。{python}、{release_root}、{config_path}、{data_dir} 可作为独立参数使用。
 health_command = []

@@ -63,8 +63,9 @@ class TenkoRuntime:
             cooldown_seconds=config.ratelimit.cooldown_seconds,
             blacklist_seconds=config.ratelimit.blacklist_seconds,
         )
+        stable_root = Path.cwd().resolve()
         self.updater = UpgradeManager.from_config(
-            config.upgrade, project_root=Path.cwd()
+            config.upgrade, project_root=stable_root
         )
         configure_updater(
             self.updater,

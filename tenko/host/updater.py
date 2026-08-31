@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import uuid
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
@@ -85,6 +86,7 @@ __all__ = [
     "get_upgrade_permission_checker",
     "parse_version",
     "select_release",
+    "spawn_restart_watcher",
 ]
 
 
@@ -210,6 +212,8 @@ _SCP_CREDENTIALS_PATTERN = re.compile(
     r"(?<![\w/@])[^/@\s:]+(?::[^/@\s]*)?@(?=[^/@\s:]+:)"
 )
 _FAILED_HANDOFF_RETENTION = 10
+_RESTART_WATCHER_TIMEOUT = 120
+_RESTART_WATCHER_INTERVAL = 0.2
 
 
 def _redact_text(value: object) -> str:
@@ -1213,6 +1217,78 @@ class ConfigCompatibilityChecker:
         return result
 
 
+def _same_python_executable(value: str, expected: str) -> bool:
+    """判断命令是否使用了健康检查/启动约定的同一 Python。"""
+
+    if value == expected:
+        return True
+    try:
+        return (
+            Path(value).expanduser().resolve() == Path(expected).expanduser().resolve()
+        )
+    except OSError:
+        return False
+
+
+def _candidate_python_command(
+    command: Sequence[str], candidate: Path, python_executable: str
+) -> list[str]:
+    """为 Python 命令加入候选代码 bootstrap。
+
+    稳定根目录必须继续作为 ``cwd``，所以 Python 的 ``sys.path[0]`` 会指向
+    稳定根目录。仅设置 ``PYTHONPATH`` 仍可能优先导入稳定根目录中的旧
+    ``tenko`` 包；将常见的 ``-m``/``-c`` 命令改写为 fresh interpreter 内的
+    ``runpy``/``exec`` 调用，才能同时保留稳定工作目录和候选代码优先级。
+    """
+
+    if not command or not _same_python_executable(command[0], python_executable):
+        return list(command)
+
+    mode_index = next(
+        (
+            index
+            for index, item in enumerate(command[1:], start=1)
+            if item in {"-m", "-c"}
+        ),
+        None,
+    )
+    if mode_index is None or mode_index + 1 >= len(command):
+        return list(command)
+
+    prefix = list(command[1:mode_index])
+    mode = command[mode_index]
+    target = command[mode_index + 1]
+    arguments = list(command[mode_index + 2 :])
+    if mode == "-m":
+        wrapper = (
+            "import runpy,sys;"
+            "release_root=sys.argv[1];"
+            "module=sys.argv[2];"
+            "sys.path.insert(0,release_root);"
+            "sys.argv=[module,*sys.argv[3:]];"
+            "runpy.run_module(module,run_name='__main__')"
+        )
+    else:
+        wrapper = (
+            "import sys;"
+            "release_root=sys.argv[1];"
+            "source=sys.argv[2];"
+            "sys.path.insert(0,release_root);"
+            "sys.argv=['-c',*sys.argv[3:]];"
+            "exec(compile(source,'<candidate-command>','exec'),"
+            "{'__name__':'__main__'})"
+        )
+    return [
+        command[0],
+        *prefix,
+        "-c",
+        wrapper,
+        str(candidate),
+        target,
+        *arguments,
+    ]
+
+
 @dataclass(frozen=True, slots=True)
 class HealthCheckResult:
     ok: bool
@@ -1223,9 +1299,9 @@ class DefaultHealthChecker:
     """默认最小健康检查：进程存活（若有）加 Python 编译冒烟。
 
     实际部署可配置 ``health_command`` 做最小启动检查；命令以独立子进程运行，
-    其工作目录和 ``PYTHONPATH`` 优先指向候选版本目录，因而不会导入当前进程中的
-    旧模块。命令可使用 ``{python}``、``{release_root}``、``{config_path}`` 和
-    ``{data_dir}`` 占位符。
+    工作目录固定为稳定根目录，代码源通过 bootstrap 优先使用候选版本目录，
+    因而不会导入当前进程中的旧模块。命令可使用 ``{python}``、
+    ``{release_root}``、``{config_path}`` 和 ``{data_dir}`` 占位符。
     """
 
     def __init__(
@@ -1236,6 +1312,8 @@ class DefaultHealthChecker:
         python_executable: str = sys.executable,
         config_path: Path | None = None,
         data_dir: Path | None = None,
+        upgrade_root: Path | None = None,
+        stable_root: Path | None = None,
     ) -> None:
         if timeout <= 0:
             raise ValueError("health timeout 必须大于 0")
@@ -1244,6 +1322,12 @@ class DefaultHealthChecker:
         self.python_executable = python_executable
         self.config_path = config_path
         self.data_dir = data_dir
+        self.upgrade_root = upgrade_root
+        self.stable_root = (
+            Path(Path.cwd() if stable_root is None else stable_root)
+            .expanduser()
+            .resolve()
+        )
 
     def _command(self, candidate: Path) -> list[str]:
         values = {
@@ -1252,13 +1336,25 @@ class DefaultHealthChecker:
             "{config_path}": str(self.config_path) if self.config_path else "",
             "{data_dir}": str(self.data_dir) if self.data_dir else "",
         }
-        return [
+        command = [
             next(
                 (replacement for key, replacement in values.items() if item == key),
                 item,
             )
             for item in self.command
         ]
+        return _candidate_python_command(command, candidate, self.python_executable)
+
+    def _environment(self, candidate: Path) -> dict[str, str]:
+        return _candidate_environment(
+            candidate,
+            config_path=self.config_path,
+            data_dir=self.data_dir,
+            upgrade_root=self.upgrade_root,
+        )
+
+    def _working_directory(self, candidate: Path) -> Path:
+        return self.stable_root
 
     def _check_sync(self, candidate: Path) -> HealthCheckResult:
         package = candidate / "tenko"
@@ -1268,12 +1364,12 @@ class DefaultHealthChecker:
             try:
                 completed = subprocess.run(
                     self._command(candidate),
-                    cwd=candidate,
                     check=False,
                     capture_output=True,
                     text=True,
                     timeout=self.timeout,
-                    env=_candidate_environment(candidate),
+                    env=self._environment(candidate),
+                    cwd=self._working_directory(candidate),
                 )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 return HealthCheckResult(False, f"健康检查命令执行失败: {exc}")
@@ -1287,11 +1383,12 @@ class DefaultHealthChecker:
         try:
             completed = subprocess.run(
                 [self.python_executable, "-m", "compileall", "-q", str(package)],
-                cwd=candidate,
+                cwd=self._working_directory(candidate),
                 check=False,
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
+                env=self._environment(candidate),
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             return HealthCheckResult(False, f"Python 编译冒烟失败: {exc}")
@@ -1332,11 +1429,17 @@ class SubprocessLauncher:
         config_path: Path | None = None,
         data_dir: Path | None = None,
         upgrade_root: Path | None = None,
+        stable_root: Path | None = None,
     ) -> None:
         self.command = tuple(command)
         self.config_path = config_path
         self.data_dir = data_dir
         self.upgrade_root = upgrade_root
+        self.stable_root = (
+            Path(Path.cwd() if stable_root is None else stable_root)
+            .expanduser()
+            .resolve()
+        )
 
     async def start(self, candidate: Path) -> subprocess.Popen[bytes] | None:
         if not self.command:
@@ -1358,22 +1461,18 @@ class SubprocessLauncher:
             )
             for item in self.command
         ]
-        environment = os.environ.copy()
-        if self.config_path:
-            environment["TENKO_CONFIG_PATH"] = str(self.config_path)
-        if self.data_dir:
-            environment["TENKO_DATA_DIR"] = str(self.data_dir)
-        if self.upgrade_root:
-            environment["TENKO_UPGRADE_ROOT"] = str(self.upgrade_root)
-        existing_pythonpath = environment.get("PYTHONPATH")
-        environment["PYTHONPATH"] = os.pathsep.join(
-            value for value in (str(candidate), existing_pythonpath) if value
+        command = _candidate_python_command(command, candidate, sys.executable)
+        environment = _candidate_environment(
+            candidate,
+            config_path=self.config_path,
+            data_dir=self.data_dir,
+            upgrade_root=self.upgrade_root,
         )
         try:
             return await asyncio.to_thread(
                 subprocess.Popen,
                 command,
-                cwd=candidate,
+                cwd=self.stable_root,
                 env=environment,
             )
         except OSError as exc:
@@ -1441,6 +1540,15 @@ class UpgradeLayout:
     @property
     def failed_handoffs_dir(self) -> Path:
         return self.root / "failed-handoffs"
+
+    @property
+    def restart_watchers_dir(self) -> Path:
+        return self.root / "restart-watchers"
+
+    def restart_watcher_file(self, old_pid: int) -> Path:
+        if old_pid <= 0:
+            raise ValueError("旧进程 PID 必须大于 0")
+        return self.restart_watchers_dir / f"{old_pid}.json"
 
     @property
     def audit_file(self) -> Path:
@@ -1715,8 +1823,8 @@ class UpgradeManager:
             raise ValueError("source 和 sources 只能指定一个")
         self.current_version = parse_version(current_version)
         self.sources = tuple(sources) if sources else ((source,) if source else ())
-        self.layout = layout or UpgradeLayout(Path(".tenko/upgrades"))
         self.project_root = Path(project_root or Path.cwd()).expanduser().resolve()
+        self.layout = layout or UpgradeLayout(self.project_root / ".tenko/upgrades")
         self.config_path = (
             self._resolve_path(config_path) if config_path is not None else None
         )
@@ -1731,7 +1839,12 @@ class UpgradeManager:
         self.compatibility_checker = (
             compatibility_checker or ConfigCompatibilityChecker()
         )
-        self.health_checker = health_checker or DefaultHealthChecker()
+        self.health_checker = health_checker or DefaultHealthChecker(
+            config_path=self.config_path,
+            data_dir=self.data_dir,
+            upgrade_root=self.layout.root,
+            stable_root=self.project_root,
+        )
         self.launcher = launcher
         self.audit = audit or AuditLogger(self.layout.audit_file)
         self._operation_lock = asyncio.Lock()
@@ -1739,6 +1852,25 @@ class UpgradeManager:
     def _resolve_path(self, value: str | Path) -> Path:
         path = Path(value).expanduser()
         return path if path.is_absolute() else (self.project_root / path).resolve()
+
+    def restart_command(self) -> tuple[str, ...]:
+        """返回 watcher 在稳定根目录中应执行的一次性启动命令。"""
+
+        arguments = tuple(sys.argv[1:])
+        launcher = self.project_root / "scripts" / "launcher.sh"
+        if launcher.is_file():
+            return (str(launcher), *arguments)
+        return (sys.executable, "-m", "tenko", *arguments)
+
+    def spawn_restart_watcher(self, *, old_pid: int | None = None) -> bool:
+        """为当前进程 arm 一次退出后重启的 detached watcher。"""
+
+        return spawn_restart_watcher(
+            old_pid if old_pid is not None else os.getpid(),
+            self.restart_command(),
+            stable_root=self.project_root,
+            watcher_dir=self.layout.restart_watchers_dir,
+        )
 
     @property
     def source_names(self) -> tuple[str, ...]:
@@ -2452,7 +2584,19 @@ class UpgradeManager:
         """
 
         root = Path(project_root or Path.cwd()).expanduser().resolve()
-        current = config.current_version or read_project_version(root)
+        configured_install_root = (
+            os.environ.get("TENKO_UPGRADE_ROOT") or config.install_root
+        )
+        install_root = Path(configured_install_root).expanduser()
+        if not install_root.is_absolute():
+            install_root = root / install_root
+        layout = UpgradeLayout(install_root)
+        active = layout.read_active()
+        current = (
+            active.version
+            if active is not None
+            else config.current_version or read_project_version(root)
+        )
         source_name = config.source.strip().lower().replace("-", "_")
         if source_name in {"git", "git_tag", "tag"}:
             source: VersionSource = GitTagSource(
@@ -2479,12 +2623,6 @@ class UpgradeManager:
         else:
             raise UpgradeConfigError(f"未知升级 source: {config.source!r}")
 
-        configured_install_root = (
-            os.environ.get("TENKO_UPGRADE_ROOT") or config.install_root
-        )
-        install_root = Path(configured_install_root).expanduser()
-        if not install_root.is_absolute():
-            install_root = root / install_root
         configured_config_path = (
             os.environ.get("TENKO_CONFIG_PATH") or config.config_path
         )
@@ -2495,18 +2633,20 @@ class UpgradeManager:
         data_dir = Path(configured_data_dir).expanduser()
         if not data_dir.is_absolute():
             data_dir = root / data_dir
-        layout = UpgradeLayout(install_root)
         health_checker = DefaultHealthChecker(
             config.health_command,
             timeout=config.health_timeout,
             config_path=config_path.resolve(),
             data_dir=data_dir.resolve(),
+            upgrade_root=layout.root,
+            stable_root=root,
         )
         launcher = SubprocessLauncher(
             config.launch_command,
             config_path=config_path.resolve(),
             data_dir=data_dir.resolve(),
             upgrade_root=layout.root,
+            stable_root=root,
         )
         return cls(
             current,
@@ -2525,10 +2665,148 @@ class UpgradeManager:
         )
 
 
-def _candidate_environment(candidate: Path) -> dict[str, str]:
-    """让健康命令优先导入候选代码，而不是启动器所在的旧工作树。"""
+def spawn_restart_watcher(
+    old_pid: int,
+    restart_command: Sequence[str],
+    *,
+    stable_root: str | Path,
+    watcher_dir: str | Path,
+    timeout: int = _RESTART_WATCHER_TIMEOUT,
+    poll_interval: float = _RESTART_WATCHER_INTERVAL,
+) -> bool:
+    """启动一个等待旧 PID 消失后只重启一次的 POSIX watcher。
+
+    watcher 只负责进程生命周期，不读取或应用升级状态；重启后的
+    ``scripts/launcher.sh``/``__main__`` 才是 active 指针和 handoff 的处理者。
+    ``watcher_dir/<old_pid>.json`` 使用排他创建实现同一旧 PID 的防重。
+    """
+
+    if old_pid <= 0 or not restart_command:
+        return False
+    if timeout <= 0 or poll_interval <= 0:
+        raise ValueError("watcher timeout 和 poll_interval 必须大于 0")
+
+    command = tuple(str(item) for item in restart_command)
+    if not command or any(not item for item in command):
+        return False
+    stable_root = Path(stable_root).expanduser().resolve()
+    watcher_dir = Path(watcher_dir).expanduser().resolve()
+    record = watcher_dir / f"{old_pid}.json"
+    record_payload = {
+        "old_pid": old_pid,
+        "command": list(command),
+        "cwd": str(stable_root),
+        "timeout": timeout,
+        "poll_interval": poll_interval,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    try:
+        watcher_dir.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(
+            record,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+            0o600,
+        )
+        with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            descriptor = -1
+            json.dump(record_payload, file, ensure_ascii=False, sort_keys=True)
+            file.write("\n")
+            file.flush()
+            os.fsync(file.fileno())
+    except FileExistsError:
+        return False
+    except OSError as exc:
+        logger.warning("无法创建 Tenko restart watcher 记录: {}", exc)
+        return False
+    finally:
+        if "descriptor" in locals() and descriptor >= 0:
+            os.close(descriptor)
+
+    watcher = (
+        textwrap.dedent(
+            """
+        import os
+        import subprocess
+        import sys
+        import time
+        from pathlib import Path
+
+        pid = int(sys.argv[1])
+        record = Path(sys.argv[2])
+        command = {command_literal}
+        stable_root = {stable_root_literal}
+        deadline = time.monotonic() + {timeout_literal}
+
+        def _pid_exists(value):
+            try:
+                os.kill(value, 0)
+            except ProcessLookupError:
+                return False
+            except PermissionError:
+                return True
+            except OSError:
+                return False
+            return True
+
+        try:
+            while time.monotonic() < deadline and _pid_exists(pid):
+                time.sleep({poll_interval_literal})
+            if _pid_exists(pid):
+                sys.exit(0)
+            if os.name == "posix":
+                subprocess.Popen(
+                    command,
+                    cwd=stable_root,
+                    start_new_session=True,
+                )
+            else:
+                # Tenko 生产环境是 POSIX；Windows detach 语义另立任务处理。
+                subprocess.Popen(command, cwd=stable_root)
+        finally:
+            record.unlink(missing_ok=True)
+        """
+        )
+        .strip()
+        .format(
+            command_literal=repr(list(command)),
+            stable_root_literal=repr(str(stable_root)),
+            timeout_literal=repr(float(timeout)),
+            poll_interval_literal=repr(float(poll_interval)),
+        )
+    )
+    watcher_command = [sys.executable, "-c", watcher, str(old_pid), str(record)]
+    popen_kwargs: dict[str, Any] = {
+        "cwd": str(stable_root),
+        "stdin": subprocess.DEVNULL,
+    }
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
+    try:
+        subprocess.Popen(watcher_command, **popen_kwargs)
+    except OSError as exc:
+        record.unlink(missing_ok=True)
+        logger.warning("无法启动 Tenko restart watcher: {}", exc)
+        return False
+    return True
+
+
+def _candidate_environment(
+    candidate: Path,
+    *,
+    config_path: Path | None = None,
+    data_dir: Path | None = None,
+    upgrade_root: Path | None = None,
+) -> dict[str, str]:
+    """为候选进程准备统一的环境变量和优先导入路径。"""
 
     environment = os.environ.copy()
+    if config_path:
+        environment["TENKO_CONFIG_PATH"] = str(config_path)
+    if data_dir:
+        environment["TENKO_DATA_DIR"] = str(data_dir)
+    if upgrade_root:
+        environment["TENKO_UPGRADE_ROOT"] = str(upgrade_root)
     existing_pythonpath = environment.get("PYTHONPATH")
     environment["PYTHONPATH"] = os.pathsep.join(
         value for value in (str(candidate), existing_pythonpath) if value

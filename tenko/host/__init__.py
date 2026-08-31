@@ -74,6 +74,7 @@ from .updater import (
     get_upgrade_permission_checker,
     parse_version,
     select_release,
+    spawn_restart_watcher,
 )
 
 __all__ = [
@@ -145,4 +146,5 @@ __all__ = [
     "get_upgrade_permission_checker",
     "parse_version",
     "select_release",
+    "spawn_restart_watcher",
 ]

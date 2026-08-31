@@ -3,7 +3,10 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import subprocess
+import sys
+import time
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,6 +43,7 @@ from tenko.host.updater import (
     compare_versions,
     parse_version,
     select_release,
+    spawn_restart_watcher,
 )
 
 
@@ -643,20 +647,181 @@ async def test_subprocess_launcher_passes_shared_upgrade_paths(
     config_path = tmp_path / "config" / "tenko.toml"
     data_dir = tmp_path / "data"
     upgrade_root = tmp_path / "upgrades"
+    stable_root = tmp_path / "stable"
+    stable_root.mkdir()
 
     launcher = SubprocessLauncher(
         ["{python}", "-m", "tenko", "--config", "{config_path}"],
         config_path=config_path,
         data_dir=data_dir,
         upgrade_root=upgrade_root,
+        stable_root=stable_root,
     )
     await launcher.start(candidate)
 
     assert captured["command"][0].endswith("python")
-    assert captured["cwd"] == candidate
+    assert captured["cwd"] == stable_root.resolve()
     assert captured["env"]["TENKO_CONFIG_PATH"] == str(config_path)
     assert captured["env"]["TENKO_DATA_DIR"] == str(data_dir)
     assert captured["env"]["TENKO_UPGRADE_ROOT"] == str(upgrade_root)
+
+
+def test_from_config_current_version_prefers_active_then_config_then_project(
+    tmp_path: Path,
+) -> None:
+    stable_root = tmp_path / "stable"
+    stable_root.mkdir()
+    (stable_root / "pyproject.toml").write_text(
+        '[project]\nversion = "1.0.0"\n', encoding="utf-8"
+    )
+    upgrade_root = tmp_path / "upgrades"
+    candidate = upgrade_root / "versions" / "2.0.0"
+    (candidate / "tenko").mkdir(parents=True)
+
+    layout = UpgradeLayout(upgrade_root)
+    layout.write_pointer(candidate, Version(2, 0, 0))
+    configured = UpgradeConfig(current_version="1.5.0", install_root=str(upgrade_root))
+
+    manager = UpgradeManager.from_config(configured, project_root=stable_root)
+    assert manager.current_version == Version(2, 0, 0)
+
+    layout.active_file.unlink()
+    manager = UpgradeManager.from_config(configured, project_root=stable_root)
+    assert manager.current_version == Version(1, 5, 0)
+
+    from_project = UpgradeConfig(install_root=str(upgrade_root))
+    manager = UpgradeManager.from_config(from_project, project_root=stable_root)
+    assert manager.current_version == Version(1, 0, 0)
+
+
+def test_upgrade_manager_restart_command_uses_stable_launcher(
+    monkeypatch, tmp_path: Path
+) -> None:
+    launcher = tmp_path / "scripts" / "launcher.sh"
+    launcher.parent.mkdir(parents=True)
+    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
+    manager = UpgradeManager(
+        Version(1, 0, 0),
+        project_root=tmp_path,
+        layout=UpgradeLayout(tmp_path / ".tenko" / "upgrades"),
+    )
+    monkeypatch.setattr(sys, "argv", ["tenko", "--config", "config/custom.toml"])
+
+    assert manager.restart_command() == (
+        str(launcher),
+        "--config",
+        "config/custom.toml",
+    )
+
+
+@pytest.mark.asyncio
+async def test_default_health_checker_uses_stable_cwd_and_candidate_code(
+    tmp_path: Path,
+) -> None:
+    stable_root = tmp_path / "stable"
+    candidate = tmp_path / "candidate"
+    for root, marker in ((stable_root, "stable"), (candidate, "candidate")):
+        package = root / "tenko"
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text(f"MARKER = {marker!r}\n", encoding="utf-8")
+
+    command = [
+        sys.executable,
+        "-c",
+        "import os, tenko; raise SystemExit(0 if "
+        f"tenko.MARKER == 'candidate' and os.getcwd() == {str(stable_root)!r} "
+        "else 1)",
+    ]
+    checker = DefaultHealthChecker(command, stable_root=stable_root)
+
+    result = await checker.check(candidate, phase="pre-switch")
+
+    assert result.ok, result.reason
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_restart_watcher_deduplicates_pid_and_detaches(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import tenko.host.updater as updater_module
+
+    captured: dict[str, Any] = {}
+
+    def fake_popen(command, **kwargs):
+        captured.update(command=command, kwargs=kwargs)
+        return object()
+
+    monkeypatch.setattr(updater_module.subprocess, "Popen", fake_popen)
+    watcher_dir = tmp_path / "restart-watchers"
+    command = (sys.executable, "-m", "tenko")
+
+    assert spawn_restart_watcher(
+        12345,
+        command,
+        stable_root=tmp_path,
+        watcher_dir=watcher_dir,
+        timeout=3,
+        poll_interval=0.05,
+    )
+    assert not spawn_restart_watcher(
+        12345,
+        command,
+        stable_root=tmp_path,
+        watcher_dir=watcher_dir,
+        timeout=3,
+        poll_interval=0.05,
+    )
+
+    record = watcher_dir / "12345.json"
+    payload = json.loads(record.read_text(encoding="utf-8"))
+    assert payload["old_pid"] == 12345
+    assert payload["command"] == list(command)
+    assert payload["cwd"] == str(tmp_path.resolve())
+    assert captured["kwargs"]["cwd"] == str(tmp_path.resolve())
+    assert captured["kwargs"]["stdin"] is subprocess.DEVNULL
+    assert captured["kwargs"]["start_new_session"] is True
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_restart_watcher_restarts_once_after_old_pid_exits(tmp_path: Path) -> None:
+    marker = tmp_path / "restarted.txt"
+    old_process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(0.35)"]
+    )
+    watcher_dir = tmp_path / "restart-watchers"
+    command = (
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; "
+        "Path(sys.argv[1]).write_text('started', encoding='utf-8')",
+        str(marker),
+    )
+    record = watcher_dir / f"{old_process.pid}.json"
+
+    try:
+        assert spawn_restart_watcher(
+            old_process.pid,
+            command,
+            stable_root=tmp_path,
+            watcher_dir=watcher_dir,
+            timeout=5,
+            poll_interval=0.05,
+        )
+        assert old_process.wait(timeout=5) == 0
+
+        deadline = time.monotonic() + 5
+        while not marker.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert marker.read_text(encoding="utf-8") == "started"
+
+        deadline = time.monotonic() + 5
+        while record.exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not record.exists()
+    finally:
+        if old_process.poll() is None:
+            old_process.terminate()
+            old_process.wait(timeout=5)
 
 
 def test_tenko_upgrade_config_defaults_to_conservative_policy() -> None:

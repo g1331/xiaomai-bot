@@ -87,6 +87,7 @@ class FakeUpdater:
         self.prepare_calls = 0
         self.request_install_calls = 0
         self.rollback_calls = 0
+        self.spawn_restart_watcher_calls = 0
 
     async def check(self):
         self.check_calls += 1
@@ -104,6 +105,10 @@ class FakeUpdater:
     async def rollback(self):
         self.rollback_calls += 1
         return self.rollback_result
+
+    def spawn_restart_watcher(self):
+        self.spawn_restart_watcher_calls += 1
+        return True
 
 
 def authorize_master(loaded_plugin) -> None:
@@ -176,6 +181,7 @@ async def test_upgrade_command_prepares_and_requests_external_install(
     assert fake.check_calls == 1
     assert fake.prepare_calls == 1
     assert fake.request_install_calls == 1
+    assert fake.spawn_restart_watcher_calls == 1
 
 
 @pytest.mark.asyncio
@@ -208,6 +214,7 @@ async def test_rollback_command_requests_external_rollback(loaded_plugin, tmp_pa
 
     assert "已请求回滚到版本 1.0.0" in str(result)
     assert fake.rollback_calls == 1
+    assert fake.spawn_restart_watcher_calls == 1
 
 
 @pytest.mark.asyncio

@@ -118,7 +118,8 @@ async def upgrade(session: Session):
             return text_message(_format_check(checked))
         prepared = await updater.prepare(checked.candidate)
         handoff = await updater.request_install()
-        return text_message(_format_upgrade(prepared, handoff))
+        watcher_armed = _arm_restart_watcher()
+        return text_message(_format_upgrade(prepared, handoff, watcher_armed))
     except NoUpdateAvailable:
         return text_message("没有可安装的新版本")
     except UpdaterError as exc:
@@ -131,25 +132,50 @@ async def rollback(session: Session):
         return text_message("权限不足：仅超级用户可执行宿主升级操作")
     try:
         result = await updater.rollback()
-        return text_message(_format_rollback(result))
+        watcher_armed = _arm_restart_watcher() if not result.applied else False
+        return text_message(_format_rollback(result, watcher_armed))
     except UpdaterError as exc:
         return text_message(_error_message(exc))
 
 
-def _format_upgrade(prepared: PrepareResult, handoff: HandoffResult) -> str:
+def _arm_restart_watcher() -> bool:
+    arm = getattr(updater, "spawn_restart_watcher", None)
+    if not callable(arm):
+        return False
+    armed = arm()
+    if not armed:
+        logger.warning(
+            "Tenko restart watcher was not armed; manual restart remains required"
+        )
+    return armed
+
+
+def _format_upgrade(
+    prepared: PrepareResult, handoff: HandoffResult, watcher_armed: bool
+) -> str:
+    restart_message = (
+        "已 arm 退出后自动重启 watcher；请使用 Ctrl+C 让当前进程优雅退出。"
+        if watcher_armed
+        else "未能 arm 自动重启 watcher；请由外部启动器手动接管重启。"
+    )
     return (
         f"版本 {prepared.release.version} 已下载、校验并通过切换前健康检查。\n"
         f"制品目录：{prepared.path}\n"
         f"已生成外部重启接管记录：{updater.layout.handoff_file}\n"
-        "当前进程不会热替换；请由外部启动器接管重启和切换。"
+        f"{restart_message}"
     )
 
 
-def _format_rollback(result: RollbackResult) -> str:
+def _format_rollback(result: RollbackResult, watcher_armed: bool) -> str:
+    restart_message = (
+        "已 arm 退出后自动重启 watcher；请使用 Ctrl+C 让当前进程优雅退出。"
+        if watcher_armed
+        else "未能 arm 自动重启 watcher；请由外部启动器手动接管重启。"
+    )
     return (
         f"已请求回滚到版本 {result.target_version}。\n"
         f"目标目录：{result.path}\n"
-        "当前进程不会热替换；请由外部启动器接管重启。"
+        f"{restart_message}"
     )
 
 

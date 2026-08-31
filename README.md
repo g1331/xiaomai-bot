@@ -99,6 +99,17 @@ Windows PowerShell 的激活命令为：
 
     python -m tenko      # 或 uv run python -m tenko
 
+生产部署可使用仓库内的标准启动器：
+
+    ./scripts/launcher.sh
+
+启动器把脚本所在仓库目录作为稳定根目录，固定以该目录为 cwd，并通过
+`uv run --project <stable_root> --no-sync` 复用项目环境。没有 `active.json` 时运行
+稳定根目录中的代码；存在有效的 `active.json` 时只把对应 `versions/` 子目录作为
+代码源。启动器不消费 `handoff.json`，handoff 由 `tenko.__main__` 在正常启动时一次性
+应用，应用成功后会在 fresh Python 进程中重执行 active 版本。升级命令 arm 的 detached
+watcher 会等待当前进程退出，再调用这个启动器一次；因此 Ctrl+C 仍是正常的优雅退出路径。
+
 ### 协议端连接（以 NapCat 为例）
 
 默认反向 WebSocket 地址为：
@@ -262,7 +273,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | config_version | 配置兼容版本，默认 1.0.0 |
 | install_root | 版本和升级状态目录，默认 .tenko/upgrades |
 | config_path | 外部配置路径，默认 config/tenko.toml |
-| data_dir | 外部数据目录，默认 data |
+| data_dir | 仅传给自定义健康检查/启动命令的外部目录，默认 data；Tenko 自身持久化数据仍在 .tenko |
 | health_command | 可选健康检查命令参数列表 |
 | launch_command | 可选外部启动命令参数列表 |
 | health_timeout | 健康检查超时时间，默认 30 秒 |
@@ -275,7 +286,9 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 - prerelease 允许选择预发布版本，适合验证实例；
 - policy = "check" 只发现并记录候选版本；
 - policy = "download" 自动准备制品；
-- policy = "install" 生成外部安装接管记录。进程切换仍由稳定的外部启动器完成。
+- policy = "install" 生成外部安装接管记录。进程切换仍由稳定的外部启动器完成；
+  `/升级` 和 `/回滚` 成功写入 handoff 后会 arm 一次性 detached watcher，若 watcher
+  未能启动则需要手动重新运行标准启动器。
 
 
 ## 更新机制
@@ -293,7 +306,8 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 - /回滚 请求回到上一可用版本；不存在可回滚版本时会返回明确失败。
 
 启用周期检查时，check_interval_hours 控制定时检查间隔。升级目录、配置目录和
-数据目录彼此分离，升级过程不会覆盖用户配置或运行数据。
+数据目录彼此分离，升级过程不会覆盖用户配置或运行数据；`data_dir` 不会改变
+Tenko 自身 `.tenko` 应用数据的落点。
 
 ## 开发环境搭建
 

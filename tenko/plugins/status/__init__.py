@@ -234,6 +234,14 @@ def _current_group_mute(context: Any, registry: AccountRegistry) -> str | None:
     return f"当前群禁言：{muted}/{len(accounts)}"
 
 
+def _plugin_count() -> int:
+    """与 /帮助 一致：统计业务插件而非 Entari 全局注册表。"""
+
+    from tenko.host.plugins import PluginRuntime  # 局部导入避免插件加载顺序耦合
+
+    return len(PluginRuntime().discover())
+
+
 def build_status_data(
     context: Any,
     plugin_count: int,
@@ -402,7 +410,7 @@ async def status(
     )
     status_data = build_status_data(
         context,
-        len(plugin.get_plugins()),
+        _plugin_count(),
         detailed=is_master_private,
     )
     if not text_mode.result:

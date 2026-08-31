@@ -135,6 +135,19 @@ Linux 主机缺少 Chromium 系统依赖时，需要由运维按主机权限安�
 config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖连接、权限、
 数据库、渲染和升级的基本入口；所有敏感字段和账号标识都是占位符：
 
+    # 受保护的测试群；留空或省略表示不启用保护。
+    test_group = ""
+
+    [basic]
+    prefix = ["/"]
+    ignore_self_message = true
+    skip_req_missing = false
+    superusers = { onebot = ["<QQ_ID>"] }
+
+    [basic.log]
+    level = "INFO"
+    # save = { rotation = "00:00", compression = "gz", colorize = false }
+
     [onebot]
     listen_host = "127.0.0.1"
     listen_port = 8080
@@ -146,13 +159,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     satori_host = "127.0.0.1"
     satori_path = "satori"
     satori_token = "<SATORI_TOKEN>"
-
-    [runtime]
-    log_level = "INFO"
-    command_prefix = "/"
-
-    [entari]
-    superusers = { onebot = ["<QQ_ID>"] }
 
     [debug]
     enabled = false
@@ -200,21 +206,35 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | satori_token | 内部 Satori token，可留空关闭鉴权 |
 | capability_overrides | 按账号覆盖平台能力学习结果的映射，值为布尔开关 |
 
-### [runtime]、[entari] 与 [debug]
+### [basic] 与 [debug]
 
 | 配置 | 说明 |
 | --- | --- |
-| runtime.log_level | 日志级别，默认 INFO |
-| runtime.command_prefix | 命令前缀；Tenko 的对外命令约定固定为 / |
-| runtime.superusers | 平台到用户 ID 的兼容输入；实际生效名单统一来自 entari.superusers |
-| entari.superusers | 超级用户唯一权威来源，格式为“平台名到用户 ID 列表”的映射 |
+| basic.prefix | Entari 官方命令前缀列表；默认兼容 Tenko 的 `/`，可以配置多个前缀 |
+| basic.ignore_self_message | 是否忽略机器人自己发送的消息，默认开启 |
+| basic.skip_req_missing | 是否跳过缺少依赖的事件监听器，默认关闭 |
+| basic.superusers | 超级用户唯一权威来源，格式为“平台名到用户 ID 列表”的映射 |
+| basic.log.level | 日志级别，默认 INFO |
+| basic.log.ignores | 要忽略的日志记录器名称列表，支持通配符 |
+| basic.log.save | 日志保存与轮转；默认 `None`，不落盘 |
+| basic.log.save.rotation | 轮转时间或文件大小，例如 `00:00` 或 `10 MB` |
+| basic.log.save.compression | 压缩格式，例如 `gz`；留空表示不压缩 |
+| basic.log.save.colorize | 是否在文件中保留颜色，默认由官方模型开启 |
 | debug.enabled | 是否只处理 debug.masters 中用户产生的事件，默认关闭 |
-| debug.masters | 调试白名单；省略时继承 entari.superusers，显式空列表表示不放行用户 |
+| debug.masters | 调试白名单；省略时继承 basic.superusers，显式空列表表示不放行用户 |
 
-例如，OneBot 11 的超级用户配置为：
+例如，OneBot 11 的超级用户和日志轮转配置为：
 
-    [entari]
+    [basic]
     superusers = { onebot = ["<QQ_ID>"] }
+
+    [basic.log]
+    save = { rotation = "00:00", compression = "gz", colorize = false }
+
+`basic.network` 也按 Entari 官方模型解析并保留，但 Tenko 的 OneBot 连接仍由
+`[onebot]` 节组装；本批次不会用 `basic.network` 驱动 OneBot 连接。旧配置中的
+`[runtime].log_level`、`[runtime].command_prefix` 和 `[entari].superusers` 会在读取时
+映射到 `basic`，新配置应直接使用官方节。
 
 ### [database]、[accounts]、[features] 与 [exception]
 
@@ -278,7 +298,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | launch_command | 可选外部启动命令参数列表 |
 | health_timeout | 健康检查超时时间，默认 30 秒 |
 | check_interval_hours | 定时检查间隔，默认 24 小时 |
-| superuser_ids | 可执行升级命令的用户 ID；省略时继承 entari.superusers |
+| superuser_ids | 可执行升级命令的用户 ID；省略时继承 basic.superusers |
 
 通道选择建议：
 

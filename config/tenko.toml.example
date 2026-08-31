@@ -1,6 +1,43 @@
 # Tenko 配置示例。
 # 复制为 config/tenko.toml 后按 NapCat 实际地址修改；不要把真实 token 提交到仓库。
 
+# 受保护的测试群；留空表示不启用保护。该键必须位于 TOML 顶层。
+test_group = ""
+
+# 旧版 [runtime] / [entari] 中的通用字段统一放在 Entari 官方 [basic] 节。
+# Tenko 默认保留 / 作为命令前缀；也可以配置多个前缀，例如 ["/", "!"]。
+[basic]
+prefix = ["/"]
+ignore_self_message = true
+skip_req_missing = false
+nickname = ""
+cmd_count = 4096
+external_dirs = []
+schema = false
+check_metadata = false
+str_as_message = true
+# 超管唯一权威来源：键为平台名称，值为该平台的用户 ID 字符串列表。
+superusers = { onebot = ["YOUR_QQ_ID"] }
+
+[basic.log]
+level = "INFO"
+ignores = []
+# 启用官方日志轮转并落盘到 Entari 的日志目录；默认不落盘（save=None）。
+# save = { rotation = "00:00", compression = "gz", colorize = false }
+rich_error = false
+short_level = false
+
+# basic.network 仅按 Entari 官方格式解析并保留，Tenko 的 OneBot 连接仍由下方
+# [onebot] 配置驱动；不要把 NapCat 反向 WebSocket 地址填到这里。
+# [[basic.network]]
+# type = "ws"
+# host = "127.0.0.1"
+# port = 5140
+# path = "satori"
+# secure = false
+# token = ""
+# timeout = 10.0
+
 [onebot]
 # Tenko 监听 NapCat 反向 WebSocket 的地址。
 listen_host = "127.0.0.1"
@@ -25,19 +62,6 @@ satori_token = "tenko-satori-local"
 # group_mute = true
 # group_essence = false
 
-[runtime]
-# 安全起见默认只打印收到的消息，不发送 OneBot action。
-log_level = "INFO"
-# 所有 Tenko 命令的 Alconna 原生前缀。
-command_prefix = "/"
-
-# 旧版语义中的测试群不可通过权限管理命令修改；留空表示不启用保护。
-test_group = ""
-
-[entari]
-# 超管唯一权威来源：键为平台名称，值为该平台的用户 ID 列表。
-superusers = { onebot = ["YOUR_QQ_ID"] }
-
 [database]
 # 与旧 Graia 数据库同构，默认直接使用 Tenko 数据目录中的 SQLite 文件。
 url = "sqlite+aiosqlite:///./.tenko/tenko.db"
@@ -47,7 +71,7 @@ create_table_at = "preparing"
 [debug]
 # 开启后，Tenko 只处理 masters 中 QQ 号对应用户产生的事件。
 enabled = false
-# ID 建议写成字符串；省略时继承 [entari].superusers，显式填写（包括 []）会覆盖继承。
+# ID 建议写成字符串；省略时继承 [basic].superusers，显式填写（包括 []）会覆盖继承。
 # masters = ["10001"]
 
 [accounts]
@@ -114,6 +138,6 @@ launch_command = []
 health_timeout = 30
 # 默认 24 小时；保留旧版周期检查场景，但策略默认不下载/安装。
 check_interval_hours = 24
-# 仅这些用户能执行 /检查更新、/升级、/回滚；省略时继承 [entari].superusers。
+# 仅这些用户能执行 /检查更新、/升级、/回滚；省略时继承 [basic].superusers。
 # 显式填写（包括 []）会覆盖继承；ID 可写字符串或整数。
 # superuser_ids = ["YOUR_QQ_ID"]

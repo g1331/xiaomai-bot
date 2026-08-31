@@ -137,8 +137,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     satori_token = "<SATORI_TOKEN>"
 
     [runtime]
-    send_replies = false
-    reply_text = "Tenko 已收到消息。"
     log_level = "INFO"
     command_prefix = "/"
 
@@ -195,8 +193,6 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 
 | 配置 | 说明 |
 | --- | --- |
-| runtime.send_replies | 是否对收到的消息发送固定回复，默认关闭 |
-| runtime.reply_text | 固定回复文本，默认是 Tenko 已收到消息。 |
 | runtime.log_level | 日志级别，默认 INFO |
 | runtime.command_prefix | 命令前缀；Tenko 的对外命令约定固定为 / |
 | runtime.superusers | 平台到用户 ID 的兼容输入；实际生效名单统一来自 entari.superusers |

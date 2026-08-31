@@ -75,8 +75,6 @@ class TenkoRuntime:
             config.exception.message_buffer_size
         )
         self.message_handler = MessageEventHandler(
-            send_replies=config.runtime.send_replies,
-            reply_text=config.runtime.reply_text,
             account_registry=self.accounts,
             debug_config=config.debug,
             command_prefix=config.runtime.command_prefix,
@@ -176,10 +174,6 @@ class TenkoRuntime:
         logger.info(
             "Tenko starting; OneBot 11 reverse WebSocket endpoint: {}",
             self.config.onebot.reverse_ws_url,
-        )
-        logger.info(
-            "Fixed replies are {}",
-            "enabled" if self.config.runtime.send_replies else "disabled",
         )
         app = self.build_app()
         try:

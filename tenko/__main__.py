@@ -34,10 +34,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         logger.info(
             "OneBot 11 reverse WebSocket endpoint: {}", config.onebot.reverse_ws_url
         )
-        logger.info(
-            "Fixed replies: {}",
-            "enabled" if config.runtime.send_replies else "disabled",
-        )
         return 0
 
     from .runtime import run

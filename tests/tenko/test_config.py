@@ -9,7 +9,6 @@ def test_default_config_is_local_and_does_not_send() -> None:
     config = TenkoConfig()
 
     assert config.onebot.reverse_ws_url == "ws://127.0.0.1:8080/onebot/v11/ws"
-    assert config.runtime.send_replies is False
     assert config.runtime.command_prefix == "/"
     assert config.debug.enabled is False
     assert config.debug.masters == ()
@@ -37,8 +36,6 @@ member_mute = true
 group_essence = false
 
 [runtime]
-send_replies = true
-reply_text = "收到"
 log_level = "DEBUG"
 command_prefix = "!"
 superusers = { onebot = [12345, "67890"] }
@@ -63,8 +60,6 @@ create_table_at = "prepared"
     assert config.onebot.capability_overrides == {
         "10001": {"member_mute": True, "group_essence": False}
     }
-    assert config.runtime.send_replies is True
-    assert config.runtime.reply_text == "收到"
     assert config.runtime.log_level == "DEBUG"
     assert config.runtime.command_prefix == "!"
     assert config.runtime.superusers == {

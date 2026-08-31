@@ -12,7 +12,6 @@ import arclet.letoderea as le
 from loguru import logger
 from satori import ChannelType, EventType
 from satori.client import Account
-from satori.exception import ActionFailed
 from satori.model import Event
 
 from .config import DebugConfig
@@ -360,8 +359,6 @@ async def _record_entari_send(event: SendResponse) -> None:
 class MessageEventHandler:
     """最小消息闭环及事件入口过滤处理器。"""
 
-    send_replies: bool
-    reply_text: str
     account_registry: AccountRegistry | None = None
     debug_config: DebugConfig = DebugConfig()
     command_policy: Any | None = None
@@ -543,44 +540,6 @@ class MessageEventHandler:
             context.protocol_event_type or "-",
         )
 
-        if not self.send_replies:
-            logger.info("Fixed reply is disabled; no OneBot action will be sent")
-            return
-
-        try:
-            receipts = await account.protocol.send(event, self.reply_text)
-        except ActionFailed as error:
-            if (
-                context.chat_type == "group"
-                and self.account_registry is not None
-                and self.account_registry.get(account.self_id) is not None
-                and self.account_registry.observe_send_failure(
-                    account, context.channel_id, error
-                )
-            ):
-                logger.warning(
-                    "Group send failed for account={} group={}; marked muted "
-                    "until an explicit recovery or expiry",
-                    account.self_id,
-                    context.channel_id,
-                )
-            logger.exception(
-                "Failed to send fixed reply for message {}", context.message_id
-            )
-            return
-        except Exception:
-            logger.exception(
-                "Failed to send fixed reply for message {}", context.message_id
-            )
-            return
-
-        self._record_sent_for_context(context, self.reply_text, receipts)
-        logger.info(
-            "Fixed reply sent: account={} message={} receipts={}",
-            context.account_id,
-            context.message_id,
-            len(receipts),
-        )
         if (
             context.chat_type == "group"
             and self.account_registry is not None

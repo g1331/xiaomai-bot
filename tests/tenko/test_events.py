@@ -18,7 +18,6 @@ from satori import (
     User,
 )
 from satori.client import Account
-from satori.exception import ActionFailed
 from satori.model import Event
 
 import tenko.events as events_module
@@ -145,14 +144,12 @@ async def test_debug_filter_matrix(
 ) -> None:
     account = FakeAccount()
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=enabled, masters=masters),
     )
 
-    await handler.handle(account, event_factory(user_id=user_id))
+    skipped = handler.should_skip(account, event_factory(user_id=user_id))
 
-    assert bool(account.protocol.calls) is should_send
+    assert skipped is not should_send
 
 
 @pytest.mark.asyncio
@@ -162,8 +159,6 @@ async def test_debug_filter_applies_to_non_master_messages_and_commands(
 ) -> None:
     account = FakeAccount()
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
     )
 
@@ -177,8 +172,6 @@ async def test_debug_skipped_message_is_still_counted() -> None:
     account = FakeAccount()
     metrics = MessageMetrics()
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
         metrics=metrics,
     )
@@ -194,8 +187,6 @@ def test_debug_mode_without_masters_warns(monkeypatch) -> None:
     monkeypatch.setattr(events_module.logger, "warning", warning)
 
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True),
     )
 
@@ -207,7 +198,7 @@ def test_debug_mode_without_masters_warns(monkeypatch) -> None:
 @pytest.mark.asyncio
 async def test_disabled_reply_only_logs_and_does_not_send() -> None:
     account = FakeAccount()
-    handler = MessageEventHandler(send_replies=False, reply_text="收到")
+    handler = MessageEventHandler()
 
     await handler.handle(account, make_private_event())
 
@@ -215,22 +206,11 @@ async def test_disabled_reply_only_logs_and_does_not_send() -> None:
 
 
 @pytest.mark.asyncio
-async def test_enabled_reply_sends_fixed_message() -> None:
-    account = FakeAccount()
-    event = make_private_event()
-    handler = MessageEventHandler(send_replies=True, reply_text="Tenko 已收到消息。")
-
-    await handler.handle(account, event)
-
-    assert account.protocol.calls == [(event, "Tenko 已收到消息。")]
-
-
-@pytest.mark.asyncio
 async def test_self_message_is_ignored() -> None:
     account = FakeAccount()
     event = make_private_event()
     event.user = User(account.self_id)
-    handler = MessageEventHandler(send_replies=True, reply_text="收到")
+    handler = MessageEventHandler()
 
     await handler.handle(account, event)
 
@@ -244,8 +224,6 @@ async def test_muted_group_event_is_skipped_before_message_handling() -> None:
     registry.register(account, groups=[40001])
     registry.set_muted(account, 40001, True)
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -262,8 +240,6 @@ async def test_muted_group_message_is_still_counted() -> None:
     registry.register(account, groups=[40001])
     registry.set_muted(account, 40001, True)
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         account_registry=registry,
         metrics=metrics,
     )
@@ -275,35 +251,12 @@ async def test_muted_group_message_is_still_counted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_group_send_failure_marks_account_muted_and_blocks_next_event() -> None:
-    failure = ActionFailed("1200: failed", {"status": "failed", "retcode": 1200})
-    account = FakeAccount()
-    account.protocol = FakeProtocol(failure=failure)
-    registry = AccountRegistry()
-    registry.register(account, groups=[40001])
-    handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
-        account_registry=registry,
-    )
-
-    await handler.handle(account, make_group_event())
-    account.protocol.failure = None
-    await handler.handle(account, make_group_event())
-
-    assert registry.is_muted(account, 40001)
-    assert len(account.protocol.calls) == 1
-
-
-@pytest.mark.asyncio
 async def test_non_action_send_failure_does_not_mark_group_muted() -> None:
     account = FakeAccount()
     account.protocol = FakeProtocol(failure=RuntimeError("network down"))
     registry = AccountRegistry()
     registry.register(account, groups=[40001])
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -320,8 +273,6 @@ async def test_entari_event_guard_blocks_only_muted_account_group_pair() -> None
     registry.set_muted(account, 40001, True)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     guarded = handler.guard(callback)
@@ -343,8 +294,6 @@ async def test_entari_event_guard_filters_non_master_events(
     account = FakeAccount()
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
     )
     guarded = handler.guard(callback)
@@ -362,8 +311,6 @@ async def test_dispatch_and_handle_count_the_same_message_once() -> None:
     account = FakeAccount()
     metrics = MessageMetrics()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         metrics=metrics,
     )
     event = make_private_event()
@@ -379,8 +326,6 @@ async def test_debug_event_guard_filters_events_without_user_source() -> None:
     account = FakeAccount()
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
     )
 
@@ -392,8 +337,6 @@ async def test_debug_event_guard_filters_events_without_user_source() -> None:
 def test_debug_filter_does_not_block_member_removal_events() -> None:
     account = FakeAccount()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
     )
 
@@ -414,8 +357,6 @@ async def test_guild_invite_event_bypasses_account_group_selection() -> None:
     registry.set_deterministic_account(40001, second)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     event = Event(
@@ -447,8 +388,6 @@ async def test_group_event_guard_randomly_selects_one_online_account(
     monkeypatch.setattr(accounts_module.random, "choice", lambda accounts: second)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     guarded = handler.guard(callback)
@@ -466,8 +405,6 @@ async def test_group_event_guard_binds_unknown_account_as_message_fallback() -> 
     registry = AccountRegistry()
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     event = make_group_event()
@@ -488,8 +425,6 @@ async def test_group_event_guard_random_falls_back_to_the_only_online_account() 
     registry.register(second, available=False, groups=[40001])
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -514,8 +449,6 @@ async def test_group_event_guard_deterministic_account_is_unique_and_has_no_fall
     registry.set_deterministic_account(40001, second)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -541,8 +474,6 @@ async def test_group_event_guard_deterministic_muted_account_has_no_fallback() -
     registry.set_muted(second, 40001, True)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -560,8 +491,6 @@ async def test_muted_account_can_receive_only_its_recovery_command() -> None:
     registry.set_muted(account, 40001, True)
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     guarded = handler.guard(callback)
@@ -590,8 +519,6 @@ async def test_command_guard_blocks_disabled_plugin_and_allows_after_enable() ->
     account = FakeAccount()
     metrics = MessageMetrics()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         command_policy=policy,
         metrics=metrics,
     )
@@ -634,8 +561,6 @@ async def test_command_guard_applies_rate_limit_before_entari_dispatch() -> None
     callback = AsyncMock()
     account = FakeAccount()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         command_policy=policy,
     )
     guarded = handler.guard(callback)
@@ -652,8 +577,6 @@ async def test_non_message_notice_is_not_counted() -> None:
     account = FakeAccount()
     metrics = MessageMetrics()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         metrics=metrics,
     )
     event = Event(
@@ -684,8 +607,6 @@ async def test_received_rate_includes_messages_skipped_by_debug_filter() -> None
     account = FakeAccount()
     callback = AsyncMock()
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         debug_config=DebugConfig(enabled=True, masters=["20001"]),
         metrics=metrics,
     )
@@ -775,22 +696,19 @@ async def test_entari_send_subscriber_records_via_dispatch(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_message_handler_records_received_and_fixed_reply() -> None:
+async def test_message_handler_records_received_message() -> None:
     metrics = MessageMetrics(buffer_size=10)
     account = FakeAccount()
     handler = MessageEventHandler(
-        send_replies=True,
-        reply_text="收到",
         metrics=metrics,
     )
 
     await handler.handle(account, make_private_event(text="hello"))
 
     assert metrics.received_count == 1
-    assert metrics.sent_count == 1
+    assert metrics.sent_count == 0
     assert [record.direction for record in metrics.recent_messages] == [
         "received",
-        "sent",
     ]
 
 
@@ -835,8 +753,6 @@ async def test_member_leave_unbinds_self_but_preserves_other_groups() -> None:
     registry = AccountRegistry()
     registry.register(account, groups=[40001, 40002])
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -856,8 +772,6 @@ async def test_member_leave_for_other_user_does_not_change_account_routes() -> N
     registry = AccountRegistry()
     registry.register(account, groups=[40001])
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -880,8 +794,6 @@ async def test_unbinding_deterministic_account_uses_registry_fallback() -> None:
     registry.set_response_type(40001, "deterministic")
     registry.set_deterministic_account(40001, second)
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
 
@@ -904,8 +816,6 @@ async def test_unbound_group_can_be_rebound_by_message_fallback() -> None:
     registry = AccountRegistry()
     registry.register(account, groups=[40001])
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     await handler.handle_member_removed(
@@ -928,8 +838,6 @@ async def test_kicked_account_route_shrinks_before_optional_membership_check() -
     actions = Mock()
     actions.verify_group_membership = AsyncMock(return_value=False)
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
         action_service=actions,
     )
@@ -954,8 +862,6 @@ async def test_raw_internal_member_leave_is_handled_when_adapter_enrichment_fail
     registry = AccountRegistry()
     registry.register(account, groups=[40001])
     handler = MessageEventHandler(
-        send_replies=False,
-        reply_text="收到",
         account_registry=registry,
     )
     event = make_member_removed_event(

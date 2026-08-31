@@ -261,15 +261,11 @@ class OneBotConfig:
 class RuntimeConfig:
     """运行时行为配置。"""
 
-    send_replies: bool = False
-    reply_text: str = "Tenko 已收到消息。"
     log_level: str = "INFO"
     command_prefix: str = "/"
     superusers: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.reply_text:
-            raise ValueError("reply_text 不能为空")
         if not self.log_level:
             raise ValueError("log_level 不能为空")
         if not self.command_prefix:
@@ -289,8 +285,6 @@ class RuntimeConfig:
     ) -> RuntimeConfig:
         defaults = cls()
         return cls(
-            send_replies=_boolean(section, "send_replies", defaults.send_replies),
-            reply_text=_string(section, "reply_text", defaults.reply_text),
             log_level=_string(section, "log_level", defaults.log_level),
             command_prefix=_string(section, "command_prefix", defaults.command_prefix),
             superusers=(

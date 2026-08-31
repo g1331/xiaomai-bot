@@ -27,8 +27,6 @@ satori_token = "tenko-satori-local"
 
 [runtime]
 # 安全起见默认只打印收到的消息，不发送 OneBot action。
-send_replies = false
-reply_text = "Tenko 已收到消息。"
 log_level = "INFO"
 # 所有 Tenko 命令的 Alconna 原生前缀。
 command_prefix = "/"

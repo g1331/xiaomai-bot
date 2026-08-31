@@ -186,8 +186,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     policy = "check"
 
 不要把真实 token、平台用户标识、GitHub 凭据或其他密钥写入版本库。邀请审批等管理通知
-优先发送到顶层 `notify_group` 指定的群；留空或省略时只私发给一个 Master。旧配置中的
-顶层 `test_group` 会在读取时作为 `notify_group` 的兼容 fallback。
+优先发送到顶层 `notify_group` 指定的群；留空或省略时只私发给一个 Master。
 
 ### 顶层通知配置
 

@@ -31,7 +31,7 @@ def test_config_loads_reverse_ws_and_runtime_options(tmp_path) -> None:
     path = tmp_path / "tenko.toml"
     path.write_text(
         """
-test_group = 40001
+notify_group = 40001
 
 [onebot]
 listen_host = "0.0.0.0"
@@ -159,14 +159,8 @@ def test_config_example_is_loadable_with_official_basic_section(tmp_path) -> Non
     assert config.notify_group is None
 
 
-def test_notify_group_takes_precedence_over_legacy_test_group() -> None:
-    config = TenkoConfig.from_mapping({"notify_group": "40002", "test_group": "40001"})
-
-    assert config.notify_group == "40002"
-
-
-def test_empty_notify_group_disables_legacy_fallback() -> None:
-    config = TenkoConfig.from_mapping({"notify_group": "", "test_group": "40001"})
+def test_config_ignores_removed_notify_group_alias() -> None:
+    config = TenkoConfig.from_mapping({"test_group": "40001"})
 
     assert config.notify_group is None
 

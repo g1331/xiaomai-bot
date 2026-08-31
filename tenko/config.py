@@ -885,11 +885,7 @@ class TenkoConfig:
             render=RenderConfig.from_mapping(_section(normalized, "render")),
             exception=ExceptionConfig.from_mapping(_section(normalized, "exception")),
             database=DatabaseConfig.from_mapping(_section(normalized, "database")),
-            notify_group=_optional_identifier(
-                normalized,
-                "notify_group" if "notify_group" in normalized else "test_group",
-                None,
-            ),
+            notify_group=_optional_identifier(normalized, "notify_group", None),
         )
 
     @classmethod

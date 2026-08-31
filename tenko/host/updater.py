@@ -201,6 +201,23 @@ _VERSION_PATTERN = re.compile(
 )
 _HEX_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
+_GIT_SCP_LIKE_PATTERN = re.compile(r"^(?:[^/@\s:]+@)?[^/@\s:]+:.+$")
+_GIT_REMOTE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_URL_CREDENTIALS_PATTERN = re.compile(
+    r"(?P<prefix>[A-Za-z][A-Za-z0-9+.-]*://)[^/@\s]+@"
+)
+_SCP_CREDENTIALS_PATTERN = re.compile(
+    r"(?<![\w/@])[^/@\s:]+(?::[^/@\s]*)?@(?=[^/@\s:]+:)"
+)
+_FAILED_HANDOFF_RETENTION = 10
+
+
+def _redact_text(value: object) -> str:
+    """隐藏错误文本和地址中的凭据。"""
+
+    text = str(value)
+    text = _URL_CREDENTIALS_PATTERN.sub(r"\g<prefix>***@", text)
+    return _SCP_CREDENTIALS_PATTERN.sub("***@", text)
 
 
 @total_ordering
@@ -554,10 +571,64 @@ def _run_git(
         )
     except FileNotFoundError as exc:
         raise UpdateSourceError(f"找不到 Git 可执行文件: {executable}") from exc
+    except OSError as exc:
+        raise UpdateSourceError(f"无法运行 Git: {exc}") from exc
     except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or exc.stdout or "").strip()
+        detail = _redact_text((exc.stderr or exc.stdout or "").strip())
         raise UpdateSourceError(f"Git 命令失败: {detail or exc.returncode}") from exc
     return completed.stdout.strip()
+
+
+def _is_git_url(value: str) -> bool:
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return False
+    return bool(parts.scheme and ("://" in value or parts.scheme.lower() == "file"))
+
+
+def _normalize_git_repository(
+    repository: str | Path,
+    stable_root: Path,
+    *,
+    git_executable: str = "git",
+) -> str:
+    """把 Git 配置值解析成固定的本地路径或远端 URL。"""
+
+    configured = str(repository)
+    repository_path = Path(configured).expanduser()
+    if not repository_path.is_absolute():
+        repository_path = stable_root / repository_path
+    if repository_path.exists():
+        return str(repository_path.resolve())
+    if _is_git_url(configured) or _GIT_SCP_LIKE_PATTERN.fullmatch(configured):
+        return configured
+    if not _GIT_REMOTE_NAME_PATTERN.fullmatch(configured):
+        return configured
+
+    display_value = _redact_text(configured)
+    try:
+        resolved = _run_git(
+            git_executable,
+            ["remote", "get-url", configured],
+            cwd=stable_root,
+        )
+    except UpdaterError as exc:
+        reason = _redact_text(str(exc) or exc.__class__.__name__)
+        raise UpgradeConfigError(
+            f"无法解析 upgrade.repository={display_value!r}："
+            f"在 Git 工作树 {stable_root} 中执行 "
+            f"git remote get-url {display_value!r} 失败：{reason}。"
+            "请检查该 remote，或将 upgrade.repository 改为完整 URL/本地路径。"
+        ) from exc
+    if not resolved:
+        raise UpgradeConfigError(
+            f"无法解析 upgrade.repository={display_value!r}："
+            f"在 Git 工作树 {stable_root} 中执行 "
+            f"git remote get-url {display_value!r} 未返回 URL。"
+            "请检查该 remote，或将 upgrade.repository 改为完整 URL/本地路径。"
+        )
+    return resolved
 
 
 class GitTagSource:
@@ -1368,6 +1439,10 @@ class UpgradeLayout:
         return self.root / "handoff.json"
 
     @property
+    def failed_handoffs_dir(self) -> Path:
+        return self.root / "failed-handoffs"
+
+    @property
     def audit_file(self) -> Path:
         return self.root / "audit.jsonl"
 
@@ -1445,7 +1520,7 @@ class UpgradeLayout:
             return None
         try:
             data = json.loads(self.pending_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise UpgradeConfigError(
                 f"pending 升级记录损坏: {self.pending_file}"
             ) from exc
@@ -1470,7 +1545,7 @@ class UpgradeLayout:
             return None
         try:
             data = json.loads(self.handoff_file.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise UpgradeConfigError(f"handoff 记录损坏: {self.handoff_file}") from exc
         if not isinstance(data, Mapping):
             raise UpgradeConfigError("handoff 记录必须是 object")
@@ -1481,6 +1556,24 @@ class UpgradeLayout:
 
     def clear_handoff(self) -> None:
         self.handoff_file.unlink(missing_ok=True)
+
+    def isolate_handoff(self) -> Path | None:
+        """隔离一次不可处理的 handoff，并保留有限数量的诊断副本。"""
+
+        if not self.handoff_file.is_file():
+            return None
+        self.failed_handoffs_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        target = (
+            self.failed_handoffs_dir / f"handoff-{timestamp}-{uuid.uuid4().hex}.json"
+        )
+        os.replace(self.handoff_file, target)
+        files = [path for path in self.failed_handoffs_dir.iterdir() if path.is_file()]
+        if len(files) > _FAILED_HANDOFF_RETENTION:
+            files.sort(key=lambda path: path.stat().st_mtime_ns)
+            for path in files[:-_FAILED_HANDOFF_RETENTION]:
+                path.unlink(missing_ok=True)
+        return target
 
     def clear_previous(self) -> None:
         self.previous_file.unlink(missing_ok=True)
@@ -1863,12 +1956,24 @@ class UpgradeManager:
                     error="没有可回滚版本",
                 )
                 raise NoRollbackAvailable("没有可回滚的上一可用版本")
+            current = self.layout.read_active()
+            if current is None:
+                self.audit.record(
+                    "rollback",
+                    current_version=self.current_version,
+                    target_version=previous.version,
+                    result="failed",
+                    error="回滚前缺少 active 指针",
+                )
+                raise UpgradeConfigError("回滚前缺少 active 指针")
             if defer:
                 self.layout.write_handoff(
                     {
                         "action": "rollback",
                         "version": str(previous.version),
                         "path": str(previous.path),
+                        "from_version": str(current.version),
+                        "from_path": str(current.path),
                         "created_at": datetime.now(timezone.utc).isoformat(),
                     }
                 )
@@ -1887,7 +1992,7 @@ class UpgradeManager:
                     False,
                     "已生成外部重启回滚记录",
                 )
-            return await self._apply_rollback_unlocked()
+            return await self._apply_rollback_unlocked(start_process=True)
 
     def _snapshot_current(self) -> ReleasePointer:
         if not self.project_root.is_dir():
@@ -1932,7 +2037,185 @@ class UpgradeManager:
         )
         return _health_ok(result)
 
-    async def activate_pending(self) -> InstallResult:
+    @staticmethod
+    def _same_pointer(left: ReleasePointer, right: ReleasePointer) -> bool:
+        return left.path == right.path and left.version == right.version
+
+    @staticmethod
+    def _pointer_data(pointer: ReleasePointer) -> dict[str, str]:
+        return {
+            "version": str(pointer.version),
+            "path": str(pointer.path),
+        }
+
+    def _pointer_from_data(
+        self, data: Mapping[str, Any], *, label: str
+    ) -> ReleasePointer:
+        try:
+            version = parse_version(data["version"])
+            path_value = data["path"]
+            if not isinstance(path_value, str) or not path_value:
+                raise TypeError("path 必须是非空字符串")
+            path = Path(path_value).expanduser().resolve()
+            self.layout._validate_version_path(path)
+        except (KeyError, TypeError, InvalidVersionError, ValueError) as exc:
+            raise UpgradeConfigError(f"{label} 的版本或路径无效") from exc
+        return ReleasePointer(version, path)
+
+    def _activation_recovery(self, pending: Mapping[str, Any]) -> ReleasePointer | None:
+        value = pending.get("activation_recovery")
+        if value is None:
+            return None
+        if not isinstance(value, Mapping):
+            raise UpgradeConfigError("pending 激活恢复记录必须是 object")
+        source = value.get("from")
+        if source is None:
+            source = {
+                "version": value.get("from_version"),
+                "path": value.get("from_path"),
+            }
+        if not isinstance(source, Mapping):
+            raise UpgradeConfigError("pending 激活恢复记录缺少旧版本指针")
+        return self._pointer_from_data(source, label="pending 激活恢复记录")
+
+    def _record_matches_pointer(
+        self, record: Mapping[str, Any], pointer: ReleasePointer, *, label: str
+    ) -> bool:
+        try:
+            candidate = self._pointer_from_data(record, label=label)
+        except UpgradeConfigError:
+            return False
+        return self._same_pointer(candidate, pointer)
+
+    def _write_activation_recovery(
+        self, pending: Mapping[str, Any], source: ReleasePointer
+    ) -> None:
+        updated = dict(pending)
+        updated["activation_recovery"] = {
+            "phase": "before-switch",
+            "from": self._pointer_data(source),
+        }
+        self.layout.write_pending(updated)
+
+    def _rollback_source(
+        self,
+        handoff: Mapping[str, Any] | None,
+        current: ReleasePointer,
+        target: ReleasePointer,
+    ) -> ReleasePointer:
+        if handoff is None:
+            if current.path == target.path:
+                raise UpgradeConfigError("回滚恢复记录缺少原 active 指针")
+            return current
+
+        has_from = "from_version" in handoff or "from_path" in handoff
+        if not has_from:
+            if current.path == target.path:
+                raise UpgradeConfigError("回滚 handoff 缺少原 active 指针")
+            return current
+        source = self._pointer_from_data(
+            {
+                "version": handoff.get("from_version"),
+                "path": handoff.get("from_path"),
+            },
+            label="回滚 handoff 的原 active 指针",
+        )
+        if source.path == target.path:
+            raise UpgradeConfigError("回滚 handoff 的原 active 指针不能等于目标版本")
+        if not (
+            self._same_pointer(current, source) or self._same_pointer(current, target)
+        ):
+            raise UpgradeConfigError("回滚 handoff 与当前 active 指针不一致")
+        return source
+
+    def _rollback_handoff(
+        self,
+        handoff: Mapping[str, Any] | None,
+        target: ReleasePointer,
+        source: ReleasePointer,
+    ) -> Mapping[str, Any]:
+        data = dict(handoff or {})
+        data.update(
+            {
+                "action": "rollback",
+                "version": str(target.version),
+                "path": str(target.path),
+                "from_version": str(source.version),
+                "from_path": str(source.path),
+                "phase": "before-switch",
+            }
+        )
+        self.layout.write_handoff(data)
+        return data
+
+    def _discard_live_handoff(self, *, isolate: bool) -> tuple[Path | None, str | None]:
+        if not isolate:
+            self.layout.clear_handoff()
+            return None, None
+        try:
+            return self.layout.isolate_handoff(), None
+        except OSError as exc:
+            error = _redact_text(str(exc) or exc.__class__.__name__)
+            try:
+                self.layout.clear_handoff()
+            except OSError as clear_exc:
+                error = (
+                    f"{error}; 清除 live handoff 也失败："
+                    f"{_redact_text(str(clear_exc) or clear_exc.__class__.__name__)}"
+                )
+            return None, error
+
+    def _failed_handoff_result(self, reason: str) -> InstallResult:
+        active_path = None
+        target_version = self.current_version
+        try:
+            active = self.layout.read_active()
+        except UpgradeConfigError:
+            active = None
+        if active is not None:
+            target_version = active.version
+            active_path = active.path
+        return InstallResult(
+            False,
+            target_version,
+            active_path,
+            False,
+            _redact_text(reason),
+        )
+
+    def _quarantine_handoff(
+        self,
+        reason: str,
+        *,
+        action: object = None,
+        clear_pending: bool = False,
+    ) -> InstallResult:
+        failed_path, quarantine_error = self._discard_live_handoff(isolate=True)
+        pending_error = None
+        if clear_pending:
+            try:
+                self.layout.clear_pending()
+            except OSError as exc:
+                pending_error = _redact_text(str(exc) or exc.__class__.__name__)
+        safe_reason = _redact_text(reason)
+        details: dict[str, Any] = {
+            "handoff_action": _redact_text(action) if action is not None else None,
+            "failed_handoff_path": str(failed_path) if failed_path else None,
+        }
+        if quarantine_error:
+            details["quarantine_error"] = quarantine_error
+        if pending_error:
+            details["pending_cleanup_error"] = pending_error
+        self.audit.record(
+            "rollback" if action == "rollback" else "install",
+            current_version=self.current_version,
+            result="failed",
+            error=safe_reason,
+            **details,
+        )
+        return self._failed_handoff_result(safe_reason)
+
+    async def activate_pending(self, *, start_process: bool = True) -> InstallResult:
         """由外部启动器在旧进程退出后调用，原子激活 pending 制品。"""
 
         async with self._operation_lock:
@@ -1941,14 +2224,31 @@ class UpgradeManager:
                 raise NoUpdateAvailable("没有待激活版本")
             target_version = parse_version(pending["version"])
             target_path = Path(str(pending["path"])).resolve()
+            self.layout._validate_version_path(target_path)
+            target = ReleasePointer(target_version, target_path)
+            recovery = self._activation_recovery(pending)
             old = self.layout.read_active()
             previous_before = self.layout.read_previous()
             if old is None:
                 old = self._snapshot_current()
                 self.layout.write_pointer(old.path, old.version)
+            already_active = self._same_pointer(old, target)
+            if old.path == target.path and not already_active:
+                raise UpgradeConfigError("active 指针与待安装版本路径冲突")
+            if already_active:
+                if recovery is None or recovery.path == target.path:
+                    raise UpgradeConfigError(
+                        "active 已指向待安装版本，但 pending 的旧版本恢复信息无效"
+                    )
+                source = recovery
+            else:
+                source = old
+                # 先把恢复指针写入 pending，再替换 active。这样 active 已切换
+                # 但整理尚未完成时，下一次启动仍能恢复到真正的旧版本。
+                self._write_activation_recovery(pending, source)
             self.audit.record(
                 "install",
-                current_version=old.version,
+                current_version=source.version,
                 target_version=target_version,
                 result="started",
                 target_path=str(target_path),
@@ -1956,8 +2256,9 @@ class UpgradeManager:
             process = None
             try:
                 # active.json 的替换是唯一切换点；应用根目录从不被覆盖。
-                self.layout.write_pointer(target_path, target_version)
-                if self.launcher is not None:
+                if not already_active:
+                    self.layout.write_pointer(target_path, target_version)
+                if start_process and self.launcher is not None:
                     process = await self.launcher.start(target_path)
                 if not await self._health(
                     target_path, phase="post-switch", process=process
@@ -1965,7 +2266,7 @@ class UpgradeManager:
                     raise HealthCheckFailed("切换后的健康检查未通过")
             except Exception as exc:
                 _terminate_process(process)
-                self.layout.write_pointer(old.path, old.version)
+                self.layout.write_pointer(source.path, source.version)
                 if previous_before is None:
                     self.layout.clear_previous()
                 else:
@@ -1979,7 +2280,7 @@ class UpgradeManager:
                 reason = str(exc) or exc.__class__.__name__
                 self.audit.record(
                     "install",
-                    current_version=old.version,
+                    current_version=source.version,
                     target_version=target_version,
                     result="failed",
                     error=reason,
@@ -1987,90 +2288,144 @@ class UpgradeManager:
                 self.audit.record(
                     "rollback",
                     current_version=target_version,
-                    target_version=old.version,
+                    target_version=source.version,
                     result="success",
                     reason="post-switch health check failed",
                 )
-                return InstallResult(False, target_version, old.path, True, reason)
+                return InstallResult(False, target_version, source.path, True, reason)
 
-            self.layout.write_pointer(old.path, old.version, previous=True)
+            self.layout.write_pointer(source.path, source.version, previous=True)
             self.layout.clear_pending()
             self.layout.clear_handoff()
             self.audit.record(
                 "install",
-                current_version=old.version,
+                current_version=source.version,
                 target_version=target_version,
                 result="success",
                 active_path=str(target_path),
-                previous_path=str(old.path),
+                previous_path=str(source.path),
             )
             return InstallResult(True, target_version, target_path, False, "升级已激活")
 
-    async def _apply_rollback_unlocked(self) -> RollbackResult:
+    async def _apply_rollback_unlocked(
+        self,
+        *,
+        handoff: Mapping[str, Any] | None = None,
+        start_process: bool = True,
+    ) -> RollbackResult:
         previous = self.layout.read_previous()
         current = self.layout.read_active()
         if previous is None:
             raise NoRollbackAvailable("没有可回滚的上一可用版本")
         if current is None:
             raise UpgradeConfigError("回滚前缺少 active 指针")
+        source = self._rollback_source(handoff, current, previous)
+        already_active = self._same_pointer(current, previous)
+        if handoff is None:
+            handoff = self._rollback_handoff(None, previous, source)
+        else:
+            handoff = self._rollback_handoff(handoff, previous, source)
         process = None
         try:
-            self.layout.write_pointer(previous.path, previous.version)
-            if self.launcher is not None:
+            if not already_active:
+                self.layout.write_pointer(previous.path, previous.version)
+            if start_process and self.launcher is not None:
                 process = await self.launcher.start(previous.path)
             if not await self._health(previous.path, phase="rollback", process=process):
                 raise HealthCheckFailed("回滚后的健康检查未通过")
         except Exception as exc:
             _terminate_process(process)
-            self.layout.write_pointer(current.path, current.version)
+            self.layout.write_pointer(source.path, source.version)
+            failed_handoff, quarantine_error = self._discard_live_handoff(isolate=True)
             reason = str(exc) or exc.__class__.__name__
+            details: dict[str, Any] = {
+                "error": _redact_text(reason),
+                "failed_handoff_path": (
+                    str(failed_handoff) if failed_handoff else None
+                ),
+            }
+            if quarantine_error:
+                details["quarantine_error"] = quarantine_error
             self.audit.record(
                 "rollback",
-                current_version=current.version,
+                current_version=source.version,
                 target_version=previous.version,
                 result="failed",
-                error=reason,
+                **details,
             )
-            return RollbackResult(False, previous.version, previous.path, True, reason)
-        self.layout.write_pointer(current.path, current.version, previous=True)
+            return RollbackResult(
+                False,
+                previous.version,
+                previous.path,
+                True,
+                _redact_text(reason),
+            )
+        self.layout.write_pointer(source.path, source.version, previous=True)
         self.layout.clear_pending()
         self.layout.clear_handoff()
         self.audit.record(
             "rollback",
-            current_version=current.version,
+            current_version=source.version,
             target_version=previous.version,
             result="success",
             active_path=str(previous.path),
+            previous_path=str(source.path),
         )
         return RollbackResult(
             True, previous.version, previous.path, True, "已回滚到上一版本"
         )
 
-    async def apply_handoff(self) -> InstallResult | RollbackResult:
+    async def apply_handoff(
+        self, *, start_process: bool = True
+    ) -> InstallResult | RollbackResult:
         """应用外部启动器写入的 activate/rollback 记录。"""
 
-        handoff = self.layout.read_handoff()
+        try:
+            handoff = self.layout.read_handoff()
+        except UpgradeConfigError as exc:
+            return self._quarantine_handoff(str(exc))
         if handoff is None:
             raise UpgradeConfigError("没有待处理的 handoff")
         action = handoff.get("action")
         if action == "activate":
-            pending = self.layout.read_pending()
-            if pending is None or (
-                pending.get("version") != handoff.get("version")
-                or pending.get("path") != handoff.get("path")
-            ):
-                raise UpgradeConfigError("activate handoff 与 pending 记录不一致")
-            return await self.activate_pending()
+            try:
+                pending = self.layout.read_pending()
+                if pending is None or not self._record_matches_pointer(
+                    handoff,
+                    self._pointer_from_data(pending, label="pending 升级记录"),
+                    label="activate handoff",
+                ):
+                    raise UpgradeConfigError("activate handoff 与 pending 记录不一致")
+            except UpgradeConfigError as exc:
+                return self._quarantine_handoff(
+                    str(exc), action=action, clear_pending=True
+                )
+            try:
+                return await self.activate_pending(start_process=start_process)
+            except UpdaterError as exc:
+                return self._quarantine_handoff(
+                    str(exc), action=action, clear_pending=True
+                )
         if action == "rollback":
-            previous = self.layout.read_previous()
-            if previous is None or (
-                str(previous.version) != str(handoff.get("version"))
-                or str(previous.path) != str(handoff.get("path"))
-            ):
-                raise UpgradeConfigError("rollback handoff 与上一版本指针不一致")
-            async with self._operation_lock:
-                return await self._apply_rollback_unlocked()
-        raise UpgradeConfigError(f"未知 handoff action: {action!r}")
+            try:
+                previous = self.layout.read_previous()
+                if previous is None or not self._record_matches_pointer(
+                    handoff, previous, label="rollback handoff"
+                ):
+                    raise UpgradeConfigError("rollback handoff 与上一版本指针不一致")
+            except UpgradeConfigError as exc:
+                return self._quarantine_handoff(str(exc), action=action)
+            try:
+                async with self._operation_lock:
+                    return await self._apply_rollback_unlocked(
+                        handoff=handoff,
+                        start_process=start_process,
+                    )
+            except UpdaterError as exc:
+                return self._quarantine_handoff(str(exc), action=action)
+        return self._quarantine_handoff(
+            f"未知 handoff action: {_redact_text(action)!r}", action=action
+        )
 
     async def run_policy(self) -> CheckResult | PrepareResult | HandoffResult:
         """执行配置化自动策略，供 Ready/周期任务调用。"""
@@ -2090,14 +2445,18 @@ class UpgradeManager:
         *,
         project_root: str | Path | None = None,
     ) -> UpgradeManager:
-        """从 ``tenko.config.UpgradeConfig`` 构造真实运行时实例。"""
+        """从 ``tenko.config.UpgradeConfig`` 构造真实运行时实例。
+
+        ``data_dir`` 仅供自定义健康/启动命令使用，是外部业务目录；它与
+        Tenko 应用自身位于 ``.tenko/`` 下的持久化数据无关。
+        """
 
         root = Path(project_root or Path.cwd()).expanduser().resolve()
         current = config.current_version or read_project_version(root)
         source_name = config.source.strip().lower().replace("-", "_")
         if source_name in {"git", "git_tag", "tag"}:
             source: VersionSource = GitTagSource(
-                config.repository,
+                _normalize_git_repository(config.repository, root),
                 tag_prefix=config.tag_prefix,
             )
         elif source_name in {"github", "github_release", "release"}:

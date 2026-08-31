@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tenko import __main__ as main_module
 from tenko.config import TenkoConfig
 from tenko.host.updater import InstallResult, UpgradeLayout, Version
@@ -130,3 +132,73 @@ def test_main_continues_with_recovered_active_after_rolled_back_handoff(
     assert main_module.main([]) == 0
     assert calls == [False]
     assert reexec == [candidate.resolve()]
+
+
+@pytest.mark.parametrize(
+    ("stable_version", "active_version", "current_root", "expected_release"),
+    [
+        ("2.0.0", "1.0.0", "old", "stable"),
+        ("1.0.0", "1.0.0", "stable", "active"),
+        ("1.0.0", "2.0.0", "stable", "active"),
+    ],
+    ids=["stable-newer", "same-version", "active-newer"],
+)
+def test_startup_bootstrap_compares_active_with_stable_version(
+    monkeypatch,
+    tmp_path: Path,
+    stable_version: str,
+    active_version: str,
+    current_root: str,
+    expected_release: str,
+) -> None:
+    candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "candidate"
+    (candidate / "tenko").mkdir(parents=True)
+    layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
+    layout.write_pointer(candidate, Version.parse(active_version))
+
+    class FakeManager:
+        def __init__(self) -> None:
+            self.layout = layout
+
+        @classmethod
+        def from_config(cls, _config, *, project_root):
+            assert project_root == tmp_path.resolve()
+            return cls()
+
+    import tenko.host.updater as updater_module
+
+    monkeypatch.setattr(updater_module, "UpgradeManager", FakeManager)
+    monkeypatch.setattr(
+        updater_module,
+        "read_project_version",
+        lambda _root: Version.parse(stable_version),
+    )
+    monkeypatch.setattr(
+        main_module,
+        "_current_code_root",
+        lambda: (tmp_path / current_root).resolve(),
+    )
+    reexec: list[Path] = []
+    monkeypatch.setattr(
+        main_module,
+        "_exec_release_root",
+        lambda release, _stable, _arguments: reexec.append(release),
+    )
+    warnings: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        main_module.logger,
+        "warning",
+        lambda *arguments: warnings.append(arguments),
+    )
+    monkeypatch.chdir(tmp_path)
+
+    result = main_module._run_startup_bootstrap(TenkoConfig(), [])
+
+    assert result is True
+    expected = tmp_path if expected_release == "stable" else candidate
+    assert reexec == [expected.resolve()]
+    if expected_release == "stable":
+        assert len(warnings) == 1
+        assert "稳定根版本 {} 新于 active 指针 {}" in warnings[0][0]
+    else:
+        assert warnings == []

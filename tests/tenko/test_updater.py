@@ -758,6 +758,30 @@ def test_from_config_current_version_prefers_active_then_config_then_project(
     assert manager.current_version == Version(1, 0, 0)
 
 
+def test_from_config_ignores_active_older_than_stable_root(
+    tmp_path: Path,
+) -> None:
+    stable_root = tmp_path / "stable"
+    stable_root.mkdir()
+    (stable_root / "pyproject.toml").write_text(
+        '[project]\nversion = "2.0.0"\n', encoding="utf-8"
+    )
+    upgrade_root = tmp_path / "upgrades"
+    candidate = upgrade_root / "versions" / "1.0.0"
+    (candidate / "tenko").mkdir(parents=True)
+
+    layout = UpgradeLayout(upgrade_root)
+    layout.write_pointer(candidate, Version(1, 0, 0))
+    config = UpgradeConfig(
+        current_version="0.5.0",
+        install_root=str(upgrade_root),
+    )
+
+    manager = UpgradeManager.from_config(config, project_root=stable_root)
+
+    assert manager.current_version == Version(2, 0, 0)
+
+
 def test_upgrade_manager_restart_command_uses_stable_launcher(
     monkeypatch, tmp_path: Path
 ) -> None:

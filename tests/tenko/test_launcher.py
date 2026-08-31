@@ -29,26 +29,40 @@ def _write_code_root(root: Path, marker: str) -> None:
     )
 
 
-@pytest.mark.parametrize("active", [False, True])
+@pytest.mark.parametrize(
+    ("stable_version", "active_version", "expected_source"),
+    [
+        ("1.0.0", None, "stable"),
+        ("1.0.0", "2.0.0", "candidate"),
+        ("2.0.0", "1.0.0", "stable"),
+    ],
+    ids=["without-active", "active-newer", "stable-newer"],
+)
 def test_launcher_selects_active_code_with_stable_cwd(
-    tmp_path: Path, active: bool
+    tmp_path: Path,
+    stable_version: str,
+    active_version: str | None,
+    expected_source: str,
 ) -> None:
     stable_root = tmp_path / "stable"
     scripts = stable_root / "scripts"
     scripts.mkdir(parents=True)
     _write_code_root(stable_root, "stable")
+    (stable_root / "pyproject.toml").write_text(
+        f'[project]\nversion = "{stable_version}"\n', encoding="utf-8"
+    )
     launcher = scripts / "launcher.sh"
     shutil.copy2(PROJECT_ROOT / "scripts" / "launcher.sh", launcher)
     launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     upgrade_root = stable_root / ".tenko" / "upgrades"
     candidate = upgrade_root / "versions" / "2.0.0"
-    if active:
+    if active_version is not None:
         _write_code_root(candidate, "candidate")
         active_file = upgrade_root / "active.json"
         active_file.parent.mkdir(parents=True, exist_ok=True)
         active_file.write_text(
-            json.dumps({"version": "2.0.0", "path": str(candidate)}) + "\n",
+            json.dumps({"version": active_version, "path": str(candidate)}) + "\n",
             encoding="utf-8",
         )
 
@@ -93,8 +107,8 @@ def test_launcher_selects_active_code_with_stable_cwd(
     assert completed.returncode == 0, completed.stderr
     marker = (stable_root / "launcher-marker").read_text(encoding="utf-8")
     source, source_file, cwd = marker.split("|", 2)
-    assert source == ("candidate" if active else "stable")
-    expected_root = candidate if active else stable_root
+    assert source == expected_source
+    expected_root = candidate if expected_source == "candidate" else stable_root
     assert Path(source_file).resolve() == expected_root / "tenko" / "__main__.py"
     assert cwd == str(stable_root.resolve())
     assert handoff.read_bytes() == before_handoff

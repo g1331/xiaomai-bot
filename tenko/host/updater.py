@@ -2606,11 +2606,26 @@ class UpgradeManager:
             install_root = root / install_root
         layout = UpgradeLayout(install_root)
         active = layout.read_active()
-        current = (
-            active.version
-            if active is not None
-            else config.current_version or read_project_version(root)
-        )
+        stable_version: Version | None = None
+        if active is not None:
+            try:
+                stable_version = read_project_version(root)
+            except UpgradeConfigError:
+                # 有效 active 指针本身足以支持旧版部署目录；稳定根缺少
+                # pyproject.toml 时保留原有 active 优先行为。
+                pass
+        if (
+            active is not None
+            and stable_version is not None
+            and active.version < stable_version
+        ):
+            current = stable_version
+        elif active is not None:
+            current = active.version
+        else:
+            current = (
+                config.current_version or stable_version or read_project_version(root)
+            )
         source_name = config.source.strip().lower().replace("-", "_")
         if source_name in {"git", "git_tag", "tag"}:
             source: VersionSource = GitTagSource(

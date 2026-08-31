@@ -62,7 +62,7 @@ def _exec_release_root(
 def _run_startup_bootstrap(config: TenkoConfig, arguments: Sequence[str]) -> bool:
     """消费 handoff，并在 active 代码不是当前代码时重新执行。"""
 
-    from .host.updater import UpgradeManager
+    from .host.updater import UpgradeConfigError, UpgradeManager, read_project_version
 
     stable_root = Path.cwd().resolve()
     manager = UpgradeManager.from_config(config.upgrade, project_root=stable_root)
@@ -83,7 +83,26 @@ def _run_startup_bootstrap(config: TenkoConfig, arguments: Sequence[str]) -> boo
                 )
 
     active = manager.layout.read_active()
-    if active is None or active.path == _current_code_root():
+    if active is None:
+        return False
+
+    try:
+        stable_version = read_project_version(stable_root)
+    except UpgradeConfigError:
+        stable_version = None
+    if stable_version is not None and active.version < stable_version:
+        logger.warning(
+            "稳定根版本 {} 新于 active 指针 {}，使用稳定根代码；"
+            "可删除 active.json 或执行 /升级 重建指针",
+            stable_version,
+            active.version,
+        )
+        if _current_code_root() != stable_root:
+            _exec_release_root(stable_root, stable_root, arguments)
+            return True
+        return False
+
+    if active.path == _current_code_root():
         return False
 
     logger.info(

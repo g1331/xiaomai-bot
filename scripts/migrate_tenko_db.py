@@ -9,8 +9,8 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Final
 
-from arclet.entari.config import EntariConfig
 
+from arclet.entari.config import EntariConfig
 from tenko.config import TenkoConfig
 from tenko.db.bootstrap import load_database_plugin
 from tenko.db.migration import run_database_migrations
@@ -100,8 +100,10 @@ async def _migrate(config: TenkoConfig) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     config = TenkoConfig.load(args.config)
+    # 框架 EntariConfig 的文件 loader 不支持 TOML；迁移场景不需要 Entari 文件配置，
+    # 用一个必然不存在的 YAML 路径触发空配置初始化，仅满足 load_plugin 的前提。
     if not EntariConfig._inited:
-        EntariConfig(args.config)
+        EntariConfig(Path(".tenko/entari-boot.yaml"))
     config = _database_config(config, args.source, args.target, args.force)
     asyncio.run(_migrate(config))
     print(f"Tenko 数据库迁移完成: {config.database.url}")

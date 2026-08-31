@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/Python-3.10%E2%80%933.12-1E3A52?style=flat-square&labelColor=102D47" alt="Python 3.10 to 3.12">
   <img src="https://img.shields.io/badge/License-GPL--3.0-1E3A52?style=flat-square&labelColor=102D47" alt="GPL 3.0 license">
   <img src="https://img.shields.io/badge/Release%20channel-prerelease-D97D72?style=flat-square&labelColor=102D47" alt="Prerelease channel">
-  <img src="https://img.shields.io/badge/Stack-Entari%20%7C%20Satori%20%7C%20NapCat-C7A45B?style=flat-square&labelColor=102D47" alt="Entari Satori NapCat stack">
+  <img src="https://img.shields.io/badge/Stack-Entari%20%7C%20Satori%20%7C%20OneBot%2011-C7A45B?style=flat-square&labelColor=102D47" alt="Entari Satori OneBot 11 stack">
 </p>
 
 Tenko 是一个面向 QQ 群的管理 bot，基于 Entari 与 Satori 协议抽象构建，通过
@@ -18,10 +18,30 @@ Satori 的实现。它提供权限、群管理、账号响应策略、功能开�
   <img src="docs/assets/sections.png" alt="Tenko feature sections" width="100%">
 </p>
 
-## 功能概览
+## 缘起
 
-Tenko 的命令统一使用 / 前缀。下面的命令名称与 tenko/plugins/ 中当前注册的
-插件保持一致；尖括号表示需要替换的参数。
+Tenko 的名字取自东方 Project 中的比那名居天子——掌管大地的绯想之剑，
+非想非非想天的天人。她不问因果、只按本心行事的气质，恰好是这只 bot
+想要成为的样子：安静地悬于群聊之上，该出手时出手，无事时便隐入云端。
+
+她的前身是 xiaomai-bot——诞生于 Graia Ariadne 框架时代的群管工具，
+在多个 QQ 群里服役多年。2026 年夏天，旧骨架随协议与依赖一同老化，
+于是推倒重来：以 Entari 为宿主、Satori 为协议抽象，沿用的是那套
+沉淀下来的权限模型、群管逻辑与升级体系，舍去的是 Graia 时代的旧船票。
+舟已换，航线未变——便是 Tenko。
+
+## 功能说明
+
+Tenko 围绕 QQ 群的日常运营提供一组开箱即用的能力：
+
+- **权限体系**——按成员和群两级管理权限，与平台管理角色自动同步；
+- **群管理**——禁言、解禁、撤回、踢出、加精、加群审批等动作，带能力探测与失败回执；
+- **多账号**——多个 bot 账号在同一宿主下共存，按群绑定响应策略，支持指定账号执行；
+- **功能开关**——按群粒度启用或停用某个插件，回应"这个群要不要这个功能"；
+- **状态与报告**——运行状态、消息统计、异常捕获，需要时以离线渲染的图片输出；
+- **自我升级**——检查更新、下载校验、健康检查与回滚，升级不动你的配置和数据。
+
+命令统一使用 / 前缀。下表与 tenko/plugins/ 中当前注册的插件一致；尖括号表示需要替换的参数。
 
 | 插件 | 能力 | 常用命令 |
 | --- | --- | --- |
@@ -39,41 +59,8 @@ Tenko 的命令统一使用 / 前缀。下面的命令名称与 tenko/plugins/ �
 涉及权限变更、群管理或宿主升级的命令会按照当前群权限、账号能力和超级用户
 配置执行。渲染不可用时，状态和异常报告使用文本路径。
 
-## 架构
 
-![Tenko architecture](docs/assets/architecture.png)
-
-<details>
-<summary>文本版架构图</summary>
-
-```text
-OneBot 11 endpoint (e.g. NapCat)
-  │
-  ▼
-Satori adapter ──► Entari runtime ──► command_manager ──► Tenko plugins
-                                      │
-                                      ├── account / permission / feature services
-                                      ├── SQLite database + repositories
-                                      └── RenderService (optional)
-```
-
-</details>
-
-兼容 OneBot 11 的协议端（以下以 NapCat 为例）通过反向 WebSocket 连接 Tenko，
-Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生命周期和命令处理：
-
-- 插件在 Entari 生命周期中加载和卸载；插件通过原生命令注册表接收命令，
-  通过宿主服务访问账号路由、权限、功能开关、限流和升级控制平面。
-- command_manager 是帮助系统读取命令列表的来源，因此帮助内容会随当前已注册
-  插件变化。
-- RenderService 由 tenko/plugins/render 注册为 Entari 服务，使用 Playwright 在本地
-  离线渲染 HTML/Markdown。渲染默认关闭，可通过 [render].enabled 开启；服务异常
-  不会阻断文本功能。
-- 数据层使用 SQLite、SQLAlchemy 和 entari-plugin-database。新 ORM 位于
-  tenko/db/models.py，repository 位于 tenko/db/repositories.py；应用启动时会创建
-  或迁移所需表，已有 SQLite 数据库文件可以继续使用。
-
-## 安装与运行
+## 使用指南
 
 ### 环境要求
 
@@ -291,6 +278,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 - policy = "download" 自动准备制品；
 - policy = "install" 生成外部安装接管记录。进程切换仍由稳定的外部启动器完成。
 
+
 ## 更新机制
 
 升级命令只允许配置的超级用户执行：
@@ -308,7 +296,26 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 启用周期检查时，check_interval_hours 控制定时检查间隔。升级目录、配置目录和
 数据目录彼此分离，升级过程不会覆盖用户配置或运行数据。
 
-## 测试
+## 开发环境搭建
+
+### 获取与安装
+
+    git clone https://github.com/g1331/tenko.git
+    cd tenko
+    uv sync
+
+依赖以 pyproject.toml 声明、uv.lock 锁定；依赖变更使用 uv add / uv remove，
+不要直接编辑 pyproject.toml 的依赖表。requirements-entari.txt 是 uv.lock 的
+pip 兼容快照，仅用于无 uv 的环境。
+
+### 代码约定
+
+- 插件位于 tenko/plugins/，遵循 Entari 插件生命周期，命令统一 / 前缀；
+- 数据库访问集中在 tenko/db/，宿主服务在 tenko/host/；
+- 提交遵循 Conventional Commits，功能、修复、文档分开提交；
+- 开发细节见 AGENTS.md。
+
+### 运行测试
 
 在项目根目录、并使用已安装依赖的环境执行：
 
@@ -324,3 +331,37 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 
     ruff check tenko tests/tenko
     python -m pytest tests/tenko
+
+## 架构
+
+![Tenko architecture](docs/assets/architecture.png)
+
+<details>
+<summary>文本版架构图</summary>
+
+```text
+OneBot 11 endpoint (e.g. NapCat)
+  │
+  ▼
+Satori adapter ──► Entari runtime ──► command_manager ──► Tenko plugins
+                                      │
+                                      ├── account / permission / feature services
+                                      ├── SQLite database + repositories
+                                      └── RenderService (optional)
+```
+
+</details>
+
+兼容 OneBot 11 的协议端（以下以 NapCat 为例）通过反向 WebSocket 连接 Tenko，
+Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生命周期和命令处理：
+
+- 插件在 Entari 生命周期中加载和卸载；插件通过原生命令注册表接收命令，
+  通过宿主服务访问账号路由、权限、功能开关、限流和升级控制平面。
+- command_manager 是帮助系统读取命令列表的来源，因此帮助内容会随当前已注册
+  插件变化。
+- RenderService 由 tenko/plugins/render 注册为 Entari 服务，使用 Playwright 在本地
+  离线渲染 HTML/Markdown。渲染默认关闭，可通过 [render].enabled 开启；服务异常
+  不会阻断文本功能。
+- 数据层使用 SQLite、SQLAlchemy 和 entari-plugin-database。新 ORM 位于
+  tenko/db/models.py，repository 位于 tenko/db/repositories.py；应用启动时会创建
+  或迁移所需表，已有 SQLite 数据库文件可以继续使用。

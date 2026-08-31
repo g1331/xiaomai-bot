@@ -6,15 +6,12 @@ from pathlib import Path
 import pytest
 from arclet.entari.config import EntariConfig
 from sqlalchemy import (
-    BIGINT,
     Boolean,
     Column,
-    DateTime,
     Integer,
     MetaData,
     String,
     Table,
-    Text,
     inspect,
     insert,
     select,
@@ -54,25 +51,6 @@ def _legacy_metadata() -> MetaData:
             default="random",
         ),
         Column("permission_type", String, default="default"),
-    )
-    Table(
-        "chat_record",
-        metadata,
-        Column("id", Integer, primary_key=True),
-        Column("time", DateTime, nullable=False),
-        Column("group_id", BIGINT, nullable=False),
-        Column("member_id", BIGINT, nullable=False),
-        Column("persistent_string", String(length=4000), nullable=False),
-        Column("seg", String(length=4000), nullable=False),
-    )
-    Table(
-        "keyword_reply",
-        metadata,
-        Column("keyword", String(length=200), primary_key=True),
-        Column("group", BIGINT, default=-1),
-        Column("reply_type", String(length=10), nullable=False),
-        Column("reply", Text, nullable=False),
-        Column("reply_md5", String(length=32), primary_key=True),
     )
     return metadata
 
@@ -122,10 +100,8 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
     )
     from tenko.db.models import (
         MODEL_CLASSES,
-        ChatRecord,
         GroupPerm,
         GroupSetting,
-        KeywordReply,
         MemberPerm,
     )
 
@@ -147,8 +123,6 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
         "MemberPerm",
         "GroupPerm",
         "GroupSetting",
-        "chat_record",
-        "keyword_reply",
     } <= set(state)
     assert all(
         state[table]["revision"] == LEGACY_SCHEMA_REVISION
@@ -183,8 +157,6 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
         "MemberPerm": MemberPerm,
         "GroupPerm": GroupPerm,
         "GroupSetting": GroupSetting,
-        "chat_record": ChatRecord,
-        "keyword_reply": KeywordReply,
     }
     assert {model.__tablename__ for model in MODEL_CLASSES} == set(expected_models)
     async with service.engines[""].connect() as connection:

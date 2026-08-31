@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 try:
     from entari_plugin_database import BaseOrm, Mapped, mapped_column
 except (AttributeError, ImportError, LookupError) as error:  # pragma: no cover
@@ -13,7 +11,7 @@ except (AttributeError, ImportError, LookupError) as error:  # pragma: no cover
         "官方 entari-plugin-database 尚未加载，无法注册 Tenko 数据模型"
     ) from error
 
-from sqlalchemy import BIGINT, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Integer, String
 
 from .migration import LEGACY_SCHEMA_REVISION
 
@@ -75,46 +73,15 @@ class GroupSetting(BaseOrm):
     )
 
 
-class ChatRecord(BaseOrm):
-    """聊天记录表；G1 只保留结构，不接入业务写入。"""
-
-    __tablename__ = "chat_record"
-    __revision__ = LEGACY_SCHEMA_REVISION
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    group_id: Mapped[int] = mapped_column(BIGINT, nullable=False)
-    member_id: Mapped[int] = mapped_column(BIGINT, nullable=False)
-    persistent_string: Mapped[str] = mapped_column(String(length=4000), nullable=False)
-    seg: Mapped[str] = mapped_column(String(length=4000), nullable=False)
-
-
-class KeywordReply(BaseOrm):
-    """关键词回复表；G1 只保留结构，不接入业务写入。"""
-
-    __tablename__ = "keyword_reply"
-    __revision__ = LEGACY_SCHEMA_REVISION
-
-    keyword: Mapped[str] = mapped_column(String(length=200), primary_key=True)
-    group: Mapped[int] = mapped_column(BIGINT, nullable=True, default=-1)
-    reply_type: Mapped[str] = mapped_column(String(length=10), nullable=False)
-    reply: Mapped[str] = mapped_column(Text, nullable=False)
-    reply_md5: Mapped[str] = mapped_column(String(length=32), primary_key=True)
-
-
 MODEL_CLASSES = (
     MemberPerm,
     GroupPerm,
     GroupSetting,
-    ChatRecord,
-    KeywordReply,
 )
 
 __all__ = [
-    "ChatRecord",
     "GroupPerm",
     "GroupSetting",
-    "KeywordReply",
     "MODEL_CLASSES",
     "MemberPerm",
 ]

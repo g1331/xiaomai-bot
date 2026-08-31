@@ -144,6 +144,8 @@ def test_help_data_partitions_required_available_and_maintenance(
     assert (
         text.index("内置插件：") < text.index("运行插件：") < text.index("维护插件：")
     )
+    assert "├ " in text
+    assert "└ " in text
 
 
 @pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
@@ -209,7 +211,13 @@ def test_help_number_uses_plugin_commands_for_card_positions(
     native_plugins = tuple(make_native_plugin(name) for name in plugin_names)
     command_help = {
         command_name: SimpleNamespace(
-            get_help=lambda command_name=command_name: f"help<{command_name}>"
+            command=command_name,
+            prefixes=["/"],
+            meta=SimpleNamespace(
+                description=f"{command_name} description",
+                usage=f"{command_name} <参数>",
+                example=f"/{command_name} example",
+            ),
         )
         for commands in commands_by_plugin.values()
         for command_name in commands
@@ -236,10 +244,26 @@ def test_help_number_uses_plugin_commands_for_card_positions(
     assert items["group_manager"]["number"] == 4
     assert items["updater"]["number"] == 10
     assert loaded_plugin.build_help(4) == "\n\n".join(
-        f"help<{command_name}>" for command_name in commands_by_plugin["group_manager"]
+        "\n".join(
+            (
+                f"/{command_name}",
+                f"├ 说明：{command_name} description",
+                f"├ 用法：/{command_name} <参数>",
+                f"└ 示例：/{command_name} example",
+            )
+        )
+        for command_name in commands_by_plugin["group_manager"]
     )
     assert loaded_plugin.build_help(10) == "\n\n".join(
-        f"help<{command_name}>" for command_name in commands_by_plugin["updater"]
+        "\n".join(
+            (
+                f"/{command_name}",
+                f"├ 说明：{command_name} description",
+                f"├ 用法：/{command_name} <参数>",
+                f"└ 示例：/{command_name} example",
+            )
+        )
+        for command_name in commands_by_plugin["updater"]
     )
     assert loaded_plugin.build_help(2) == "该插件未注册命令"
     assert loaded_plugin.build_help(11) == "编号不在范围内~"
@@ -247,3 +271,41 @@ def test_help_number_uses_plugin_commands_for_card_positions(
         *commands_by_plugin["group_manager"],
         *commands_by_plugin["updater"],
     ]
+
+
+@pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
+def test_plugin_help_omits_missing_metadata_fields(monkeypatch, loaded_plugin) -> None:
+    command = SimpleNamespace(
+        command="测试",
+        prefixes=["/"],
+        meta=SimpleNamespace(description="测试说明", usage="测试 <参数>", example=None),
+    )
+    native_plugin = SimpleNamespace(_extra={"commands": [(["/"], "测试")]})
+    monkeypatch.setattr(
+        loaded_plugin.command_manager, "get_command", lambda command_name: command
+    )
+
+    assert loaded_plugin._plugin_help(native_plugin) == (
+        "/测试\n├ 说明：测试说明\n└ 用法：/测试 <参数>"
+    )
+
+
+@pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
+def test_plugin_help_indents_multiline_metadata(monkeypatch, loaded_plugin) -> None:
+    command = SimpleNamespace(
+        command="测试",
+        prefixes=["/"],
+        meta=SimpleNamespace(
+            description=None,
+            usage="测试 <参数>",
+            example="测试 1\n/测试 2",
+        ),
+    )
+    native_plugin = SimpleNamespace(_extra={"commands": [(["/"], "测试")]})
+    monkeypatch.setattr(
+        loaded_plugin.command_manager, "get_command", lambda command_name: command
+    )
+
+    assert loaded_plugin._plugin_help(native_plugin) == (
+        "/测试\n├ 用法：/测试 <参数>\n└ 示例：/测试 1\n  /测试 2"
+    )

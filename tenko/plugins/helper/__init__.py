@@ -39,6 +39,7 @@ _HELP_SECTIONS = (
     ("available", "运行插件", "当前可用功能"),
     ("unavailable", "维护插件", "暂不可用功能"),
 )
+_COMMAND_HELP_FIELDS = (("说明", "description"), ("用法", "usage"), ("示例", "example"))
 
 
 help_command = Alconna(
@@ -75,13 +76,81 @@ def _help_plugins() -> tuple[tuple[PluginInfo, object], ...]:
     return tuple(plugins)
 
 
+def _first_prefix(value: object) -> str | None:
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, Iterable):
+        return next(
+            (str(item) for item in value if item is not None and str(item)), None
+        )
+    return None
+
+
+def _command_prefix(command: object, prefixes: object) -> str:
+    return (
+        _first_prefix(getattr(command, "prefixes", None))
+        or _first_prefix(prefixes)
+        or "/"
+    )
+
+
+def _command_meta_text(command: object, field: str) -> str | None:
+    value = getattr(getattr(command, "meta", None), field, None)
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _prefix_command_line(line: str, command_name: str, prefix: str) -> str:
+    if line.startswith(command_name) and not line.startswith(prefix):
+        return f"{prefix}{line}"
+    return line
+
+
+def _format_command_value(
+    value: str, field: str, command_name: str, prefix: str
+) -> str:
+    lines = [line.strip() for line in value.splitlines() if line.strip()]
+    if field in {"usage", "example"}:
+        lines = [_prefix_command_line(line, command_name, prefix) for line in lines]
+    return "\n".join(lines)
+
+
+def _format_command_help(command: object, command_name: str, prefixes: object) -> str:
+    display_name = str(getattr(command, "command", None) or command_name)
+    prefix = _command_prefix(command, prefixes)
+    fields: list[tuple[str, str]] = []
+    for label, field in _COMMAND_HELP_FIELDS:
+        value = _command_meta_text(command, field)
+        if value is None:
+            continue
+        formatted = _format_command_value(value, field, display_name, prefix)
+        if formatted:
+            fields.append((label, formatted))
+
+    lines = [f"{prefix}{display_name}"]
+    for index, (label, value) in enumerate(fields):
+        is_last = index == len(fields) - 1
+        branch = "└" if is_last else "├"
+        value_lines = value.splitlines()
+        lines.append(f"{branch} {label}：{value_lines[0]}")
+        continuation = "  " if is_last else "│ "
+        lines.extend(f"{continuation}{line}" for line in value_lines[1:])
+    return "\n".join(lines)
+
+
 def _plugin_help(native_plugin: object) -> str:
+    """将插件注册的命令元数据格式化为纯文本帮助。"""
+
     commands = getattr(native_plugin, "_extra", {}).get("commands", ())
     if not commands:
         return "该插件未注册命令"
     return "\n\n".join(
-        command_manager.get_command(command_name).get_help()
-        for _prefixes, command_name in commands
+        _format_command_help(
+            command_manager.get_command(command_name), command_name, prefixes
+        )
+        for prefixes, command_name in commands
     )
 
 
@@ -188,19 +257,22 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
 def format_help_text(data: dict[str, Any]) -> str:
     """将帮助模型格式化为文本回退结果。"""
 
-    lines = [str(data["title"]), "用法：/帮助 [编号] 查看单项命令详情"]
+    lines = [str(data["title"]), f"用法：{data['usage']}"]
     for section in data["sections"]:
         lines.extend(("", f"{section['title']}："))
         if not section["items"]:
-            lines.append("暂无")
+            lines.append("└ 暂无")
             continue
-        for item in section["items"]:
-            lines.append(f"{item['number']}. {item['name']}（{item['state_label']}）")
+        for index, item in enumerate(section["items"]):
+            branch = "└" if index == len(section["items"]) - 1 else "├"
+            lines.append(
+                f"{branch} {item['number']}. {item['name']}（{item['state_label']}）"
+            )
     return "\n".join(lines)
 
 
 def build_help(index: int | None = None, *, group_id: str | int | None = None) -> str:
-    """构建完整的插件帮助，或某个插件的原生命令帮助。"""
+    """构建完整的插件帮助，或某个插件的单项命令帮助。"""
 
     if index is not None:
         plugins = _help_plugins()

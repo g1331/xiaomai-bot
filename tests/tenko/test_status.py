@@ -507,6 +507,7 @@ def test_collect_system_resources_reads_psutil_snapshot(
 def test_get_version_details_includes_git_and_build_metadata(
     loaded_plugin, monkeypatch
 ) -> None:
+    loaded_plugin.get_version_details.cache_clear()
     monkeypatch.setattr(loaded_plugin, "_project_version", lambda: "9.9.9")
     monkeypatch.setattr(
         loaded_plugin,
@@ -531,3 +532,35 @@ def test_get_version_details_includes_git_and_build_metadata(
         "构建日期：2026-08-30",
         "构建类型：release",
     )
+
+
+@pytest.mark.parametrize("loaded_plugin", ["status"], indirect=True)
+def test_get_version_details_collects_git_metadata_once(
+    loaded_plugin, monkeypatch
+) -> None:
+    loaded_plugin.get_version_details.cache_clear()
+    for name in ("B2V_BUILD_NUMBER", "B2V_BUILD_DATE", "B2V_BUILD_TYPE"):
+        monkeypatch.delenv(name, raising=False)
+    git_calls: list[tuple[str, ...]] = []
+
+    def git_output(*arguments: str) -> str:
+        git_calls.append(arguments)
+        if arguments == ("branch", "--show-current"):
+            return "main"
+        return "abc123\x1fTenko Test\x1ffix(status): cache details"
+
+    monkeypatch.setattr(loaded_plugin, "_project_version", lambda: "9.9.9")
+    monkeypatch.setattr(loaded_plugin, "_git_output", git_output)
+
+    expected = (
+        "版本信息：v9.9.9",
+        "Git分支：main",
+        "最新提交：abc123 (Tenko Test)",
+        "提交信息：fix(status): cache details",
+    )
+    assert loaded_plugin.get_version_details() == expected
+    assert loaded_plugin.get_version_details() == expected
+    assert git_calls == [
+        ("branch", "--show-current"),
+        ("log", "-1", "--format=%h%x1f%an%x1f%s"),
+    ]

@@ -6,6 +6,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -135,8 +136,9 @@ def _git_output(*arguments: str) -> str | None:
     return output or None
 
 
+@cache
 def get_version_details() -> tuple[str, ...]:
-    """按旧版文本状态的顺序组装版本与构建信息。"""
+    """按旧版文本状态的顺序组装并缓存版本与构建信息。"""
 
     lines = [f"版本信息：v{_project_version()}"]
     branch = _git_output("branch", "--show-current") or "未知分支"

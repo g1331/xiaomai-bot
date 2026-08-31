@@ -556,6 +556,7 @@ class UpgradeConfig:
     health_timeout: int = 30
     check_interval_hours: int = 24
     superuser_ids: tuple[str, ...] = ()
+    restart_watch_timeout: int = 300
 
     def __post_init__(self) -> None:
         if not self.source:
@@ -589,6 +590,8 @@ class UpgradeConfig:
             raise ValueError("upgrade 路径配置不能为空")
         if self.health_timeout <= 0:
             raise ValueError("upgrade health_timeout 必须大于 0")
+        if self.restart_watch_timeout <= 0:
+            raise ValueError("upgrade restart_watch_timeout 必须大于 0")
         if self.check_interval_hours <= 0:
             raise ValueError("upgrade check_interval_hours 必须大于 0")
 
@@ -638,6 +641,9 @@ class UpgradeConfig:
                 section, "launch_command", defaults.launch_command
             ),
             health_timeout=_integer(section, "health_timeout", defaults.health_timeout),
+            restart_watch_timeout=_integer(
+                section, "restart_watch_timeout", defaults.restart_watch_timeout
+            ),
             check_interval_hours=_integer(
                 section, "check_interval_hours", defaults.check_interval_hours
             ),

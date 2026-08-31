@@ -1,12 +1,13 @@
 """Tenko 宿主升级管理命令。
 
 命令只调用 ``tenko.host.updater`` 的控制平面 API。当前插件不执行进程内热
-替换；``/升级`` 和 ``/回滚`` 只生成外部重启接管记录，避免当前事件处理器
-在同一进程里混用新旧代码。
+替换；``/升级`` 和 ``/回滚`` 生成外部重启接管记录后安排当前运行时优雅退出，
+避免当前事件处理器在同一进程里混用新旧代码。
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 
 from arclet.alconna import Alconna, CommandMeta
@@ -43,6 +44,8 @@ plugin.get_plugin().metadata.default_switch = True
 
 updater = get_upgrade_manager()
 permission_checker = get_upgrade_permission_checker()
+_RESTART_SHUTDOWN_DELAY_SECONDS = 4.0
+_shutdown_task: asyncio.Task[None] | None = None
 
 
 check_command = Alconna(
@@ -119,7 +122,10 @@ async def upgrade(session: Session):
         prepared = await updater.prepare(checked.candidate)
         handoff = await updater.request_install()
         watcher_armed = _arm_restart_watcher()
-        return text_message(_format_upgrade(prepared, handoff, watcher_armed))
+        response = text_message(_format_upgrade(prepared, handoff, watcher_armed))
+        if watcher_armed:
+            _schedule_graceful_shutdown()
+        return response
     except NoUpdateAvailable:
         return text_message("没有可安装的新版本")
     except UpdaterError as exc:
@@ -133,7 +139,10 @@ async def rollback(session: Session):
     try:
         result = await updater.rollback()
         watcher_armed = _arm_restart_watcher() if not result.applied else False
-        return text_message(_format_rollback(result, watcher_armed))
+        response = text_message(_format_rollback(result, watcher_armed))
+        if watcher_armed:
+            _schedule_graceful_shutdown()
+        return response
     except UpdaterError as exc:
         return text_message(_error_message(exc))
 
@@ -150,33 +159,48 @@ def _arm_restart_watcher() -> bool:
     return armed
 
 
+def _schedule_graceful_shutdown() -> None:
+    """在回复完成发送后，安排一次性优雅退出。"""
+
+    global _shutdown_task
+    loop = asyncio.get_running_loop()
+    if _shutdown_task is not None and not _shutdown_task.done():
+        if _shutdown_task.get_loop() is loop:
+            return
+        _shutdown_task.cancel()
+    _shutdown_task = loop.create_task(
+        _shutdown_after_reply(),
+        name="tenko-upgrade-graceful-shutdown",
+    )
+
+
+async def _shutdown_after_reply() -> None:
+    # handler 返回后，Entari 才会把已经构造的 MessageChain 投递出去；延迟
+    # 给发送链路留出稳定窗口，退出本身仍交给运行时的 Launart 生命周期。
+    await asyncio.sleep(_RESTART_SHUTDOWN_DELAY_SECONDS)
+    try:
+        if not updater.request_graceful_shutdown():
+            logger.warning(
+                "Tenko restart watcher armed but graceful shutdown request was not accepted"
+            )
+    except Exception:
+        logger.exception("Tenko automatic graceful shutdown failed")
+
+
 def _format_upgrade(
     prepared: PrepareResult, handoff: HandoffResult, watcher_armed: bool
 ) -> str:
-    restart_message = (
-        "已 arm 退出后自动重启 watcher；请使用 Ctrl+C 让当前进程优雅退出。"
-        if watcher_armed
-        else "未能 arm 自动重启 watcher；请由外部启动器手动接管重启。"
-    )
-    return (
-        f"版本 {prepared.release.version} 已下载、校验并通过切换前健康检查。\n"
-        f"制品目录：{prepared.path}\n"
-        f"已生成外部重启接管记录：{updater.layout.handoff_file}\n"
-        f"{restart_message}"
-    )
+    if watcher_armed:
+        return f"版本 {prepared.release.version} 已下载、校验通过，正在自动重启进入新版本。"
+    return f"版本 {prepared.release.version} 已下载、校验通过，但自动重启未能启动，请手动重启。"
 
 
 def _format_rollback(result: RollbackResult, watcher_armed: bool) -> str:
-    restart_message = (
-        "已 arm 退出后自动重启 watcher；请使用 Ctrl+C 让当前进程优雅退出。"
-        if watcher_armed
-        else "未能 arm 自动重启 watcher；请由外部启动器手动接管重启。"
-    )
-    return (
-        f"已请求回滚到版本 {result.target_version}。\n"
-        f"目标目录：{result.path}\n"
-        f"{restart_message}"
-    )
+    if result.applied:
+        return f"已成功回滚到版本 {result.target_version}。"
+    if watcher_armed:
+        return f"已请求回滚到版本 {result.target_version}，正在自动重启。"
+    return f"已请求回滚到版本 {result.target_version}，但自动重启未能启动，请手动重启。"
 
 
 async def _run_policy() -> CheckResult | PrepareResult | HandoffResult:

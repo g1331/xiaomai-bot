@@ -212,7 +212,7 @@ _SCP_CREDENTIALS_PATTERN = re.compile(
     r"(?<![\w/@])[^/@\s:]+(?::[^/@\s]*)?@(?=[^/@\s:]+:)"
 )
 _FAILED_HANDOFF_RETENTION = 10
-_RESTART_WATCHER_TIMEOUT = 120
+_RESTART_WATCHER_TIMEOUT = 300
 _RESTART_WATCHER_INTERVAL = 0.2
 
 
@@ -1827,10 +1827,12 @@ class UpgradeManager:
         policy: str | UpdatePolicy = UpdatePolicy.CHECK_ONLY,
         enabled: bool = True,
         check_interval_hours: int = 24,
+        restart_watch_timeout: int = _RESTART_WATCHER_TIMEOUT,
         compatibility_checker: ConfigCompatibilityChecker | None = None,
         health_checker: Any | None = None,
         launcher: ProcessLauncher | None = None,
         audit: AuditLogger | None = None,
+        shutdown_callback: Callable[[], bool] | None = None,
     ) -> None:
         if source is not None and sources:
             raise ValueError("source 和 sources 只能指定一个")
@@ -1848,7 +1850,10 @@ class UpgradeManager:
         self.enabled = bool(enabled)
         if check_interval_hours <= 0:
             raise ValueError("check_interval_hours 必须大于 0")
+        if restart_watch_timeout <= 0:
+            raise ValueError("restart_watch_timeout 必须大于 0")
         self.check_interval_hours = check_interval_hours
+        self.restart_watch_timeout = restart_watch_timeout
         self.compatibility_checker = (
             compatibility_checker or ConfigCompatibilityChecker()
         )
@@ -1860,6 +1865,7 @@ class UpgradeManager:
         )
         self.launcher = launcher
         self.audit = audit or AuditLogger(self.layout.audit_file)
+        self._shutdown_callback = shutdown_callback
         self._operation_lock = asyncio.Lock()
 
     def _resolve_path(self, value: str | Path) -> Path:
@@ -1883,7 +1889,20 @@ class UpgradeManager:
             self.restart_command(),
             stable_root=self.project_root,
             watcher_dir=self.layout.restart_watchers_dir,
+            timeout=self.restart_watch_timeout,
         )
+
+    def request_graceful_shutdown(self) -> bool:
+        """请求运行时沿 Launart 生命周期退出，返回是否已提交请求。"""
+
+        if self._shutdown_callback is None:
+            return False
+        return bool(self._shutdown_callback())
+
+    def configure_shutdown(self, callback: Callable[[], bool] | None) -> None:
+        """注入当前运行时的优雅退出回调。"""
+
+        self._shutdown_callback = callback
 
     @property
     def source_names(self) -> tuple[str, ...]:
@@ -2689,6 +2708,7 @@ class UpgradeManager:
             policy=config.policy,
             enabled=config.enabled,
             check_interval_hours=config.check_interval_hours,
+            restart_watch_timeout=config.restart_watch_timeout,
             health_checker=health_checker,
             launcher=launcher,
         )
@@ -2721,12 +2741,14 @@ def spawn_restart_watcher(
     stable_root = Path(stable_root).expanduser().resolve()
     watcher_dir = Path(watcher_dir).expanduser().resolve()
     record = watcher_dir / f"{old_pid}.json"
+    timeout_log = watcher_dir.parent / f"watcher-timeout-{old_pid}.log"
     record_payload = {
         "old_pid": old_pid,
         "command": list(command),
         "cwd": str(stable_root),
         "timeout": timeout,
         "poll_interval": poll_interval,
+        "timeout_log": str(timeout_log),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -2755,16 +2777,19 @@ def spawn_restart_watcher(
     watcher = (
         textwrap.dedent(
             """
+        import json
         import os
         import subprocess
         import sys
         import time
+        from datetime import datetime, timezone
         from pathlib import Path
 
         pid = int(sys.argv[1])
         record = Path(sys.argv[2])
         command = {command_literal}
         stable_root = {stable_root_literal}
+        timeout_log = Path({timeout_log_literal})
         deadline = time.monotonic() + {timeout_literal}
 
         def _pid_exists(value):
@@ -2782,6 +2807,21 @@ def spawn_restart_watcher(
             while time.monotonic() < deadline and _pid_exists(pid):
                 time.sleep({poll_interval_literal})
             if _pid_exists(pid):
+                timeout_entry = dict(
+                    event="watcher-timeout",
+                    old_pid=pid,
+                    timeout_at=datetime.now(timezone.utc).isoformat(),
+                    command=command,
+                )
+                try:
+                    with timeout_log.open("a", encoding="utf-8") as file:
+                        file.write(json.dumps(timeout_entry, ensure_ascii=False))
+                        file.write("\\n")
+                except OSError as error:
+                    print(
+                        f"Tenko restart watcher timeout log failed: {{error}}",
+                        file=sys.stderr,
+                    )
                 sys.exit(0)
             if os.name == "posix":
                 subprocess.Popen(
@@ -2800,6 +2840,7 @@ def spawn_restart_watcher(
         .format(
             command_literal=repr(list(command)),
             stable_root_literal=repr(str(stable_root)),
+            timeout_log_literal=repr(str(timeout_log)),
             timeout_literal=repr(float(timeout)),
             poll_interval_literal=repr(float(poll_interval)),
         )
@@ -2882,13 +2923,15 @@ def configure_updater(
     manager: UpgradeManager,
     *,
     superuser_ids: Sequence[str | int] = (),
+    shutdown_callback: Callable[[], bool] | None = None,
 ) -> None:
-    """运行时在加载插件前注入管理器和升级命令的超级用户集合。"""
+    """运行时在加载插件前注入管理器、权限和生命周期回调。"""
 
     global _configured_manager, _configured_permission_checker
     registry = PermissionRegistry()
     for user_id in superuser_ids:
         registry.set_user_level(None, user_id, Permission.Master)
+    manager.configure_shutdown(shutdown_callback)
     _configured_manager = manager
     _configured_permission_checker = PermissionChecker(registry=registry)
 

@@ -61,6 +61,7 @@ class TenkoRuntime:
         configure_updater(
             self.updater,
             superuser_ids=config.upgrade.superuser_ids,
+            shutdown_callback=self.request_graceful_shutdown,
         )
         self.connection = OneBotConnection(config.onebot)
         self.message_metrics = configure_message_metrics(
@@ -77,6 +78,26 @@ class TenkoRuntime:
         self.manager: Launart | None = None
         self.plugin_runtime: PluginRuntime | None = None
         self.database_service = None
+
+    def request_graceful_shutdown(self) -> bool:
+        """沿 Launart 的 SIGINT 生命周期路径请求当前运行时退出。"""
+
+        manager = self.manager
+        if manager is None:
+            logger.warning("无法请求 Tenko 优雅退出：Launart manager 尚未就绪")
+            return False
+
+        # Launart 0.8.2 的 SIGINT 处理器通过同一组状态转换唤醒 cleanup；
+        # 这里不取消当前命令任务，确保回复已经交给 Entari 的发送链路。
+        manager.status.exiting = True
+        task_group = manager.task_group
+        if task_group is None:
+            logger.warning("无法请求 Tenko 优雅退出：Launart task group 尚未就绪")
+            return False
+        task_group.stop = True
+        if task_group.blocking_task is not None:
+            task_group.blocking_task.cancel()
+        return True
 
     def build_app(self) -> Entari:
         if self.app is not None:

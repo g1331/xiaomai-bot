@@ -135,6 +135,8 @@ health_command = []
 # 可选外部启动命令。{python}、{release_root}、{config_path}、{data_dir} 可替换。
 launch_command = []
 health_timeout = 30
+# 旧进程退出 watcher 的最长等待时间；超时会留痕但不会强制拉起。
+restart_watch_timeout = 300
 # 默认 24 小时；保留旧版周期检查场景，但策略默认不下载/安装。
 check_interval_hours = 24
 # 仅这些用户能执行 /检查更新、/升级、/回滚；省略时继承 [basic].superusers。

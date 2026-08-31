@@ -26,6 +26,7 @@ plugin.get_plugin().metadata.default_switch = True
 
 permission_checker = PermissionChecker()
 plugin_runtime = PluginRuntime()
+_PROTECTED_PLUGIN_NAMES = frozenset({"feature_manager", "功能开关"})
 
 
 def _native_plugin(info: PluginInfo):
@@ -51,10 +52,15 @@ def resolve_plugin(value: str) -> PluginInfo | None:
     return None
 
 
-def _is_required(info: PluginInfo) -> bool:
+def _is_protected(info: PluginInfo) -> bool:
+    if info.name in _PROTECTED_PLUGIN_NAMES:
+        return True
     native = _native_plugin(info)
     classifiers = getattr(getattr(native, "metadata", None), "classifier", ())
-    return "required" in classifiers
+    # ``required`` 只表示插件应随宿主加载并在帮助中归入内置区域；普通
+    # 功能插件仍然需要支持群级开关。``host`` 才是不能由群管理员关闭的
+    # 控制平面标记。
+    return "host" in classifiers
 
 
 async def _change(session: Session, operation: str, feature: Match[str]):
@@ -70,7 +76,7 @@ async def _change(session: Session, operation: str, feature: Match[str]):
     if info is None:
         return text_message("编号不在运行插件范围内~")
     target_name = info.display_name
-    if _is_required(info):
+    if _is_protected(info):
         return text_message(f"无法操作必须插件<{target_name}>")
 
     enabled = feature_service.is_enabled(info.name, context.channel_id)

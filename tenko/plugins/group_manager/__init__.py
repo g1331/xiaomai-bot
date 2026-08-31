@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -12,7 +13,7 @@ from arclet.entari.config import EntariConfig
 from arclet.entari.event.base import GuildRequestEvent
 from arclet.entari.plugin import PluginRole, collect_disposes
 from loguru import logger
-from satori import Text
+from satori import User
 from satori.element import At, Author, Element, Quote
 
 from tenko.host.actions import (
@@ -58,7 +59,7 @@ class PendingInvite:
     account: Any
     group_id: str
     group_name: str
-    inviter_id: str
+    inviter_id: str | None
     inviter_name: str
     comment: str
     created_at: float
@@ -80,15 +81,66 @@ def _dispose_invite_state() -> None:
 collect_disposes(_dispose_invite_state)
 
 
-def _request_context(event: GuildRequestEvent):
+def _normalize_id(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _event_inviter_id(event: GuildRequestEvent) -> str | None:
+    user = getattr(event, "user", None)
+    inviter_id = _normalize_id(getattr(user, "id", None))
+    if inviter_id is not None:
+        return inviter_id
+
+    origin = getattr(event, "_origin", None)
+    data = getattr(origin, "_data", None)
+    if isinstance(data, Mapping):
+        return _normalize_id(data.get("user_id", data.get("inviter_id")))
+    return None
+
+
+def _event_inviter_name(event: GuildRequestEvent, inviter_id: str | None) -> str:
+    user = getattr(event, "user", None)
+    name = _normalize_id(getattr(user, "name", None))
+    if name is not None:
+        return name
+    if inviter_id is not None:
+        return inviter_id
+    return "未知邀请人"
+
+
+def _request_context(event: GuildRequestEvent, inviter_id: str | None = None):
+    origin = getattr(event, "_origin", None)
+    if origin is None:
+        return None
+    if inviter_id is not None:
+        origin_user = getattr(origin, "user", None)
+        if _normalize_id(getattr(origin_user, "id", None)) != inviter_id:
+            try:
+                # Satori 的 GuildRequestEvent 以标准 user 字段承载邀请人；
+                # 某些适配器只在原始 _data.user_id 中保留该字段，补齐标准
+                # 对象后仍使用同一套 MessageContext/PermissionChecker。
+                origin = replace(origin, user=User(inviter_id))
+            except (TypeError, ValueError):
+                return None
     try:
-        return MessageContext.from_event(event._origin)
+        return MessageContext.from_event(origin)
     except (AttributeError, TypeError, ValueError):
         return None
 
 
-async def _is_privileged_inviter(event: GuildRequestEvent) -> bool:
-    context = _request_context(event)
+async def _is_privileged_inviter(
+    event: GuildRequestEvent, inviter_id: str | None
+) -> bool:
+    if inviter_id is None:
+        logger.info(
+            "Group invite {} has no inviter ID; keeping it in the pending flow",
+            getattr(getattr(event, "message", None), "id", None),
+        )
+        return False
+    context = _request_context(event, inviter_id)
     if context is None:
         return False
     try:
@@ -104,18 +156,32 @@ def _reviewer_ids(account: Any) -> tuple[str, ...]:
     if not EntariConfig._inited:
         return ()
     configured = EntariConfig.instance.basic.superusers
-    return tuple(str(value) for value in configured.get(account.platform, ()))
+    return tuple(
+        str(value)
+        for value in configured.get(getattr(account, "platform", "onebot"), ())
+    )
+
+
+def _ensure_action_account(pending: PendingInvite) -> None:
+    """让提前到达的邀请事件也能复用已注册账号的 ActionService。"""
+
+    registry = getattr(action_service, "registry", None)
+    account_id = _normalize_id(getattr(pending.account, "self_id", None))
+    if registry is None or account_id is None:
+        return
+    # 事件携带的账号句柄可能是重连后的新对象；register 会保留已有群
+    # 绑定，同时更新 ActionService 后续真正使用的协议句柄。
+    registry.register(pending.account)
 
 
 async def _send_reviewer_notice(
     pending: PendingInvite,
     text: str,
 ) -> None:
-    protocol = pending.account.protocol
-    send_private = getattr(protocol, "send_private_message", None)
+    send_private = getattr(action_service, "send_private_message", None)
     if not callable(send_private):
         logger.warning(
-            "Pending invite {} recorded but protocol has no private message API",
+            "Pending invite {} recorded but ActionService has no private notification API",
             pending.request_id,
         )
         return
@@ -128,9 +194,10 @@ async def _send_reviewer_notice(
         return
     for reviewer_id in reviewer_ids:
         try:
-            result = send_private(reviewer_id, [Text(text)])
-            if inspect.isawaitable(result):
-                result = await result
+            receipt = send_private(pending.account, reviewer_id, text)
+            if inspect.isawaitable(receipt):
+                receipt = await receipt
+            result = getattr(receipt, "data", receipt)
             items = tuple(result or ())
             if items and getattr(items[-1], "id", None) is not None:
                 pending.notification_id = str(items[-1].id)
@@ -147,14 +214,20 @@ async def _apply_invite_decision(
     pending: PendingInvite,
     approved: bool,
     comment: str,
+    *,
+    context: MessageContext | None = None,
+    system: bool = False,
 ) -> None:
-    protocol = pending.account.protocol
-    approve = getattr(protocol, "guild_approve", None)
-    if not callable(approve):
-        raise RuntimeError("当前协议没有 guild_approve 群邀请审批 API")
-    result = approve(pending.request_id, approved, comment)
-    if inspect.isawaitable(result):
-        await result
+    _ensure_action_account(pending)
+    await action_service.approve_group_invite(
+        pending.account,
+        pending.request_id,
+        approved,
+        comment,
+        context=context,
+        permission_checker=permission_checker,
+        system=system,
+    )
 
 
 def _cancel_invite_expiry(request_id: str) -> None:
@@ -176,6 +249,7 @@ async def _expire_invite(request_id: str) -> None:
             pending,
             False,
             "拒绝了你的入群邀请!",
+            system=True,
         )
     except Exception:
         logger.exception("Failed to auto-reject expired invite {}", request_id)
@@ -191,10 +265,21 @@ async def _expire_invite(request_id: str) -> None:
 
 def _invite_notice(pending: PendingInvite) -> str:
     group = f"{pending.group_name}({pending.group_id})"
-    inviter = f"{pending.inviter_name}({pending.inviter_id})"
+    inviter = (
+        f"{pending.inviter_name}({pending.inviter_id})"
+        if pending.inviter_id is not None
+        else f"{pending.inviter_name}（ID 不可得）"
+    )
+    inviter_warning = (
+        "\n邀请人 ID 不可得，未执行自动同意检查，将按待审流程处理。"
+        if pending.inviter_id is None
+        else ""
+    )
     return (
         f"群邀请待审\n群: {group}\n邀请人: {inviter}\n"
         f"请求 ID: {pending.request_id}\n"
+        "审批权限：目标群 BotAdmin/Master；GroupAdmin 无权审批。"
+        f"{inviter_warning}\n"
         f"请在 1 小时内使用 /同意邀请 {pending.request_id} 或 "
         f"/拒绝邀请 {pending.request_id} [理由] 处理。"
     )
@@ -206,25 +291,33 @@ async def invited_event(event: GuildRequestEvent):
 
     request_id = getattr(getattr(event, "message", None), "id", None)
     group = getattr(event, "guild", None)
-    inviter = getattr(event, "user", None)
     account = getattr(event, "account", None)
-    if request_id is None or group is None or inviter is None or account is None:
+    group_id = _normalize_id(getattr(group, "id", None))
+    request_id = _normalize_id(request_id)
+    if request_id is None or group is None or group_id is None or account is None:
         logger.warning("Ignore malformed guild request event: {}", event)
         return
 
+    inviter_id = _event_inviter_id(event)
     pending = PendingInvite(
-        request_id=str(request_id),
+        request_id=request_id,
         account=account,
-        group_id=str(group.id),
-        group_name=str(getattr(group, "name", None) or group.id),
-        inviter_id=str(inviter.id),
-        inviter_name=str(getattr(inviter, "name", None) or inviter.id),
+        group_id=group_id,
+        group_name=str(getattr(group, "name", None) or group_id),
+        inviter_id=inviter_id,
+        inviter_name=_event_inviter_name(event, inviter_id),
         comment=str(getattr(getattr(event, "message", None), "content", "") or ""),
         created_at=asyncio.get_running_loop().time(),
     )
-    if await _is_privileged_inviter(event):
+    _ensure_action_account(pending)
+    if await _is_privileged_inviter(event, inviter_id):
         try:
-            await _apply_invite_decision(pending, True, "已同意您的邀请~")
+            await _apply_invite_decision(
+                pending,
+                True,
+                "已同意您的邀请~",
+                context=_request_context(event, inviter_id),
+            )
         except Exception:
             # 审批 action 失败时不能丢掉平台仍在等待的请求；保留到待审队列，
             # 同时把 action 错误记录下来，交给管理员稍后重试。
@@ -267,7 +360,7 @@ async def _can_review_invite(session: Session, pending: PendingInvite) -> bool:
     if context.chat_type == "group" and context.channel_id == pending.group_id:
         return await permission_checker.require_group_perm(
             context, Permission.ActiveGroup
-        ) and await permission_checker.require_perm(context, Permission.GroupAdmin)
+        ) and await permission_checker.require_perm(context, Permission.BotAdmin)
     # Bot 未入目标群时，只有超管能从私聊或其他群处理，避免把审批权
     # 意外扩大到任意群管理员；这是当前没有旧 test_group 配置时的明确边界。
     return await permission_checker.require_perm(context, Permission.Master)
@@ -277,7 +370,7 @@ invite_approve_command = Alconna(
     "同意邀请",
     Args["request_id", str],
     meta=CommandMeta(
-        "同意待审群邀请",
+        "同意待审群邀请（目标群 BotAdmin/Master；GroupAdmin 无权）",
         usage="同意邀请 <请求ID>",
         example="同意邀请 abc123",
         compact=False,
@@ -294,7 +387,12 @@ async def approve_invite(session: Session, request_id: Match[str]):
     if not await _can_review_invite(session, pending):
         return text_message("权限不足")
     try:
-        await _apply_invite_decision(pending, True, "已同意您的邀请~")
+        await _apply_invite_decision(
+            pending,
+            True,
+            "已同意您的邀请~",
+            context=context_from_session(session),
+        )
     except Exception as error:
         logger.exception("Failed to approve invite {}", pending.request_id)
         await report_action_error(error, session)
@@ -309,7 +407,7 @@ invite_reject_command = Alconna(
     Args["request_id", str],
     Args["reason", MultiVar(str, "*")],
     meta=CommandMeta(
-        "拒绝待审群邀请",
+        "拒绝待审群邀请（目标群 BotAdmin/Master；GroupAdmin 无权）",
         usage="拒绝邀请 <请求ID> [理由]",
         example="拒绝邀请 abc123 非工作群",
         compact=False,
@@ -332,7 +430,12 @@ async def reject_invite(
     comment = " ".join(reason.result).strip() if reason.available else ""
     comment = comment or "BOT拒绝了你的入群邀请!"
     try:
-        await _apply_invite_decision(pending, False, comment)
+        await _apply_invite_decision(
+            pending,
+            False,
+            comment,
+            context=context_from_session(session),
+        )
     except Exception as error:
         logger.exception("Failed to reject invite {}", pending.request_id)
         await report_action_error(error, session)
@@ -345,7 +448,7 @@ async def reject_invite(
 pending_invites_command = Alconna(
     "待审邀请",
     meta=CommandMeta(
-        "查看待审群邀请（仅超管）",
+        "查看待审群邀请（Master 私聊；目标群 BotAdmin/Master 审批，GroupAdmin 无权）",
         usage="待审邀请",
         compact=True,
     ),
@@ -363,10 +466,72 @@ async def pending_invite_list(session: Session):
         return text_message("当前没有待审邀请")
     lines = [
         f"{pending.request_id}: {pending.group_name}({pending.group_id}) "
-        f"邀请人 {pending.inviter_name}({pending.inviter_id})"
+        f"邀请人 {pending.inviter_name}"
+        + (
+            f"({pending.inviter_id})"
+            if pending.inviter_id is not None
+            else "（ID 不可得）"
+        )
         for pending in pending_invites.values()
     ]
     return text_message("待审邀请:\n" + "\n".join(lines))
+
+
+leave_group_command = Alconna(
+    "退群",
+    Args["group_id", str],
+    Args["account_id", str],
+    meta=CommandMeta(
+        "指定 BOT 退出指定群（群内或 Master 私聊）",
+        usage="退群 <群号> <BOT账号>",
+        example="退群 40001 10001\n/quit 40001 10001",
+        compact=False,
+    ),
+)
+leave_group_command.shortcut("quit", command="退群", prefix=True)
+
+
+@command.on(leave_group_command)
+async def leave_group(
+    session: Session,
+    group_id: Match[str],
+    account_id: Match[str],
+):
+    checked = await _guard(session, Permission.Master, allow_private=True)
+    if not hasattr(checked, "user_id"):
+        return checked
+    context = checked
+    target_group = group_id.result.strip()
+    target_account = account_id.result.strip()
+    if not target_group.isdigit() or not target_account.isdigit():
+        return text_message("群号和BOT账号必须是数字")
+
+    registry = getattr(action_service, "registry", None)
+    if registry is not None:
+        account = registry.get(target_account)
+        bound_accounts = registry.bound_accounts_for_group(target_group)
+        if account is None or all(
+            str(getattr(candidate, "self_id", "")) != target_account
+            for candidate in bound_accounts
+        ):
+            return text_message("没有找到目标群和BOT")
+
+    try:
+        await action_service.leave_group(
+            target_account,
+            target_group,
+            context=context,
+            permission_checker=permission_checker,
+        )
+    except ActionServiceError as error:
+        await report_action_error(error, session)
+        return text_message(_action_error(error))
+    return text_message(f"BOT{target_account}已退出群{target_group}!")
+
+
+# 兼容旧实现和调用点使用的函数/命令名称；实际注册仍只有一个原生命令。
+quit_group_command = leave_group_command
+quit_group = leave_group
 
 
 reset_capability_command = Alconna(
@@ -589,9 +754,17 @@ def _action_error(error: ActionServiceError) -> str:
     return action_error_message(error)
 
 
-async def _guard(session: Session, required: Permission = Permission.GroupAdmin):
+async def _guard(
+    session: Session,
+    required: Permission = Permission.GroupAdmin,
+    *,
+    allow_private: bool = False,
+):
     context = context_from_session(session)
-    if context.chat_type != "group":
+    if allow_private:
+        if context.chat_type not in {"group", "private"}:
+            return text_message("该指令仅支持群聊或 Master 私聊执行")
+    elif context.chat_type != "group":
         return text_message("该指令只能在群聊中使用")
     try:
         await action_service.authorize(

@@ -31,12 +31,14 @@ class ActionCapability(str, Enum):
     """Tenko 暴露给插件的逻辑能力名。"""
 
     SEND_GROUP_MESSAGE = "send_group_message"
+    SEND_PRIVATE_MESSAGE = "send_private_message"
     MEMBER_MUTE = "member_mute"
     GROUP_MUTE = "group_mute"
     MESSAGE_DELETE = "message_delete"
     MEMBER_KICK = "member_kick"
     GROUP_ESSENCE = "group_essence"
     GROUP_LEAVE = "group_leave"
+    GROUP_INVITE_APPROVAL = "group_invite_approval"
     GROUP_LIST = "group_list"
 
 
@@ -47,6 +49,7 @@ Capability = ActionCapability
 # 方法，避免在业务层复制 OneBot action 字符串或参数形状。
 _ONEBOT_ACTIONS = {
     ActionCapability.SEND_GROUP_MESSAGE: "send_group_msg",
+    ActionCapability.SEND_PRIVATE_MESSAGE: "send_private_msg",
     ActionCapability.MEMBER_MUTE: "set_group_ban",
     # OneBot 11 的全体禁言 action 是 set_group_whole_ban，而不是单人禁言 action。
     ActionCapability.GROUP_MUTE: "set_group_whole_ban",
@@ -54,6 +57,7 @@ _ONEBOT_ACTIONS = {
     ActionCapability.MEMBER_KICK: "set_group_kick",
     ActionCapability.GROUP_ESSENCE: "set_essence_msg",
     ActionCapability.GROUP_LEAVE: "set_group_leave",
+    ActionCapability.GROUP_INVITE_APPROVAL: "set_group_add_request",
     ActionCapability.GROUP_LIST: "get_group_list",
 }
 
@@ -665,12 +669,13 @@ class ActionService:
         caller: Callable[[Any], Awaitable[Any]],
         *,
         context: MessageContext | None,
-        required: int,
+        required: int | None,
         permission_checker: PermissionChecker | None = None,
         send_group_id: str | None = None,
         management_group_id: str | None = None,
     ) -> ActionReceipt:
-        await self.authorize(context, required, checker=permission_checker)
+        if required is not None:
+            await self.authorize(context, required, checker=permission_checker)
         account_id, account = self._account(account_or_id)
         normalized_capability = _capability(capability)
         candidates = await self._management_candidates(
@@ -1142,8 +1147,56 @@ class ActionService:
                 is_dismiss=dismiss,
             ),
             context=context,
-            required=Permission.BotAdmin,
+            required=Permission.Master,
             permission_checker=permission_checker,
+        )
+
+    async def approve_group_invite(
+        self,
+        account_or_id: Account | str | int,
+        request_id: str,
+        approved: bool,
+        comment: str = "",
+        *,
+        context: MessageContext | None,
+        permission_checker: PermissionChecker | None = None,
+        system: bool = False,
+    ) -> ActionReceipt:
+        """处理群邀请；Satori adapter 负责映射到底层加群审批 action。"""
+
+        request = _key(request_id, "请求 ID")
+        if type(approved) is not bool:
+            raise TypeError("approved 必须是布尔值")
+        if not isinstance(comment, str):
+            raise TypeError("comment 必须是字符串")
+        if type(system) is not bool:
+            raise TypeError("system 必须是布尔值")
+        return await self._invoke(
+            account_or_id,
+            ActionCapability.GROUP_INVITE_APPROVAL,
+            lambda protocol: protocol.guild_approve(request, approved, comment),
+            context=context,
+            required=None if system else Permission.BotAdmin,
+            permission_checker=permission_checker,
+        )
+
+    async def send_private_message(
+        self,
+        account_or_id: Account | str | int,
+        user_id: str | int,
+        content: str,
+    ) -> ActionReceipt:
+        """发送宿主系统私聊通知，不把通知发送伪装成用户命令。"""
+
+        user = _key(user_id, "用户 ID")
+        if not isinstance(content, str) or not content:
+            raise ValueError("私聊消息不能为空")
+        return await self._invoke(
+            account_or_id,
+            ActionCapability.SEND_PRIVATE_MESSAGE,
+            lambda protocol: protocol.send_private_message(user, content),
+            context=None,
+            required=None,
         )
 
     async def send_group_message(

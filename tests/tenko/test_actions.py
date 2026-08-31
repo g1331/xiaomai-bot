@@ -36,6 +36,20 @@ class FakeProtocol:
             raise response
         return response
 
+    async def guild_approve(self, *args: Any) -> Any:
+        self.calls.append(("guild_approve", args, {}))
+        response = self.responses.get("guild_approve")
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
+    async def send_private_message(self, *args: Any) -> Any:
+        self.calls.append(("send_private_message", args, {}))
+        response = self.responses.get("send_private_message")
+        if isinstance(response, BaseException):
+            raise response
+        return response
+
     async def guild_member_get(self, *args: Any) -> Any:
         self.calls.append(("guild_member_get", args, {}))
         response = self.responses.get("guild_member_get")
@@ -122,6 +136,7 @@ def make_service(
     accounts = AccountRegistry()
     accounts.register(account, groups=["40001"])
     permissions = PermissionRegistry(
+        master_id=user_id if role == "master" else None,
         bot_admin_ids=[user_id] if role == "bot_admin" else []
     )
     service = ActionService(
@@ -209,7 +224,7 @@ async def test_member_query_failure_is_explicit_without_capability_learning() ->
 
 @pytest.mark.asyncio
 async def test_extension_actions_share_the_native_internal_entry() -> None:
-    service, account, context, protocol = make_service(role="bot_admin")
+    service, account, context, protocol = make_service(role="master")
 
     essence = await service.set_essence(account, "50002", context=context)
     await service.leave_group(
@@ -223,6 +238,36 @@ async def test_extension_actions_share_the_native_internal_entry() -> None:
     assert protocol.calls == [
         ("internal", ("set_essence_msg",), {"message_id": 50002}),
         ("internal", ("set_group_leave",), {"group_id": 40001, "is_dismiss": False}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_group_invite_approval_uses_satori_native_protocol_method() -> None:
+    service, account, context, protocol = make_service(role="bot_admin")
+
+    receipt = await service.approve_group_invite(
+        account,
+        "request-1",
+        True,
+        "已同意",
+        context=context,
+    )
+
+    assert receipt.action == "set_group_add_request"
+    assert protocol.calls == [
+        ("guild_approve", ("request-1", True, "已同意"), {}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_system_private_notification_uses_action_service() -> None:
+    service, account, _, protocol = make_service()
+
+    receipt = await service.send_private_message(account, "90001", "需要人工确认")
+
+    assert receipt.action == "send_private_msg"
+    assert protocol.calls == [
+        ("send_private_message", ("90001", "需要人工确认"), {}),
     ]
 
 

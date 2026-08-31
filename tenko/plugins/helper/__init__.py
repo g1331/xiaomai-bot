@@ -128,12 +128,20 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
         key: [] for key, _, _ in _HELP_SECTIONS
     }
     for number, (info, native_plugin) in enumerate(_help_plugins(), 1):
-        if "required" in _classifiers(native_plugin):
+        classifiers = _classifiers(native_plugin)
+        if "host" in classifiers:
             key = "required"
             state_label = "内置"
         elif feature_service.is_maintenance(info.name):
             key = "unavailable"
             state_label = "维护中"
+        elif "required" in classifiers:
+            key = "required"
+            state_label = (
+                "运行中"
+                if feature_service.is_enabled(info.name, group_id)
+                else "已关闭"
+            )
         else:
             key = "available"
             state_label = (

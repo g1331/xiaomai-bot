@@ -6,6 +6,7 @@ from unittest.mock import ANY, AsyncMock
 
 import pytest
 from arclet.entari.command import Match, Query
+from arclet.entari.event.base import GuildMemberUpdatedEvent
 from satori import (
     Channel,
     ChannelType,
@@ -62,6 +63,36 @@ def make_private_session(user_id: str):
             user=event.user,
         )
     )
+
+
+class MemberEventProtocol:
+    def __init__(self) -> None:
+        self.group_messages: list[str] = []
+
+    async def send_message(self, _channel_id, content, *_args, **_kwargs):
+        self.group_messages.append(str(content))
+        return []
+
+
+class MemberEventAccount:
+    self_id = "10001"
+    platform = "onebot"
+
+    def __init__(self) -> None:
+        self.protocol = MemberEventProtocol()
+
+
+def make_member_update_event(account, *, channel=True):
+    origin = Event(
+        type=EventType.GUILD_MEMBER_UPDATED,
+        timestamp=datetime.now(),
+        login=Login(platform="onebot", user=User(account.self_id)),
+        channel=Channel("40001", ChannelType.TEXT) if channel else None,
+        guild=Guild("40001", "Tenko"),
+        member=Member(user=User("30001"), roles=[Role("member")]),
+        user=User("30001", "被降级管理员"),
+    )
+    return GuildMemberUpdatedEvent(account, origin)
 
 
 def make_query(path: str, result):
@@ -388,3 +419,60 @@ async def test_permission_write_reports_database_unavailable(
     )
 
     assert str(result) == "数据库暂不可用，修改群权限未执行"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_platform_admin_demotion_keeps_tenko_permission_and_prompts_in_group(
+    loaded_plugin,
+) -> None:
+    account = MemberEventAccount()
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry()
+    )
+    loaded_plugin._bot_admin_ids = AsyncMock(return_value=set())
+    loaded_plugin._permission_type = AsyncMock(return_value="default")
+    loaded_plugin._member_permission = AsyncMock(
+        return_value=Permission.GroupAdmin
+    )
+    loaded_plugin._write_member_permission = AsyncMock()
+
+    await loaded_plugin.auto_change_member_permission.callable_target(
+        make_member_update_event(account)
+    )
+
+    loaded_plugin._write_member_permission.assert_not_awaited()
+    assert len(account.protocol.group_messages) == 1
+    notice = account.protocol.group_messages[0]
+    assert "检测到群管理权限变动" in notice
+    assert "被降级管理员(30001)-&gt;16" in notice
+    assert "/修改权限 16 30001" in notice
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
+async def test_platform_admin_demotion_falls_back_to_master_private_notice(
+    loaded_plugin, monkeypatch
+) -> None:
+    account = MemberEventAccount()
+    loaded_plugin.permission_checker = PermissionChecker(
+        registry=PermissionRegistry()
+    )
+    loaded_plugin._bot_admin_ids = AsyncMock(return_value=set())
+    loaded_plugin._permission_type = AsyncMock(return_value="default")
+    loaded_plugin._member_permission = AsyncMock(
+        return_value=Permission.GroupOwner
+    )
+    loaded_plugin._write_member_permission = AsyncMock()
+    loaded_plugin._superuser_ids = lambda _account: ("90001",)
+    private_sender = AsyncMock()
+    monkeypatch.setattr(loaded_plugin, "send_private_message", private_sender)
+
+    await loaded_plugin.auto_change_member_permission.callable_target(
+        make_member_update_event(account, channel=False)
+    )
+
+    loaded_plugin._write_member_permission.assert_not_awaited()
+    private_sender.assert_awaited_once()
+    assert "检测到群管理权限变动" in private_sender.await_args.args[2]
+    assert "群 40001" in private_sender.await_args.args[2]

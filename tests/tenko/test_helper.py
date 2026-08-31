@@ -117,7 +117,7 @@ def test_help_data_partitions_required_available_and_maintenance(
 
         @staticmethod
         def is_enabled(plugin_name, group_id):
-            return plugin_name != "disabled"
+            return plugin_name not in {"disabled", "required"}
 
     monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: infos)
     monkeypatch.setattr(
@@ -133,11 +133,12 @@ def test_help_data_partitions_required_available_and_maintenance(
         "disabled plugin",
     ]
     assert [item["name"] for item in data["unavailable"]] == ["maintenance plugin"]
+    assert data["required"][0]["state_label"] == "已关闭"
     assert data["available"][0]["state_label"] == "运行中"
     assert data["available"][1]["state_label"] == "已关闭"
     assert data["unavailable"][0]["state_label"] == "维护中"
     assert data["total"] == 4
-    assert data["enabled_count"] == 2
+    assert data["enabled_count"] == 1
 
     text = loaded_plugin.format_help_text(data)
     assert (
@@ -166,6 +167,7 @@ def test_help_number_uses_plugin_commands_for_card_positions(
             "同意邀请",
             "拒绝邀请",
             "待审邀请",
+            "退群",
             "重置能力",
             "群设置",
             "禁言",

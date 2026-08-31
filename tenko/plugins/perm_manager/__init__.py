@@ -12,6 +12,7 @@ from arclet.entari.event.base import (
     GuildMemberUpdatedEvent,
     InternalEvent,
 )
+from arclet.entari.config import EntariConfig
 from arclet.entari.plugin import PluginRole
 from loguru import logger
 from satori import Image
@@ -22,6 +23,7 @@ from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import (
     context_from_session,
     normalize_targets,
+    send_private_message,
     text_message,
 )
 from tenko.render import RenderService
@@ -155,6 +157,45 @@ def _member_permission_from_platform(member: object) -> int:
         if level >= Permission.GroupOwner
         else Permission.GroupAdmin
     )
+
+
+def _superuser_ids(account: object) -> tuple[str, ...]:
+    if not EntariConfig._inited:
+        return ()
+    configured = getattr(getattr(EntariConfig.instance, "basic", None), "superusers", {})
+    platform = getattr(account, "platform", "onebot")
+    return tuple(str(value) for value in configured.get(platform, ()))
+
+
+def _permission_demotion_notice(event: GuildMemberUpdatedEvent) -> str:
+    group_id = getattr(getattr(event, "guild", None), "id", "未知群")
+    user = getattr(event, "user", None)
+    user_id = getattr(user, "id", "未知成员")
+    name = getattr(user, "name", None) or user_id
+    return (
+        "检测到群管理权限变动\n"
+        f"{name}({user_id})->16\n"
+        "Tenko 权限暂不自动修改，请人工确认；如需修改请使用指令 "
+        f"/修改权限 16 {user_id}（群 {group_id}）"
+    )
+
+
+async def _notify_permission_demotion(event: GuildMemberUpdatedEvent) -> None:
+    notice = _permission_demotion_notice(event)
+    if event.channel:
+        try:
+            await Session(event.account, event).send(text_message(notice))
+        except Exception:
+            logger.exception(
+                "管理员降级提示发送失败: group={} user={}",
+                getattr(getattr(event, "guild", None), "id", None),
+                getattr(getattr(event, "user", None), "id", None),
+            )
+        return
+
+    session = Session(event.account, event)
+    for reviewer_id in _superuser_ids(event.account):
+        await send_private_message(session, reviewer_id, notice)
 
 
 def _database_error_message(error: BaseException, *, action: str) -> object:
@@ -764,6 +805,8 @@ async def auto_change_member_permission(event: GuildMemberUpdatedEvent):
         if await _permission_type(event.guild.id) == "admin":
             return
 
+        previous_permission = await _member_permission(event.guild.id, event.user.id)
+
         roles = {
             str(role.id).lower()
             for role in getattr(event.member, "roles", ())
@@ -775,17 +818,26 @@ async def auto_change_member_permission(event: GuildMemberUpdatedEvent):
             permission = Permission.GroupAdmin
         else:
             permission = Permission.User
-        await _write_member_permission(event.guild.id, event.user.id, permission)
     except DatabaseUnavailableError as error:
         logger.warning("成员 {} 的权限变更同步失败: {}", event.user.id, error)
         return
-    if permission == Permission.User:
+
+    if permission == Permission.User and previous_permission >= Permission.GroupAdmin:
         logger.info(
             "成员 {} 在群 {} 的平台管理权限已降为普通成员；待人工确认 Tenko 权限",
             event.user.id,
             event.guild.id,
         )
-    elif event.channel:
+        await _notify_permission_demotion(event)
+        return
+
+    try:
+        await _write_member_permission(event.guild.id, event.user.id, permission)
+    except DatabaseUnavailableError as error:
+        logger.warning("成员 {} 的权限变更同步失败: {}", event.user.id, error)
+        return
+
+    if permission != Permission.User and event.channel:
         await Session(event.account, event).send(
             text_message(
                 f"检测到群管理权限变动\n已自动修改{event.user.name or event.user.id}"

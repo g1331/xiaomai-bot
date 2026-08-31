@@ -309,6 +309,59 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 数据目录彼此分离，升级过程不会覆盖用户配置或运行数据；`data_dir` 不会改变
 Tenko 自身 `.tenko` 应用数据的落点。
 
+### 配置兼容性清单
+
+仓库根目录的 `upgrade-manifest.json` 是发布制品中的 canonical 配置兼容性清单，
+最小内容为：
+
+    {
+      "min_config_version": "1.0.0"
+    }
+
+清单中的 `min_config_version` 是独立于项目版本的配置协议版本。它表示候选代码
+能够读取的最低用户配置版本：普通代码修复或功能增加不需要提升它；只有配置格式
+发生破坏性变化、旧配置无法继续被新代码读取时才提升它。项目版本（例如 `4.0.1`）
+和配置协议版本（例如 `1.0.0`）不能互相推导。
+
+发布源数据写在 `pyproject.toml` 的 `[tool.tenko.upgrade]` 段：
+
+    [tool.tenko.upgrade]
+    min_config_version = "1.0.0"
+
+运行版本脚本时，`scripts.bump` 会在修改版本前校验该字段，并在版本、锁文件和
+可选 changelog 步骤成功后生成根目录清单：
+
+    uv run python -m scripts.bump pre_n --no-commit
+    uv run python -m scripts.bump patch --commit
+
+字段缺失或不是合法 SemVer 会使发布流程失败，不会从项目版本猜测默认值。使用
+`--commit` 时清单会和 `pyproject.toml`、`uv.lock` 一起加入提交；不使用该选项时
+仍由发布者自行检查并提交生成的清单。
+
+旧制品可能没有清单。升级器会将这类制品按“未声明最低配置版本”的 legacy 兼容
+行为处理并写入审计；新制品应只生成根目录这一份 canonical 清单。为兼容更早的
+制品，升级器仍会按固定顺序检查 `tenko/upgrade-manifest.json`，再检查根目录清单。
+
+### 代码、配置、数据与升级状态目录
+
+标准启动器以部署根目录为稳定 `cwd`。候选版本目录只提供代码，不携带配置、虚拟
+环境或应用数据；表中的相对路径都相对于稳定 `cwd` 解析：
+
+| 目录或文件 | 用途 | 解析位置 |
+| --- | --- | --- |
+| 部署根目录 | 稳定启动根、共享依赖和当前工作树 | 启动器确定的稳定根目录 |
+| `config/tenko.toml` | 用户配置 | 稳定 `cwd` |
+| `.tenko/tenko.db` | Tenko SQLite 数据库 | 稳定 `cwd` |
+| `.tenko/accounts.json`、`features.json`、`ratelimit.json` | 运行时 JSON 状态 | 稳定 `cwd` |
+| `.tenko/exceptions/` | 异常取证文件 | 稳定 `cwd` |
+| `.tenko/upgrades/` | `active.json`、`previous.json`、`pending.json`、`handoff.json` 和版本目录 | 稳定 `cwd` |
+| `.tenko/upgrades/versions/<version>/` | 候选代码 | 升级状态目录下，作为代码源 |
+
+`[upgrade].data_dir` 是只传给自定义健康检查/启动命令的外部目录，不是 Tenko
+自身应用数据根目录。升级切换后，数据库、JSON 状态、异常取证和配置仍指向稳定
+根目录下的原有物理路径；候选版本不会在自己的目录中生成新的 `.tenko/` 或
+`config/`。
+
 ## 开发环境搭建
 
 ### 获取与安装

@@ -126,6 +126,7 @@ class MemorySource:
     releases: tuple[Release, ...]
     acquire_calls: int = 0
     name: str = "memory"
+    manifest_version: str | None = None
 
     async def discover(self, channel: UpdateChannel):
         return self.releases
@@ -137,6 +138,11 @@ class MemorySource:
         (destination / "tenko" / "__init__.py").write_text(
             f"VERSION = '{release.version}'\n", encoding="utf-8"
         )
+        if self.manifest_version is not None:
+            (destination / "upgrade-manifest.json").write_text(
+                json.dumps({"min_config_version": self.manifest_version}),
+                encoding="utf-8",
+            )
         return destination
 
 
@@ -609,6 +615,64 @@ def test_config_compatibility_reads_release_manifest(tmp_path: Path) -> None:
         ConfigCompatibilityChecker().check_candidate(candidate, "1.0.0", release)
 
 
+def test_config_compatibility_reads_canonical_root_manifest(tmp_path: Path) -> None:
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    (candidate / "upgrade-manifest.json").write_text(
+        '{"min_config_version": "2.0.0"}', encoding="utf-8"
+    )
+    release = Release(parse_version("2.0.0"), "v2.0.0")
+
+    with pytest.raises(ConfigurationCompatibilityError) as error:
+        ConfigCompatibilityChecker().check_candidate(candidate, "1.0.0", release)
+
+    assert error.value.result.required_version == parse_version("2.0.0")
+
+
+def test_config_compatibility_keeps_manifest_location_priority(tmp_path: Path) -> None:
+    candidate = tmp_path / "candidate"
+    (candidate / "tenko").mkdir(parents=True)
+    (candidate / "tenko" / "upgrade-manifest.json").write_text(
+        '{"min_config_version": "2.0.0"}', encoding="utf-8"
+    )
+    (candidate / "upgrade-manifest.json").write_text(
+        '{"min_config_version": "1.0.0"}', encoding="utf-8"
+    )
+    release = Release(parse_version("2.0.0"), "v2.0.0")
+
+    with pytest.raises(ConfigurationCompatibilityError) as error:
+        ConfigCompatibilityChecker().check_candidate(candidate, "1.0.0", release)
+
+    assert error.value.result.required_version == parse_version("2.0.0")
+
+
+def test_config_compatibility_rejects_invalid_manifest_json(tmp_path: Path) -> None:
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    manifest = candidate / "upgrade-manifest.json"
+    manifest.write_text("{", encoding="utf-8")
+    release = Release(parse_version("2.0.0"), "v2.0.0")
+
+    with pytest.raises(ConfigurationCompatibilityError, match="不可读取") as error:
+        ConfigCompatibilityChecker().check_candidate(candidate, "1.0.0", release)
+
+    assert str(manifest) in str(error.value)
+
+
+def test_config_compatibility_marks_manifestless_release_as_legacy(
+    tmp_path: Path,
+) -> None:
+    candidate = tmp_path / "candidate"
+    candidate.mkdir()
+    release = Release(parse_version("2.0.0"), "v2.0.0")
+
+    result = ConfigCompatibilityChecker().check_candidate(candidate, "1.0.0", release)
+
+    assert result.compatible
+    assert result.legacy
+    assert "legacy" in result.reason
+
+
 def test_config_compatibility_uses_stricter_release_or_manifest_requirement(
     tmp_path: Path,
 ) -> None:
@@ -863,6 +927,34 @@ async def test_prepare_keeps_config_and_data_outside_staging(tmp_path: Path) -> 
     assert config_path.read_bytes() == config_before
     assert (data_dir / "user.db").read_bytes() == data_before
     assert [call[1] for call in checker.calls] == ["pre-switch"]
+
+
+@pytest.mark.asyncio
+async def test_prepare_rejects_manifest_incompatible_config_before_promotion(
+    tmp_path: Path,
+) -> None:
+    manager, source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    source.manifest_version = "2.0.0"
+
+    with pytest.raises(ConfigurationCompatibilityError):
+        await manager.prepare()
+
+    assert not manager.layout.pending_file.exists()
+    assert not list(manager.layout.versions_dir.glob("*"))
+    assert source.acquire_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_prepare_audits_manifestless_release_as_legacy(tmp_path: Path) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+
+    await manager.prepare()
+
+    entry = json.loads(
+        manager.layout.audit_file.read_text(encoding="utf-8").splitlines()[-1]
+    )
+    assert entry["compatibility_legacy"] is True
+    assert "legacy" in entry["compatibility"]
 
 
 @pytest.mark.asyncio

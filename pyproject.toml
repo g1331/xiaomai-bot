@@ -30,6 +30,10 @@ dependencies = [
 [tool.uv]
 package = false # ⚠️ 禁用“本项目安装”以便只安装第三方依赖
 
+# 配置协议版本独立于项目版本；发布脚本据此生成 upgrade-manifest.json。
+[tool.tenko.upgrade]
+min_config_version = "1.0.0"
+
 # bump-my-version 配置
 [tool.bumpversion]
 current_version = "4.0.0-pre2"

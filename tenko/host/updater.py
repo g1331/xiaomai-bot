@@ -1113,6 +1113,7 @@ class CompatibilityResult:
     required_version: Version | None
     compatible: bool
     reason: str
+    legacy: bool = False
 
 
 class ConfigCompatibilityChecker:
@@ -1120,12 +1121,18 @@ class ConfigCompatibilityChecker:
 
     manifest_names = ("tenko/upgrade-manifest.json", "upgrade-manifest.json")
 
-    @staticmethod
-    def _required_from_manifest(candidate: Path) -> Version | None:
-        for relative in ConfigCompatibilityChecker.manifest_names:
+    @classmethod
+    def _manifest_path(cls, candidate: Path) -> Path | None:
+        for relative in cls.manifest_names:
             path = candidate / relative
-            if not path.is_file():
-                continue
+            if path.is_file():
+                return path
+        return None
+
+    @classmethod
+    def _required_from_manifest(cls, candidate: Path) -> Version | None:
+        path = cls._manifest_path(candidate)
+        if path is not None:
             try:
                 value = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
@@ -1212,6 +1219,12 @@ class ConfigCompatibilityChecker:
         ]
         required = max(required_versions) if required_versions else None
         result = self.check(current_config_version, required)
+        if not required_versions and self._manifest_path(candidate) is None:
+            result = replace(
+                result,
+                legacy=True,
+                reason=f"legacy: {result.reason}",
+            )
         if not result.compatible:
             raise ConfigurationCompatibilityError(result)
         return result
@@ -2033,6 +2046,7 @@ class UpgradeManager:
                         "commit_sha" if release.commit_sha else "asset_sha256"
                     ),
                     compatibility=compatibility.reason,
+                    compatibility_legacy=compatibility.legacy,
                 )
                 return PrepareResult(release, final_path, compatibility)
             except Exception as exc:

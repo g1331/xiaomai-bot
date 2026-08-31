@@ -18,11 +18,77 @@ bump.py - 项目版本号自动管理脚本
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 使用 tomli
+    import tomli as tomllib
+
+
+MANIFEST_PATH = Path("upgrade-manifest.json")
+PYPROJECT_PATH = Path("pyproject.toml")
+_SEMVER_IDENTIFIER = r"(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+_SEMVER_PATTERN = re.compile(
+    rf"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    rf"(?:-{_SEMVER_IDENTIFIER}(?:\.{_SEMVER_IDENTIFIER})*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+
+
+class ReleaseMetadataError(ValueError):
+    """发布所需的配置协议元数据缺失或非法。"""
+
+
+def validate_semver(value: object) -> str:
+    """校验并返回不带隐式转换的 SemVer 字符串。"""
+    if not isinstance(value, str) or _SEMVER_PATTERN.fullmatch(value) is None:
+        raise ReleaseMetadataError(f"min_config_version 不是合法 SemVer: {value!r}")
+    return value
+
+
+def read_min_config_version(path: str | Path = PYPROJECT_PATH) -> str:
+    """从 pyproject.toml 读取并校验配置协议最低版本。"""
+    path = Path(path)
+    try:
+        with path.open("rb") as file:
+            data = tomllib.load(file)
+        value = data["tool"]["tenko"]["upgrade"]["min_config_version"]
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
+        raise ReleaseMetadataError(
+            f"无法从 {path} 读取 [tool.tenko.upgrade].min_config_version"
+        ) from exc
+    return validate_semver(value)
+
+
+def generate_upgrade_manifest(
+    *,
+    pyproject_path: str | Path = PYPROJECT_PATH,
+    manifest_path: str | Path = MANIFEST_PATH,
+) -> Path:
+    """根据发布源元数据生成根目录的 canonical 升级 manifest。"""
+    min_config_version = read_min_config_version(pyproject_path)
+    target = Path(manifest_path)
+    try:
+        target.write_text(
+            json.dumps(
+                {"min_config_version": min_config_version},
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise ReleaseMetadataError(f"无法写入升级兼容性清单: {target}") from exc
+    print(f"✅ 已生成升级兼容性清单: {target}")
+    return target
 
 
 # 检查是否安装了 bump-my-version 作为 uv 工具
@@ -42,10 +108,8 @@ def get_current_version():
     """获取当前版本号，优先从 pyproject.toml 读取"""
     # 从 pyproject.toml 获取
     try:
-        import tomli
-
-        with open("pyproject.toml", "rb") as f:
-            data = tomli.load(f)
+        with PYPROJECT_PATH.open("rb") as file:
+            data = tomllib.load(file)
             # 先检查 tool.bumpversion.current_version
             version = data.get("tool", {}).get("bumpversion", {}).get("current_version")
             if version:
@@ -140,19 +204,23 @@ def run_bumpmyversion(part, new_version=None, no_pre=False):
 def update_pyproject_version_directly(new_version):
     """直接更新 pyproject.toml 中的版本号（在 bump-my-version 失败时的备用方案）"""
     try:
-        with open("pyproject.toml", encoding="utf-8") as f:
-            content = f.read()
+        content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         # 更新项目版本
-        content = re.sub(r'(version\s*=\s*)"[^"]+"', f'\\1"{new_version}"', content)
+        content = re.sub(
+            r'(?m)^([ \t]*version[ \t]*=[ \t]*)"[^"]+"',
+            f'\\1"{new_version}"',
+            content,
+        )
 
         # 更新 bumpversion 配置中的当前版本
         content = re.sub(
-            r'(current_version\s*=\s*)"[^"]+"', f'\\1"{new_version}"', content
+            r'(?m)^([ \t]*current_version[ \t]*=[ \t]*)"[^"]+"',
+            f'\\1"{new_version}"',
+            content,
         )
 
-        with open("pyproject.toml", "w", encoding="utf-8") as f:
-            f.write(content)
+        PYPROJECT_PATH.write_text(content, encoding="utf-8")
 
         print(f"✅ 已直接更新版本号至 {new_version}")
         return True
@@ -197,7 +265,7 @@ def generate_changelog(version: str):
 
 def git_commit_and_tag(prev_version: str, new_version: str, tag: bool):
     """提交更改并创建 Git tag"""
-    files = ["pyproject.toml", "uv.lock"]
+    files = ["pyproject.toml", "uv.lock", "upgrade-manifest.json"]
     if os.path.exists("CHANGELOG.md"):
         files.append("CHANGELOG.md")
 
@@ -238,8 +306,12 @@ def main():
         ),
     )
     parser.add_argument("--tag", action="store_true", help="创建 Git tag（如 v1.2.4）")
-    parser.add_argument(
+    commit_options = parser.add_mutually_exclusive_group()
+    commit_options.add_argument(
         "--commit", action="store_true", help="自动提交所有版本变更文件"
+    )
+    commit_options.add_argument(
+        "--no-commit", action="store_true", help="只更新文件，不提交（默认行为）"
     )
     parser.add_argument(
         "--changelog", action="store_true", help="生成 changelog（依赖 git-cliff）"
@@ -264,6 +336,12 @@ def main():
         version = get_current_version()
         print(f"当前版本号: v{version}")
         return
+
+    try:
+        read_min_config_version()
+    except ReleaseMetadataError as exc:
+        print(f"❌ {exc}")
+        sys.exit(1)
 
     check_bumpmyversion()
 
@@ -333,6 +411,12 @@ def main():
     # 生成 changelog（如指定）
     if args.changelog:
         generate_changelog(new_version)
+
+    try:
+        generate_upgrade_manifest()
+    except ReleaseMetadataError as exc:
+        print(f"❌ {exc}")
+        sys.exit(1)
 
     # 提交和打 tag（如指定）
     if args.commit:

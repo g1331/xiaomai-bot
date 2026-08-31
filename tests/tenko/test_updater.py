@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from tenko.config import TenkoConfig
+from tenko.config import TenkoConfig, UpgradeConfig
 from tenko.host.updater import (
     ArtifactVerificationError,
     AuditLogger,
@@ -30,8 +30,10 @@ from tenko.host.updater import (
     UpdateChannel,
     UpdatePolicy,
     UpdateRelation,
+    UpdateSourceError,
     UpgradeLayout,
     UpgradeManager,
+    UpgradeConfigError,
     SubprocessLauncher,
     UrlManifestSource,
     Version,
@@ -142,6 +144,15 @@ class SequenceHealthChecker:
     async def check(self, candidate: Path, *, phase: str, process=None):
         self.calls.append((candidate, phase, process))
         return self.values.pop(0)
+
+
+@dataclass
+class RecordingLauncher:
+    calls: list[Path] = field(default_factory=list)
+
+    async def start(self, candidate: Path):
+        self.calls.append(candidate)
+        return type("Process", (), {"poll": lambda self: None})()
 
 
 def make_manager(
@@ -305,6 +316,138 @@ async def test_git_tag_source_rejects_sha_mismatch_and_cleans_destination(
     with pytest.raises(ArtifactVerificationError):
         await source.acquire(tampered, tmp_path / "stage" / "release")
     assert not (tmp_path / "stage" / "release").exists()
+
+
+def make_stable_git_repository(tmp_path: Path) -> tuple[Path, Path]:
+    repository = make_git_repository(tmp_path)
+    stable = tmp_path / "stable"
+    git("clone", "--quiet", str(repository), str(stable), cwd=tmp_path)
+    return repository, stable
+
+
+@pytest.mark.asyncio
+async def test_from_config_normalizes_named_remote_for_discover_and_prepare(
+    tmp_path: Path,
+) -> None:
+    repository, stable = make_stable_git_repository(tmp_path)
+    config = UpgradeConfig(
+        repository="origin",
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+
+    manager = UpgradeManager.from_config(config, project_root=stable)
+    source = manager.sources[0]
+    prepared = await manager.prepare()
+
+    assert isinstance(source, GitTagSource)
+    assert source.repository == str(repository.resolve())
+    assert prepared.release.version == parse_version("1.1.0")
+    assert prepared.path.is_dir()
+
+
+def test_from_config_reports_named_remote_resolution_context(tmp_path: Path) -> None:
+    stable = tmp_path / "stable"
+    stable.mkdir()
+    git("init", "--quiet", cwd=stable)
+    config = UpgradeConfig(
+        repository="missing",
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+
+    with pytest.raises(UpgradeConfigError) as error:
+        UpgradeManager.from_config(config, project_root=stable)
+
+    message = str(error.value)
+    assert "missing" in message
+    assert str(stable.resolve()) in message
+    assert "git remote get-url" in message
+    assert "请检查该 remote" in message
+    assert "完整 URL/本地路径" in message
+
+
+def test_from_config_reports_non_worktree_named_remote(tmp_path: Path) -> None:
+    stable = tmp_path / "not-a-worktree"
+    stable.mkdir()
+    config = UpgradeConfig(
+        repository="origin",
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+
+    with pytest.raises(UpgradeConfigError, match="Git 工作树") as error:
+        UpgradeManager.from_config(config, project_root=stable)
+
+    assert "not a git repository" in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("repository", "expected"),
+    [
+        ("https://example.test/tenko.git", "https://example.test/tenko.git"),
+        ("git@example.test:tenko/tenko.git", "git@example.test:tenko/tenko.git"),
+    ],
+)
+def test_from_config_preserves_complete_git_repository_addresses(
+    tmp_path: Path, repository: str, expected: str
+) -> None:
+    config = UpgradeConfig(
+        repository=repository,
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+
+    manager = UpgradeManager.from_config(config, project_root=tmp_path)
+
+    assert manager.sources[0].repository == expected
+
+
+def test_from_config_resolves_existing_local_repository_against_stable_root(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    config = UpgradeConfig(
+        repository="repository",
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+
+    manager = UpgradeManager.from_config(config, project_root=tmp_path)
+
+    assert manager.sources[0].repository == str(repository.resolve())
+
+
+@pytest.mark.asyncio
+async def test_git_source_errors_redact_credentials_in_invalid_url(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import tenko.host.updater as updater_module
+
+    repository = "https://user:secret@example.invalid/tenko.git"
+    config = UpgradeConfig(
+        repository=repository,
+        current_version="1.0.0",
+        install_root=str(tmp_path / "upgrades"),
+    )
+    manager = UpgradeManager.from_config(config, project_root=tmp_path)
+
+    def fail_git(*_arguments, **_kwargs):
+        raise subprocess.CalledProcessError(
+            128,
+            ["git"],
+            stderr=f"fatal: unable to access '{repository}'",
+        )
+
+    monkeypatch.setattr(updater_module.subprocess, "run", fail_git)
+
+    with pytest.raises(UpdateSourceError) as error:
+        await manager.check()
+
+    message = str(error.value)
+    assert "secret" not in message
+    assert "https://***@example.invalid/tenko.git" in message
 
 
 @pytest.mark.asyncio
@@ -633,6 +776,139 @@ async def test_install_policy_writes_external_handoff_without_hot_replacement(
 
 
 @pytest.mark.asyncio
+async def test_apply_handoff_can_skip_child_process_launch(tmp_path: Path) -> None:
+    manager, _source, checker, _config_path, _data_dir = make_manager(tmp_path)
+    await manager.prepare()
+    await manager.request_install()
+    launcher = RecordingLauncher()
+    manager.launcher = launcher
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert result.success
+    assert launcher.calls == []
+    assert [call[1] for call in checker.calls] == ["pre-switch", "post-switch"]
+
+
+@pytest.mark.asyncio
+async def test_corrupt_handoff_is_quarantined_without_changing_active_pointer(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    manager.layout.ensure()
+    manager.layout.handoff_file.write_text("{", encoding="utf-8")
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    assert manager.layout.read_active() is None
+    assert not manager.layout.handoff_file.exists()
+    failed = list(manager.layout.failed_handoffs_dir.glob("*.json"))
+    assert len(failed) == 1
+    assert failed[0].read_text(encoding="utf-8") == "{"
+    assert "handoff 记录损坏" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_invalid_utf8_handoff_is_quarantined_without_startup_failure(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    manager.layout.ensure()
+    manager.layout.handoff_file.write_bytes(b"\xff\xfe")
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    assert not manager.layout.handoff_file.exists()
+    failed = list(manager.layout.failed_handoffs_dir.glob("*.json"))
+    assert len(failed) == 1
+    assert failed[0].read_bytes() == b"\xff\xfe"
+
+
+@pytest.mark.asyncio
+async def test_inconsistent_activate_handoff_is_quarantined_and_pending_cleared(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    prepared = await manager.prepare()
+    manager.layout.write_handoff(
+        {
+            "action": "activate",
+            "version": str(prepared.release.version),
+            "path": str(tmp_path / "not-the-prepared-version"),
+        }
+    )
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    assert manager.layout.read_active() is None
+    assert not manager.layout.pending_file.exists()
+    assert not manager.layout.handoff_file.exists()
+    assert len(list(manager.layout.failed_handoffs_dir.glob("*.json"))) == 1
+    audit_entries = [
+        json.loads(line)
+        for line in manager.layout.audit_file.read_text(encoding="utf-8").splitlines()
+    ]
+    assert "不一致" in audit_entries[-1]["error"]
+
+
+@pytest.mark.asyncio
+async def test_invalid_activation_recovery_does_not_create_baseline_pointer(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    prepared = await manager.prepare()
+    pending = json.loads(manager.layout.pending_file.read_text(encoding="utf-8"))
+    pending["activation_recovery"] = {
+        "from": {"version": "1.0.0", "path": str(tmp_path / "outside")}
+    }
+    manager.layout.write_pending(pending)
+    manager.layout.write_handoff(
+        {
+            "action": "activate",
+            "version": str(prepared.release.version),
+            "path": str(prepared.path),
+        }
+    )
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    assert manager.layout.read_active() is None
+    assert not manager.layout.pending_file.exists()
+    assert not manager.layout.handoff_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_unknown_handoff_action_is_quarantined_and_not_retried(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    manager.layout.write_handoff({"action": "future-action"})
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    assert not manager.layout.handoff_file.exists()
+    assert len(list(manager.layout.failed_handoffs_dir.glob("*.json"))) == 1
+    assert "future-action" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_failed_handoff_retention_is_bounded(tmp_path: Path) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+
+    for index in range(12):
+        manager.layout.write_handoff({"action": f"unknown-{index}"})
+        result = await manager.apply_handoff(start_process=False)
+        assert not result.success
+
+    assert len(list(manager.layout.failed_handoffs_dir.glob("*.json"))) == 10
+
+
+@pytest.mark.asyncio
 async def test_activate_pending_switches_atomically_and_preserves_previous_copy(
     tmp_path: Path,
 ) -> None:
@@ -681,6 +957,80 @@ async def test_post_switch_health_failure_automatically_restores_previous_pointe
 
 
 @pytest.mark.asyncio
+async def test_activation_recovers_after_active_pointer_write_crash(
+    monkeypatch, tmp_path: Path
+) -> None:
+    manager, _source, checker, _config_path, _data_dir = make_manager(
+        tmp_path, health=[True, True]
+    )
+    prepared = await manager.prepare()
+    await manager.request_install()
+    original_write_pointer = UpgradeLayout.write_pointer
+    pointer_writes = 0
+
+    def crash_after_target_write(layout, target, version, *, previous=False) -> None:
+        nonlocal pointer_writes
+        pointer_writes += 1
+        original_write_pointer(layout, target, version, previous=previous)
+        if pointer_writes == 2 and not previous:
+            raise SystemExit("simulated process crash")
+
+    monkeypatch.setattr(UpgradeLayout, "write_pointer", crash_after_target_write)
+    with pytest.raises(SystemExit, match="simulated process crash"):
+        await manager.activate_pending(start_process=False)
+
+    pending = json.loads(manager.layout.pending_file.read_text(encoding="utf-8"))
+    assert pending["activation_recovery"]["from"]["version"] == "1.0.0"
+    assert manager.layout.read_active().path == prepared.path
+
+    checker.values = [True]
+    recovered = await manager.apply_handoff(start_process=False)
+
+    assert recovered.success
+    assert manager.layout.read_active().path == prepared.path
+    previous = manager.layout.read_previous()
+    assert previous is not None
+    assert previous.path != prepared.path
+    assert not manager.layout.pending_file.exists()
+    assert not manager.layout.handoff_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_activation_recovers_when_cleanup_crashes_after_health_check(
+    monkeypatch, tmp_path: Path
+) -> None:
+    manager, _source, checker, _config_path, _data_dir = make_manager(
+        tmp_path, health=[True, True, True]
+    )
+    await manager.prepare()
+    await manager.request_install()
+    original_clear_pending = UpgradeLayout.clear_pending
+    crashed = False
+
+    def crash_once(layout) -> None:
+        nonlocal crashed
+        if not crashed:
+            crashed = True
+            raise SystemExit("simulated cleanup crash")
+        original_clear_pending(layout)
+
+    monkeypatch.setattr(UpgradeLayout, "clear_pending", crash_once)
+    with pytest.raises(SystemExit, match="simulated cleanup crash"):
+        await manager.activate_pending(start_process=False)
+
+    assert manager.layout.pending_file.exists()
+    assert manager.layout.handoff_file.exists()
+    checker.values = [True]
+
+    recovered = await manager.apply_handoff(start_process=False)
+
+    assert recovered.success
+    assert not manager.layout.pending_file.exists()
+    assert not manager.layout.handoff_file.exists()
+    assert manager.layout.read_previous() is not None
+
+
+@pytest.mark.asyncio
 async def test_rollback_request_is_deferred_and_apply_handoff_checks_old_version(
     tmp_path: Path,
 ) -> None:
@@ -703,6 +1053,69 @@ async def test_rollback_request_is_deferred_and_apply_handoff_checks_old_version
         "post-switch",
         "rollback",
     ]
+
+
+@pytest.mark.asyncio
+async def test_rollback_failure_restores_active_and_quarantines_live_handoff(
+    tmp_path: Path,
+) -> None:
+    manager, _source, checker, _config_path, _data_dir = make_manager(
+        tmp_path, health=[True, True, False]
+    )
+    await manager.prepare()
+    await manager.activate_pending(start_process=False)
+    requested = await manager.rollback()
+    assert not requested.applied
+
+    result = await manager.apply_handoff(start_process=False)
+
+    assert not result.success
+    active = manager.layout.read_active()
+    previous = manager.layout.read_previous()
+    assert active is not None and active.version == parse_version("1.1.0")
+    assert previous is not None and previous.version == parse_version("1.0.0")
+    assert not manager.layout.handoff_file.exists()
+    assert len(list(manager.layout.failed_handoffs_dir.glob("*.json"))) == 1
+    assert [call[1] for call in checker.calls] == [
+        "pre-switch",
+        "post-switch",
+        "rollback",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_rollback_recovers_after_active_pointer_write_crash(
+    monkeypatch, tmp_path: Path
+) -> None:
+    manager, _source, checker, _config_path, _data_dir = make_manager(
+        tmp_path, health=[True, True, True]
+    )
+    await manager.prepare()
+    await manager.activate_pending(start_process=False)
+    await manager.rollback()
+    original_write_pointer = UpgradeLayout.write_pointer
+    crashed = False
+
+    def crash_once(layout, target, version, *, previous=False) -> None:
+        nonlocal crashed
+        original_write_pointer(layout, target, version, previous=previous)
+        if not crashed and not previous:
+            crashed = True
+            raise SystemExit("simulated rollback crash")
+
+    monkeypatch.setattr(UpgradeLayout, "write_pointer", crash_once)
+    with pytest.raises(SystemExit, match="simulated rollback crash"):
+        await manager.apply_handoff(start_process=False)
+
+    checker.values = [True]
+    recovered = await manager.apply_handoff(start_process=False)
+
+    assert recovered.success
+    active = manager.layout.read_active()
+    previous = manager.layout.read_previous()
+    assert active is not None and active.version == parse_version("1.0.0")
+    assert previous is not None and previous.version == parse_version("1.1.0")
+    assert not manager.layout.handoff_file.exists()
 
 
 @pytest.mark.asyncio

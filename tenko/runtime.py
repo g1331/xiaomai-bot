@@ -3,11 +3,9 @@ from __future__ import annotations
 import asyncio
 import signal
 import sys
-from collections.abc import Mapping
 from pathlib import Path
 
 from arclet.entari import Entari
-from arclet.entari.config import EntariConfig
 from arclet.letoderea.utils import set_event_loop
 from creart import it
 from launart import Launart
@@ -30,22 +28,15 @@ from .host.updater import UpgradeManager, configure_updater
 from .render import RenderService
 
 
-def _configure_entari_superusers(
-    superusers: Mapping[str, tuple[str, ...]],
-) -> None:
-    """把 Tenko 的平台用户映射写入 Entari 原生 basic 配置。"""
-
-    EntariConfig.instance.basic.superusers = {
-        platform: list(user_ids) for platform, user_ids in superusers.items()
-    }
-
-
 class TenkoRuntime:
     """Tenko 第一阶段运行时的服务编排。"""
 
     def __init__(self, config: TenkoConfig) -> None:
         self.config = config
-        configure_command_prefix(config.runtime.command_prefix)
+        configure_command_prefix(
+            config.command_prefixes,
+            use_entari_prefix=True,
+        )
         self.accounts = account_registry
         self.accounts.configure_persistence(config.accounts.state_path)
         self.actions = action_service
@@ -92,13 +83,16 @@ class TenkoRuntime:
             return self.app
 
         set_event_loop(asyncio.get_running_loop())
+        basic = self.config.basic
         app = Entari(
             self.connection.client_config,
-            log_level=self.config.runtime.log_level,
-            ignore_self_message=True,
+            log_level=basic.log.level,
+            ignore_self_message=basic.ignore_self_message,
+            skip_req_missing=basic.skip_req_missing,
+            external_dirs=basic.external_dirs,
+            rich_error=basic.log.rich_error,
+            gen_schema=basic.schema,
         )
-        _configure_entari_superusers(self.config.entari.superusers)
-        configure_command_prefix(self.config.runtime.command_prefix)
         native_handler = app.handle_event
         for index, callback in enumerate(app.event_callbacks):
             if callback == native_handler:

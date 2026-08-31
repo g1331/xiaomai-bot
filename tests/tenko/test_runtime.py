@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+import arclet.entari.core as entari_core
 from arclet.entari import Entari
 from arclet.entari.config import EntariConfig
 from graia.amnesia.builtins.aiohttp import AiohttpClientService
@@ -200,7 +201,7 @@ def test_runtime_configures_account_response_state_path(tmp_path, monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_build_app_reapplies_prefix_after_entari_initialization(
+async def test_build_app_uses_basic_without_rewriting_entari_config(
     monkeypatch,
 ) -> None:
     connection = Mock()
@@ -213,8 +214,10 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
         def __init__(self, *configs, **kwargs) -> None:
             if not EntariConfig._inited:
                 EntariConfig(Path("/tmp/tenko-runtime-test.yml"))
-            EntariConfig.instance.basic.prefix = ["!"]
-            EntariConfig.instance.basic.nickname = "Tenko"
+            self.configs = configs
+            self.kwargs = kwargs
+            EntariConfig.instance.basic.prefix = ["native"]
+            EntariConfig.instance.basic.nickname = "Native"
             self.event_callbacks = [self.handle_event]
             self.registered_message_handler = None
             self.registered_handlers = {}
@@ -236,14 +239,21 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
     monkeypatch.setattr(runtime_module, "Entari", FakeEntari)
     config = TenkoConfig.from_mapping(
         {
-            "runtime": {
-                "command_prefix": "!",
-                "superusers": {"onebot": [12345, "67890"]},
+            "basic": {
+                "prefix": ["!"],
+                "ignore_self_message": False,
+                "skip_req_missing": True,
+                "network": [{"type": "ws", "host": "127.0.0.1", "port": 5140}],
+                "external_dirs": ["plugins"],
+                "schema": True,
+                "log": {"level": "DEBUG", "rich_error": True},
             },
             "debug": {"enabled": True, "masters": [20001]},
         }
     )
     runtime = TenkoRuntime(config)
+    original_prefix = list(EntariConfig.instance.basic.prefix)
+    original_nickname = EntariConfig.instance.basic.nickname
     original_superusers = (
         dict(EntariConfig.instance.basic.superusers) if EntariConfig._inited else None
     )
@@ -251,9 +261,18 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
     try:
         app = runtime.build_app()
 
-        assert EntariConfig.instance.basic.prefix == []
-        assert EntariConfig.instance.basic.nickname == ""
-        assert EntariConfig.instance.basic.superusers == {"onebot": ["12345", "67890"]}
+        assert app.configs == (connection.client_config,)
+        assert app.kwargs == {
+            "log_level": "DEBUG",
+            "ignore_self_message": False,
+            "skip_req_missing": True,
+            "external_dirs": ["plugins"],
+            "rich_error": True,
+            "gen_schema": True,
+        }
+        assert EntariConfig.instance.basic.prefix == ["native"]
+        assert EntariConfig.instance.basic.nickname == "Native"
+        assert EntariConfig.instance.basic.superusers == original_superusers
         assert app.registered_message_handler.__self__ is runtime.message_handler
         assert (
             app.registered_message_handler.__func__
@@ -274,4 +293,43 @@ async def test_build_app_reapplies_prefix_after_entari_initialization(
         )
     finally:
         runtime_module.configure_command_prefix("/")
+        EntariConfig.instance.basic.prefix = original_prefix
+        EntariConfig.instance.basic.nickname = original_nickname
         EntariConfig.instance.basic.superusers = original_superusers or {}
+
+
+def test_entari_consumes_official_log_save_configuration(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "tenko.toml"
+    path.write_text(
+        """
+[basic.log]
+level = "INFO"
+save = { rotation = "00:00", compression = "gz", colorize = false }
+""",
+        encoding="utf-8",
+    )
+    original_config = EntariConfig.instance
+    EntariConfig.load(path)
+    apply_log_save = Mock(return_value=Mock())
+    monkeypatch.setattr(entari_core, "apply_log_save", apply_log_save)
+
+    def fake_app_init(self, *configs, **kwargs) -> None:
+        self.accounts = {}
+        self.connections = []
+        self.event_callbacks = []
+        self.lifecycle_callbacks = []
+
+    try:
+        monkeypatch.setattr(entari_core.App, "__init__", fake_app_init)
+        app = Entari()
+
+        apply_log_save.assert_called_once_with(
+            log_dir=entari_core.local_data._get_base_log_dir(),
+            rotation="00:00",
+            compression="gz",
+            colorize=False,
+        )
+        app._log_save_dispose()
+    finally:
+        EntariConfig.instance = original_config
+        EntariConfig._inited = True

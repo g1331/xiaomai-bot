@@ -5,10 +5,41 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from arclet.entari.config import EntariConfig as NativeEntariConfig
+from arclet.entari.config.action import config_model_validate
+from arclet.entari.config.file import register_dumper, register_loader
+from arclet.entari.config.model import BasicConfig
+import tomli_w
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - 仅在 Python 3.10 中执行
     import tomli as tomllib
+
+
+def _default_basic_config() -> BasicConfig:
+    """返回保持 Tenko 默认命令语义的官方基础配置。"""
+
+    return BasicConfig(prefix=["/"])
+
+
+@register_loader("toml")
+def _toml_loader(text: str) -> dict[str, Any]:
+    """为 Entari 注册 Tenko 使用的 TOML 配置格式。"""
+
+    return _normalize_legacy_mapping(tomllib.loads(text))
+
+
+@register_dumper("toml")
+def _toml_dumper(
+    data: dict[str, Any], _indent: int, schema_file: str | None = None
+) -> tuple[str, bool]:
+    """将 Entari 的统一配置数据写回 TOML。"""
+
+    result = tomli_w.dumps(data)
+    if schema_file and not result.startswith("# schema: "):
+        return f"# schema: {schema_file}\n{result}", True
+    return result, False
 
 
 def _section(data: Mapping[str, Any], name: str) -> Mapping[str, Any]:
@@ -16,6 +47,108 @@ def _section(data: Mapping[str, Any], name: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ValueError(f"配置节 [{name}] 必须是 TOML table")
     return value
+
+
+def _legacy_basic_section(data: Mapping[str, Any]) -> dict[str, Any]:
+    """将旧版 `[entari]` 与 `[runtime]` 字段映射到官方 `basic`。"""
+
+    basic: dict[str, Any] = {"prefix": ["/"]}
+    entari = data.get("entari")
+    runtime = data.get("runtime")
+
+    if isinstance(entari, Mapping) and "superusers" in entari:
+        basic["superusers"] = entari["superusers"]
+    elif isinstance(runtime, Mapping) and "superusers" in runtime:
+        basic["superusers"] = runtime["superusers"]
+
+    if isinstance(runtime, Mapping):
+        if "log_level" in runtime:
+            value = runtime["log_level"]
+            if not isinstance(value, str | int) or isinstance(value, bool):
+                raise ValueError("配置项 'log_level' 必须是字符串或整数")
+            basic["log"] = {"level": value}
+        if "command_prefix" in runtime:
+            value = runtime["command_prefix"]
+            if not isinstance(value, str) or not value:
+                raise ValueError("配置项 'command_prefix' 必须是非空字符串")
+            basic["prefix"] = [value]
+
+    return basic
+
+
+def _normalize_legacy_mapping(data: Mapping[str, Any]) -> dict[str, Any]:
+    """把旧版 Tenko 根配置转换成官方配置可直接读取的形状。"""
+
+    normalized = dict(data)
+    legacy_entari = normalized.get("entari")
+
+    # `entari.basic` / `entari.plugins` 是 Entari 自己支持的嵌套根格式，不能
+    # 与 Tenko 的旧 `[entari]` 扩展节混淆；本项目的统一格式使用顶层 basic。
+    if isinstance(legacy_entari, Mapping) and (
+        "basic" in legacy_entari or "plugins" in legacy_entari
+    ):
+        return normalized
+
+    runtime = normalized.get("runtime")
+    has_legacy_runtime = isinstance(runtime, Mapping) and any(
+        key in runtime for key in ("log_level", "command_prefix", "superusers")
+    )
+    if "basic" not in normalized and (
+        isinstance(legacy_entari, Mapping) or has_legacy_runtime
+    ):
+        normalized["basic"] = _legacy_basic_section(normalized)
+        if isinstance(legacy_entari, Mapping):
+            normalized.pop("entari", None)
+    elif "basic" in normalized and isinstance(legacy_entari, Mapping):
+        # 混合配置以官方 basic 为准，同时移除会触发 Entari 嵌套根解包的旧节。
+        normalized.pop("entari", None)
+
+    runtime = normalized.get("runtime")
+    if isinstance(runtime, Mapping):
+        runtime = {
+            key: value
+            for key, value in runtime.items()
+            if key not in {"log_level", "command_prefix", "superusers"}
+        }
+        if runtime:
+            normalized["runtime"] = runtime
+        else:
+            normalized.pop("runtime", None)
+
+    basic = normalized.get("basic")
+    if isinstance(basic, Mapping):
+        normalized["basic"] = _normalize_basic_section(basic)
+
+    return normalized
+
+
+def _normalize_basic_section(section: Mapping[str, Any]) -> dict[str, Any]:
+    """补齐 Tenko 兼容默认值并规范化官方 basic 身份标识。"""
+
+    normalized = dict(section)
+    normalized.setdefault("prefix", ["/"])
+    if "superusers" in normalized:
+        users = _identifier_mapping(
+            {"superusers": normalized["superusers"]}, "superusers", {}
+        )
+        normalized["superusers"] = {
+            platform: list(user_ids) for platform, user_ids in users.items()
+        }
+    return normalized
+
+
+def _basic_superusers(basic: BasicConfig) -> dict[str, tuple[str, ...]]:
+    """把官方超级用户模型转换为 Tenko 内部只读兼容视图。"""
+
+    return _identifier_mapping({"superusers": basic.superusers}, "superusers", {})
+
+
+def _basic_from_mapping(data: Mapping[str, Any]) -> BasicConfig:
+    """使用 Entari 官方模型校验并构造 basic 配置。"""
+
+    if "basic" not in data:
+        return _default_basic_config()
+    return config_model_validate(BasicConfig, dict(_section(data, "basic")))
 
 
 def _string(section: Mapping[str, Any], key: str, default: str) -> str:
@@ -259,14 +392,18 @@ class OneBotConfig:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeConfig:
-    """运行时行为配置。"""
+    """运行时行为的只读兼容视图。"""
 
-    log_level: str = "INFO"
+    log_level: str | int = "INFO"
     command_prefix: str = "/"
     superusers: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.log_level:
+        if not isinstance(self.log_level, str | int) or isinstance(
+            self.log_level, bool
+        ):
+            raise ValueError("log_level 必须是字符串或整数")
+        if isinstance(self.log_level, str) and not self.log_level:
             raise ValueError("log_level 不能为空")
         if not self.command_prefix:
             raise ValueError("command_prefix 不能为空")
@@ -285,7 +422,7 @@ class RuntimeConfig:
     ) -> RuntimeConfig:
         defaults = cls()
         return cls(
-            log_level=_string(section, "log_level", defaults.log_level),
+            log_level=_log_level(section, "log_level", defaults.log_level),
             command_prefix=_string(section, "command_prefix", defaults.command_prefix),
             superusers=(
                 _identifier_mapping(section, "superusers", defaults.superusers)
@@ -294,10 +431,21 @@ class RuntimeConfig:
             ),
         )
 
+    @classmethod
+    def from_basic(cls, basic: BasicConfig) -> RuntimeConfig:
+        """从官方 basic 生成旧调用方仍使用的运行时视图。"""
+
+        command_prefix = next((prefix for prefix in basic.prefix if prefix), "/")
+        return cls(
+            log_level=basic.log.level,
+            command_prefix=command_prefix,
+            superusers=_basic_superusers(basic),
+        )
+
 
 @dataclass(frozen=True, slots=True)
-class EntariConfig:
-    """Entari 原生 basic.superusers 的唯一权威配置来源。"""
+class LegacyEntariConfig:
+    """旧版 `config.entari` 访问路径的只读兼容视图。"""
 
     superusers: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
@@ -314,19 +462,29 @@ class EntariConfig:
         section: Mapping[str, Any],
         *,
         legacy_runtime_section: Mapping[str, Any] | None = None,
-    ) -> EntariConfig:
+    ) -> LegacyEntariConfig:
+        """兼容旧调用方直接构造 `config.entari` 视图。"""
+
         if "superusers" in section:
             users = _identifier_mapping(section, "superusers", {})
-        elif (
-            legacy_runtime_section is not None
-            and "superusers" in legacy_runtime_section
-        ):
-            # 仅为旧 `[runtime].superusers` 配置提供迁移读取；解析后的有效值
-            # 仍只保存到本对象，避免运行时继续维护两份名单。
+        elif legacy_runtime_section is not None:
             users = _identifier_mapping(legacy_runtime_section, "superusers", {})
         else:
             users = {}
         return cls(users)
+
+
+# 保留旧的导入名称；实际权威配置已经是上方导入的官方 NativeEntariConfig。
+EntariConfig = LegacyEntariConfig
+
+
+def _log_level(section: Mapping[str, Any], key: str, default: str | int) -> str | int:
+    value = section.get(key, default)
+    if not isinstance(value, str | int) or isinstance(value, bool):
+        raise ValueError(f"配置项 {key!r} 必须是字符串或整数")
+    if isinstance(value, str) and not value:
+        raise ValueError(f"配置项 {key!r} 不能为空")
+    return value
 
 
 def _flatten_identifiers(mapping: Mapping[str, tuple[str, ...]]) -> tuple[str, ...]:
@@ -666,59 +824,78 @@ RatelimitConfig = RateLimitConfig
 
 @dataclass(frozen=True, slots=True)
 class TenkoConfig:
-    onebot: OneBotConfig = OneBotConfig()
-    runtime: RuntimeConfig = RuntimeConfig()
-    entari: EntariConfig = EntariConfig()
-    upgrade: UpgradeConfig = UpgradeConfig()
-    debug: DebugConfig = DebugConfig()
-    accounts: AccountsConfig = AccountsConfig()
-    features: FeaturesConfig = FeaturesConfig()
-    ratelimit: RateLimitConfig = RateLimitConfig()
-    render: RenderConfig = RenderConfig()
-    exception: ExceptionConfig = ExceptionConfig()
-    database: DatabaseConfig = DatabaseConfig()
+    basic: BasicConfig = field(default_factory=_default_basic_config)
+    entari_config: NativeEntariConfig | None = field(
+        default=None, repr=False, compare=False
+    )
+    onebot: OneBotConfig = field(default_factory=OneBotConfig)
+    runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
+    upgrade: UpgradeConfig = field(default_factory=UpgradeConfig)
+    debug: DebugConfig = field(default_factory=DebugConfig)
+    accounts: AccountsConfig = field(default_factory=AccountsConfig)
+    features: FeaturesConfig = field(default_factory=FeaturesConfig)
+    ratelimit: RateLimitConfig = field(default_factory=RateLimitConfig)
+    render: RenderConfig = field(default_factory=RenderConfig)
+    exception: ExceptionConfig = field(default_factory=ExceptionConfig)
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
     test_group: str | None = None
 
-    def __post_init__(self) -> None:
-        # 代码构造方式的旧兼容：直接传 RuntimeConfig(superusers=...) 时也
-        # 使用同一份有效名单；从 TOML 读取时的 canonical `[entari]` 优先级
-        # 已在 from_mapping 中确定。
-        if not self.entari.superusers and self.runtime.superusers:
-            object.__setattr__(self, "entari", EntariConfig(self.runtime.superusers))
+    @property
+    def entari(self) -> LegacyEntariConfig:
+        """返回旧版 `config.entari` 的派生视图，不作为配置来源。"""
+
+        return LegacyEntariConfig(_basic_superusers(self.basic))
+
+    @property
+    def command_prefixes(self) -> tuple[str, ...]:
+        """返回官方 basic 使用的全部命令前缀。"""
+
+        return tuple(self.basic.prefix)
 
     @classmethod
-    def from_mapping(cls, data: Mapping[str, Any]) -> TenkoConfig:
-        runtime_section = _section(data, "runtime")
-        entari = EntariConfig.from_mapping(
-            _section(data, "entari"),
-            legacy_runtime_section=runtime_section,
-        )
-        superuser_ids = _flatten_identifiers(entari.superusers)
+    def from_mapping(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        basic: BasicConfig | None = None,
+        entari_config: NativeEntariConfig | None = None,
+    ) -> TenkoConfig:
+        normalized = _normalize_legacy_mapping(data)
+        basic = _basic_from_mapping(normalized) if basic is None else basic
+        superusers = _basic_superusers(basic)
+        superuser_ids = _flatten_identifiers(superusers)
         return cls(
-            onebot=OneBotConfig.from_mapping(_section(data, "onebot")),
-            runtime=RuntimeConfig.from_mapping(
-                runtime_section, superusers=entari.superusers
-            ),
-            entari=entari,
+            basic=basic,
+            entari_config=entari_config,
+            onebot=OneBotConfig.from_mapping(_section(normalized, "onebot")),
+            runtime=RuntimeConfig.from_basic(basic),
             debug=DebugConfig.from_mapping(
-                _section(data, "debug"), inherited_masters=superuser_ids
+                _section(normalized, "debug"), inherited_masters=superuser_ids
             ),
             upgrade=UpgradeConfig.from_mapping(
-                _section(data, "upgrade"), inherited_superuser_ids=superuser_ids
+                _section(normalized, "upgrade"), inherited_superuser_ids=superuser_ids
             ),
-            accounts=AccountsConfig.from_mapping(_section(data, "accounts")),
-            features=FeaturesConfig.from_mapping(_section(data, "features")),
-            ratelimit=RateLimitConfig.from_mapping(_section(data, "ratelimit")),
-            render=RenderConfig.from_mapping(_section(data, "render")),
-            exception=ExceptionConfig.from_mapping(_section(data, "exception")),
-            database=DatabaseConfig.from_mapping(_section(data, "database")),
-            test_group=_optional_identifier(data, "test_group", None),
+            accounts=AccountsConfig.from_mapping(_section(normalized, "accounts")),
+            features=FeaturesConfig.from_mapping(_section(normalized, "features")),
+            ratelimit=RateLimitConfig.from_mapping(_section(normalized, "ratelimit")),
+            render=RenderConfig.from_mapping(_section(normalized, "render")),
+            exception=ExceptionConfig.from_mapping(_section(normalized, "exception")),
+            database=DatabaseConfig.from_mapping(_section(normalized, "database")),
+            test_group=_optional_identifier(normalized, "test_group", None),
         )
 
     @classmethod
     def load(cls, path: Path) -> TenkoConfig:
-        if not path.exists():
-            return cls()
-        with path.open("rb") as file:
-            data = tomllib.load(file)
-        return cls.from_mapping(data)
+        """通过 Entari 官方 loader 加载整份 Tenko TOML 配置。"""
+
+        entari_config = NativeEntariConfig.load(Path(path))
+        if "basic" not in entari_config.data:
+            # 官方对不存在的文件直接返回空配置；在加载层补上 Tenko 的兼容
+            # 默认，使运行时的 prefix stripper 与命令定义保持一致。
+            entari_config.data["basic"] = {"prefix": ["/"]}
+            entari_config.basic = _basic_from_mapping(entari_config.data)
+        return cls.from_mapping(
+            entari_config.data,
+            basic=entari_config.basic,
+            entari_config=entari_config,
+        )

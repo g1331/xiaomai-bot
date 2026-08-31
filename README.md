@@ -22,7 +22,7 @@ OneBot 11 协议接入 QQ（协议端推荐 NapCat，也可替换为任何兼容
 ## 缘起
 
 Tenko 的名字取自东方 Project 中的比那名居天子——掌管大地的绯想之剑，
-非想非非想天的天人。她不问因果、只按本心行事的气质，恰好是这只 bot
+有顶天的天人。她不问因果、只按本心行事的气质，恰好是这只 bot
 想要成为的样子：安静地悬于群聊之上，该出手时出手，无事时便隐入云端。
 
 她的前身是 xiaomai-bot——诞生于 Graia Ariadne 框架时代的群管工具，
@@ -55,10 +55,10 @@ Tenko 围绕聊天群组的日常运营提供一组开箱即用的能力：
 | announcement | 向已开启指定功能的群推送公告，并返回逐群结果 | /公告 <功能名> <内容...> |
 | updater | 按配置通道检查、准备和回滚 Tenko 宿主版本 | /检查更新、/升级、/回滚 |
 | feature_manager | 按群启用或停用插件功能 | /开启 <插件编号或名称>、/关闭 <插件编号或名称> |
-| render | 提供 HTML 和 Markdown 的离线图片渲染服务，供状态和异常报告使用 | 无命令 |
 
 涉及权限变更、群管理或宿主升级的命令会按照当前群权限、账号能力和超级用户
 配置执行。渲染不可用时，状态和异常报告使用文本路径。
+RenderService 是由 Tenko runtime 直接注册的可选宿主服务，不属于插件清单。
 
 
 ## 使用指南
@@ -158,6 +158,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     timeout = 10.0
     width = 800
     quality = 85
+    device_scale_factor = 2
 
     [upgrade]
     enabled = true
@@ -242,6 +243,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | timeout | 单次渲染超时时间，默认 10.0 秒 |
 | width | 图片 viewport 宽度，默认 800 |
 | quality | JPEG 质量，范围为 0 到 100，默认 85 |
+| device_scale_factor | 浏览器设备像素比，默认 2 |
 
 ### [upgrade]
 
@@ -360,9 +362,9 @@ Satori 负责协议对象和动作抽象，Entari 负责事件分发、插件生
   通过宿主服务访问账号路由、权限、功能开关、限流和升级控制平面。
 - command_manager 是帮助系统读取命令列表的来源，因此帮助内容会随当前已注册
   插件变化。
-- RenderService 由 tenko/plugins/render 注册为 Entari 服务，使用 Playwright 在本地
-  离线渲染 HTML/Markdown。渲染默认关闭，可通过 [render].enabled 开启；服务异常
-  不会阻断文本功能。
+- RenderService 由 Tenko runtime 直接注册到 Launart，使用 Playwright 在本地离线
+  渲染 HTML/Markdown。渲染默认关闭，可通过 [render].enabled 开启；服务异常不会
+  阻断文本功能。
 - 数据层使用 SQLite、SQLAlchemy 和 entari-plugin-database。新 ORM 位于
   tenko/db/models.py，repository 位于 tenko/db/repositories.py；应用启动时会创建
   或迁移所需表，已有 SQLite 数据库文件可以继续使用。

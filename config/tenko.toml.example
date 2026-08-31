@@ -78,6 +78,7 @@ enabled = false
 timeout = 10.0
 width = 800
 quality = 85
+device_scale_factor = 2
 
 [exception]
 # 异常报告最近消息环形缓冲条数；超出后按先进先出淘汰。

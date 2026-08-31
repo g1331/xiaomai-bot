@@ -27,6 +27,7 @@ from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
 from .host.ratelimit import configure_rate_limiter
 from .host.updater import UpgradeManager, configure_updater
+from .render import RenderService
 
 
 def _configure_entari_superusers(
@@ -189,21 +190,23 @@ class TenkoRuntime:
             # failure does not prevent messages from reaching Entari.
             self.database_service = None
             logger.error("Tenko database is unavailable: {}", error)
+        if self.config.render.enabled:
+            manager.add_component(
+                RenderService(
+                    enabled=self.config.render.enabled,
+                    timeout=self.config.render.timeout,
+                    width=self.config.render.width,
+                    quality=self.config.render.quality,
+                    device_scale_factor=self.config.render.device_scale_factor,
+                )
+            )
+
         # PluginRuntime.load_all() only imports Tenko plugins through Entari's
         # load_plugin API, so it does not need a Launart component registration.
-        # Keep it after database model registration and before run_async: the
-        # official database service is then added by Entari's plugin manager.
+        # Keep it after database model and optional render service registration,
+        # and before run_async.
         self.plugin_runtime = PluginRuntime()
-        await self.plugin_runtime.load_all(
-            {
-                "render": {
-                    "enabled": self.config.render.enabled,
-                    "timeout": self.config.render.timeout,
-                    "width": self.config.render.width,
-                    "quality": self.config.render.quality,
-                }
-            }
-        )
+        await self.plugin_runtime.load_all()
         permission_manager = sys.modules.get("tenko.plugins.perm_manager")
         configure_test_group = getattr(permission_manager, "configure_test_group", None)
         if callable(configure_test_group):

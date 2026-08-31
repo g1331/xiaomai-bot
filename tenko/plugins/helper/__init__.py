@@ -14,7 +14,7 @@ from tenko.host.features import feature_service
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.host.plugins import PluginInfo, PluginRuntime
 from tenko.plugins._common import context_from_session, text_message
-from tenko.plugins.render import RenderService  # entari: plugin
+from tenko.render import RenderService
 from tenko.render import render_or_none
 
 

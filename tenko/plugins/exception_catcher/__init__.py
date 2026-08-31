@@ -22,7 +22,7 @@ from tenko.host.actions import (
     ActionFailure,
     ActionTargetUnavailable,
 )
-from tenko.plugins.render import RenderService  # entari: plugin
+from tenko.render import RenderService
 from tenko.render import render_or_none
 
 

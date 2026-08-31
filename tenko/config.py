@@ -587,6 +587,7 @@ class RenderConfig:
     timeout: float = 10.0
     width: int = 800
     quality: int = 85
+    device_scale_factor: int = 2
 
     def __post_init__(self) -> None:
         if self.timeout <= 0:
@@ -595,6 +596,8 @@ class RenderConfig:
             raise ValueError("render width 必须是正整数")
         if type(self.quality) is not int or not 0 <= self.quality <= 100:
             raise ValueError("render quality 必须是 0 到 100 的整数")
+        if type(self.device_scale_factor) is not int or self.device_scale_factor <= 0:
+            raise ValueError("render device_scale_factor 必须是正整数")
 
     @classmethod
     def from_mapping(cls, section: Mapping[str, Any]) -> RenderConfig:
@@ -604,6 +607,9 @@ class RenderConfig:
             timeout=_number(section, "timeout", defaults.timeout),
             width=_integer(section, "width", defaults.width),
             quality=_integer(section, "quality", defaults.quality),
+            device_scale_factor=_integer(
+                section, "device_scale_factor", defaults.device_scale_factor
+            ),
         )
 
 

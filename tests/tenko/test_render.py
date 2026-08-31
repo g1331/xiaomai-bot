@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from arclet.entari.plugin import get_plugins
 
 from tenko.config import RenderConfig, TenkoConfig
 from tenko.render import (
@@ -16,10 +15,24 @@ from tenko.render import (
 
 def test_render_config_defaults_and_mapping() -> None:
     config = TenkoConfig.from_mapping(
-        {"render": {"enabled": True, "timeout": 4.5, "width": 1024, "quality": 90}}
+        {
+            "render": {
+                "enabled": True,
+                "timeout": 4.5,
+                "width": 1024,
+                "quality": 90,
+                "device_scale_factor": 3,
+            }
+        }
     ).render
 
-    assert config == RenderConfig(enabled=True, timeout=4.5, width=1024, quality=90)
+    assert config == RenderConfig(
+        enabled=True,
+        timeout=4.5,
+        width=1024,
+        quality=90,
+        device_scale_factor=3,
+    )
     assert TenkoConfig().render == RenderConfig()
 
 
@@ -60,23 +73,6 @@ async def test_render_or_none_returns_none_when_disabled_or_unavailable() -> Non
         )
         is None
     )
-
-
-@pytest.mark.parametrize("loaded_plugin", ["render"], indirect=True)
-def test_render_plugin_registers_service_with_entari(loaded_plugin) -> None:
-    native_plugin = next(
-        plugin
-        for plugin in get_plugins(subplugged=True)
-        if plugin.id == "tenko.plugins.render"
-    )
-
-    service = native_plugin._services["tenko.render"]
-    assert isinstance(service, loaded_plugin.RenderService)
-    assert service.enabled is False
-    assert service.timeout == 10.0
-    assert service.width == 800
-    assert service.quality == 90
-    assert service.device_scale_factor == 2
 
 
 @pytest.mark.asyncio

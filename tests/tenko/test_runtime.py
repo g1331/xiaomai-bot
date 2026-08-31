@@ -13,6 +13,7 @@ from satori import EventType, LoginStatus
 from tenko import runtime as runtime_module
 from tenko.config import TenkoConfig
 from tenko.connection import OneBotConnection
+from tenko.render import RenderService
 from tenko.runtime import TenkoRuntime
 
 
@@ -40,7 +41,7 @@ async def test_run_async_loads_plugins_before_starting_entari(
 
     plugin_runtime = Mock()
 
-    async def load_all(configs):
+    async def load_all():
         lifecycle.append("plugins")
         return {}
 
@@ -63,16 +64,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
     app.ensure_manager.assert_not_called()
     manager_provider.assert_called_once_with(runtime_module.Launart)
     connection.install.assert_called_once_with(manager)
-    plugin_runtime.load_all.assert_awaited_once_with(
-        {
-            "render": {
-                "enabled": False,
-                "timeout": 10.0,
-                "width": 800,
-                "quality": 85,
-            }
-        }
-    )
+    manager.add_component.assert_not_called()
+    plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
     database_loader.assert_called_once_with(runtime.config.database)
     assert runtime.database_service is database_loader.return_value
@@ -85,7 +78,7 @@ async def test_run_async_loads_plugins_before_starting_entari(
 
 
 @pytest.mark.asyncio
-async def test_run_async_does_not_manually_register_render_service(
+async def test_run_async_registers_enabled_render_service(
     monkeypatch,
 ) -> None:
     connection = Mock()
@@ -93,7 +86,17 @@ async def test_run_async_does_not_manually_register_render_service(
     monkeypatch.setattr(
         runtime_module, "OneBotConnection", Mock(return_value=connection)
     )
-    config = TenkoConfig.from_mapping({"render": {"enabled": True}})
+    config = TenkoConfig.from_mapping(
+        {
+            "render": {
+                "enabled": True,
+                "timeout": 4.5,
+                "width": 1024,
+                "quality": 91,
+                "device_scale_factor": 3,
+            }
+        }
+    )
     runtime = TenkoRuntime(config)
     manager = Mock()
     app = Mock()
@@ -112,8 +115,15 @@ async def test_run_async_does_not_manually_register_render_service(
 
     await runtime.run_async()
 
-    manager.add_component.assert_not_called()
-    plugin_runtime.load_all.assert_awaited_once()
+    manager.add_component.assert_called_once()
+    service = manager.add_component.call_args.args[0]
+    assert isinstance(service, RenderService)
+    assert service.enabled is True
+    assert service.timeout == 4.5
+    assert service.width == 1024
+    assert service.quality == 91
+    assert service.device_scale_factor == 3
+    plugin_runtime.load_all.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.png" alt="TENKO QQ group management bot banner">
+  <img src="docs/assets/banner.png" alt="TENKO chat group management bot banner">
 </p>
 
 <p align="center">
@@ -9,10 +9,11 @@
   <img src="https://img.shields.io/badge/Stack-Entari%20%7C%20Satori%20%7C%20OneBot%2011-C7A45B?style=flat-square&labelColor=102D47" alt="Entari Satori OneBot 11 stack">
 </p>
 
-Tenko 是一个面向 QQ 群的管理 bot，基于 Entari 与 Satori 协议抽象构建，通过
-OneBot 11 协议接入 QQ；协议端推荐使用 NapCat，也可替换为任何兼容 OneBot 11 /
-Satori 的实现。它提供权限、群管理、账号响应策略、功能开关、状态查询和宿主升级
-等能力。
+Tenko 是一个面向聊天群组的管理 bot，基于 Entari 与 Satori 协议抽象构建，
+提供权限、群管理、多账号响应策略、功能开关、状态查询和宿主升级等能力。
+Satori 的多协议设计使同一套插件逻辑可以运行在不同聊天平台上——当前通过
+OneBot 11 协议接入 QQ（协议端推荐 NapCat，也可替换为任何兼容实现），
+后续接入新平台只需增加对应的协议适配层。
 
 <p align="center">
   <img src="docs/assets/sections.png" alt="Tenko feature sections" width="100%">
@@ -25,14 +26,14 @@ Tenko 的名字取自东方 Project 中的比那名居天子——掌管大地�
 想要成为的样子：安静地悬于群聊之上，该出手时出手，无事时便隐入云端。
 
 她的前身是 xiaomai-bot——诞生于 Graia Ariadne 框架时代的群管工具，
-在多个 QQ 群里服役多年。2026 年夏天，旧骨架随协议与依赖一同老化，
+在多个聊天群里服役多年。2026 年夏天，旧骨架随协议与依赖一同老化，
 于是推倒重来：以 Entari 为宿主、Satori 为协议抽象，沿用的是那套
 沉淀下来的权限模型、群管逻辑与升级体系，舍去的是 Graia 时代的旧船票。
 舟已换，航线未变——便是 Tenko。
 
 ## 功能说明
 
-Tenko 围绕 QQ 群的日常运营提供一组开箱即用的能力：
+Tenko 围绕聊天群组的日常运营提供一组开箱即用的能力：
 
 - **权限体系**——按成员和群两级管理权限，与平台管理角色自动同步；
 - **群管理**——禁言、解禁、撤回、踢出、加精、加群审批等动作，带能力探测与失败回执；
@@ -165,7 +166,7 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     channel = "stable"
     policy = "check"
 
-不要把真实 token、QQ 号、GitHub 凭据或其他密钥写入版本库。需要保护的测试群
+不要把真实 token、平台用户标识、GitHub 凭据或其他密钥写入版本库。需要保护的测试群
 可以在 TOML 顶层设置 test_group；留空或省略表示不启用该保护。
 
 ## 配置参考

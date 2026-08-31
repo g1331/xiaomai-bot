@@ -1,7 +1,7 @@
 [project]
 name = "tenko"
 version = "3.0.1"
-description = "QQ group management bot built on Entari and Satori protocol abstraction (OneBot 11)"
+description = "Chat group management bot built on Entari and Satori protocol abstraction"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [

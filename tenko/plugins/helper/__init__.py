@@ -26,8 +26,8 @@ plugin.metadata(
     description="根据 Entari 当前注册命令生成帮助文本。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -54,7 +54,7 @@ help_command = Alconna(
 
 
 def registered_commands():
-    """Return the live command registry maintained by Alconna."""
+    """返回 Alconna 维护的实时命令注册表。"""
 
     return [item for item in command_manager.get_commands() if not item.meta.hide]
 
@@ -118,11 +118,10 @@ def _plugin_item(
 
 
 def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
-    """Build the three-section help model from loaded native plugins.
+    """根据已加载的原生插件构建由三个部分组成的帮助模型。
 
-    The directory scan is deliberately kept in ``PluginRuntime``.  Only
-    plugins that are currently registered with Entari are displayed, so an
-    unimported directory cannot appear as a misleading runnable feature.
+    目录扫描由 ``PluginRuntime`` 负责并刻意保留在那里。这里只显示当前已向
+    Entari 注册的插件，因此未导入的目录不会作为看似可运行的功能误显示。
     """
 
     sections: dict[str, list[dict[str, Any]]] = {
@@ -179,7 +178,7 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
 
 
 def format_help_text(data: dict[str, Any]) -> str:
-    """Format the help model into its text fallback."""
+    """将帮助模型格式化为文本回退结果。"""
 
     lines = [str(data["title"]), "用法：/帮助 [编号] 查看单项命令详情"]
     for section in data["sections"]:
@@ -193,7 +192,7 @@ def format_help_text(data: dict[str, Any]) -> str:
 
 
 def build_help(index: int | None = None, *, group_id: str | int | None = None) -> str:
-    """Build the full plugin help or one plugin's native command help."""
+    """构建完整的插件帮助，或某个插件的原生命令帮助。"""
 
     if index is not None:
         plugins = _help_plugins()

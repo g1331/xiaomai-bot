@@ -6,13 +6,12 @@ DEFAULT_COMMAND_PREFIX = "/"
 
 
 def configure_command_prefix(prefix: str = DEFAULT_COMMAND_PREFIX) -> None:
-    """Configure the one native prefix source shared by all Tenko commands.
+    """配置所有 Tenko 命令共用的唯一原生命令前缀来源。
 
-    Alconna copies ``default_namespace.prefixes`` when each command is built,
-    so this function must run before Tenko plugins are imported.  Entari's
-    command dispatcher also has an optional message-level prefix stripper;
-    clearing it after Entari initialization prevents the same prefix from
-    being consumed twice before Alconna sees the message.
+    Alconna 在构建每条命令时会复制 ``default_namespace.prefixes``，因此此函数
+    必须在导入 Tenko 插件之前运行。Entari 的 command dispatcher 还提供可选的
+    消息级 prefix stripper；在 Entari 初始化后将其清空，可避免同一前缀在
+    Alconna 看到消息前被重复消费。
     """
 
     if not isinstance(prefix, str) or not prefix:
@@ -20,11 +19,11 @@ def configure_command_prefix(prefix: str = DEFAULT_COMMAND_PREFIX) -> None:
 
     alconna_config.default_namespace.prefixes = [prefix]
 
-    # Keep the integration with Entari in this central adapter instead of
-    # making every plugin opt out of the dispatcher preprocessor.
+    # 在这个中央适配器中统一处理与 Entari 的集成，避免每个插件都必须单独退出
+    # dispatcher 的 preprocessor。
     try:
         from arclet.entari.config import EntariConfig
-    except ImportError:  # pragma: no cover - Alconna-only tooling
+    except ImportError:  # pragma: no cover - 仅供 Alconna 工具使用
         return
 
     if EntariConfig._inited:

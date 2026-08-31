@@ -11,7 +11,7 @@ from typing import Any
 
 try:
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 回退路径
     import tomli as tomllib
 
 from arclet.alconna import Alconna, CommandMeta, Option, store_true
@@ -29,7 +29,7 @@ from tenko.render import render_or_none
 
 try:
     import psutil
-except ImportError:  # pragma: no cover - exercised in minimal deployments
+except ImportError:  # pragma: no cover - 精简部署场景
     psutil = None
 
 
@@ -41,8 +41,8 @@ plugin.metadata(
     description="查询 Tenko 当前会话、资源、消息统计和账号路由状态。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -358,7 +358,7 @@ def build_status(
     detailed: bool = False,
     version_details: tuple[str, ...] | None = None,
 ) -> str:
-    """Build the legacy text form from the shared status context."""
+    """根据共享状态上下文构建旧版文本形式。"""
 
     return str(
         build_status_data(

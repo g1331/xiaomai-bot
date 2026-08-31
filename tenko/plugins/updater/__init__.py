@@ -36,8 +36,8 @@ plugin.metadata(
     description="检查、准备并通过外部重启流程升级 Tenko 宿主。",
     classifier=["required", "host"],
 )
-# Entari 0.18.6 does not expose default_switch in PluginMetadata.  Keep the
-# compatibility marker used by the host's legacy-state inspector.
+# Entari 0.18.6 不会在 PluginMetadata 中暴露 default_switch。保留供 host 的
+# legacy-state inspector 使用的兼容性标记。
 plugin.get_plugin().metadata.default_switch = True
 
 

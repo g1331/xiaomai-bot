@@ -36,8 +36,8 @@ plugin.metadata(
     description="管理 Tenko 的成员权限、群权限和权限同步。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -179,7 +179,7 @@ def _current_group(session: Session, group: Query[int]) -> str | None:
 
 
 async def _target_group(session: Session, group: Query[int]) -> tuple[str | None, bool]:
-    """Return target group ID and whether it differs from the current group."""
+    """返回目标群 ID，以及它是否不同于当前群。"""
 
     context = context_from_session(session)
     target = _current_group(session, group)
@@ -796,9 +796,8 @@ async def auto_change_member_permission(event: GuildMemberUpdatedEvent):
 
 @plugin.listen(InternalEvent)
 async def log_unmapped_membership_capability(event: InternalEvent):
-    # The OneBot adapter has no Satori event for some membership capabilities.
-    # Keep an explicit log until the NapCat capability mapping is confirmed;
-    # do not silently discard the incoming internal event.
+    # OneBot 适配器对于某些成员管理能力没有对应的 Satori 事件。
+    # 在 NapCat 能力映射得到确认前保留显式日志；不要静默丢弃收到的内部事件。
     logger.warning(
         "收到未映射的成员管理能力事件，待 NapCat capability 确认: {}",
         getattr(event._origin, "_type", None),

@@ -47,8 +47,8 @@ def test_onebot_event_type_parser(raw: dict, expected: str) -> None:
 
 @pytest.mark.asyncio
 async def test_reverse_adapter_shapes_send_action_json() -> None:
-    # The pinned official adapter owns this wire shaping path; lock its JSON
-    # contract here so a dependency upgrade cannot silently change the action.
+    # 固定版本的官方适配器负责这条 wire shaping 路径；在此锁定其 JSON 合约，
+    # 避免依赖升级静默改变该 action。
     adapter = OneBot11ReverseAdapter(
         OneBot11ReverseConfig(access_token="test-token", timeout=1)
     )

@@ -19,7 +19,7 @@ from tenko.host.actions import (
 
 
 def context_from_session(session: Session) -> MessageContext:
-    """Convert Entari's message session to the Tenko permission context."""
+    """将 Entari 的消息 Session 转换为 Tenko 权限上下文。"""
 
     origin = getattr(session.event, "_origin", None)
     if origin is None:
@@ -28,7 +28,7 @@ def context_from_session(session: Session) -> MessageContext:
 
 
 def text_message(content: str) -> MessageChain:
-    """Build a native Entari message from a Satori text element."""
+    """从 Satori 文本元素构造 Entari 原生消息。"""
 
     return MessageChain(Text(content))
 
@@ -143,7 +143,7 @@ async def report_action_error(error: BaseException, origin: object) -> None:
 
 
 def normalize_targets(value: object) -> tuple[str, ...]:
-    """Normalize values already parsed by Alconna into database IDs."""
+    """将 Alconna 已解析的值规范化为数据库 ID。"""
 
     if isinstance(value, str):
         return (value,)

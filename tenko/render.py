@@ -11,43 +11,41 @@ from loguru import logger
 
 try:
     from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
-except ImportError:  # pragma: no cover - dependencies are declared separately
+except ImportError:  # pragma: no cover - 依赖项单独声明
     Environment = FileSystemLoader = StrictUndefined = select_autoescape = None
 
 try:
     from markdown_it import MarkdownIt
-except ImportError:  # pragma: no cover - dependencies are declared separately
+except ImportError:  # pragma: no cover - 依赖项单独声明
     MarkdownIt = None
 
 try:
     from playwright.async_api import async_playwright
-except ImportError:  # pragma: no cover - rendering is optional at runtime
+except ImportError:  # pragma: no cover - 运行时可选渲染
     async_playwright = None
 
 
 class RenderError(RuntimeError):
-    """Base error for template or browser rendering failures."""
+    """模板或浏览器渲染失败的基础错误。"""
 
 
 class RenderUnavailableError(RenderError):
-    """Raised when rendering is disabled or the browser cannot be started."""
+    """渲染被禁用或浏览器无法启动时抛出。"""
 
 
 class RenderTimeoutError(RenderError):
-    """Raised when one rendering operation exceeds its configured timeout."""
+    """单次渲染操作超过配置的超时时间时抛出。"""
 
 
 _TEMPLATE_DIR = Path(__file__).with_name("templates")
 
 
 class RenderService(Service):
-    """Render Tenko templates with one shared Chromium browser.
+    """使用一个共享的 Chromium 浏览器渲染 Tenko 模板。
 
-    The browser is started during Launart's preparing phase when the service is
-    enabled. ``render_template`` also starts it lazily so the service remains
-    useful in isolated tests and small host integrations without a manager.
-    Each request gets a fresh browser context, which is closed before the
-    request returns.
+    启用该服务时，浏览器会在 Launart 的 preparing 阶段启动。``render_template``
+    也会按需启动浏览器，使该服务在没有 manager 的隔离测试和小型宿主集成中仍
+    可使用。每个请求都会创建新的浏览器上下文，并在请求返回前关闭。
     """
 
     id = "tenko.render"
@@ -99,7 +97,7 @@ class RenderService(Service):
 
     @property
     def available(self) -> bool:
-        """Whether a usable browser is currently held by this service."""
+        """返回此服务当前是否持有可用浏览器。"""
 
         return self.enabled and self.browser is not None
 
@@ -114,7 +112,7 @@ class RenderService(Service):
         return self._render_semaphore
 
     async def start(self) -> bool:
-        """Start the shared Playwright browser, returning whether it is ready."""
+        """启动共享的 Playwright 浏览器，并返回其是否已就绪。"""
 
         if not self.enabled:
             return False
@@ -170,7 +168,7 @@ class RenderService(Service):
         )
 
     async def close(self) -> None:
-        """Close Chromium and the Playwright driver held by this service."""
+        """关闭此服务持有的 Chromium 和 Playwright driver。"""
 
         browser = self.browser
         playwright = self._playwright
@@ -194,15 +192,14 @@ class RenderService(Service):
                 logger.exception("关闭 RenderService Playwright 失败")
 
     async def launch(self, manager: Launart) -> None:
-        """Integrate browser startup and cleanup into the host lifecycle."""
+        """将浏览器启动和清理接入宿主生命周期。"""
 
         async with self.stage("preparing"):
             if self.enabled:
                 try:
                     await self.start()
                 except RenderError as error:
-                    # Rendering is an optional output enhancement. A missing
-                    # browser must not prevent the message host from starting.
+                    # 渲染是可选的输出增强功能。缺少浏览器不能阻止消息宿主启动。
                     logger.warning("图片渲染不可用，将使用文本回退：{}", error)
 
         async with self.stage("blocking"):
@@ -258,7 +255,7 @@ class RenderService(Service):
         async with self._get_render_semaphore():
             html = self._render_html(template_name, context)
             await self.start()
-            if self.browser is None:  # pragma: no cover - guarded by start()
+            if self.browser is None:  # pragma: no cover - 由 start() 负责保护
                 raise RenderUnavailableError("Chromium 不可用")
 
             browser_context = None
@@ -284,7 +281,7 @@ class RenderService(Service):
     async def render_template(
         self, template_name: str, context: dict[str, object]
     ) -> bytes:
-        """Render a named HTML template into a full-page JPEG buffer."""
+        """将指定的 HTML 模板渲染为整页 JPEG 缓冲区。"""
 
         if not self.enabled:
             raise RenderUnavailableError("图片渲染未启用")
@@ -310,7 +307,7 @@ class RenderService(Service):
     async def render_markdown(
         self, md_text: str, template_name: str = "markdown.html"
     ) -> bytes:
-        """Convert Markdown to HTML and render it with the report template."""
+        """将 Markdown 转换为 HTML，并使用报告模板渲染。"""
 
         if not isinstance(md_text, str):
             raise RenderError("Markdown 内容必须是字符串")
@@ -386,11 +383,10 @@ async def render_or_none(
     *args: Any,
     **kwargs: Any,
 ) -> bytes | None:
-    """Run a render operation and turn every ordinary failure into ``None``.
+    """执行渲染操作，并将所有普通失败转换为 ``None``。
 
-    ``service`` is deliberately explicit so callers use Entari's injected
-    service rather than a process-wide renderer. ``None`` is reserved for
-    utility or unit-test callers that explicitly have no injected service.
+    ``service`` 参数被刻意显式传入，以便调用方使用 Entari 注入的服务，而不是
+    进程级渲染器。``None`` 仅保留给明确没有注入服务的工具函数或单元测试调用方。
     """
 
     if service is None or not isinstance(method_name, str):

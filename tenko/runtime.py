@@ -103,7 +103,7 @@ class TenkoRuntime:
             if callback == native_handler:
                 app.event_callbacks[index] = self.message_handler.guard(callback)
                 break
-        else:  # pragma: no cover - Entari registers this callback in __init__
+        else:  # pragma: no cover - Entari 在 __init__ 中注册此回调
             raise RuntimeError("Entari native event handler is not registered")
         # OneBot 11 的 group_decrease.leave/kick 在当前适配器中都先转换为
         # GUILD_MEMBER_REMOVED；kick_me 转换为 GUILD_REMOVED。先注册退群
@@ -165,8 +165,8 @@ class TenkoRuntime:
             )
 
     async def run_async(self) -> None:
-        # Entari's service provider resolves components through creart's
-        # Launart instance; use the same manager that App.run_async receives.
+        # Entari 的 service provider 通过 creart 的 Launart 实例解析组件；这里
+        # 使用与 App.run_async 接收的同一个 manager。
         manager = it(Launart)
         self.manager = manager
         self.connection.install(manager)
@@ -179,9 +179,8 @@ class TenkoRuntime:
         try:
             self.database_service = load_database_plugin(self.config.database)
         except DatabaseUnavailableError as error:
-            # PermissionChecker and the database-backed plugins have explicit
-            # fallback/error paths. Keep the host alive so a temporary database
-            # failure does not prevent messages from reaching Entari.
+            # PermissionChecker 和依赖数据库的插件都有明确的回退/错误路径。
+            # 保持宿主存活，使临时数据库故障不会阻止消息到达 Entari。
             self.database_service = None
             logger.error("Tenko database is unavailable: {}", error)
         if self.config.render.enabled:
@@ -195,10 +194,9 @@ class TenkoRuntime:
                 )
             )
 
-        # PluginRuntime.load_all() only imports Tenko plugins through Entari's
-        # load_plugin API, so it does not need a Launart component registration.
-        # Keep it after database model and optional render service registration,
-        # and before run_async.
+        # PluginRuntime.load_all() 只通过 Entari 的 load_plugin API 导入 Tenko
+        # 插件，因此不需要注册 Launart 组件。将其放在数据库模型和可选
+        # RenderService 注册之后、run_async 之前。
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
         permission_manager = sys.modules.get("tenko.plugins.perm_manager")
@@ -219,9 +217,9 @@ class TenkoRuntime:
             command_prefix=self.config.runtime.command_prefix,
             rate_limit_override_permission=self.config.ratelimit.override_permission,
         )
-        # The Satori client must start after the server socket is accepting
-        # connections. Otherwise its first connection attempt can race Uvicorn
-        # and events arriving in that window would not be replayed to a client.
+        # Satori client 必须在 server socket 开始接受连接后启动。否则其第一次
+        # 连接尝试可能与 Uvicorn 发生竞争，该时间窗口内到达的事件也不会被
+        # replay 给 client。
         app.required = {*app.required, self.connection.ready_service.id}
         for connection in app.connections:
             connection.required = {

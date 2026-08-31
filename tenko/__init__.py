@@ -3,8 +3,8 @@
 from .commands import configure_command_prefix
 
 
-# Plugin modules construct their Alconna objects during import.  Establish the
-# default before any ``tenko.plugins`` package can be imported.
+# 插件模块会在导入期间构造 Alconna 对象；在任何
+# ``tenko.plugins`` 包被导入之前先设置默认值。
 configure_command_prefix()
 
 __all__ = ["configure_command_prefix"]

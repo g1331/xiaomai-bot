@@ -20,7 +20,7 @@ from .host.accounts import AccountRegistry
 
 
 def _event_group_id(event: Event) -> str | None:
-    """Extract a group ID from standard Satori fields or OneBot raw data."""
+    """从标准 Satori 字段或 OneBot 原始数据中提取群 ID。"""
 
     guild = getattr(event, "guild", None)
     if (group_id := getattr(guild, "id", None)) is not None:
@@ -365,8 +365,8 @@ class MessageEventHandler:
     command_prefix: str = "/"
     metrics: MessageMetrics | None = None
     action_service: Any | None = None
-    # Keep origin references while they are in the bounded cache so an object
-    # id cannot be reused for a different event before the duplicate check.
+    # 在有界缓存中保留 origin 引用，确保在重复检查前，object ID 不会被其他
+    # 事件复用。
     _received_event_cache: deque[tuple[int, object]] = field(
         init=False,
         default_factory=lambda: deque(maxlen=_RECEIVED_EVENT_CACHE_SIZE),

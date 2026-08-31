@@ -148,7 +148,7 @@ def _parse(command: Alconna, text: str):
         return command.parse(text)
     except (
         Exception
-    ) as exc:  # pragma: no cover - turns parser regressions into assertion output
+    ) as exc:  # pragma: no cover - 将解析器回归转换为断言输出
         pytest.fail(f"解析 {text!r} 时不应抛出 {exc!r}")
 
 
@@ -189,9 +189,8 @@ def test_every_required_command_has_positive_negative_and_boundary_matrix(
             f"请{command.command}我",
         )
         if command.command in {"同意邀请", "拒绝邀请"}:
-            # request_id is an opaque platform flag and can legally be
-            # adjacent to the command header; do not treat that token as a
-            # command-boundary assertion.
+            # request_id 是不透明的平台标记，可以合法地紧邻命令头；不要将该
+            # token 当作命令边界断言。
             negative = tuple(
                 text for text in negative if text != f"/{command.command}x"
             )
@@ -211,7 +210,7 @@ def test_every_required_command_has_positive_negative_and_boundary_matrix(
 
 @pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
 def test_help_list_and_out_of_range_detail_use_native_prefix(loaded_plugin) -> None:
-    # The fixture loads helper only, so its native registry is deterministic.
+    # 该 fixture 只加载 helper，因此其原生注册表是确定的。
     assert "/帮助" in loaded_plugin.build_help()
     assert loaded_plugin.build_help(0) == "编号不在范围内~"
     assert loaded_plugin.build_help(99999999999999999999) == "编号不在范围内~"

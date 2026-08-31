@@ -69,14 +69,13 @@ _PERMISSION_ERROR_CODES = frozenset(
         "ERR_NOT_FRIEND",
     }
 )
-# NapCat's current ``SetGroupBan`` source explicitly records
-# ``120101005 / ERR_NOT_GROUP_ADMIN`` for a bot without group-admin access:
-# https://github.com/NapNeko/NapCatQQ/blob/main/packages/napcat-onebot/action/group/SetGroupBan.ts
-# OneBot transports the underlying ``errMsg`` as the free-form ``message`` /
-# ``wording`` fields, not as a standard symbolic enum.  The two other names
-# below are compatibility variants, not a claim of a complete official list;
-# keep the generic ERR_NOT_* and *_ADMIN/*_OWNER rules because NapCat's source
-# does not publish a stable symbolic error-code enum.
+# NapCat 当前的 ``SetGroupBan`` 源码明确记录了
+# bot 没有群管理员权限时对应的 ``120101005 / ERR_NOT_GROUP_ADMIN``：
+# 参考源码链接：https://github.com/NapNeko/NapCatQQ/blob/main/packages/napcat-onebot/action/group/SetGroupBan.ts
+# OneBot 会将底层 ``errMsg`` 作为自由格式的 ``message`` / ``wording`` 字段
+# 传输，而不是标准的符号枚举。下面另外两个名称是兼容变体，并不表示完整
+# 的官方列表；由于 NapCat 的源码没有发布稳定的符号错误码枚举，因此保留
+# 通用的 ERR_NOT_* 和 *_ADMIN/*_OWNER 规则。
 _PERMISSION_ERROR_CODE_PATTERN = re.compile(
     r"\bERR_NOT_[A-Z0-9_]+\b|\b[A-Z0-9_]+_(?:ADMIN|OWNER)\b"
 )
@@ -594,11 +593,10 @@ class ActionService:
             return known
         protocol = account.protocol
         result: object | None = None
-        # The OneBot adapter's Satori ``guild_member_get`` currently builds a
-        # Member without copying the raw ``role`` field.  Prefer the standard
-        # raw API inside this host boundary so Administrator/Owner discovery
-        # is based on the actual platform response; retain the typed Satori
-        # method as a fallback for other adapters.
+        # OneBot 适配器当前的 Satori ``guild_member_get`` 会构造一个不复制原始
+        # ``role`` 字段的 Member。优先在这个宿主边界内调用标准 raw API，使
+        # Administrator/Owner 的发现基于平台实际响应；对其他适配器保留类型化
+        # 的 Satori 方法作为回退。
         internal = getattr(protocol, "internal", None)
         member_get = getattr(protocol, "guild_member_get", None)
         try:

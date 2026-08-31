@@ -1,4 +1,4 @@
-"""Tenko host services."""
+"""Tenko 宿主服务。"""
 
 from .accounts import AccountRegistry, account_registry
 from .actions import (

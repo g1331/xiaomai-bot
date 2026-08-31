@@ -55,8 +55,8 @@ def _account_default_availability(account: Account) -> bool:
     if connected is not None and hasattr(connected, "is_set"):
         if connected.is_set():
             return True
-        # Account objects created by Satori start with an ONLINE Login status,
-        # before the client has had a chance to set ``connected``.
+        # 由 Satori 创建的 Account 对象初始为 ONLINE Login 状态，此时 client
+        # 还没有机会设置 ``connected``。
         if status_name and status_name not in {"online", "connect", "reconnect"}:
             return False
     return True
@@ -565,9 +565,8 @@ class AccountRegistry:
             selected = self._accounts.get(selected_id)
             if selected in available:
                 return selected
-            # The choice belongs to this message.  Do not re-route it after
-            # the chosen account goes offline or becomes muted, otherwise a
-            # late duplicate event could be processed by a second account.
+            # 这个选择属于当前消息。选定账号离线或被禁言后不要重新选路，否则
+            # 迟到的重复事件可能会被第二个账号处理。
             return None
         selected = random.choice(available)
         self._event_selections[selection_key] = _account_id(selected)

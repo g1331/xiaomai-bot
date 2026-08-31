@@ -55,8 +55,8 @@ plugin.metadata(
     description="向开启指定功能的群推送公告，并逐条报告结果。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -255,7 +255,7 @@ async def pusher(
 
 
 def format_results(results: Iterable[PushResult]) -> str:
-    """Format an announcement result summary safe for the source group."""
+    """格式化适合在来源群发送的公告结果摘要。"""
 
     entries = tuple(results)
     succeeded = sum(result.status == "sent" for result in entries)
@@ -268,7 +268,7 @@ def format_results(results: Iterable[PushResult]) -> str:
 
 
 def format_diagnostic_results(results: Iterable[PushResult]) -> str:
-    """Format the full per-group result for a Master private message."""
+    """为 Master 私聊格式化包含每个群完整结果的消息。"""
 
     entries = tuple(results)
     if not entries:

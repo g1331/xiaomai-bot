@@ -19,8 +19,8 @@ plugin.metadata(
     description="管理群内插件功能开关。",
     classifier=["required", "host"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 

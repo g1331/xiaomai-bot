@@ -41,7 +41,7 @@ from .perm import Permission, PermissionChecker, PermissionRegistry
 
 try:
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover - only exercised on Python 3.10
+except ModuleNotFoundError:  # pragma: no cover - 仅在 Python 3.10 中执行
     import tomli as tomllib
 
 
@@ -620,8 +620,8 @@ class GitTagSource:
                     version=version,
                     tag=tag,
                     source=self.name,
-                    # Annotated tags report an object SHA and a peeled commit SHA;
-                    # the latter is what clone + rev-parse can verify.
+                    # Annotated tag 会报告 object SHA 和 peeled commit SHA；后者
+                    # 是 clone + rev-parse 能够验证的值。
                     commit_sha=peeled_shas.get(f"refs/tags/{tag}", tag_sha),
                     prerelease=version.is_prerelease,
                 )
@@ -801,9 +801,8 @@ class GitHubReleaseSource(_ArchiveSource):
             for asset in assets
             if isinstance(asset, Mapping) and asset.get("browser_download_url")
         ]
-        # Prefer an already verifiable asset when a release contains checksums or
-        # multiple build variants; otherwise keep the first downloadable asset so
-        # installation reports the missing digest explicitly.
+        # 当发布包含校验和或多个构建变体时，优先选择已经可验证的制品；否则
+        # 保留第一个可下载制品，以便安装过程明确报告缺少 digest。
         return next((asset for asset in candidates if self._digest(asset)), None) or (
             candidates[0] if candidates else None
         )

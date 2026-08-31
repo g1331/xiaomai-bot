@@ -58,8 +58,8 @@ async def test_render_or_none_returns_none_when_disabled_or_unavailable() -> Non
         )
         is None
     )
-    # Direct unit tests bypass Entari's listener injector, so absence is passed
-    # explicitly instead of being resolved through a module-level fallback.
+    # 直接单元测试会绕过 Entari 的 listener injector，因此显式传入缺失值，
+    # 而不是通过模块级 fallback 解析。
     assert await render_or_none(None, "render_template", "status.html", {}) is None
 
     unavailable = RenderService(enabled=True)

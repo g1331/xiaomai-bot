@@ -34,8 +34,8 @@ plugin.metadata(
     description="捕获 Entari 全局异常并向超级用户发送带上下文的取证报告。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -318,7 +318,7 @@ async def except_handle(
     *,
     render_service: RenderService,
 ):
-    """Handle the exception event emitted by Entari's dispatcher."""
+    """处理 Entari dispatcher 发出的异常事件。"""
 
     if isinstance(event.origin, ExceptionEvent):
         return

@@ -22,8 +22,8 @@ plugin.metadata(
     description="查询并管理 Tenko 多账号在线、群绑定、响应策略和禁言状态。",
     classifier=["required"],
 )
-# Entari 0.18.6 has no constructor field for default_switch.  Keep the
-# compatibility marker on native metadata for host/plugins.py and inspectors.
+# Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
+# metadata 上，供 host/plugins.py 和 inspectors 使用。
 plugin.get_plugin().metadata.default_switch = True
 
 
@@ -47,7 +47,7 @@ def _account_label(
 
 
 def format_group_bots(registry: AccountRegistry, group_id: str | int) -> str:
-    """Format one group's binding and availability counts."""
+    """格式化单个群的绑定数和可用数。"""
 
     normalized_group = str(group_id)
     accounts = registry.bound_accounts_for_group(normalized_group)
@@ -59,7 +59,7 @@ def format_group_bots(registry: AccountRegistry, group_id: str | int) -> str:
 
 
 def format_account_groups(registry: AccountRegistry, account_id: str | int) -> str:
-    """Format one account and every known group route without changing state."""
+    """格式化单个账号及其所有已知群路由，不改变状态。"""
 
     normalized_account = str(account_id)
     if registry.get(normalized_account) is None:
@@ -84,7 +84,7 @@ def format_account_groups(registry: AccountRegistry, account_id: str | int) -> s
 
 
 def format_online_bots(registry: AccountRegistry) -> str:
-    """Format the aggregate availability of all registered accounts."""
+    """格式化所有已注册账号的总体可用情况。"""
 
     accounts = tuple(registry.accounts.items())
     online_count = sum(registry.is_available(account_id) for account_id, _ in accounts)
@@ -130,7 +130,7 @@ async def _render_list(
 def build_group_bots_data(
     registry: AccountRegistry, group_id: str | int
 ) -> dict[str, object] | None:
-    """Build current-group counts without exposing account identities."""
+    """构建当前群的数量汇总，不暴露账号身份。"""
 
     normalized_group = str(group_id)
     bound = registry.bound_accounts_for_group(normalized_group)
@@ -170,7 +170,7 @@ def _account_group_labels(
 def build_account_groups_data(
     registry: AccountRegistry, account_id: str | int
 ) -> dict[str, object] | None:
-    """Build one Master-only account route card."""
+    """构建仅供 Master 查看的一张账号路由卡片。"""
 
     normalized_account = str(account_id)
     if registry.get(normalized_account) is None:
@@ -212,7 +212,7 @@ def build_account_groups_data(
 def build_all_account_groups_data(
     registry: AccountRegistry, account_ids: tuple[str, ...]
 ) -> dict[str, object]:
-    """Build all cross-group routes for the Master-only list view."""
+    """构建仅供 Master 查看列表使用的全部跨群路由。"""
 
     items = []
     for index, account_id in enumerate(account_ids, 1):
@@ -239,7 +239,7 @@ def build_all_account_groups_data(
 def build_online_bots_data(
     registry: AccountRegistry, group_id: str | int
 ) -> dict[str, object] | None:
-    """Build current-group online counts without exposing account identities."""
+    """构建当前群的在线数量汇总，不暴露账号身份。"""
 
     normalized_group = str(group_id)
     bound = registry.bound_accounts_for_group(normalized_group)

@@ -7,7 +7,7 @@ from typing import Any
 
 try:
     import tomllib
-except ModuleNotFoundError:  # pragma: no cover - only exercised on Python 3.10
+except ModuleNotFoundError:  # pragma: no cover - 仅在 Python 3.10 中执行
     import tomli as tomllib
 
 
@@ -213,8 +213,8 @@ class OneBotConfig:
         else:
             host = self.listen_host
 
-        # satori-python-client builds its URL from this value and therefore
-        # needs IPv6 literals in URL form rather than socket-address form.
+        # satori-python-client 会根据此值构造 URL，因此 IPv6 字面量需要使用
+        # URL 形式，而不是 socket-address 形式。
         if ":" in host and not host.startswith("["):
             return f"[{host}]"
         return host

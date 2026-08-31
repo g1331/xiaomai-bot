@@ -127,7 +127,7 @@ def _scalar(result: object) -> object | None:
         if len(mapping) == 1:
             return next(iter(mapping.values()))
     try:
-        return result[0]  # SQLAlchemy Row and similar row objects.
+        return result[0]  # SQLAlchemy Row 和类似的行对象。
     except (IndexError, KeyError, TypeError):
         return result
 
@@ -263,9 +263,8 @@ class PermissionChecker:
             if not _is_database_unavailable(error):
                 raise
             self._record_database_failure(group_id, error)
-            # This is the old core/control.py behavior for a group without a
-            # GroupPerm row: an unavailable database has the same permission
-            # semantics as that missing row, so commands remain usable.
+            # 这是旧版 core/control.py 对没有 GroupPerm 记录的群所采用的行为：
+            # 数据库不可用时，其权限语义与缺少该记录相同，因此命令仍可使用。
             return GroupPermission.ActiveGroup
         return _level(result)
 

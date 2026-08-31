@@ -64,7 +64,9 @@ async def test_run_async_loads_plugins_before_starting_entari(
     app.ensure_manager.assert_not_called()
     manager_provider.assert_called_once_with(runtime_module.Launart)
     connection.install.assert_called_once_with(manager)
-    manager.add_component.assert_not_called()
+    manager.add_component.assert_called_once()
+    registered = manager.add_component.call_args.args[0]
+    assert registered.id == "tenko.render"
     plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
     database_loader.assert_called_once_with(runtime.config.database)

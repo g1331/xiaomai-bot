@@ -46,6 +46,7 @@ plugin.get_plugin().metadata.default_switch = True
 
 permission_checker = PermissionChecker()
 _database_warning_groups: set[str] = set()
+_notify_group_id: str | None = None
 
 
 INVITE_TIMEOUT_SECONDS = 60 * 60
@@ -86,6 +87,13 @@ def _normalize_id(value: object) -> str | None:
         return None
     normalized = str(value).strip()
     return normalized or None
+
+
+def configure_notify_group(group_id: str | int | None) -> None:
+    """设置邀请审批等管理通知的群目标；空值表示改发 Master 私聊。"""
+
+    global _notify_group_id
+    _notify_group_id = _normalize_id(group_id)
 
 
 def _event_inviter_id(event: GuildRequestEvent) -> str | None:
@@ -152,14 +160,20 @@ async def _is_privileged_inviter(
         return False
 
 
-def _reviewer_ids(account: Any) -> tuple[str, ...]:
+def _master_id(account: Any) -> str | None:
+    registry = getattr(permission_checker, "registry", None)
+    configured_master = _normalize_id(getattr(registry, "master_id", None))
+    if configured_master is not None:
+        return configured_master
     if not EntariConfig._inited:
-        return ()
+        return None
     configured = EntariConfig.instance.basic.superusers
-    return tuple(
-        str(value)
-        for value in configured.get(getattr(account, "platform", "onebot"), ())
-    )
+    platform = getattr(account, "platform", "onebot")
+    for value in configured.get(platform, ()):
+        master_id = _normalize_id(value)
+        if master_id is not None:
+            return master_id
+    return None
 
 
 def _ensure_action_account(pending: PendingInvite) -> None:
@@ -178,36 +192,69 @@ async def _send_reviewer_notice(
     pending: PendingInvite,
     text: str,
 ) -> None:
-    send_private = getattr(action_service, "send_private_message", None)
-    if not callable(send_private):
-        logger.warning(
-            "Pending invite {} recorded but ActionService has no private notification API",
-            pending.request_id,
-        )
-        return
-    reviewer_ids = _reviewer_ids(pending.account)
-    if not reviewer_ids:
-        logger.warning(
-            "Pending invite {} recorded without configured superusers",
-            pending.request_id,
-        )
-        return
-    for reviewer_id in reviewer_ids:
+    if _notify_group_id is not None:
+        send_group = getattr(action_service, "send_group_message", None)
+        if not callable(send_group):
+            logger.warning(
+                "Pending invite {} recorded but ActionService has no group "
+                "notification API",
+                pending.request_id,
+            )
+            return
         try:
-            receipt = send_private(pending.account, reviewer_id, text)
+            receipt = send_group(
+                pending.account,
+                _notify_group_id,
+                text,
+                context=None,
+                permission_checker=permission_checker,
+                system=True,
+            )
             if inspect.isawaitable(receipt):
                 receipt = await receipt
             result = getattr(receipt, "data", receipt)
             items = tuple(result or ())
             if items and getattr(items[-1], "id", None) is not None:
                 pending.notification_id = str(items[-1].id)
-                pending.notification_channel_id = f"private:{reviewer_id}"
+                pending.notification_channel_id = f"group:{_notify_group_id}"
         except Exception:
             logger.exception(
-                "Failed to notify superuser {} about pending invite {}",
-                reviewer_id,
+                "Failed to notify group {} about pending invite {}",
+                _notify_group_id,
                 pending.request_id,
             )
+        return
+
+    send_private = getattr(action_service, "send_private_message", None)
+    if not callable(send_private):
+        logger.warning(
+            "Pending invite {} recorded but ActionService has no private "
+            "notification API",
+            pending.request_id,
+        )
+        return
+    master_id = _master_id(pending.account)
+    if master_id is None:
+        logger.warning(
+            "Pending invite {} recorded without configured Master",
+            pending.request_id,
+        )
+        return
+    try:
+        receipt = send_private(pending.account, master_id, text)
+        if inspect.isawaitable(receipt):
+            receipt = await receipt
+        result = getattr(receipt, "data", receipt)
+        items = tuple(result or ())
+        if items and getattr(items[-1], "id", None) is not None:
+            pending.notification_id = str(items[-1].id)
+            pending.notification_channel_id = f"private:{master_id}"
+    except Exception:
+        logger.exception(
+            "Failed to notify Master {} about pending invite {}",
+            master_id,
+            pending.request_id,
+        )
 
 
 async def _apply_invite_decision(
@@ -361,8 +408,8 @@ async def _can_review_invite(session: Session, pending: PendingInvite) -> bool:
         return await permission_checker.require_group_perm(
             context, Permission.ActiveGroup
         ) and await permission_checker.require_perm(context, Permission.BotAdmin)
-    # Bot 未入目标群时，只有超管能从私聊或其他群处理，避免把审批权
-    # 意外扩大到任意群管理员；这是当前没有旧 test_group 配置时的明确边界。
+    # Bot 未入目标群时，只有 Master 能从私聊或其他群处理，避免把审批权
+    # 意外扩大到任意群管理员。
     return await permission_checker.require_perm(context, Permission.Master)
 
 

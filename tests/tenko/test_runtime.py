@@ -82,7 +82,7 @@ async def test_run_async_loads_plugins_before_starting_entari(
     monkeypatch.setattr(
         runtime_module, "OneBotConnection", Mock(return_value=connection)
     )
-    runtime = TenkoRuntime(TenkoConfig())
+    runtime = TenkoRuntime(TenkoConfig.from_mapping({"notify_group": "40002"}))
     manager = Mock()
     app = Mock()
     app.required = set()
@@ -101,6 +101,14 @@ async def test_run_async_loads_plugins_before_starting_entari(
         return {}
 
     plugin_runtime.load_all = AsyncMock(side_effect=load_all)
+    group_manager = Mock()
+    permission_manager = Mock()
+    monkeypatch.setitem(
+        runtime_module.sys.modules, "tenko.plugins.group_manager", group_manager
+    )
+    monkeypatch.setitem(
+        runtime_module.sys.modules, "tenko.plugins.perm_manager", permission_manager
+    )
     manager_provider = Mock(return_value=manager)
     monkeypatch.setattr(runtime_module, "it", manager_provider)
     monkeypatch.setattr(
@@ -126,6 +134,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
     assert runtime.plugin_runtime is plugin_runtime
     database_loader.assert_called_once_with(runtime.config.database)
     assert runtime.database_service is database_loader.return_value
+    group_manager.configure_notify_group.assert_called_once_with("40002")
+    permission_manager.configure_notify_group.assert_called_once_with("40002")
     app.run_async.assert_awaited_once_with(
         manager,
         stop_signal=(runtime_module.signal.SIGINT, runtime_module.signal.SIGTERM),

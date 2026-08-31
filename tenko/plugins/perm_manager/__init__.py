@@ -45,18 +45,20 @@ plugin.get_plugin().metadata.default_switch = True
 
 permission_checker = PermissionChecker()
 _MASTER_PRIVATE_ONLY = "该指令仅支持 Master 私聊执行"
-_test_group_id: str | None = None
+_notify_group_id: str | None = None
 
 
-def configure_test_group(group_id: str | int | None) -> None:
-    """设置旧版测试群保护的目标；空值表示不启用该保护。"""
+def configure_notify_group(group_id: str | int | None) -> None:
+    """设置通知群保护的目标；空值表示不启用该保护。"""
 
-    global _test_group_id
-    _test_group_id = None if group_id is None or str(group_id) == "" else str(group_id)
+    global _notify_group_id
+    _notify_group_id = (
+        None if group_id is None or str(group_id) == "" else str(group_id)
+    )
 
 
-def _is_test_group(group_id: str) -> bool:
-    return _test_group_id is not None and group_id == _test_group_id
+def _is_notify_group(group_id: str) -> bool:
+    return _notify_group_id is not None and group_id == _notify_group_id
 
 
 def _member_repository():
@@ -162,7 +164,9 @@ def _member_permission_from_platform(member: object) -> int:
 def _superuser_ids(account: object) -> tuple[str, ...]:
     if not EntariConfig._inited:
         return ()
-    configured = getattr(getattr(EntariConfig.instance, "basic", None), "superusers", {})
+    configured = getattr(
+        getattr(EntariConfig.instance, "basic", None), "superusers", {}
+    )
     platform = getattr(account, "platform", "onebot")
     return tuple(str(value) for value in configured.get(platform, ()))
 
@@ -468,8 +472,8 @@ async def change_group_perm(
         Permission.TestGroup,
     }:
         return text_message("请检查输入的群权限(3/2/1/0)")
-    if _is_test_group(target_group):
-        return text_message(f"无法通过该指令修改测试群({target_group})权限!")
+    if _is_notify_group(target_group):
+        return text_message(f"无法通过该指令修改通知群({target_group})权限!")
     try:
         await _group_repository().set(
             target_group,
@@ -505,8 +509,8 @@ async def change_group_perm_type(
     target_group, _ = await _target_group(session, group)
     if target_group is None:
         return text_message("没有找到目标群")
-    if _is_test_group(target_group):
-        return text_message(f"无法通过该指令修改测试群({target_group})权限!")
+    if _is_notify_group(target_group):
+        return text_message(f"无法通过该指令修改通知群({target_group})权限!")
     try:
         members = await _target_members(session, target_group)
         await _setting_repository().set_permission_type(

@@ -380,14 +380,14 @@ async def test_permission_command_rejects_non_member_without_writing(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["perm_manager"], indirect=True)
-async def test_test_group_protection_blocks_both_permission_commands(
+async def test_notify_group_protection_blocks_both_permission_commands(
     loaded_plugin, tenko_database
 ) -> None:
     del tenko_database
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(bot_admin_ids=["20001"])
     )
-    loaded_plugin.configure_test_group("40001")
+    loaded_plugin.configure_notify_group("40001")
     try:
         session = make_session("20001", "member")
         group_result = await loaded_plugin.change_group_perm.callable_target(
@@ -397,10 +397,10 @@ async def test_test_group_protection_blocks_both_permission_commands(
             session, Match("admin", True), Query("group.group_id")
         )
     finally:
-        loaded_plugin.configure_test_group(None)
+        loaded_plugin.configure_notify_group(None)
 
-    assert str(group_result) == "无法通过该指令修改测试群(40001)权限!"
-    assert str(type_result) == "无法通过该指令修改测试群(40001)权限!"
+    assert str(group_result) == "无法通过该指令修改通知群(40001)权限!"
+    assert str(type_result) == "无法通过该指令修改通知群(40001)权限!"
 
 
 @pytest.mark.asyncio
@@ -427,14 +427,10 @@ async def test_platform_admin_demotion_keeps_tenko_permission_and_prompts_in_gro
     loaded_plugin,
 ) -> None:
     account = MemberEventAccount()
-    loaded_plugin.permission_checker = PermissionChecker(
-        registry=PermissionRegistry()
-    )
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     loaded_plugin._bot_admin_ids = AsyncMock(return_value=set())
     loaded_plugin._permission_type = AsyncMock(return_value="default")
-    loaded_plugin._member_permission = AsyncMock(
-        return_value=Permission.GroupAdmin
-    )
+    loaded_plugin._member_permission = AsyncMock(return_value=Permission.GroupAdmin)
     loaded_plugin._write_member_permission = AsyncMock()
 
     await loaded_plugin.auto_change_member_permission.callable_target(
@@ -455,14 +451,10 @@ async def test_platform_admin_demotion_falls_back_to_master_private_notice(
     loaded_plugin, monkeypatch
 ) -> None:
     account = MemberEventAccount()
-    loaded_plugin.permission_checker = PermissionChecker(
-        registry=PermissionRegistry()
-    )
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     loaded_plugin._bot_admin_ids = AsyncMock(return_value=set())
     loaded_plugin._permission_type = AsyncMock(return_value="default")
-    loaded_plugin._member_permission = AsyncMock(
-        return_value=Permission.GroupOwner
-    )
+    loaded_plugin._member_permission = AsyncMock(return_value=Permission.GroupOwner)
     loaded_plugin._write_member_permission = AsyncMock()
     loaded_plugin._superuser_ids = lambda _account: ("90001",)
     private_sender = AsyncMock()

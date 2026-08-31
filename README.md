@@ -138,8 +138,8 @@ Linux 主机缺少 Chromium 系统依赖时，需要由运维按主机权限安�
 config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖连接、权限、
 数据库、渲染和升级的基本入口；所有敏感字段和账号标识都是占位符：
 
-    # 受保护的测试群；留空或省略表示不启用保护。
-    test_group = ""
+    # 通知群：邀请审批等管理通知的播报目标；留空表示私发 Master。
+    notify_group = ""
 
     [basic]
     prefix = ["/"]
@@ -185,8 +185,15 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
     channel = "stable"
     policy = "check"
 
-不要把真实 token、平台用户标识、GitHub 凭据或其他密钥写入版本库。需要保护的测试群
-可以在 TOML 顶层设置 test_group；留空或省略表示不启用该保护。
+不要把真实 token、平台用户标识、GitHub 凭据或其他密钥写入版本库。邀请审批等管理通知
+优先发送到顶层 `notify_group` 指定的群；留空或省略时只私发给一个 Master。旧配置中的
+顶层 `test_group` 会在读取时作为 `notify_group` 的兼容 fallback。
+
+### 顶层通知配置
+
+| 配置 | 说明 |
+| --- | --- |
+| notify_group | 邀请审批等管理通知的播报群；留空或省略时私发一个 Master |
 
 ## 配置参考
 

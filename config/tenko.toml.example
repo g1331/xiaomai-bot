@@ -1,8 +1,8 @@
 # Tenko 配置示例。
 # 复制为 config/tenko.toml 后按 NapCat 实际地址修改；不要把真实 token 提交到仓库。
 
-# 受保护的测试群；留空表示不启用保护。该键必须位于 TOML 顶层。
-test_group = ""
+# 通知群：邀请审批等管理通知的播报目标；留空表示私发 Master。该键必须位于 TOML 顶层。
+notify_group = ""
 
 # 旧版 [runtime] / [entari] 中的通用字段统一放在 Entari 官方 [basic] 节。
 # Tenko 默认保留 / 作为命令前缀；也可以配置多个前缀，例如 ["/", "!"]。

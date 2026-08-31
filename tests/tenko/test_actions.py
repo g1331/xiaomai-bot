@@ -137,7 +137,7 @@ def make_service(
     accounts.register(account, groups=["40001"])
     permissions = PermissionRegistry(
         master_id=user_id if role == "master" else None,
-        bot_admin_ids=[user_id] if role == "bot_admin" else []
+        bot_admin_ids=[user_id] if role == "bot_admin" else [],
     )
     service = ActionService(
         accounts,
@@ -422,6 +422,22 @@ async def test_platform_failed_receipt_latches_capability_unavailable() -> None:
     with pytest.raises(ActionCapabilityUnavailable):
         await service.mute_member(account, "40001", "20002", 90, context=context)
     assert len(protocol.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_system_group_send_does_not_require_message_context() -> None:
+    service, account, _, protocol = make_service()
+
+    receipt = await service.send_group_message(
+        account,
+        "40001",
+        "管理通知",
+        context=None,
+        system=True,
+    )
+
+    assert receipt.account_id == account.self_id
+    assert protocol.calls == [("send_message", ("40001", "管理通知"), {})]
 
 
 @pytest.mark.asyncio

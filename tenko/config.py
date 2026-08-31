@@ -842,7 +842,7 @@ class TenkoConfig:
     render: RenderConfig = field(default_factory=RenderConfig)
     exception: ExceptionConfig = field(default_factory=ExceptionConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
-    test_group: str | None = None
+    notify_group: str | None = None
 
     @property
     def entari(self) -> LegacyEntariConfig:
@@ -885,7 +885,11 @@ class TenkoConfig:
             render=RenderConfig.from_mapping(_section(normalized, "render")),
             exception=ExceptionConfig.from_mapping(_section(normalized, "exception")),
             database=DatabaseConfig.from_mapping(_section(normalized, "database")),
-            test_group=_optional_identifier(normalized, "test_group", None),
+            notify_group=_optional_identifier(
+                normalized,
+                "notify_group" if "notify_group" in normalized else "test_group",
+                None,
+            ),
         )
 
     @classmethod

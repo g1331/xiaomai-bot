@@ -1207,18 +1207,25 @@ class ActionService:
         *,
         context: MessageContext | None,
         permission_checker: PermissionChecker | None = None,
+        system: bool = False,
     ) -> ActionReceipt:
-        """通过 Satori ``send_message`` 向群发送文本，并观察发送失败回执。"""
+        """通过 Satori send_message 向群发送文本，并观察发送失败回执。
+
+        system=True 用于没有用户消息上下文的宿主通知；普通业务调用仍需
+        提供上下文并通过 BotAdmin 权限检查。
+        """
 
         if not isinstance(content, str) or not content:
             raise ValueError("公告内容不能为空")
+        if type(system) is not bool:
+            raise TypeError("system 必须是布尔值")
         group, _ = _numeric_id(group_id, "群 ID")
         return await self._invoke(
             account_or_id,
             ActionCapability.SEND_GROUP_MESSAGE,
             lambda protocol: protocol.send_message(group, content),
             context=context,
-            required=Permission.BotAdmin,
+            required=None if system else Permission.BotAdmin,
             permission_checker=permission_checker,
             send_group_id=group,
         )

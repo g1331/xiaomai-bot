@@ -213,10 +213,16 @@ class TenkoRuntime:
         # RenderService 注册之后、run_async 之前。
         self.plugin_runtime = PluginRuntime()
         await self.plugin_runtime.load_all()
+        group_manager = sys.modules.get("tenko.plugins.group_manager")
+        configure_notify_group = getattr(group_manager, "configure_notify_group", None)
+        if callable(configure_notify_group):
+            configure_notify_group(self.config.notify_group)
         permission_manager = sys.modules.get("tenko.plugins.perm_manager")
-        configure_test_group = getattr(permission_manager, "configure_test_group", None)
-        if callable(configure_test_group):
-            configure_test_group(self.config.test_group)
+        configure_notify_group = getattr(
+            permission_manager, "configure_notify_group", None
+        )
+        if callable(configure_notify_group):
+            configure_notify_group(self.config.notify_group)
         exception_catcher = sys.modules.get("tenko.plugins.exception_catcher")
         if exception_catcher is not None:
             configure_evidence_directory = getattr(

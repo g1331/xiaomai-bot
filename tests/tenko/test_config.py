@@ -24,7 +24,7 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.database.url == "sqlite+aiosqlite:///./.tenko/tenko.db"
     assert config.database.create_table_at == "preparing"
     assert config.upgrade.restart_watch_timeout == 300
-    assert config.test_group is None
+    assert config.notify_group is None
 
 
 def test_config_loads_reverse_ws_and_runtime_options(tmp_path) -> None:
@@ -79,10 +79,19 @@ create_table_at = "prepared"
     }
     assert config.debug.enabled is True
     assert config.debug.masters == ("12345", "67890")
-    assert config.test_group == "40001"
+    assert config.notify_group == "40001"
     assert config.database.url == "sqlite+aiosqlite:///tmp/tenko.db"
     assert config.database.echo is True
     assert config.database.create_table_at == "prepared"
+
+
+def test_config_loads_notify_group_key(tmp_path) -> None:
+    path = tmp_path / "tenko.toml"
+    path.write_text("notify_group = 40002\n", encoding="utf-8")
+
+    config = TenkoConfig.load(path)
+
+    assert config.notify_group == "40002"
 
 
 def test_config_loads_official_basic_and_tenko_sections_together(tmp_path) -> None:
@@ -147,7 +156,19 @@ def test_config_example_is_loadable_with_official_basic_section(tmp_path) -> Non
     assert config.basic.prefix == ["/"]
     assert config.basic.log.save is None
     assert config.entari.superusers == {"onebot": ("YOUR_QQ_ID",)}
-    assert config.test_group is None
+    assert config.notify_group is None
+
+
+def test_notify_group_takes_precedence_over_legacy_test_group() -> None:
+    config = TenkoConfig.from_mapping({"notify_group": "40002", "test_group": "40001"})
+
+    assert config.notify_group == "40002"
+
+
+def test_empty_notify_group_disables_legacy_fallback() -> None:
+    config = TenkoConfig.from_mapping({"notify_group": "", "test_group": "40001"})
+
+    assert config.notify_group is None
 
 
 def test_entari_save_preserves_tenko_sections_and_writes_toml(tmp_path) -> None:

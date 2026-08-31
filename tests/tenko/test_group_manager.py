@@ -3,10 +3,11 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from arclet.entari.command import Match, Query
+from arclet.entari.config import EntariConfig
 from arclet.entari.event.base import GuildRequestEvent
 from satori import (
     Channel,
@@ -247,6 +248,7 @@ class InviteProtocol:
     def __init__(self, approval_error: BaseException | None = None) -> None:
         self.approvals: list[tuple[str, bool, str]] = []
         self.private_messages: list[tuple[str, str]] = []
+        self.group_messages: list[tuple[str, str]] = []
         self.approval_error = approval_error
 
     async def guild_approve(self, request_id, approved, comment):
@@ -258,6 +260,11 @@ class InviteProtocol:
         message = str(content)
         self.private_messages.append((str(user_id), message))
         return [MessageObject("notice-1", message)]
+
+    async def send_message(self, group_id, content):
+        message = str(content)
+        self.group_messages.append((str(group_id), message))
+        return [MessageObject("group-notice-1", message)]
 
 
 class FakeAccount:
@@ -700,6 +707,90 @@ async def test_unprivileged_inviter_is_recorded_for_command_review(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_invite_notice_prefers_configured_notify_group(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    install_invite_action_service(loaded_plugin, account, PermissionRegistry())
+    loaded_plugin.configure_notify_group("40002")
+    await clear_pending_invites(loaded_plugin)
+
+    try:
+        await loaded_plugin.invited_event.callable_target(make_invite_event(account))
+
+        pending = loaded_plugin.pending_invites["request-1"]
+        assert protocol.group_messages == [
+            ("40002", loaded_plugin._invite_notice(pending))
+        ]
+        assert protocol.private_messages == []
+        assert pending.notification_id == "group-notice-1"
+        assert pending.notification_channel_id == "group:40002"
+    finally:
+        loaded_plugin.configure_notify_group(None)
+        await clear_pending_invites(loaded_plugin)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_invite_notice_falls_back_to_one_master(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    install_invite_action_service(
+        loaded_plugin,
+        account,
+        PermissionRegistry(bot_admin_ids=["90002"]),
+    )
+    loaded_plugin.configure_notify_group(None)
+    original_superusers = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {
+        "onebot": ["90001", "90002"],
+    }
+    await clear_pending_invites(loaded_plugin)
+
+    try:
+        await loaded_plugin.invited_event.callable_target(make_invite_event(account))
+
+        pending = loaded_plugin.pending_invites["request-1"]
+        assert protocol.private_messages == [
+            ("90001", loaded_plugin._invite_notice(pending)),
+        ]
+        assert protocol.group_messages == []
+        assert pending.notification_id == "notice-1"
+        assert pending.notification_channel_id == "private:90001"
+    finally:
+        EntariConfig.instance.basic.superusers = original_superusers
+        await clear_pending_invites(loaded_plugin)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
+async def test_invite_notice_without_group_or_master_only_logs(loaded_plugin) -> None:
+    protocol = InviteProtocol()
+    account = InviteAccount(protocol)
+    install_invite_action_service(loaded_plugin, account, PermissionRegistry())
+    loaded_plugin.configure_notify_group(None)
+    original_superusers = EntariConfig.instance.basic.superusers
+    EntariConfig.instance.basic.superusers = {}
+    warning = Mock()
+    loaded_plugin.logger.warning = warning
+    await clear_pending_invites(loaded_plugin)
+
+    try:
+        await loaded_plugin.invited_event.callable_target(make_invite_event(account))
+
+        assert protocol.private_messages == []
+        assert protocol.group_messages == []
+        assert "request-1" in loaded_plugin.pending_invites
+        assert any(
+            call.args and "without configured Master" in call.args[0]
+            for call in warning.call_args_list
+        )
+    finally:
+        EntariConfig.instance.basic.superusers = original_superusers
+        await clear_pending_invites(loaded_plugin)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
 async def test_invite_without_inviter_id_keeps_pending_and_reports_missing_id(
     loaded_plugin,
 ) -> None:
@@ -798,7 +889,9 @@ async def test_group_admin_cannot_approve_pending_invite(loaded_plugin) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
-async def test_group_admin_cannot_reject_pending_invite_with_reason(loaded_plugin) -> None:
+async def test_group_admin_cannot_reject_pending_invite_with_reason(
+    loaded_plugin,
+) -> None:
     protocol = InviteProtocol()
     account = InviteAccount(protocol)
     install_invite_action_service(loaded_plugin, account, PermissionRegistry())
@@ -888,7 +981,9 @@ async def test_bot_admin_can_reject_pending_invite_with_reason(loaded_plugin) ->
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["group_manager"], indirect=True)
-async def test_master_can_approve_pending_invite_from_private_chat(loaded_plugin) -> None:
+async def test_master_can_approve_pending_invite_from_private_chat(
+    loaded_plugin,
+) -> None:
     protocol = InviteProtocol()
     account = InviteAccount(protocol)
     install_invite_action_service(
@@ -1059,6 +1154,7 @@ async def test_expired_pending_invite_is_rejected_with_legacy_comment(
     protocol = InviteProtocol()
     account = InviteAccount(protocol)
     install_invite_action_service(loaded_plugin, account, PermissionRegistry())
+    loaded_plugin.configure_notify_group("40002")
     loaded_plugin.pending_invites["request-1"] = loaded_plugin.PendingInvite(
         request_id="request-1",
         account=account,
@@ -1072,9 +1168,15 @@ async def test_expired_pending_invite_is_rejected_with_legacy_comment(
     sleep = AsyncMock()
     monkeypatch.setattr(loaded_plugin.asyncio, "sleep", sleep)
 
-    await loaded_plugin._expire_invite("request-1")
+    try:
+        await loaded_plugin._expire_invite("request-1")
+    finally:
+        loaded_plugin.configure_notify_group(None)
+        await clear_pending_invites(loaded_plugin)
 
     assert protocol.approvals == [
         ("request-1", False, "拒绝了你的入群邀请!"),
     ]
-    assert loaded_plugin.pending_invites == {}
+    assert protocol.group_messages == [
+        ("40002", "入群邀请 request-1 已超过 1 小时，已自动拒绝。"),
+    ]

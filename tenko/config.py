@@ -577,7 +577,7 @@ class RateLimitConfig:
 class RenderConfig:
     """图片渲染服务配置。"""
 
-    enabled: bool = False
+    enabled: bool = True
     timeout: float = 10.0
     width: int = 800
     quality: int = 85

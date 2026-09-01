@@ -200,17 +200,30 @@ class UpdateRelation(str, Enum):
     CURRENT_AHEAD = "current-ahead"
 
 
+# ReDoS 缓解（CodeQL py/redos）：预发布段不允许嵌套量词回溯，改用
+# 一次性匹配点分隔段（每段 [0-9A-Za-z-]+，须含字母或连字符），最后在
+# Python 侧统一校验段语义，替代高回溯交替 (0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-]...)。
 _VERSION_PATTERN = re.compile(
     r"^(?:[vV])?"
     r"(?P<major>0|[1-9]\d*)\."
     r"(?P<minor>0|[1-9]\d*)\."
     r"(?P<patch>0|[1-9]\d*)"
-    r"(?:-(?P<pre>"
-    r"(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
-    r"(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*"
-    r"))?"
+    r"(?:-(?P<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
     r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
+# 预发布段：每段非空、不含首尾点（正则已保证按点切分非空），且必须
+# 包含至少一个字母或连字符（与 SemVer 规范一致，纯数字段也允许）。
+_PRE_SEGMENT_PATTERN = re.compile(r"^[0-9A-Za-z-]+$")
+_PRE_HAS_ALPHA = re.compile(r"[A-Za-z-]")
+
+
+def _pre_release_valid(pre: str) -> bool:
+    """校验预发布段：点分段每段合法，且至少一段含字母或连字符。"""
+
+    segments = pre.split(".")
+    if not all(_PRE_SEGMENT_PATTERN.fullmatch(s) for s in segments):
+        return False
+    return any(_PRE_HAS_ALPHA.search(s) for s in segments)
 _HEX_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 _GIT_SCP_LIKE_PATTERN = re.compile(r"^(?:[^/@\s:]+@)?[^/@\s:]+:.+$")
@@ -249,9 +262,12 @@ def parse_version(value: str | Version) -> Version:
         raise InvalidVersionError(f"非法版本号: {value!r}") from exc
     # 原始输入继续要求三段 SemVer；同时接受 packaging 为持久化指针生成的
     # 规范形式（例如 ``4.0.0rc10``），避免规范化后的状态无法再次读取。
-    if _VERSION_PATTERN.fullmatch(value) is None and (
-        len(parsed.release) != 3 or str(parsed) != value
-    ):
+    matched = _VERSION_PATTERN.fullmatch(value)
+    if matched is not None:
+        pre = matched.group("pre")
+        if pre is not None and not _pre_release_valid(pre):
+            raise InvalidVersionError(f"非法版本号: {value!r}")
+    elif len(parsed.release) != 3 or str(parsed) != value:
         raise InvalidVersionError(f"非法版本号: {value!r}")
     return parsed
 

@@ -90,7 +90,7 @@ async def test_webui_auth_allows_configured_local_token_and_rejects_other_source
     assert index.status_code == 200
     assert query_index.status_code == 200
     assert query_api.status_code == 401
-    assert "<input id=\"token\"" in page.text
+    assert '<input id="token"' in page.text
     assert "application/json" not in page.headers["content-type"]
     assert "Tenko WebUI" in index.text
     assert "Tenko WebUI" in query_index.text

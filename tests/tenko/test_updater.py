@@ -723,7 +723,7 @@ async def test_subprocess_launcher_passes_shared_upgrade_paths(
     )
     await launcher.start(candidate)
 
-    assert captured["command"][0].endswith("python")
+    assert Path(captured["command"][0]).name.startswith("python")
     assert captured["cwd"] == stable_root.resolve()
     assert captured["env"]["TENKO_CONFIG_PATH"] == str(config_path)
     assert captured["env"]["TENKO_DATA_DIR"] == str(data_dir)

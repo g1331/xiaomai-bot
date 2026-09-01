@@ -35,8 +35,9 @@ def _write_code_root(root: Path, marker: str) -> None:
         ("1.0.0", None, "stable"),
         ("1.0.0", "2.0.0", "candidate"),
         ("2.0.0", "1.0.0", "stable"),
+        ("4.0.0-pre9", "4.0.0-pre10", "candidate"),
     ],
-    ids=["without-active", "active-newer", "stable-newer"],
+    ids=["without-active", "active-newer", "stable-newer", "numeric-prerelease"],
 )
 def test_launcher_selects_active_code_with_stable_cwd(
     tmp_path: Path,

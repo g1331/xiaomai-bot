@@ -31,7 +31,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STABLE_MARKER = "stable-1.0.0"
 CANDIDATE_MARKER = "candidate-2.0.0"
 REMOTE_MARKER = "candidate-remote-2.0.0"
-E2E_RELEASE = Release(Version(2, 0, 0), "v2.0.0", source="e2e")
+E2E_RELEASE = Release(Version("2.0.0"), "v2.0.0", source="e2e")
 _COPY_IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc")
 
 
@@ -369,7 +369,7 @@ def _make_manager(
             stable_root=fixture.stable_root,
         )
     return UpgradeManager(
-        Version(1, 0, 0),
+        Version("1.0.0"),
         source or E2ECandidateSource(fixture.stable_root),
         layout=UpgradeLayout(fixture.upgrade_root),
         project_root=fixture.stable_root,
@@ -439,7 +439,7 @@ def test_launcher_with_active_uses_candidate_code_and_stable_data_root(
     candidate = fixture.upgrade_root / "versions" / "2.0.0-manual"
     _install_test_package(candidate, fixture.stable_root / "tenko", CANDIDATE_MARKER)
     layout = UpgradeLayout(fixture.upgrade_root)
-    layout.write_pointer(candidate, Version(2, 0, 0))
+    layout.write_pointer(candidate, Version("2.0.0"))
 
     completed = _run_launcher(fixture, "--e2e-mode", "active")
 
@@ -475,7 +475,7 @@ async def test_subprocess_upgrade_persists_data_and_runs_candidate(
     assert active.path == prepared.path
     assert active.version == E2E_RELEASE.version
     assert previous is not None
-    assert previous.version == Version(1, 0, 0)
+    assert previous.version == Version("1.0.0")
     assert previous.path.is_dir()
     assert not layout.pending_file.exists()
     assert not layout.handoff_file.exists()
@@ -530,7 +530,7 @@ async def test_subprocess_rollback_swaps_pointers_and_returns_to_old_code(
     layout = UpgradeLayout(fixture.upgrade_root)
     active = layout.read_active()
     previous = layout.read_previous()
-    assert active is not None and active.version == Version(1, 0, 0)
+    assert active is not None and active.version == Version("1.0.0")
     assert previous is not None and previous.path == prepared.path
     assert previous.version == E2E_RELEASE.version
     assert not layout.handoff_file.exists()
@@ -556,7 +556,7 @@ async def test_failed_candidate_health_check_rolls_back_and_next_start_is_stable
     layout = UpgradeLayout(fixture.upgrade_root)
     active = layout.read_active()
     assert active is not None
-    assert active.version == Version(1, 0, 0)
+    assert active.version == Version("1.0.0")
     assert active.path != prepared.path
     assert not layout.pending_file.exists()
     assert not layout.handoff_file.exists()
@@ -574,7 +574,7 @@ async def test_failed_candidate_health_check_rolls_back_and_next_start_is_stable
 
     _assert_candidate_process_result(next_start)
     recovered = layout.read_active()
-    assert recovered is not None and recovered.version == Version(1, 0, 0)
+    assert recovered is not None and recovered.version == Version("1.0.0")
     assert _read_observation(fixture)["source"] == STABLE_MARKER
     assert not layout.handoff_file.exists()
 
@@ -600,7 +600,7 @@ async def test_subprocess_launcher_terminates_candidate_after_health_failure(
     _wait_for(fixture.stable_root / "candidate-server-exited")
     layout = UpgradeLayout(fixture.upgrade_root)
     active = layout.read_active()
-    assert active is not None and active.version == Version(1, 0, 0)
+    assert active is not None and active.version == Version("1.0.0")
     assert not layout.pending_file.exists()
     assert not layout.handoff_file.exists()
 
@@ -687,7 +687,7 @@ async def test_named_remote_check_and_prepare_use_local_git_remote(
 
     checked = await manager.check()
     assert checked.candidate is not None
-    assert checked.candidate.version == Version(2, 0, 0)
+    assert checked.candidate.version == Version("2.0.0")
     prepared = await manager.prepare(checked.candidate)
 
     assert prepared.path.is_dir()

@@ -54,7 +54,7 @@ def test_main_applies_handoff_and_reexecutes_active_release(
     candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "2.0.0"
     (candidate / "tenko").mkdir(parents=True)
     layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
-    layout.write_pointer(candidate, Version(2, 0, 0))
+    layout.write_pointer(candidate, Version("2.0.0"))
     layout.handoff_file.write_text('{"action":"activate"}\n', encoding="utf-8")
     calls: dict[str, object] = {"apply": []}
 
@@ -69,7 +69,7 @@ def test_main_applies_handoff_and_reexecutes_active_release(
 
         async def apply_handoff(self, *, start_process: bool):
             calls["apply"].append(start_process)
-            return InstallResult(True, Version(2, 0, 0), candidate, False, "ok")
+            return InstallResult(True, Version("2.0.0"), candidate, False, "ok")
 
     import tenko.host.updater as updater_module
 
@@ -99,7 +99,7 @@ def test_main_continues_with_recovered_active_after_rolled_back_handoff(
     candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "1.0.0"
     (candidate / "tenko").mkdir(parents=True)
     layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
-    layout.write_pointer(candidate, Version(1, 0, 0))
+    layout.write_pointer(candidate, Version("1.0.0"))
     layout.handoff_file.write_text('{"action":"activate"}\n', encoding="utf-8")
     calls: list[bool] = []
 
@@ -115,7 +115,7 @@ def test_main_continues_with_recovered_active_after_rolled_back_handoff(
         async def apply_handoff(self, *, start_process: bool):
             calls.append(start_process)
             return InstallResult(
-                False, Version(2, 0, 0), candidate, True, "health check failed"
+                False, Version("2.0.0"), candidate, True, "health check failed"
             )
 
     import tenko.host.updater as updater_module
@@ -154,7 +154,7 @@ def test_startup_bootstrap_compares_active_with_stable_version(
     candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "candidate"
     (candidate / "tenko").mkdir(parents=True)
     layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
-    layout.write_pointer(candidate, Version.parse(active_version))
+    layout.write_pointer(candidate, Version(active_version))
 
     class FakeManager:
         def __init__(self) -> None:
@@ -171,7 +171,7 @@ def test_startup_bootstrap_compares_active_with_stable_version(
     monkeypatch.setattr(
         updater_module,
         "read_project_version",
-        lambda _root: Version.parse(stable_version),
+        lambda _root: Version(stable_version),
     )
     monkeypatch.setattr(
         main_module,

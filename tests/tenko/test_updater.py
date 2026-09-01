@@ -89,6 +89,8 @@ def make_git_repository(tmp_path: Path) -> Path:
     git("commit", "--quiet", "-m", "three", cwd=repository)
     git("tag", "v1.1.0", cwd=repository)
     git("tag", "not-a-version", cwd=repository)
+    git("tag", "v3.0", cwd=repository)
+    git("tag", "legacy-tag", cwd=repository)
     return repository
 
 
@@ -248,10 +250,39 @@ def test_compare_versions_boundaries(
     assert compare_versions(current, remote) is expected
 
 
-def test_semver_prerelease_precedence_ignores_build_metadata() -> None:
+def test_packaging_version_precedence_and_local_version_semantics() -> None:
     assert parse_version("1.0.0-alpha") < parse_version("1.0.0-alpha.1")
     assert parse_version("1.0.0-alpha.1") < parse_version("1.0.0-beta")
-    assert parse_version("1.0.0+one") == parse_version("1.0.0+two")
+    # packaging follows PEP 440, where local versions participate in ordering.
+    assert parse_version("1.0.0+one") != parse_version("1.0.0+two")
+
+
+def test_packaging_version_orders_numeric_prereleases_and_final_release() -> None:
+    assert parse_version("4.0.0-pre9") < parse_version("4.0.0-pre10")
+    assert parse_version("4.0.0-pre2") < parse_version("4.0.0-pre10")
+    assert parse_version("4.0.0-pre99") > parse_version("4.0.0-pre9")
+    assert parse_version("4.0.0") > parse_version("4.0.0-pre99")
+
+
+def test_packaging_normalizes_pre_and_rc_to_the_same_version() -> None:
+    pre = parse_version("4.0.0-pre10")
+    rc = parse_version("4.0.0-rc10")
+
+    assert pre == rc
+    assert str(pre) == "4.0.0rc10"
+    assert pre.pre == ("rc", 10)
+
+
+def test_prerelease_channel_selects_pre10_over_pre9() -> None:
+    releases = (
+        Release(parse_version("4.0.0-pre9"), "v4.0.0-pre9", prerelease=True),
+        Release(parse_version("4.0.0-pre10"), "v4.0.0-pre10", prerelease=True),
+    )
+
+    selected = select_release(releases, "4.0.0-pre8", UpdateChannel.PRERELEASE)
+
+    assert selected is not None
+    assert selected.tag == "v4.0.0-pre10"
 
 
 def test_select_release_obeys_stable_and_prerelease_channels() -> None:
@@ -278,12 +309,19 @@ async def test_git_tag_source_discovers_tags_and_ignores_invalid_and_stable_prer
     stable = await source.discover(UpdateChannel.STABLE)
     preview = await source.discover(UpdateChannel.PRERELEASE)
 
-    assert [str(item.version) for item in stable] == ["1.0.0", "1.1.0"]
+    assert [item.tag for item in stable] == ["v1.0.0", "v1.1.0"]
+    assert [item.tag for item in preview] == [
+        "v1.0.0",
+        "v1.1.0-rc.1",
+        "v1.1.0",
+    ]
     assert [str(item.version) for item in preview] == [
         "1.0.0",
-        "1.1.0-rc.1",
+        "1.1.0rc1",
         "1.1.0",
     ]
+    assert "v3.0" not in {item.tag for item in preview}
+    assert "legacy-tag" not in {item.tag for item in preview}
     assert all(item.commit_sha for item in preview)
 
 
@@ -294,7 +332,7 @@ async def test_git_tag_source_acquires_and_verifies_commit_sha(tmp_path: Path) -
     release = next(
         item
         for item in await source.discover(UpdateChannel.STABLE)
-        if str(item.version) == "1.1.0"
+        if item.tag == "v1.1.0"
     )
 
     destination = tmp_path / "stage" / "release"
@@ -314,7 +352,7 @@ async def test_git_tag_source_rejects_sha_mismatch_and_cleans_destination(
     release = next(
         item
         for item in await source.discover(UpdateChannel.STABLE)
-        if str(item.version) == "1.1.0"
+        if item.tag == "v1.1.0"
     )
     tampered = Release(
         release.version,
@@ -495,11 +533,12 @@ async def test_github_release_source_uses_official_release_endpoint_and_asset_di
 
     stable = await source.discover(UpdateChannel.STABLE)
     preview = await source.discover(UpdateChannel.PRERELEASE)
-    release = next(item for item in preview if str(item.version) == "2.0.0-rc.1")
+    release = next(item for item in preview if item.tag == "v2.0.0-rc.1")
     acquired = await source.acquire(release, tmp_path / "release")
 
-    assert [str(item.version) for item in stable] == ["1.5.0"]
-    assert [str(item.version) for item in preview] == ["1.5.0", "2.0.0-rc.1"]
+    assert [item.tag for item in stable] == ["v1.5.0"]
+    assert [item.tag for item in preview] == ["v1.5.0", "v2.0.0-rc.1"]
+    assert [str(item.version) for item in preview] == ["1.5.0", "2.0.0rc1"]
     assert client.json_urls[0] == (
         "https://api.github.com/repos/owner/repository/releases?per_page=100"
     )
@@ -590,6 +629,23 @@ async def test_url_manifest_source_resolves_relative_artifact_url(
     assert (
         releases[0].artifact_url == "https://example.test/releases/artifacts/tenko.zip"
     )
+
+
+@pytest.mark.asyncio
+async def test_url_manifest_source_keeps_pre_release_tag_when_defaulting_tag(
+    tmp_path: Path,
+) -> None:
+    client = FakeHttpClient({"version": "4.0.0-pre10", "artifact_url": "artifact.zip"})
+    source = UrlManifestSource(
+        "https://example.test/releases/manifest.json", client=client
+    )
+
+    releases = await source.discover(UpdateChannel.PRERELEASE)
+
+    assert len(releases) == 1
+    assert releases[0].tag == "v4.0.0-pre10"
+    assert str(releases[0].version) == "4.0.0rc10"
+    assert releases[0].as_dict()["version"] == "v4.0.0-pre10"
 
 
 def test_config_compatibility_compares_versions() -> None:
@@ -743,7 +799,7 @@ def test_from_config_current_version_prefers_active_then_config_then_project(
     (candidate / "tenko").mkdir(parents=True)
 
     layout = UpgradeLayout(upgrade_root)
-    layout.write_pointer(candidate, Version(2, 0, 0))
+    layout.write_pointer(candidate, Version("2.0.0"))
     configured = UpgradeConfig(
         current_version="1.5.0",
         install_root=str(upgrade_root),
@@ -751,16 +807,16 @@ def test_from_config_current_version_prefers_active_then_config_then_project(
     )
 
     manager = UpgradeManager.from_config(configured, project_root=stable_root)
-    assert manager.current_version == Version(2, 0, 0)
+    assert manager.current_version == Version("2.0.0")
     assert manager.restart_watch_timeout == 37
 
     layout.active_file.unlink()
     manager = UpgradeManager.from_config(configured, project_root=stable_root)
-    assert manager.current_version == Version(1, 5, 0)
+    assert manager.current_version == Version("1.5.0")
 
     from_project = UpgradeConfig(install_root=str(upgrade_root))
     manager = UpgradeManager.from_config(from_project, project_root=stable_root)
-    assert manager.current_version == Version(1, 0, 0)
+    assert manager.current_version == Version("1.0.0")
 
 
 def test_from_config_ignores_active_older_than_stable_root(
@@ -776,7 +832,7 @@ def test_from_config_ignores_active_older_than_stable_root(
     (candidate / "tenko").mkdir(parents=True)
 
     layout = UpgradeLayout(upgrade_root)
-    layout.write_pointer(candidate, Version(1, 0, 0))
+    layout.write_pointer(candidate, Version("1.0.0"))
     config = UpgradeConfig(
         current_version="0.5.0",
         install_root=str(upgrade_root),
@@ -784,7 +840,7 @@ def test_from_config_ignores_active_older_than_stable_root(
 
     manager = UpgradeManager.from_config(config, project_root=stable_root)
 
-    assert manager.current_version == Version(2, 0, 0)
+    assert manager.current_version == Version("2.0.0")
 
 
 def test_upgrade_manager_restart_command_uses_stable_launcher(
@@ -794,7 +850,7 @@ def test_upgrade_manager_restart_command_uses_stable_launcher(
     launcher.parent.mkdir(parents=True)
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
     manager = UpgradeManager(
-        Version(1, 0, 0),
+        Version("1.0.0"),
         project_root=tmp_path,
         layout=UpgradeLayout(tmp_path / ".tenko" / "upgrades"),
     )
@@ -820,7 +876,7 @@ def test_upgrade_manager_passes_configured_watch_timeout(
 
     monkeypatch.setattr(updater_module, "spawn_restart_watcher", fake_spawn)
     manager = UpgradeManager(
-        Version(1, 0, 0),
+        Version("1.0.0"),
         project_root=tmp_path,
         layout=UpgradeLayout(tmp_path / ".tenko" / "upgrades"),
         restart_watch_timeout=17,
@@ -1023,6 +1079,9 @@ async def test_prepare_keeps_config_and_data_outside_staging(tmp_path: Path) -> 
 
     assert prepared.path.parent.name == "versions"
     assert manager.layout.pending_file.is_file()
+    pending = json.loads(manager.layout.pending_file.read_text(encoding="utf-8"))
+    assert pending["version"] == "1.1.0"
+    assert pending["release"]["version"] == "v1.1.0"
     assert source.acquire_calls == 1
     assert config_path.read_bytes() == config_before
     assert (data_dir / "user.db").read_bytes() == data_before
@@ -1512,6 +1571,21 @@ def test_audit_logger_writes_required_structured_fields(tmp_path: Path) -> None:
     assert entry["target_version"] is None
     assert entry["result"] == "current"
     assert entry["timestamp"].endswith("+00:00")
+
+
+def test_audit_logger_preserves_raw_release_tag(tmp_path: Path) -> None:
+    audit = AuditLogger(tmp_path / "audit.jsonl")
+
+    audit.record(
+        "check",
+        current_version="4.0.0-pre9",
+        target_version="v4.0.0-pre10",
+        result="available",
+    )
+
+    entry = json.loads((tmp_path / "audit.jsonl").read_text(encoding="utf-8"))
+    assert entry["current_version"] == "4.0.0-pre9"
+    assert entry["target_version"] == "v4.0.0-pre10"
 
 
 @pytest.mark.asyncio

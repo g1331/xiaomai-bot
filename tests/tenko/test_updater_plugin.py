@@ -60,9 +60,9 @@ class FakeUpdater:
     def __init__(self, tmp_path: Path) -> None:
         self.layout = SimpleNamespace(handoff_file=tmp_path / "handoff.json")
         self.layout.handoff_file.write_text("handoff", encoding="utf-8")
-        self.release = Release(Version(2, 0, 0), "v2.0.0", source="memory")
+        self.release = Release(Version("2.0.0"), "v2.0.0", source="memory")
         self.check_result = CheckResult(
-            Version(1, 0, 0),
+            Version("1.0.0"),
             UpdateChannel.STABLE,
             "memory",
             "available",
@@ -72,20 +72,20 @@ class FakeUpdater:
         self.prepare_result = PrepareResult(
             self.release,
             tmp_path / "versions" / "2.0.0",
-            CompatibilityResult(Version(1, 0, 0), None, True, "compatible"),
+            CompatibilityResult(Version("1.0.0"), None, True, "compatible"),
         )
         self.handoff_result = HandoffResult(
             "activate", self.release.version, self.prepare_result.path
         )
         self.rollback_result = RollbackResult(
             True,
-            Version(1, 0, 0),
+            Version("1.0.0"),
             tmp_path / "versions" / "1.0.0",
             False,
             "已生成外部重启回滚记录",
         )
         self.check_calls = 0
-        self.current_version = Version(1, 0, 0)
+        self.current_version = Version("1.0.0")
         self.enabled = True
         self.prepare_calls = 0
         self.request_install_calls = 0
@@ -193,7 +193,7 @@ async def test_check_update_reports_candidate_for_superuser(loaded_plugin, tmp_p
 
     result = await loaded_plugin.check_update.callable_target(make_session("90001"))
 
-    assert "发现新版本：2.0.0" in str(result)
+    assert "发现新版本：v2.0.0" in str(result)
     assert fake.check_calls == 1
 
 
@@ -209,7 +209,7 @@ async def test_upgrade_command_prepares_and_requests_external_install(
 
     result = await loaded_plugin.upgrade.callable_target(make_session("90001"))
 
-    assert str(result) == "版本 2.0.0 已下载、校验通过，正在自动重启进入新版本。"
+    assert str(result) == "版本 v2.0.0 已下载、校验通过，正在自动重启进入新版本。"
     assert fake.check_calls == 1
     assert fake.prepare_calls == 1
     assert fake.request_install_calls == 1
@@ -226,7 +226,7 @@ async def test_upgrade_command_reports_no_update_without_preparing(
     authorize_master(loaded_plugin)
     fake = FakeUpdater(tmp_path)
     fake.check_result = CheckResult(
-        Version(2, 0, 0), UpdateChannel.STABLE, "memory", "current"
+        Version("2.0.0"), UpdateChannel.STABLE, "memory", "current"
     )
     loaded_plugin.updater = fake
 
@@ -329,7 +329,7 @@ async def test_restart_command_arms_watcher_audits_actor_and_shuts_down(
     assert fake.spawn_restart_watcher_calls == 1
     assert fake.audit.records[-1] == {
         "action": "restart",
-        "current_version": Version(1, 0, 0),
+        "current_version": Version("1.0.0"),
         "result": "requested",
         "user_id": "90001",
         "account_id": "10001",

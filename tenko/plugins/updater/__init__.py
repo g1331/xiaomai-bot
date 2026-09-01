@@ -107,7 +107,7 @@ def _format_check(result: CheckResult) -> str:
         return f"当前已是最新版本：{result.current_version}（通道：{result.channel.value}）"
     release = result.candidate
     return (
-        f"发现新版本：{release.version}\n"
+        f"发现新版本：{release.tag}\n"
         f"当前版本：{result.current_version}\n"
         f"通道：{result.channel.value}\n"
         f"标签：{release.tag}\n"
@@ -275,8 +275,8 @@ def _format_upgrade(
     prepared: PrepareResult, handoff: HandoffResult, watcher_armed: bool
 ) -> str:
     if watcher_armed:
-        return f"版本 {prepared.release.version} 已下载、校验通过，正在自动重启进入新版本。"
-    return f"版本 {prepared.release.version} 已下载、校验通过，但自动重启未能启动，请手动重启。"
+        return f"版本 {prepared.release.tag} 已下载、校验通过，正在自动重启进入新版本。"
+    return f"版本 {prepared.release.tag} 已下载、校验通过，但自动重启未能启动，请手动重启。"
 
 
 def _format_rollback(result: RollbackResult, watcher_armed: bool) -> str:
@@ -290,7 +290,7 @@ def _format_rollback(result: RollbackResult, watcher_armed: bool) -> str:
 async def _run_policy() -> CheckResult | PrepareResult | HandoffResult:
     result = await updater.run_policy()
     if isinstance(result, CheckResult) and result.candidate is not None:
-        logger.warning("Tenko upgrade available: {}", result.candidate.version)
+        logger.warning("Tenko upgrade available: {}", result.candidate.tag)
     elif isinstance(result, PrepareResult):
         logger.info("Tenko upgrade artifact prepared: {}", result.path)
     elif isinstance(result, HandoffResult):

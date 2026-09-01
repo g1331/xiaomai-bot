@@ -16,71 +16,16 @@ import sys
 import tomllib
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
+
 
 def parse_version(value):
     if not isinstance(value, str):
         raise ValueError("版本必须是字符串")
-    version, separator, build = value.partition("+")
-    core, prerelease_separator, prerelease = version.partition("-")
-    parts = core.split(".")
-    if len(parts) != 3 or any(
-        not part.isascii()
-        or not part.isdigit()
-        or (len(part) > 1 and part.startswith("0"))
-        for part in parts
-    ):
-        raise ValueError(f"非法版本号: {value!r}")
-    identifiers = tuple(prerelease.split(".")) if prerelease_separator else ()
-    for identifier in identifiers:
-        if not identifier or not all(
-            "0" <= char <= "9"
-            or "A" <= char <= "Z"
-            or "a" <= char <= "z"
-            or char == "-"
-            for char in identifier
-        ):
-            raise ValueError(f"非法版本号: {value!r}")
-        if (
-            identifier.isdigit()
-            and len(identifier) > 1
-            and identifier.startswith("0")
-        ):
-            raise ValueError(f"非法版本号: {value!r}")
-    if separator and (
-        not build
-        or any(
-            not item
-            or not all(
-                "0" <= char <= "9"
-                or "A" <= char <= "Z"
-                or "a" <= char <= "z"
-                or char == "-"
-                for char in item
-            )
-            for item in build.split(".")
-        )
-    ):
-        raise ValueError(f"非法版本号: {value!r}")
-    return tuple(int(part) for part in parts), identifiers
-
-
-def version_is_older(left, right):
-    if left[0] != right[0]:
-        return left[0] < right[0]
-    left_pre, right_pre = left[1], right[1]
-    if not left_pre or not right_pre:
-        return bool(left_pre) and not right_pre
-    for left_identifier, right_identifier in zip(left_pre, right_pre):
-        if left_identifier == right_identifier:
-            continue
-        left_numeric = left_identifier.isdigit()
-        right_numeric = right_identifier.isdigit()
-        if left_numeric and right_numeric:
-            return int(left_identifier) < int(right_identifier)
-        if left_numeric != right_numeric:
-            return left_numeric
-        return left_identifier < right_identifier
-    return len(left_pre) < len(right_pre)
+    try:
+        return Version(value)
+    except InvalidVersion as error:
+        raise ValueError(f"非法版本号: {value!r}") from error
 
 
 stable_root = Path(sys.argv[1]).resolve()
@@ -129,9 +74,7 @@ if active_file.is_file():
         versions_root = (upgrade_root / "versions").resolve()
         if pointer_root.parent != versions_root or not pointer_root.is_dir():
             raise ValueError("active 指针必须指向 versions 下的版本目录")
-        if stable_version is None or not version_is_older(
-            pointer_version, stable_version
-        ):
+        if stable_version is None or not pointer_version < stable_version:
             release_root = pointer_root
     except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise SystemExit(f"active 指针无效: {active_file}: {error}") from error

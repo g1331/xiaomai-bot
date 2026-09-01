@@ -29,7 +29,6 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, UTC
 from enum import Enum
-from functools import total_ordering
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
@@ -37,6 +36,8 @@ from urllib.parse import quote, urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 from loguru import logger
+from packaging.version import InvalidVersion as PackagingInvalidVersion
+from packaging.version import Version
 
 from .perm import Permission, PermissionChecker, PermissionRegistry
 
@@ -198,7 +199,10 @@ _VERSION_PATTERN = re.compile(
     r"(?P<major>0|[1-9]\d*)\."
     r"(?P<minor>0|[1-9]\d*)\."
     r"(?P<patch>0|[1-9]\d*)"
-    r"(?:-(?P<pre>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
+    r"(?:-(?P<pre>"
+    r"(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*"
+    r"))?"
     r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
 )
 _HEX_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40,64}$")
@@ -224,113 +228,41 @@ def _redact_text(value: object) -> str:
     return _SCP_CREDENTIALS_PATTERN.sub("***@", text)
 
 
-@total_ordering
-@dataclass(frozen=True, slots=True)
-class Version:
-    """SemVer 2.0.0 的可比较版本。
-
-    构建元数据参与显示但不参与优先级比较，符合 SemVer 的 precedence 规则。
-    """
-
-    major: int
-    minor: int
-    patch: int
-    prerelease: tuple[str, ...] = ()
-    build: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        for name in ("major", "minor", "patch"):
-            value = getattr(self, name)
-            if type(value) is not int or value < 0:
-                raise InvalidVersionError(f"版本 {name} 必须是非负整数")
-        for identifiers, name in (
-            (self.prerelease, "prerelease"),
-            (self.build, "build"),
-        ):
-            if not isinstance(identifiers, tuple) or any(
-                not isinstance(item, str) or not item for item in identifiers
-            ):
-                raise InvalidVersionError(f"版本 {name} 标识符无效")
-        for identifier in self.prerelease:
-            if not re.fullmatch(r"[0-9A-Za-z-]+", identifier):
-                raise InvalidVersionError("预发布标识符无效")
-            if identifier.isdigit() and len(identifier) > 1 and identifier[0] == "0":
-                raise InvalidVersionError("预发布数字标识符不能有前导零")
-        for identifier in self.build:
-            if not re.fullmatch(r"[0-9A-Za-z-]+", identifier):
-                raise InvalidVersionError("构建标识符无效")
-
-    @classmethod
-    def parse(cls, value: str | Version) -> Version:
-        if isinstance(value, cls):
-            return value
-        if not isinstance(value, str):
-            raise InvalidVersionError(f"版本必须是字符串: {value!r}")
-        match = _VERSION_PATTERN.fullmatch(value)
-        if match is None:
-            raise InvalidVersionError(f"非法版本号: {value!r}")
-        return cls(
-            int(match.group("major")),
-            int(match.group("minor")),
-            int(match.group("patch")),
-            tuple(match.group("pre").split(".")) if match.group("pre") else (),
-            tuple(match.group("build").split(".")) if match.group("build") else (),
-        )
-
-    @property
-    def is_prerelease(self) -> bool:
-        return bool(self.prerelease)
-
-    def _precedence_equal(self, other: object) -> bool:
-        return isinstance(other, Version) and (
-            self.major,
-            self.minor,
-            self.patch,
-            self.prerelease,
-        ) == (other.major, other.minor, other.patch, other.prerelease)
-
-    def __eq__(self, other: object) -> bool:
-        return self._precedence_equal(other)
-
-    def __hash__(self) -> int:
-        return hash((self.major, self.minor, self.patch, self.prerelease))
-
-    def __lt__(self, other: object) -> bool:
-        if not isinstance(other, Version):
-            return NotImplemented
-        left_base = (self.major, self.minor, self.patch)
-        right_base = (other.major, other.minor, other.patch)
-        if left_base != right_base:
-            return left_base < right_base
-        if not self.prerelease and not other.prerelease:
-            return False
-        if not self.prerelease:
-            return False
-        if not other.prerelease:
-            return True
-        for left, right in zip(self.prerelease, other.prerelease):
-            if left == right:
-                continue
-            left_numeric = left.isdigit()
-            right_numeric = right.isdigit()
-            if left_numeric and right_numeric:
-                return int(left) < int(right)
-            if left_numeric != right_numeric:
-                return left_numeric
-            return left < right
-        return len(self.prerelease) < len(other.prerelease)
-
-    def __str__(self) -> str:
-        value = f"{self.major}.{self.minor}.{self.patch}"
-        if self.prerelease:
-            value += f"-{'.'.join(self.prerelease)}"
-        if self.build:
-            value += f"+{'.'.join(self.build)}"
-        return value
-
-
 def parse_version(value: str | Version) -> Version:
-    return Version.parse(value)
+    """解析严格 SemVer 形状，并交由 packaging 提供版本比较。"""
+
+    if isinstance(value, Version):
+        return value
+    if not isinstance(value, str):
+        raise InvalidVersionError(f"版本必须是字符串: {value!r}")
+    try:
+        parsed = Version(value)
+    except PackagingInvalidVersion as exc:
+        raise InvalidVersionError(f"非法版本号: {value!r}") from exc
+    # 原始输入继续要求三段 SemVer；同时接受 packaging 为持久化指针生成的
+    # 规范形式（例如 ``4.0.0rc10``），避免规范化后的状态无法再次读取。
+    if _VERSION_PATTERN.fullmatch(value) is None and (
+        len(parsed.release) != 3 or str(parsed) != value
+    ):
+        raise InvalidVersionError(f"非法版本号: {value!r}")
+    return parsed
+
+
+def _version_text(value: str | Version) -> str:
+    """校验版本并保留调用方传入的原始字符串用于外部记录。"""
+
+    parsed = parse_version(value)
+    return value if isinstance(value, str) else str(parsed)
+
+
+def _pending_release_tag(pending: Mapping[str, Any], fallback: str) -> str:
+    """从 pending 记录取原始 tag；旧记录缺失时回退到规范版本。"""
+
+    tag = pending.get("tag")
+    release = pending.get("release")
+    if not isinstance(tag, str) and isinstance(release, Mapping):
+        tag = release.get("tag")
+    return tag if isinstance(tag, str) and tag else fallback
 
 
 def compare_versions(current: str | Version, remote: str | Version) -> UpdateRelation:
@@ -426,7 +358,7 @@ class Release:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "version": str(self.version),
+            "version": self.tag,
             "tag": self.tag,
             "source": self.source,
             "commit_sha": self.commit_sha,
@@ -759,13 +691,9 @@ class _ArchiveSource:
         headers: Mapping[str, str] | None = None,
     ) -> Path:
         if not release.artifact_url:
-            raise ArtifactAcquisitionError(
-                f"{release.version} 没有可下载的 artifact_url"
-            )
+            raise ArtifactAcquisitionError(f"{release.tag} 没有可下载的 artifact_url")
         if not release.artifact_sha256:
-            raise ArtifactVerificationError(
-                f"{release.version} 没有 SHA-256，禁止继续安装"
-            )
+            raise ArtifactVerificationError(f"{release.tag} 没有 SHA-256，禁止继续安装")
         destination = destination.resolve()
         if destination.exists():
             raise ArtifactAcquisitionError(f"制品目录已存在: {destination}")
@@ -994,11 +922,18 @@ class UrlManifestSource(_ArchiveSource):
         payload = await self.client.get_json(self.url)
         releases: list[Release] = []
         for item in self._items(payload):
-            version = parse_version(item.get("version"))
+            version_value = item.get("version")
+            parse_version(version_value)
+            default_tag = (
+                version_value
+                if isinstance(version_value, str)
+                and version_value.startswith(("v", "V"))
+                else f"{self.tag_prefix}{version_value}"
+            )
             release = Release.from_mapping(
                 item,
                 source=self.name,
-                default_tag=f"{self.tag_prefix}{version}",
+                default_tag=default_tag,
             )
             if (
                 selected_channel is UpdateChannel.STABLE
@@ -1138,7 +1073,7 @@ class ConfigCompatibilityChecker:
             except (OSError, json.JSONDecodeError) as exc:
                 raise ConfigurationCompatibilityError(
                     CompatibilityResult(
-                        Version(0, 0, 0),
+                        parse_version("0.0.0"),
                         None,
                         False,
                         f"升级兼容性清单不可读取: {path}",
@@ -1147,7 +1082,7 @@ class ConfigCompatibilityChecker:
             if not isinstance(value, Mapping):
                 raise ConfigurationCompatibilityError(
                     CompatibilityResult(
-                        Version(0, 0, 0),
+                        parse_version("0.0.0"),
                         None,
                         False,
                         f"升级兼容性清单必须是 object: {path}",
@@ -1163,7 +1098,7 @@ class ConfigCompatibilityChecker:
             except InvalidVersionError as exc:
                 raise ConfigurationCompatibilityError(
                     CompatibilityResult(
-                        Version(0, 0, 0),
+                        parse_version("0.0.0"),
                         None,
                         False,
                         f"升级兼容性清单中的版本非法: {required!r}",
@@ -1724,18 +1659,21 @@ class AuditLogger:
         timestamp = self.clock()
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=UTC)
+        target_tag = details.get("target_tag")
         payload: dict[str, Any] = {
             "timestamp": timestamp.astimezone(UTC).isoformat(),
             "action": action,
             "current_version": (
-                str(parse_version(current_version))
-                if current_version is not None
-                else None
+                _version_text(current_version) if current_version is not None else None
             ),
             "target_version": (
-                str(parse_version(target_version))
-                if target_version is not None
-                else None
+                target_tag
+                if isinstance(target_tag, str)
+                else (
+                    _version_text(target_version)
+                    if target_version is not None
+                    else None
+                )
             ),
             "result": result,
         }
@@ -1996,7 +1934,7 @@ class UpgradeManager:
                 raise NoUpdateAvailable("当前通道没有可安装的新版本")
             if release.version <= self.current_version:
                 raise NoUpdateAvailable(
-                    f"目标版本 {release.version} 不高于当前版本 {self.current_version}"
+                    f"目标版本 {release.tag} 不高于当前版本 {self.current_version}"
                 )
             if self.channel is UpdateChannel.STABLE and release.version.is_prerelease:
                 raise NoUpdateAvailable("stable 通道不允许安装预发布版本")
@@ -2037,6 +1975,8 @@ class UpgradeManager:
                     acquired, release.version, release.commit_sha
                 )
                 pending = {
+                    # 指针字段保存可稳定解析的规范版本；原始 tag 保存在
+                    # release 记录中，供审计和外部展示使用。
                     "version": str(release.version),
                     "path": str(final_path),
                     "release": release.as_dict(),
@@ -2060,6 +2000,7 @@ class UpgradeManager:
                     target_version=release.version,
                     result="success",
                     source=release.source,
+                    target_tag=release.tag,
                     target_path=str(final_path),
                     verification=(
                         "commit_sha" if release.commit_sha else "asset_sha256"
@@ -2077,6 +2018,7 @@ class UpgradeManager:
                     target_version=release.version,
                     result="failed",
                     source=release.source,
+                    target_tag=release.tag,
                     error=str(exc) or exc.__class__.__name__,
                 )
                 if final_path is not None and not pending_written:
@@ -2089,11 +2031,14 @@ class UpgradeManager:
             pending = self.layout.read_pending()
             if pending is None:
                 raise NoUpdateAvailable("没有已通过校验的待安装版本")
-            version = parse_version(pending["version"])
+            version_value = pending["version"]
+            version = parse_version(version_value)
+            version_text = str(version)
+            target_tag = _pending_release_tag(pending, version_text)
             target = Path(str(pending["path"])).resolve()
             handoff = {
                 "action": "activate",
-                "version": str(version),
+                "version": version_text,
                 "path": str(target),
                 "created_at": datetime.now(UTC).isoformat(),
                 "config_path": str(self.config_path) if self.config_path else None,
@@ -2107,6 +2052,7 @@ class UpgradeManager:
                 result="requested",
                 handoff_path=str(self.layout.handoff_file),
                 restart_required=True,
+                target_tag=target_tag,
             )
             return HandoffResult("activate", version, target)
 
@@ -2387,7 +2333,10 @@ class UpgradeManager:
             pending = self.layout.read_pending()
             if pending is None:
                 raise NoUpdateAvailable("没有待激活版本")
-            target_version = parse_version(pending["version"])
+            target_version_value = pending["version"]
+            target_version = parse_version(target_version_value)
+            target_version_text = str(target_version)
+            target_tag = _pending_release_tag(pending, target_version_text)
             target_path = Path(str(pending["path"])).resolve()
             self.layout._validate_version_path(target_path)
             target = ReleasePointer(target_version, target_path)
@@ -2417,6 +2366,7 @@ class UpgradeManager:
                 target_version=target_version,
                 result="started",
                 target_path=str(target_path),
+                target_tag=target_tag,
             )
             process = None
             try:
@@ -2449,10 +2399,11 @@ class UpgradeManager:
                     target_version=target_version,
                     result="failed",
                     error=reason,
+                    target_tag=target_tag,
                 )
                 self.audit.record(
                     "rollback",
-                    current_version=target_version,
+                    current_version=target_tag,
                     target_version=source.version,
                     result="success",
                     reason="post-switch health check failed",
@@ -2469,6 +2420,7 @@ class UpgradeManager:
                 result="success",
                 active_path=str(target_path),
                 previous_path=str(source.path),
+                target_tag=target_tag,
             )
             return InstallResult(True, target_version, target_path, False, "升级已激活")
 
@@ -2907,7 +2859,7 @@ def _default_manager() -> UpgradeManager:
     try:
         version = read_project_version(Path.cwd())
     except UpgradeConfigError:
-        version = Version(0, 0, 0)
+        version = parse_version("0.0.0")
     return UpgradeManager(
         version,
         layout=UpgradeLayout(Path(".tenko/upgrades")),

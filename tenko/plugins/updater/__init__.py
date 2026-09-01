@@ -1,14 +1,15 @@
 """Tenko 宿主升级管理命令。
 
 命令只调用 ``tenko.host.updater`` 的控制平面 API。当前插件不执行进程内热
-替换；``/升级`` 和 ``/回滚`` 生成外部重启接管记录后安排当前运行时优雅退出，
-避免当前事件处理器在同一进程里混用新旧代码。
+替换；``/升级`` 和 ``/回滚`` 生成外部重启接管记录，``/重启`` 复用同一
+watcher，随后安排当前运行时优雅退出，避免当前事件处理器在同一进程里混用新旧代码。
 """
 
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+import time
+from datetime import UTC, datetime, timedelta
 
 from arclet.alconna import Alconna, CommandMeta
 from arclet.entari import Ready, Session, command, plugin, scheduler
@@ -45,6 +46,10 @@ plugin.get_plugin().metadata.default_switch = True
 updater = get_upgrade_manager()
 permission_checker = get_upgrade_permission_checker()
 _RESTART_SHUTDOWN_DELAY_SECONDS = 4.0
+_RESTART_COOLDOWN_SECONDS = 60.0
+_RESTART_PERMISSION_DENIED = "权限不足：仅 Master 可执行重启操作"
+_RESTART_COOLDOWN_MESSAGE = "重启操作冷却中，请稍后再试"
+_restart_cooldown_until = 0.0
 _shutdown_task: asyncio.Task[None] | None = None
 
 
@@ -72,6 +77,15 @@ rollback_command = Alconna(
         "请求外部重启流程回到上一可用宿主版本",
         usage="回滚",
         example="/回滚",
+        compact=True,
+    ),
+)
+restart_command = Alconna(
+    "重启",
+    meta=CommandMeta(
+        "通过升级系统安全重启 Tenko 宿主",
+        usage="重启",
+        example="/重启",
         compact=True,
     ),
 )
@@ -145,6 +159,76 @@ async def rollback(session: Session):
         return response
     except UpdaterError as exc:
         return text_message(_error_message(exc))
+
+
+@command.on(restart_command)
+async def restart(session: Session):
+    context = context_from_session(session)
+    if not await permission_checker.require_perm(context, Permission.Master):
+        return text_message(_RESTART_PERMISSION_DENIED)
+    if not getattr(updater, "enabled", False):
+        _record_restart_audit(context, "disabled")
+        return text_message("重启依赖升级系统，当前未启用")
+    if not _claim_restart_cooldown():
+        _record_restart_audit(context, "cooldown")
+        return text_message(_RESTART_COOLDOWN_MESSAGE)
+
+    watcher_armed = _arm_restart_watcher()
+    if not watcher_armed:
+        _release_restart_cooldown()
+        _record_restart_audit(context, "watcher_failed")
+        return text_message("重启失败：自动重启未能启动，请手动重启。")
+
+    _record_restart_audit(context, "requested")
+    _schedule_graceful_shutdown()
+    return text_message("正在重启…")
+
+
+def _claim_restart_cooldown() -> bool:
+    global _restart_cooldown_until
+    now = time.monotonic()
+    if now < _restart_cooldown_until:
+        return False
+    _restart_cooldown_until = now + _RESTART_COOLDOWN_SECONDS
+    return True
+
+
+def _release_restart_cooldown() -> None:
+    global _restart_cooldown_until
+    _restart_cooldown_until = 0.0
+
+
+def _record_restart_audit(context: object, result: str) -> None:
+    details = {
+        "user_id": getattr(context, "user_id", None),
+        "account_id": getattr(context, "account_id", None),
+        "platform": getattr(context, "platform", None),
+        "chat_type": getattr(context, "chat_type", None),
+        "channel_id": getattr(context, "channel_id", None),
+        "message_id": getattr(context, "message_id", None),
+    }
+    payload = {
+        "timestamp": datetime.now(UTC).isoformat(),
+        "action": "restart",
+        "result": result,
+        **details,
+    }
+    audit = getattr(updater, "audit", None)
+    record = getattr(audit, "record", None)
+    if not callable(record):
+        logger.bind(restart_audit=payload).info("restart audit")
+        return
+    try:
+        record(
+            "restart",
+            current_version=getattr(updater, "current_version", None),
+            result=result,
+            **details,
+        )
+    except OSError:
+        # watcher 已经 arm 时不能因为审计文件暂时不可写而留下半完成的退出链路。
+        logger.exception("Tenko restart audit write failed")
+        logger.bind(restart_audit=payload).info("restart audit")
 
 
 def _arm_restart_watcher() -> bool:

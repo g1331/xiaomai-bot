@@ -23,6 +23,10 @@ superusers = { onebot = ["YOUR_QQ_ID"] }
 level = "INFO"
 ignores = []
 # 启用官方日志轮转并落盘到 Entari 的日志目录；默认不落盘（save=None）。
+# save 启用后，日志目录由 Entari localdata 决定：cwd/(base_dir 或 ".entari")/log。
+# 警告：不要随意修改 localdata 的 base_dir；migrations_lock.json（数据库迁移状态）
+# 位于 data 目录下，换目录会让迁移器误判为全新库，对已有数据重复 autogenerate。
+# 本项目数据目录是 .tenko（Tenko 自有数据），Entari 框架数据目录是 .entari，两者并存。
 # save = { rotation = "00:00", compression = "gz", colorize = false }
 rich_error = false
 short_level = false

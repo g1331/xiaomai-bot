@@ -180,7 +180,7 @@ def test_help_number_uses_plugin_commands_for_card_positions(
             "撤回",
             "踢出",
         ),
-        "updater": ("检查更新", "升级", "回滚"),
+        "updater": ("检查更新", "升级", "回滚", "重启"),
     }
     infos = tuple(
         loaded_plugin.PluginInfo(

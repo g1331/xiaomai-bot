@@ -85,12 +85,15 @@ class FakeUpdater:
             "已生成外部重启回滚记录",
         )
         self.check_calls = 0
+        self.current_version = Version(1, 0, 0)
+        self.enabled = True
         self.prepare_calls = 0
         self.request_install_calls = 0
         self.rollback_calls = 0
         self.spawn_restart_watcher_calls = 0
         self.shutdown_calls = 0
         self.watcher_armed = True
+        self.audit = FakeAudit()
 
     async def check(self):
         self.check_calls += 1
@@ -118,6 +121,14 @@ class FakeUpdater:
         return True
 
 
+class FakeAudit:
+    def __init__(self) -> None:
+        self.records: list[dict[str, object]] = []
+
+    def record(self, action: str, **details: object) -> None:
+        self.records.append({"action": action, **details})
+
+
 def authorize_master(loaded_plugin) -> None:
     registry = PermissionRegistry()
     registry.set_user_level(None, "90001", Permission.Master)
@@ -126,7 +137,7 @@ def authorize_master(loaded_plugin) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    ["check_command", "upgrade_command", "rollback_command"],
+    ["check_command", "upgrade_command", "rollback_command", "restart_command"],
 )
 @pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
 def test_updater_commands_use_global_prefix_and_reject_bare_words(
@@ -158,6 +169,19 @@ async def test_updater_commands_block_non_superusers(loaded_plugin, handler_name
 
     assert isinstance(result, MessageChain)
     assert str(result) == "权限不足：仅超级用户可执行宿主升级操作"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_restart_command_blocks_bot_admins(loaded_plugin):
+    registry = PermissionRegistry()
+    registry.set_user_level(None, "90001", Permission.BotAdmin)
+    loaded_plugin.permission_checker = PermissionChecker(registry=registry)
+
+    result = await loaded_plugin.restart.callable_target(make_session("90001"))
+
+    assert isinstance(result, MessageChain)
+    assert str(result) == "权限不足：仅 Master 可执行重启操作"
 
 
 @pytest.mark.asyncio
@@ -267,3 +291,96 @@ async def test_rollback_command_reports_missing_previous_version(
     result = await loaded_plugin.rollback.callable_target(make_session("90001"))
 
     assert "升级操作失败：没有可回滚的上一可用版本" in str(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_restart_command_rejects_when_upgrade_is_disabled(
+    loaded_plugin, monkeypatch, tmp_path
+):
+    authorize_master(loaded_plugin)
+    fake = FakeUpdater(tmp_path)
+    fake.enabled = False
+    loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_restart_cooldown_until", 0.0)
+
+    result = await loaded_plugin.restart.callable_target(make_session("90001"))
+
+    assert str(result) == "重启依赖升级系统，当前未启用"
+    assert fake.spawn_restart_watcher_calls == 0
+    assert fake.shutdown_calls == 0
+    assert fake.audit.records[-1]["result"] == "disabled"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_restart_command_arms_watcher_audits_actor_and_shuts_down(
+    loaded_plugin, monkeypatch, tmp_path
+):
+    authorize_master(loaded_plugin)
+    fake = FakeUpdater(tmp_path)
+    loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_RESTART_SHUTDOWN_DELAY_SECONDS", 0)
+    monkeypatch.setattr(loaded_plugin, "_restart_cooldown_until", 0.0)
+
+    result = await loaded_plugin.restart.callable_target(make_session("90001"))
+
+    assert str(result) == "正在重启…"
+    assert fake.spawn_restart_watcher_calls == 1
+    assert fake.audit.records[-1] == {
+        "action": "restart",
+        "current_version": Version(1, 0, 0),
+        "result": "requested",
+        "user_id": "90001",
+        "account_id": "10001",
+        "platform": "onebot",
+        "chat_type": "group",
+        "channel_id": "40001",
+        "message_id": "50001",
+    }
+    await asyncio.sleep(0.01)
+    assert fake.shutdown_calls == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_restart_command_applies_global_cooldown(
+    loaded_plugin, monkeypatch, tmp_path
+):
+    authorize_master(loaded_plugin)
+    fake = FakeUpdater(tmp_path)
+    loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_RESTART_SHUTDOWN_DELAY_SECONDS", 0)
+    monkeypatch.setattr(loaded_plugin, "_restart_cooldown_until", 0.0)
+
+    first = await loaded_plugin.restart.callable_target(make_session("90001"))
+    second = await loaded_plugin.restart.callable_target(make_session("90001"))
+
+    assert str(first) == "正在重启…"
+    assert str(second) == "重启操作冷却中，请稍后再试"
+    assert fake.spawn_restart_watcher_calls == 1
+    assert [record["result"] for record in fake.audit.records[-2:]] == [
+        "requested",
+        "cooldown",
+    ]
+    await asyncio.sleep(0.01)
+    assert fake.shutdown_calls == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("loaded_plugin", ["updater"], indirect=True)
+async def test_restart_command_releases_cooldown_when_watcher_arm_fails(
+    loaded_plugin, monkeypatch, tmp_path
+):
+    authorize_master(loaded_plugin)
+    fake = FakeUpdater(tmp_path)
+    fake.watcher_armed = False
+    loaded_plugin.updater = fake
+    monkeypatch.setattr(loaded_plugin, "_restart_cooldown_until", 0.0)
+
+    result = await loaded_plugin.restart.callable_target(make_session("90001"))
+
+    assert str(result) == "重启失败：自动重启未能启动，请手动重启。"
+    assert fake.shutdown_calls == 0
+    assert fake.audit.records[-1]["result"] == "watcher_failed"
+    assert loaded_plugin._restart_cooldown_until == 0.0

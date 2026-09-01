@@ -6,7 +6,7 @@ import pytest
 
 from tenko import __main__ as main_module
 from tenko.config import TenkoConfig
-from tenko.host.updater import InstallResult, UpgradeLayout, Version
+from tenko.host.updater import InstallResult, RollbackResult, UpgradeLayout, Version
 
 
 def _write_project_version(root: Path, version: str = "1.0.0") -> None:
@@ -132,6 +132,50 @@ def test_main_continues_with_recovered_active_after_rolled_back_handoff(
     assert main_module.main([]) == 0
     assert calls == [False]
     assert reexec == [candidate.resolve()]
+
+
+def test_main_stops_when_automatic_rollback_handoff_fails(
+    monkeypatch, tmp_path: Path
+) -> None:
+    candidate = tmp_path / ".tenko" / "upgrades" / "versions" / "2.0.0"
+    (candidate / "tenko").mkdir(parents=True)
+    layout = UpgradeLayout(tmp_path / ".tenko" / "upgrades")
+    layout.write_pointer(candidate, Version("2.0.0"))
+    layout.write_handoff(
+        {
+            "action": "rollback",
+            "version": "1.0.0",
+            "path": str(tmp_path / ".tenko" / "upgrades" / "versions" / "1.0.0"),
+            "automatic_rollback": True,
+        }
+    )
+
+    class FakeManager:
+        def __init__(self) -> None:
+            self.layout = layout
+
+        @classmethod
+        def from_config(cls, _config, *, project_root):
+            assert project_root == tmp_path.resolve()
+            return cls()
+
+        async def apply_handoff(self, *, start_process: bool):
+            assert start_process is False
+            return RollbackResult(
+                False,
+                Version("1.0.0"),
+                candidate,
+                True,
+                "rollback health check failed",
+            )
+
+    import tenko.host.updater as updater_module
+
+    monkeypatch.setattr(updater_module, "UpgradeManager", FakeManager)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(SystemExit, match="1"):
+        main_module._run_startup_bootstrap(TenkoConfig(), [])
 
 
 @pytest.mark.parametrize(

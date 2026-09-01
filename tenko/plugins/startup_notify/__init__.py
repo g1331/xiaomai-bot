@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from arclet.entari import Ready, plugin
 from arclet.entari.plugin import PluginRole, collect_disposes
 from loguru import logger
@@ -41,6 +43,7 @@ def configure_startup_notification(
     *,
     started_at: float | None = None,
     history: StartupHistory | None = None,
+    recovery_notice_path: str | Path | None = None,
 ) -> StartupNotifier:
     """由 TenkoRuntime 注入启动起点和通知目标。"""
 
@@ -49,6 +52,7 @@ def configure_startup_notification(
         notify_group=notify_group,
         started_at=started_at,
         history=history,
+        recovery_notice_path=recovery_notice_path,
         action_service=action_service,
         feature_service=feature_service,
         permission_checker=permission_checker,

@@ -230,6 +230,66 @@ async def test_startup_notifier_falls_back_to_master_private_message() -> None:
 
 
 @pytest.mark.asyncio
+async def test_startup_notifier_sends_and_clears_recovery_notice_first(
+    tmp_path,
+) -> None:
+    actions = NotificationActions()
+    notice_path = tmp_path / "recovery-notice.json"
+    notice_path.write_text('{"message":"已自动回滚至 1.0.0 版本"}\n', encoding="utf-8")
+    features = FeatureService()
+    features.set_global_enabled("startup_notify", False)
+    notifier = StartupNotifier(
+        notify_group="40002",
+        history=StartupHistory(),
+        action_service=actions,
+        feature_service=features,
+        recovery_notice_path=notice_path,
+        started_at=10.0,
+        clock=lambda: 12.5,
+    )
+
+    await notifier.mark_framework_ready()
+    await notifier.mark_account_online(
+        SimpleNamespace(self_id="10001", platform="onebot")
+    )
+
+    assert actions.group_messages == [("40002", "已自动回滚至 1.0.0 版本")]
+    assert not notice_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_recovery_notice_uses_master_fallback_when_group_is_unset(
+    tmp_path,
+) -> None:
+    actions = NotificationActions()
+    notice_path = tmp_path / "recovery-notice.json"
+    notice_path.write_text('{"message":"已自动回滚至 1.0.0 版本"}\n', encoding="utf-8")
+    features = FeatureService()
+    features.set_global_enabled("startup_notify", False)
+    notifier = StartupNotifier(
+        notify_group=None,
+        history=StartupHistory(),
+        action_service=actions,
+        feature_service=features,
+        permission_checker=PermissionChecker(
+            registry=PermissionRegistry(master_id="90001")
+        ),
+        recovery_notice_path=notice_path,
+        started_at=10.0,
+        clock=lambda: 12.5,
+    )
+
+    await notifier.mark_framework_ready()
+    await notifier.mark_account_online(
+        SimpleNamespace(self_id="10001", platform="onebot")
+    )
+
+    assert actions.group_messages == []
+    assert actions.private_messages == [("90001", "已自动回滚至 1.0.0 版本")]
+    assert not notice_path.exists()
+
+
+@pytest.mark.asyncio
 async def test_startup_notification_failure_does_not_escape_or_skip_history() -> None:
     actions = NotificationActions()
     actions.send_group_message = AsyncMock(side_effect=RuntimeError("offline"))

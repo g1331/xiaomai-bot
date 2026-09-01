@@ -58,7 +58,7 @@ async def test_helper_trigger_uses_native_command_registry(
     )
 
     assert "Tenko 已注册命令" in str(result)
-    assert "内置插件：" in str(result)
+    assert "系统插件：" in str(result)
     assert "运行插件：" in str(result)
     assert "维护插件：" in str(result)
     assert loaded_plugin.help_command.parse("/帮助").matched
@@ -142,10 +142,38 @@ def test_help_data_partitions_required_available_and_maintenance(
 
     text = loaded_plugin.format_help_text(data)
     assert (
-        text.index("内置插件：") < text.index("运行插件：") < text.index("维护插件：")
+        text.index("系统插件：") < text.index("运行插件：") < text.index("维护插件：")
     )
     assert "├ " in text
     assert "└ " in text
+
+
+@pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)
+def test_help_marks_host_plugins_as_protected(monkeypatch, loaded_plugin):
+    info = loaded_plugin.PluginInfo(
+        name="updater",
+        path=Path("updater"),
+        is_package=True,
+        qualified_name="tenko.plugins.updater",
+    )
+    native_plugin = SimpleNamespace(
+        id="tenko.plugins.updater",
+        metadata=SimpleNamespace(
+            name="升级系统",
+            description="管理宿主升级。",
+            classifier=("required", "host"),
+        ),
+    )
+    monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: (info,))
+    monkeypatch.setattr(
+        loaded_plugin, "get_plugins", lambda *, subplugged: (native_plugin,)
+    )
+
+    data = loaded_plugin.build_help_data()
+
+    assert data["sections"][0]["title"] == "系统插件"
+    assert data["sections"][0]["subtitle"] == "系统必需功能"
+    assert data["required"][0]["state_label"] == "受保护"
 
 
 @pytest.mark.parametrize("loaded_plugin", ["helper"], indirect=True)

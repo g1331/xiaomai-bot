@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import time
@@ -18,6 +19,7 @@ from tenko.config import TenkoConfig, UpgradeConfig
 from tenko.host.updater import (
     ArtifactVerificationError,
     AuditLogger,
+    backup_sqlite_database,
     CheckResult,
     ConfigCompatibilityChecker,
     ConfigurationCompatibilityError,
@@ -1189,6 +1191,106 @@ async def test_install_policy_writes_external_handoff_without_hot_replacement(
         == "activate"
     )
     assert manager.layout.read_active() is None
+
+
+def test_backup_sqlite_database_creates_consistent_snapshot(tmp_path: Path) -> None:
+    source = tmp_path / "tenko.db"
+    destination = tmp_path / "backups" / "tenko.db.bak-1.1.0-test"
+    connection = sqlite3.connect(source)
+    try:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA wal_autocheckpoint=0")
+        connection.execute("CREATE TABLE values_table (value TEXT NOT NULL)")
+        connection.execute("INSERT INTO values_table(value) VALUES ('before')")
+        connection.commit()
+
+        backup_sqlite_database(source, destination)
+    finally:
+        connection.close()
+
+    destination_connection = sqlite3.connect(destination)
+    try:
+        assert destination_connection.execute(
+            "SELECT value FROM values_table"
+        ).fetchone() == ("before",)
+    finally:
+        destination_connection.close()
+    assert not destination.with_name(destination.name + "-wal").exists()
+    assert not destination.with_name(destination.name + "-shm").exists()
+
+
+@pytest.mark.asyncio
+async def test_install_backups_database_and_retains_latest_three(
+    tmp_path: Path,
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    manager.database_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(manager.database_path) as connection:
+        connection.execute("CREATE TABLE values_table (value TEXT NOT NULL)")
+        connection.execute("INSERT INTO values_table(value) VALUES ('before')")
+
+    old_backups = []
+    for index in range(3):
+        backup = manager.database_path.with_name(
+            f"{manager.database_path.name}.bak-existing-{index}"
+        )
+        backup.write_bytes(f"old-{index}".encode())
+        os.utime(backup, (index + 1, index + 1))
+        old_backups.append(backup)
+
+    await manager.prepare()
+    await manager.request_install()
+
+    backups = list(manager.database_path.parent.glob("tenko.db.bak-*"))
+    assert len(backups) == 3
+    assert old_backups[0] not in backups
+    new_backup = next(path for path in backups if "1.1.0-" in path.name)
+    with sqlite3.connect(new_backup) as connection:
+        assert connection.execute("SELECT value FROM values_table").fetchone() == (
+            "before",
+        )
+    audit = [
+        json.loads(line)
+        for line in manager.layout.audit_file.read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(
+        entry["action"] == "backup"
+        and entry["result"] == "success"
+        and entry["backup_path"] == str(new_backup)
+        for entry in audit
+    )
+
+
+@pytest.mark.asyncio
+async def test_database_backup_failure_is_audited_without_blocking_install(
+    monkeypatch, tmp_path: Path
+) -> None:
+    manager, _source, _checker, _config_path, _data_dir = make_manager(tmp_path)
+    manager.database_path.parent.mkdir(parents=True, exist_ok=True)
+    manager.database_path.write_bytes(b"not a database")
+
+    import tenko.host.updater as updater_module
+
+    def fail_backup(_source, _destination):
+        raise sqlite3.DatabaseError("backup unavailable")
+
+    monkeypatch.setattr(updater_module, "backup_sqlite_database", fail_backup)
+
+    await manager.prepare()
+    result = await manager.request_install()
+
+    assert result.action == "activate"
+    assert manager.layout.handoff_file.is_file()
+    audit = [
+        json.loads(line)
+        for line in manager.layout.audit_file.read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(
+        entry["action"] == "backup"
+        and entry["result"] == "failed"
+        and "backup unavailable" in entry["error"]
+        for entry in audit
+    )
 
 
 @pytest.mark.asyncio

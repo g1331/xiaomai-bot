@@ -3,9 +3,10 @@ from __future__ import annotations
 import bisect
 import importlib.metadata
 import inspect
+import json
 import math
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -218,6 +219,7 @@ class StartupNotifier:
         started_at: float | None = None,
         clock: Callable[[], float] | None = None,
         version_provider: Callable[[], str] | None = None,
+        recovery_notice_path: str | Path | None = None,
     ) -> None:
         self.notify_group_id = _normalize_id(notify_group)
         self.history = history or StartupHistory()
@@ -237,6 +239,11 @@ class StartupNotifier:
         )
         self.clock = clock or time.perf_counter
         self.version_provider = version_provider or _project_version
+        self.recovery_notice_path = (
+            None
+            if recovery_notice_path is None
+            else Path(recovery_notice_path).expanduser().resolve()
+        )
         self._online_account: object | None = None
         self._framework_ready = False
         self._attempted = False
@@ -266,6 +273,14 @@ class StartupNotifier:
         self._sending = True
         self._attempted = True
         try:
+            recovery_notice = self._recovery_notice()
+            if recovery_notice is not None:
+                try:
+                    if await self._send(recovery_notice):
+                        self._clear_recovery_notice()
+                except Exception:
+                    logger.exception("Tenko automatic rollback notification failed")
+
             if not self.feature_service.is_enabled(STARTUP_NOTIFY_FEATURE):
                 logger.info("Tenko startup notification is disabled")
                 return
@@ -298,15 +313,41 @@ class StartupNotifier:
         finally:
             self._sending = False
 
-    async def _send(self, notice: str) -> None:
+    def _recovery_notice(self) -> str | None:
+        path = self.recovery_notice_path
+        if path is None or not path.is_file():
+            return None
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+            logger.warning("Could not read Tenko automatic rollback notice: {}", error)
+            return None
+        if not isinstance(payload, Mapping):
+            logger.warning("Tenko automatic rollback notice must be an object")
+            return None
+        message = payload.get("message")
+        if not isinstance(message, str) or not message.strip():
+            logger.warning("Tenko automatic rollback notice has no message")
+            return None
+        return message.strip()
+
+    def _clear_recovery_notice(self) -> None:
+        if self.recovery_notice_path is None:
+            return
+        try:
+            self.recovery_notice_path.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Could not clear Tenko automatic rollback notice")
+
+    async def _send(self, notice: str) -> bool:
         account = self._online_account
         if account is None:  # pragma: no cover - _maybe_notify 已建立此条件
-            return
+            return False
         if self.notify_group_id is not None:
             sender = getattr(self.action_service, "send_group_message", None)
             if not callable(sender):
                 logger.warning("ActionService has no group notification API")
-                return
+                return False
             result = sender(
                 account,
                 self.notify_group_id,
@@ -321,16 +362,16 @@ class StartupNotifier:
                 "Tenko startup notification sent to group {}",
                 self.notify_group_id,
             )
-            return
+            return True
 
         master_id = master_id_for_account(account, self.permission_checker)
         if master_id is None:
             logger.warning("Tenko startup notification has no configured Master")
-            return
+            return False
         sender = getattr(self.action_service, "send_private_message", None)
         if not callable(sender):
             logger.warning("ActionService has no private notification API")
-            return
+            return False
         result = sender(account, master_id, notice)
         if inspect.isawaitable(result):
             await result
@@ -338,6 +379,7 @@ class StartupNotifier:
             "Tenko startup notification sent to Master {}",
             master_id,
         )
+        return True
 
 
 __all__ = [

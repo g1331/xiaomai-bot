@@ -111,7 +111,8 @@ Windows PowerShell 的激活命令为：
 稳定根目录中的代码；存在有效的 `active.json` 时只把对应 `versions/` 子目录作为
 代码源。启动器不消费 `handoff.json`，handoff 由 `tenko.__main__` 在正常启动时一次性
 应用，应用成功后会在 fresh Python 进程中重执行 active 版本。升级命令 arm 的 detached
-watcher 会等待当前进程退出，再调用这个启动器一次；因此 Ctrl+C 仍是正常的优雅退出路径。
+watcher 会等待当前进程退出，再调用这个启动器；升级切换时还会观察新进程的启动存活，
+因此 Ctrl+C 仍是正常的优雅退出路径。
 
 ### 协议端连接（以 NapCat 为例）
 
@@ -258,6 +259,12 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 | exception.message_buffer_size | 异常报告保留的最近消息数量，默认 10 |
 | exception.evidence_dir | 报告无法投递时的本地证据目录，默认 .tenko/exceptions |
 
+升级相关的 schema 变更遵循只前进纪律：禁止直接 `DROP` 或改型既有列；废弃列先保留并
+标记 `deprecated`，至少跨两个版本后再清理。使用文件型 SQLite 时，`/升级` 在写入
+安装接管记录前会用 SQLite online backup API 生成
+`.tenko/tenko.db.bak-<version>-<timestamp>`，最近保留 3 份；备份失败会写入升级审计
+并记录 ERROR，但不会阻塞升级。
+
 Tenko 的 `/开启`、`/关闭` 使用 `database.url` 指定的数据库保存“群 × 插件”的功能状态，
 多账号路由、响应策略、命令频控和启动耗时历史也使用同一数据库。它与 Entari builtin
 control 使用的 `local_data` 状态文件（包括全局插件/函数控制）是两套独立边界，不会
@@ -360,9 +367,10 @@ remote（例如 `origin`），会在加载配置时用 `git remote get-url` 将�
    检查配置兼容性和切换前健康状态，成功后把制品提升到
    `.tenko/upgrades/versions/`，写入 `pending.json`。
 3. 写入 `handoff.json`，请求外部重启时执行 `activate`。命令会尝试 arm 一次性
-   detached watcher；watcher 只等待当前进程退出，不负责读取或应用升级状态。
+   detached watcher；watcher 等待当前进程退出后，在新制品启动宽限期内观察进程存活，
+   连续两次失败会写入自动回滚 handoff。
 4. 收到成功回复后使用 `Ctrl+C` 让当前 Tenko 进程优雅退出。watcher 检测到旧进程
-   退出后只启动一次标准启动器 `scripts/launcher.sh`。
+   退出后启动标准启动器 `scripts/launcher.sh`，并在启动宽限期内观察新进程。
 5. 启动器固定以部署根目录为工作目录，并使用共享的 uv 环境启动 Tenko。启动早期
    会消费 `handoff.json`，原子更新 `active.json`，执行切换后的健康检查，然后在
    fresh Python 进程中重新执行 active 版本。配置、SQLite 数据库和 `.tenko/` 下的
@@ -370,7 +378,10 @@ remote（例如 `origin`），会在加载配置时用 `git remote get-url` 将�
 
 如果 watcher 未能 arm，`/升级` 的回复会提示手动接管；此时退出当前进程后运行
 `./scripts/launcher.sh`。如果切换后的健康检查失败，升级器会恢复原 active 指针并
-清理本次接管记录，避免失败 handoff 在后续启动中反复执行。
+清理本次接管记录，避免失败 handoff 在后续启动中反复执行。启动器拉起后续进程仍在
+宽限期内退出时，watcher 会把 `active.json` 切回 `previous.json` 指向的制品并重新拉起；
+回滚成功后，新进程启动通知会播报“已自动回滚至 X 版本”。如果回滚制品也无法存活，
+watcher 停止尝试、隔离失败 handoff 并保留审计记录，等待人工处理，不会继续循环拉起。
 
 `/回滚` 请求回到 `.tenko/upgrades/previous.json` 指向的上一可用版本：
 
@@ -436,7 +447,7 @@ Tenko 自身 `.tenko` 应用数据的落点。
 | `config/tenko.toml` | 用户配置 | 稳定 `cwd` |
 | `.tenko/tenko.db` | Tenko 运行期状态和既有业务表 | 稳定 `cwd` |
 | `.tenko/exceptions/` | 异常取证文件 | 稳定 `cwd` |
-| `.tenko/upgrades/` | `active.json`、`previous.json`、`pending.json`、`handoff.json` 和版本目录 | 稳定 `cwd` |
+| `.tenko/upgrades/` | `active.json`、`previous.json`、`pending.json`、`handoff.json`、`recovery-notice.json`、`audit.jsonl` 和版本目录 | 稳定 `cwd` |
 | `.tenko/upgrades/versions/<version>/` | 候选代码 | 升级状态目录下，作为代码源 |
 
 `[upgrade].data_dir` 是只传给自定义健康检查/启动命令的外部目录，不是 Tenko

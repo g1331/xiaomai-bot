@@ -133,7 +133,7 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
                 "sections": (
                     {
                         "key": "required",
-                        "title": "内置插件",
+                        "title": "系统插件",
                         "subtitle": "系统必需功能",
                         "count": 1,
                         "items": (
@@ -143,7 +143,7 @@ async def test_placeholder_templates_render_to_jpeg() -> None:
                                 "plugin": "helper",
                                 "description": "生成分区帮助列表。",
                                 "state": "required",
-                                "state_label": "内置",
+                                "state_label": "受保护",
                             },
                         ),
                     },

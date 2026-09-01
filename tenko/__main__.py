@@ -67,8 +67,22 @@ def _run_startup_bootstrap(config: TenkoConfig, arguments: Sequence[str]) -> boo
     stable_root = Path.cwd().resolve()
     manager = UpgradeManager.from_config(config.upgrade, project_root=stable_root)
     if manager.layout.handoff_file.is_file():
+        handoff_action = None
+        try:
+            handoff = manager.layout.read_handoff()
+        except UpgradeConfigError:
+            handoff = None
+        if handoff is not None:
+            handoff_action = handoff.get("action")
         result = asyncio.run(manager.apply_handoff(start_process=False))
         if not result.success:
+            if handoff_action == "rollback":
+                logger.error(
+                    "Tenko automatic rollback handoff failed; stopping to avoid "
+                    "a restart loop: {}",
+                    result.reason,
+                )
+                raise SystemExit(1)
             if getattr(result, "rolled_back", False):
                 logger.warning(
                     "Tenko upgrade handoff failed and was rolled back; "

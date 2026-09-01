@@ -57,7 +57,7 @@ def _is_protected(info: PluginInfo) -> bool:
         return True
     native = _native_plugin(info)
     classifiers = getattr(getattr(native, "metadata", None), "classifier", ())
-    # ``required`` 只表示插件应随宿主加载并在帮助中归入内置区域；普通
+    # ``required`` 只表示插件应随宿主加载并在帮助中归入系统区域；普通
     # 功能插件仍然需要支持群级开关。``host`` 才是不能由群管理员关闭的
     # 控制平面标记。
     return "host" in classifiers

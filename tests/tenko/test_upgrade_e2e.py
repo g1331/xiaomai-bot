@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import signal
 import shutil
 import sqlite3
 import stat
@@ -38,6 +39,7 @@ _COPY_IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc")
 _TEST_MAIN = """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import signal
@@ -50,6 +52,8 @@ from pathlib import Path
 from tenko import SOURCE
 from tenko._production_main import _run_startup_bootstrap
 from tenko.config import TenkoConfig
+from tenko.host.features import FeatureService
+from tenko.host.startup import StartupHistory, StartupNotifier
 
 
 ROOT = Path.cwd().resolve()
@@ -104,6 +108,43 @@ def _server():
         time.sleep(1)
 
 
+def _watchdog_startup():
+    if (
+        SOURCE.startswith("candidate")
+        and "--e2e-watchdog-survive" not in sys.argv
+    ) or "--e2e-watchdog-fail-rollback" in sys.argv:
+        with (ROOT / "candidate-startup-failures.log").open(
+            "a", encoding="utf-8"
+        ) as file:
+            file.write(SOURCE + "\\n")
+        raise SystemExit(31)
+    class Actions:
+        async def send_group_message(self, account, group_id, content, **kwargs):
+            del account, group_id, kwargs
+            (ROOT / "recovery-notification.txt").write_text(
+                content, encoding="utf-8"
+            )
+
+    features = FeatureService()
+    features.set_global_enabled("startup_notify", False)
+    notifier = StartupNotifier(
+        notify_group="40002",
+        history=StartupHistory(),
+        action_service=Actions(),
+        feature_service=features,
+        recovery_notice_path=ROOT / ".tenko" / "upgrades" / "recovery-notice.json",
+        started_at=0.0,
+        clock=lambda: 0.0,
+        version_provider=lambda: "1.0.0",
+    )
+    async def notify():
+        await notifier.mark_framework_ready()
+        await notifier.mark_account_online(object())
+
+    asyncio.run(notify())
+    _server()
+
+
 def _write_evidence(config):
     evidence_dir = _rooted(config.exception.evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -121,6 +162,16 @@ def _run_normal(arguments):
     config = TenkoConfig.load(config_path)
     if _run_startup_bootstrap(config, arguments):
         return 0
+    if any(
+        argument
+        in {
+            "--e2e-watchdog",
+            "--e2e-watchdog-survive",
+            "--e2e-watchdog-fail-rollback",
+        }
+        for argument in arguments
+    ):
+        _watchdog_startup()
 
     database_path = _database_path(config.database.url).resolve()
     with sqlite3.connect(database_path) as connection:
@@ -461,9 +512,24 @@ async def test_subprocess_upgrade_persists_data_and_runs_candidate(
     fixture = _make_fixture(tmp_path)
     manager = _make_manager(fixture)
     database_inode = fixture.database_path.stat().st_ino
+    old_backups = []
+    for index in range(3):
+        backup = fixture.database_path.with_name(
+            f"{fixture.database_path.name}.bak-existing-{index}"
+        )
+        backup.write_bytes(f"old-{index}".encode())
+        os.utime(backup, (index + 1, index + 1))
+        old_backups.append(backup)
 
     prepared = await manager.prepare(E2E_RELEASE)
     await manager.request_install()
+
+    backups = list(fixture.database_path.parent.glob("tenko.db.bak-*"))
+    assert len(backups) == 3
+    assert old_backups[0] not in backups
+    new_backup = next(path for path in backups if "2.0.0-" in path.name)
+    with sqlite3.connect(new_backup) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM e2e_rows").fetchone()[0] == 1
 
     completed = _run_launcher(fixture, "--e2e-mode", "upgrade")
 
@@ -647,6 +713,239 @@ def test_real_watcher_relaunches_launcher_after_old_process_exits(
         assert not layout.handoff_file.exists()
         assert not layout.pending_file.exists()
         _wait_until_gone(watcher_file)
+    finally:
+        if old_process.poll() is None:
+            old_process.terminate()
+            old_process.wait(timeout=5)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_real_watcher_rolls_back_crashing_candidate_and_records_recovery(
+    monkeypatch, tmp_path: Path
+) -> None:
+    fixture = _make_fixture(tmp_path)
+    manager = _make_manager(fixture)
+    prepared = asyncio.run(manager.prepare(E2E_RELEASE))
+    asyncio.run(manager.request_install())
+    old_process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(0.3)"],
+        cwd=fixture.stable_root,
+    )
+    watcher_file = fixture.upgrade_root / "restart-watchers" / f"{old_process.pid}.json"
+    failure_log = fixture.stable_root / "candidate-startup-failures.log"
+    server_pid_path = fixture.stable_root / "candidate-server.pid"
+    notification_path = fixture.stable_root / "recovery-notification.txt"
+    monkeypatch.setenv("UV", str(fixture.fake_uv))
+    monkeypatch.setenv("TENKO_TEST_PYTHON", sys.executable)
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    monkeypatch.delenv("TENKO_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("TENKO_DATA_DIR", raising=False)
+    monkeypatch.delenv("TENKO_UPGRADE_ROOT", raising=False)
+
+    try:
+        assert spawn_restart_watcher(
+            old_process.pid,
+            (str(fixture.launcher), "--e2e-watchdog"),
+            stable_root=fixture.stable_root,
+            watcher_dir=fixture.upgrade_root / "restart-watchers",
+            timeout=8,
+            poll_interval=0.05,
+            upgrade_root=fixture.upgrade_root,
+            startup_grace_period=2.0,
+            startup_failure_threshold=2,
+        )
+        assert old_process.wait(timeout=5) == 0
+        _wait_for(failure_log)
+        _wait_for(notification_path)
+        _wait_for(server_pid_path)
+        _wait_until_gone(watcher_file)
+
+        assert failure_log.read_text(encoding="utf-8").splitlines() == [
+            CANDIDATE_MARKER,
+            CANDIDATE_MARKER,
+        ]
+        layout = UpgradeLayout(fixture.upgrade_root)
+        active = layout.read_active()
+        previous = layout.read_previous()
+        assert active is not None and active.version == Version("1.0.0")
+        assert active.path != prepared.path
+        assert previous is not None
+        assert previous.version == E2E_RELEASE.version
+        assert previous.path == prepared.path
+        assert not layout.handoff_file.exists()
+        assert not layout.pending_file.exists()
+        assert notification_path.read_text(encoding="utf-8") == (
+            "已自动回滚至 1.0.0 版本"
+        )
+        assert not layout.recovery_notice_file.exists()
+
+        audit = _read_audit(fixture)
+        assert (
+            sum(
+                entry["action"] == "startup" and entry["result"] == "failed"
+                for entry in audit
+            )
+            == 2
+        )
+        assert any(
+            entry["action"] == "rollback" and entry["result"] == "requested"
+            for entry in audit
+        )
+        assert any(
+            entry["action"] == "rollback"
+            and entry["result"] == "success"
+            and entry["automatic"] is True
+            for entry in audit
+        )
+    finally:
+        if old_process.poll() is None:
+            old_process.terminate()
+            old_process.wait(timeout=5)
+        if server_pid_path.is_file():
+            try:
+                server_pid = int(server_pid_path.read_text(encoding="utf-8"))
+                os.kill(server_pid, signal.SIGTERM)
+            except (OSError, ValueError):
+                pass
+            try:
+                _wait_for(fixture.stable_root / "candidate-server-exited", timeout=5)
+            except AssertionError:
+                pass
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_real_watcher_keeps_live_candidate_after_startup_grace(
+    monkeypatch, tmp_path: Path
+) -> None:
+    fixture = _make_fixture(tmp_path)
+    manager = _make_manager(fixture)
+    prepared = asyncio.run(manager.prepare(E2E_RELEASE))
+    asyncio.run(manager.request_install())
+    old_process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(0.3)"],
+        cwd=fixture.stable_root,
+    )
+    watcher_file = fixture.upgrade_root / "restart-watchers" / f"{old_process.pid}.json"
+    server_pid_path = fixture.stable_root / "candidate-server.pid"
+    failure_log = fixture.stable_root / "candidate-startup-failures.log"
+    monkeypatch.setenv("UV", str(fixture.fake_uv))
+    monkeypatch.setenv("TENKO_TEST_PYTHON", sys.executable)
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    monkeypatch.delenv("TENKO_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("TENKO_DATA_DIR", raising=False)
+    monkeypatch.delenv("TENKO_UPGRADE_ROOT", raising=False)
+
+    try:
+        assert spawn_restart_watcher(
+            old_process.pid,
+            (str(fixture.launcher), "--e2e-watchdog-survive"),
+            stable_root=fixture.stable_root,
+            watcher_dir=fixture.upgrade_root / "restart-watchers",
+            timeout=8,
+            poll_interval=0.05,
+            upgrade_root=fixture.upgrade_root,
+            startup_grace_period=2.0,
+            startup_failure_threshold=2,
+        )
+        assert old_process.wait(timeout=5) == 0
+        _wait_for(server_pid_path)
+        _wait_until_gone(watcher_file)
+        assert not failure_log.exists()
+        layout = UpgradeLayout(fixture.upgrade_root)
+        active = layout.read_active()
+        previous = layout.read_previous()
+        assert active is not None and active.path == prepared.path
+        assert previous is not None and previous.version == Version("1.0.0")
+        assert not layout.handoff_file.exists()
+        assert not layout.pending_file.exists()
+        server_pid = int(server_pid_path.read_text(encoding="utf-8"))
+        os.kill(server_pid, 0)
+    finally:
+        if old_process.poll() is None:
+            old_process.terminate()
+            old_process.wait(timeout=5)
+        if server_pid_path.is_file():
+            try:
+                server_pid = int(server_pid_path.read_text(encoding="utf-8"))
+                os.kill(server_pid, signal.SIGTERM)
+            except (OSError, ValueError):
+                pass
+            try:
+                _wait_for(fixture.stable_root / "candidate-server-exited", timeout=5)
+            except AssertionError:
+                pass
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX detached watcher semantics")
+def test_real_watcher_stops_when_previous_release_also_fails(
+    monkeypatch, tmp_path: Path
+) -> None:
+    fixture = _make_fixture(tmp_path)
+    manager = _make_manager(fixture)
+    prepared = asyncio.run(manager.prepare(E2E_RELEASE))
+    asyncio.run(manager.request_install())
+    old_process = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(0.3)"],
+        cwd=fixture.stable_root,
+    )
+    watcher_file = fixture.upgrade_root / "restart-watchers" / f"{old_process.pid}.json"
+    failure_log = fixture.stable_root / "candidate-startup-failures.log"
+    monkeypatch.setenv("UV", str(fixture.fake_uv))
+    monkeypatch.setenv("TENKO_TEST_PYTHON", sys.executable)
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    monkeypatch.delenv("TENKO_CONFIG_PATH", raising=False)
+    monkeypatch.delenv("TENKO_DATA_DIR", raising=False)
+    monkeypatch.delenv("TENKO_UPGRADE_ROOT", raising=False)
+
+    try:
+        assert spawn_restart_watcher(
+            old_process.pid,
+            (str(fixture.launcher), "--e2e-watchdog-fail-rollback"),
+            stable_root=fixture.stable_root,
+            watcher_dir=fixture.upgrade_root / "restart-watchers",
+            timeout=8,
+            poll_interval=0.05,
+            upgrade_root=fixture.upgrade_root,
+            startup_grace_period=2.0,
+            startup_failure_threshold=2,
+        )
+        assert old_process.wait(timeout=5) == 0
+        _wait_for(failure_log)
+        _wait_until_gone(watcher_file)
+        assert failure_log.read_text(encoding="utf-8").splitlines() == [
+            CANDIDATE_MARKER,
+            CANDIDATE_MARKER,
+            STABLE_MARKER,
+        ]
+        layout = UpgradeLayout(fixture.upgrade_root)
+        active = layout.read_active()
+        previous = layout.read_previous()
+        assert active is not None and active.version == Version("1.0.0")
+        assert active.path != prepared.path
+        assert previous is not None and previous.path == prepared.path
+        assert not layout.handoff_file.exists()
+        assert not layout.pending_file.exists()
+        assert layout.recovery_notice_file.is_file()
+
+        audit = _read_audit(fixture)
+        assert any(
+            entry["action"] == "rollback"
+            and entry["result"] == "success"
+            and entry["automatic"] is True
+            for entry in audit
+        )
+        assert any(
+            entry["action"] == "rollback"
+            and entry["result"] == "failed"
+            and entry["automatic"] is True
+            for entry in audit
+        )
+        time.sleep(0.3)
+        assert failure_log.read_text(encoding="utf-8").splitlines() == [
+            CANDIDATE_MARKER,
+            CANDIDATE_MARKER,
+            STABLE_MARKER,
+        ]
     finally:
         if old_process.poll() is None:
             old_process.terminate()

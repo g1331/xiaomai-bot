@@ -69,6 +69,8 @@ satori_token = "tenko-satori-local"
 [database]
 # 与旧 Graia 数据库同构，默认直接使用 Tenko 数据目录中的 SQLite 文件。
 url = "sqlite+aiosqlite:///./.tenko/tenko.db"
+# 每次安装升级前，文件型 SQLite 会自动生成 tenko.db.bak-<version>-<timestamp>；最近保留 3 份。
+# 升级相关 schema 变更只允许向前兼容：废弃列先标记 deprecated，跨两个版本后再清理。
 echo = false
 create_table_at = "preparing"
 

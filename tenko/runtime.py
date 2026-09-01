@@ -60,7 +60,9 @@ class TenkoRuntime:
         self.startup_history = StartupHistory()
         stable_root = Path.cwd().resolve()
         self.updater = UpgradeManager.from_config(
-            config.upgrade, project_root=stable_root
+            config.upgrade,
+            project_root=stable_root,
+            database_url=config.database.url,
         )
         configure_updater(
             self.updater,
@@ -314,10 +316,17 @@ class TenkoRuntime:
             startup_notify, "configure_startup_notification", None
         )
         if callable(configure_startup_notification):
+            recovery_notice_path = getattr(
+                self.updater.layout, "recovery_notice_file", None
+            )
+            notification_kwargs = {
+                "started_at": _process_start_monotonic,
+                "history": self.startup_history,
+            }
+            if recovery_notice_path is not None and recovery_notice_path.is_file():
+                notification_kwargs["recovery_notice_path"] = recovery_notice_path
             configure_startup_notification(
-                self.config.notify_group,
-                started_at=_process_start_monotonic,
-                history=self.startup_history,
+                self.config.notify_group, **notification_kwargs
             )
         permission_manager = self._plugin_module(loaded_plugins, "perm_manager")
         configure_notify_group = getattr(

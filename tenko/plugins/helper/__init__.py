@@ -35,7 +35,7 @@ permission_checker = PermissionChecker()
 plugin_runtime = PluginRuntime()
 
 _HELP_SECTIONS = (
-    ("required", "内置插件", "系统必需功能"),
+    ("required", "系统插件", "系统必需功能"),
     ("available", "运行插件", "当前可用功能"),
     ("unavailable", "维护插件", "暂不可用功能"),
 )
@@ -200,7 +200,7 @@ def build_help_data(group_id: str | int | None = None) -> dict[str, Any]:
         classifiers = _classifiers(native_plugin)
         if "host" in classifiers:
             key = "required"
-            state_label = "内置"
+            state_label = "受保护"
         elif feature_service.is_maintenance(info.name):
             key = "unavailable"
             state_label = "维护中"

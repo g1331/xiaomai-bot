@@ -18,6 +18,7 @@ import os
 import re
 import shutil
 import stat
+import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -51,6 +52,7 @@ __all__ = [
     "ArtifactAcquisitionError",
     "ArtifactVerificationError",
     "AuditLogger",
+    "backup_sqlite_database",
     "CheckResult",
     "CompatibilityResult",
     "ConfigurationCompatibilityError",
@@ -86,6 +88,10 @@ __all__ = [
     "get_upgrade_manager",
     "get_upgrade_permission_checker",
     "parse_version",
+    "record_automatic_rollback_failure",
+    "record_automatic_startup_failure",
+    "request_automatic_rollback",
+    "resolve_sqlite_database_path",
     "select_release",
     "spawn_restart_watcher",
 ]
@@ -218,6 +224,8 @@ _SCP_CREDENTIALS_PATTERN = re.compile(
 _FAILED_HANDOFF_RETENTION = 10
 _RESTART_WATCHER_TIMEOUT = 300
 _RESTART_WATCHER_INTERVAL = 0.2
+_STARTUP_GRACE_PERIOD = 60.0
+_STARTUP_FAILURE_THRESHOLD = 2
 
 
 def _redact_text(value: object) -> str:
@@ -961,6 +969,71 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def resolve_sqlite_database_path(
+    database_url: str | Path,
+    project_root: str | Path,
+) -> Path | None:
+    """从 SQLAlchemy URL 解析可做文件备份的 SQLite 路径。
+
+    ``:memory:`` 和 SQLite URI 没有稳定的单一文件目标，因此交由调用方按
+    “不适用”处理。非 SQLite URL 同样返回 ``None``；升级控制面不应因为部署
+    使用了其他数据库而伪造一份看似有效的本地备份。
+    """
+
+    if isinstance(database_url, Path):
+        return database_url.expanduser().resolve()
+    if not isinstance(database_url, str) or not database_url:
+        raise UpgradeConfigError("database URL 必须是非空字符串或路径")
+    try:
+        from sqlalchemy.engine import make_url
+        from sqlalchemy.exc import ArgumentError
+
+        url = make_url(database_url)
+    except (ArgumentError, ValueError) as exc:
+        raise UpgradeConfigError(f"无法解析 database URL: {database_url!r}") from exc
+    if url.get_backend_name() != "sqlite":
+        return None
+    database = url.database
+    if not database or database == ":memory:" or database.startswith("file:"):
+        return None
+    path = Path(database).expanduser()
+    root = Path(project_root).expanduser().resolve()
+    return (root / path).resolve() if not path.is_absolute() else path.resolve()
+
+
+def _remove_sqlite_temporary_files(path: Path) -> None:
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        path.with_name(path.name + suffix).unlink(missing_ok=True)
+
+
+def backup_sqlite_database(source: str | Path, destination: str | Path) -> None:
+    """使用 SQLite online backup API 生成一致的数据库快照。
+
+    目标先写入同目录临时文件，关闭连接并刷盘后再原子替换；SQLite backup API
+    会从源连接复制一致快照，WAL 中尚未合并的页面也会进入目标库，所以不需要
+    另行复制源库的 ``-wal``/``-shm`` 旁车文件。
+    """
+
+    source_path = Path(source).expanduser().resolve()
+    destination_path = Path(destination).expanduser().resolve()
+    if not source_path.is_file():
+        raise FileNotFoundError(source_path)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination_path.with_name(
+        f".{destination_path.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with sqlite3.connect(str(source_path)) as source_connection:
+            with sqlite3.connect(str(temporary)) as destination_connection:
+                source_connection.backup(destination_connection)
+                destination_connection.commit()
+        with temporary.open("rb") as file:
+            os.fsync(file.fileno())
+        os.replace(temporary, destination_path)
+    finally:
+        _remove_sqlite_temporary_files(temporary)
+
+
 def _safe_archive_path(destination: Path, member_name: str) -> Path:
     pure = PurePosixPath(member_name)
     if pure.is_absolute() or ".." in pure.parts:
@@ -1502,6 +1575,12 @@ class UpgradeLayout:
     def audit_file(self) -> Path:
         return self.root / "audit.jsonl"
 
+    @property
+    def recovery_notice_file(self) -> Path:
+        """自动回滚成功后交给新进程消费的一次性通知记录。"""
+
+        return self.root / "recovery-notice.json"
+
     def ensure(self) -> None:
         self.versions_dir.mkdir(parents=True, exist_ok=True)
         self.staging_dir.mkdir(parents=True, exist_ok=True)
@@ -1634,6 +1713,26 @@ class UpgradeLayout:
     def clear_previous(self) -> None:
         self.previous_file.unlink(missing_ok=True)
 
+    def write_recovery_notice(
+        self,
+        version: str | Version,
+        *,
+        reason: str = "startup failure",
+    ) -> None:
+        target_version = parse_version(version)
+        _atomic_write_json(
+            self.recovery_notice_file,
+            {
+                "version": str(target_version),
+                "message": f"已自动回滚至 {target_version} 版本",
+                "reason": reason,
+                "created_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+    def clear_recovery_notice(self) -> None:
+        self.recovery_notice_file.unlink(missing_ok=True)
+
 
 class AuditLogger:
     """追加式 JSON Lines 审计记录。"""
@@ -1686,6 +1785,210 @@ class AuditLogger:
             os.fsync(file.fileno())
         logger.bind(upgrade_audit=payload).info("upgrade audit")
         return payload
+
+
+def _best_effort_external_audit(
+    audit: AuditLogger,
+    action: str,
+    *,
+    current_version: Version | None = None,
+    target_version: Version | None = None,
+    result: str,
+    **details: Any,
+) -> None:
+    try:
+        audit.record(
+            action,
+            current_version=current_version,
+            target_version=target_version,
+            result=result,
+            **details,
+        )
+    except OSError as exc:
+        logger.error("Tenko automatic upgrade audit write failed: {}", exc)
+
+
+def _external_layout_pointer(
+    layout: UpgradeLayout,
+    method_name: str,
+) -> ReleasePointer | None:
+    try:
+        return getattr(layout, method_name)()
+    except UpgradeConfigError:
+        return None
+
+
+def record_automatic_startup_failure(
+    upgrade_root: str | Path,
+    *,
+    target_version: str | Version | None,
+    reason: str,
+    failed_attempts: int,
+) -> None:
+    """记录 watcher 观察到的候选版本启动失败。
+
+    该函数由 detached watcher 在稳定根目录的独立 Python 进程中调用；审计
+    失败只能影响留痕，不能让 watcher 因日志问题继续重启坏制品。
+    """
+
+    layout = UpgradeLayout(upgrade_root)
+    audit = AuditLogger(layout.audit_file)
+    active = _external_layout_pointer(layout, "read_active")
+    try:
+        target = parse_version(target_version) if target_version is not None else None
+    except InvalidVersionError:
+        target = None
+    _best_effort_external_audit(
+        audit,
+        "startup",
+        current_version=active.version if active else None,
+        target_version=target,
+        result="failed",
+        error=_redact_text(reason),
+        failed_attempts=failed_attempts,
+        watcher=True,
+    )
+    logger.error(
+        "Tenko candidate startup failed (attempt {}): {}",
+        failed_attempts,
+        _redact_text(reason),
+    )
+
+
+def request_automatic_rollback(
+    upgrade_root: str | Path,
+    *,
+    reason: str,
+    failed_attempts: int,
+) -> bool:
+    """为 detached watcher 写入一次自动回滚 handoff。"""
+
+    layout = UpgradeLayout(upgrade_root)
+    audit = AuditLogger(layout.audit_file)
+    current = _external_layout_pointer(layout, "read_active")
+    previous = _external_layout_pointer(layout, "read_previous")
+    if current is None or previous is None:
+        error = "自动回滚缺少 active 或 previous 指针"
+        _best_effort_external_audit(
+            audit,
+            "rollback",
+            current_version=current.version if current else None,
+            target_version=previous.version if previous else None,
+            result="failed",
+            error=error,
+            automatic=True,
+            failed_attempts=failed_attempts,
+        )
+        logger.error("Tenko automatic rollback cannot start: {}", error)
+        return False
+    if current.path == previous.path:
+        error = "自动回滚目标已经是 active 版本"
+        _best_effort_external_audit(
+            audit,
+            "rollback",
+            current_version=current.version,
+            target_version=previous.version,
+            result="failed",
+            error=error,
+            automatic=True,
+            failed_attempts=failed_attempts,
+        )
+        logger.error("Tenko automatic rollback cannot start: {}", error)
+        return False
+
+    try:
+        existing = layout.read_handoff()
+    except UpgradeConfigError:
+        existing = None
+    if existing is not None and existing.get("action") == "rollback":
+        if existing.get("automatic_rollback", False):
+            return True
+
+    try:
+        layout.write_handoff(
+            {
+                "action": "rollback",
+                "version": str(previous.version),
+                "path": str(previous.path),
+                "from_version": str(current.version),
+                "from_path": str(current.path),
+                "automatic_rollback": True,
+                "reason": _redact_text(reason),
+                "failed_attempts": failed_attempts,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        )
+    except OSError as exc:
+        error = str(exc) or exc.__class__.__name__
+        _best_effort_external_audit(
+            audit,
+            "rollback",
+            current_version=current.version,
+            target_version=previous.version,
+            result="failed",
+            error=_redact_text(error),
+            automatic=True,
+            failed_attempts=failed_attempts,
+        )
+        logger.error("Tenko automatic rollback handoff write failed: {}", error)
+        return False
+
+    _best_effort_external_audit(
+        audit,
+        "rollback",
+        current_version=current.version,
+        target_version=previous.version,
+        result="requested",
+        handoff_path=str(layout.handoff_file),
+        automatic=True,
+        failed_attempts=failed_attempts,
+        reason=_redact_text(reason),
+    )
+    return True
+
+
+def record_automatic_rollback_failure(
+    upgrade_root: str | Path,
+    *,
+    target_version: str | Version | None,
+    reason: str,
+    failed_attempts: int,
+) -> None:
+    """记录回滚目标也未能在宽限期内存活，并隔离剩余 handoff。"""
+
+    layout = UpgradeLayout(upgrade_root)
+    audit = AuditLogger(layout.audit_file)
+    active = _external_layout_pointer(layout, "read_active")
+    previous = _external_layout_pointer(layout, "read_previous")
+    try:
+        target = parse_version(target_version) if target_version is not None else None
+    except InvalidVersionError:
+        target = None
+    if target is None and previous is not None:
+        target = previous.version
+    failed_handoff = None
+    try:
+        failed_handoff = layout.isolate_handoff()
+    except OSError as exc:
+        logger.error("Tenko failed rollback handoff quarantine failed: {}", exc)
+    try:
+        layout.clear_pending()
+    except OSError as exc:
+        logger.error("Tenko failed rollback pending cleanup failed: {}", exc)
+    _best_effort_external_audit(
+        audit,
+        "rollback",
+        current_version=active.version if active else None,
+        target_version=target,
+        result="failed",
+        error=_redact_text(reason),
+        automatic=True,
+        failed_attempts=failed_attempts,
+        failed_handoff_path=str(failed_handoff) if failed_handoff else None,
+    )
+    logger.error(
+        "Tenko automatic rollback failed; manual recovery required: {}", reason
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1766,6 +2069,10 @@ class UpgradeManager:
         enabled: bool = True,
         check_interval_hours: int = 24,
         restart_watch_timeout: int = _RESTART_WATCHER_TIMEOUT,
+        startup_grace_period: float = _STARTUP_GRACE_PERIOD,
+        startup_failure_threshold: int = _STARTUP_FAILURE_THRESHOLD,
+        database_path: str | Path | None = None,
+        database_backup_enabled: bool = True,
         compatibility_checker: ConfigCompatibilityChecker | None = None,
         health_checker: Any | None = None,
         launcher: ProcessLauncher | None = None,
@@ -1790,8 +2097,20 @@ class UpgradeManager:
             raise ValueError("check_interval_hours 必须大于 0")
         if restart_watch_timeout <= 0:
             raise ValueError("restart_watch_timeout 必须大于 0")
+        if startup_grace_period <= 0:
+            raise ValueError("startup_grace_period 必须大于 0")
+        if type(startup_failure_threshold) is not int or startup_failure_threshold <= 0:
+            raise ValueError("startup_failure_threshold 必须是正整数")
         self.check_interval_hours = check_interval_hours
         self.restart_watch_timeout = restart_watch_timeout
+        self.startup_grace_period = float(startup_grace_period)
+        self.startup_failure_threshold = startup_failure_threshold
+        self.database_path = (
+            Path(database_path).expanduser().resolve()
+            if database_path is not None
+            else self.project_root / ".tenko" / "tenko.db"
+        )
+        self.database_backup_enabled = bool(database_backup_enabled)
         self.compatibility_checker = (
             compatibility_checker or ConfigCompatibilityChecker()
         )
@@ -1828,6 +2147,9 @@ class UpgradeManager:
             stable_root=self.project_root,
             watcher_dir=self.layout.restart_watchers_dir,
             timeout=self.restart_watch_timeout,
+            upgrade_root=self.layout.root,
+            startup_grace_period=self.startup_grace_period,
+            startup_failure_threshold=self.startup_failure_threshold,
         )
 
     def request_graceful_shutdown(self) -> bool:
@@ -2026,6 +2348,93 @@ class UpgradeManager:
                 shutil.rmtree(stage_root, ignore_errors=True)
                 raise
 
+    def _record_backup_audit(
+        self,
+        target_version: Version,
+        result: str,
+        **details: Any,
+    ) -> None:
+        try:
+            self.audit.record(
+                "backup",
+                current_version=self.current_version,
+                target_version=target_version,
+                result=result,
+                **details,
+            )
+        except OSError:
+            logger.exception("Tenko database backup audit write failed")
+
+    def _prune_database_backups(self) -> str | None:
+        source = self.database_path
+        try:
+            candidates = sorted(
+                (
+                    path
+                    for path in source.parent.glob(f"{source.name}.bak-*")
+                    if path.is_file()
+                ),
+                key=lambda path: path.stat().st_mtime_ns,
+                reverse=True,
+            )
+            for path in candidates[3:]:
+                path.unlink()
+        except OSError as exc:
+            return str(exc) or exc.__class__.__name__
+        return None
+
+    def _backup_before_install(self, target_version: Version) -> Path | None:
+        if not self.database_backup_enabled:
+            self._record_backup_audit(
+                target_version,
+                "skipped",
+                reason="database URL is not a file-backed SQLite database",
+            )
+            return None
+
+        source = self.database_path
+        if not source.is_file():
+            self._record_backup_audit(
+                target_version,
+                "skipped",
+                source_path=str(source),
+                reason="database file does not exist",
+            )
+            return None
+
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        destination = source.with_name(
+            f"{source.name}.bak-{target_version}-{timestamp}"
+        )
+        try:
+            backup_sqlite_database(source, destination)
+        except (OSError, sqlite3.Error) as exc:
+            reason = str(exc) or exc.__class__.__name__
+            logger.error("Tenko database backup failed for {}: {}", source, reason)
+            self._record_backup_audit(
+                target_version,
+                "failed",
+                source_path=str(source),
+                backup_path=str(destination),
+                error=reason,
+            )
+            return None
+
+        retention_error = self._prune_database_backups()
+        if retention_error:
+            logger.error(
+                "Tenko database backup retention cleanup failed: {}",
+                retention_error,
+            )
+        details: dict[str, Any] = {
+            "source_path": str(source),
+            "backup_path": str(destination),
+        }
+        if retention_error:
+            details["retention_error"] = retention_error
+        self._record_backup_audit(target_version, "success", **details)
+        return destination
+
     async def request_install(self) -> HandoffResult:
         async with self._operation_lock:
             pending = self.layout.read_pending()
@@ -2036,10 +2445,12 @@ class UpgradeManager:
             version_text = str(version)
             target_tag = _pending_release_tag(pending, version_text)
             target = Path(str(pending["path"])).resolve()
+            backup_path = self._backup_before_install(version)
             handoff = {
                 "action": "activate",
                 "version": version_text,
                 "path": str(target),
+                "automatic_rollback": True,
                 "created_at": datetime.now(UTC).isoformat(),
                 "config_path": str(self.config_path) if self.config_path else None,
                 "data_dir": str(self.data_dir) if self.data_dir else None,
@@ -2053,6 +2464,7 @@ class UpgradeManager:
                 handoff_path=str(self.layout.handoff_file),
                 restart_required=True,
                 target_tag=target_tag,
+                database_backup_path=str(backup_path) if backup_path else None,
             )
             return HandoffResult("activate", version, target)
 
@@ -2208,6 +2620,20 @@ class UpgradeManager:
         }
         self.layout.write_pending(updated)
 
+    def _write_automatic_recovery_notice(
+        self,
+        version: Version,
+        *,
+        reason: str,
+    ) -> None:
+        try:
+            self.layout.write_recovery_notice(version, reason=reason)
+        except OSError as exc:
+            logger.error(
+                "Tenko automatic rollback notification marker write failed: {}",
+                exc,
+            )
+
     def _rollback_source(
         self,
         handoff: Mapping[str, Any] | None,
@@ -2340,6 +2766,10 @@ class UpgradeManager:
             target_path = Path(str(pending["path"])).resolve()
             self.layout._validate_version_path(target_path)
             target = ReleasePointer(target_version, target_path)
+            handoff = self.layout.read_handoff()
+            automatic_rollback = bool(
+                handoff is not None and handoff.get("automatic_rollback", False)
+            )
             recovery = self._activation_recovery(pending)
             old = self.layout.read_active()
             previous_before = self.layout.read_previous()
@@ -2407,7 +2837,13 @@ class UpgradeManager:
                     target_version=source.version,
                     result="success",
                     reason="post-switch health check failed",
+                    automatic=automatic_rollback,
                 )
+                if automatic_rollback:
+                    self._write_automatic_recovery_notice(
+                        source.version,
+                        reason="post-switch health check failed",
+                    )
                 return InstallResult(False, target_version, source.path, True, reason)
 
             self.layout.write_pointer(source.path, source.version, previous=True)
@@ -2460,6 +2896,9 @@ class UpgradeManager:
                 "failed_handoff_path": (
                     str(failed_handoff) if failed_handoff else None
                 ),
+                "automatic": bool(
+                    handoff is not None and handoff.get("automatic_rollback", False)
+                ),
             }
             if quarantine_error:
                 details["quarantine_error"] = quarantine_error
@@ -2487,7 +2926,17 @@ class UpgradeManager:
             result="success",
             active_path=str(previous.path),
             previous_path=str(source.path),
+            automatic=bool(
+                handoff is not None and handoff.get("automatic_rollback", False)
+            ),
         )
+        if handoff is not None and handoff.get("automatic_rollback", False):
+            self._write_automatic_recovery_notice(
+                previous.version,
+                reason=str(
+                    handoff.get("reason", "startup failure") or "startup failure"
+                ),
+            )
         return RollbackResult(
             True, previous.version, previous.path, True, "已回滚到上一版本"
         )
@@ -2561,6 +3010,7 @@ class UpgradeManager:
         config: Any,
         *,
         project_root: str | Path | None = None,
+        database_url: str | Path | None = None,
     ) -> UpgradeManager:
         """从 ``tenko.config.UpgradeConfig`` 构造真实运行时实例。
 
@@ -2569,6 +3019,12 @@ class UpgradeManager:
         """
 
         root = Path(project_root or Path.cwd()).expanduser().resolve()
+        if database_url is None:
+            database_path = root / ".tenko" / "tenko.db"
+            database_backup_enabled = True
+        else:
+            database_path = resolve_sqlite_database_path(database_url, root)
+            database_backup_enabled = database_path is not None
         configured_install_root = (
             os.environ.get("TENKO_UPGRADE_ROOT") or config.install_root
         )
@@ -2661,6 +3117,8 @@ class UpgradeManager:
             enabled=config.enabled,
             check_interval_hours=config.check_interval_hours,
             restart_watch_timeout=config.restart_watch_timeout,
+            database_path=database_path,
+            database_backup_enabled=database_backup_enabled,
             health_checker=health_checker,
             launcher=launcher,
         )
@@ -2674,24 +3132,35 @@ def spawn_restart_watcher(
     watcher_dir: str | Path,
     timeout: int = _RESTART_WATCHER_TIMEOUT,
     poll_interval: float = _RESTART_WATCHER_INTERVAL,
+    upgrade_root: str | Path | None = None,
+    startup_grace_period: float = _STARTUP_GRACE_PERIOD,
+    startup_failure_threshold: int = _STARTUP_FAILURE_THRESHOLD,
 ) -> bool:
-    """启动一个等待旧 PID 消失后只重启一次的 POSIX watcher。
+    """启动等待旧 PID 的 watcher，并在升级时观察新进程的启动窗口。
 
-    watcher 只负责进程生命周期，不读取或应用升级状态；重启后的
-    ``scripts/launcher.sh``/``__main__`` 才是 active 指针和 handoff 的处理者。
-    ``watcher_dir/<old_pid>.json`` 使用排他创建实现同一旧 PID 的防重。
+    普通重启仍然只启动一次 detached 进程。只有传入 ``upgrade_root`` 且 arm
+    时存在 ``activate`` handoff，watcher 才会对新进程执行 60 秒启动存活观察：
+    连续两次窗口内退出后写入自动回滚 handoff，回滚目标再次失败则停止，
+    不再把坏版本拉起成崩溃循环。状态切换仍由标准 launcher 处理。
     """
 
     if old_pid <= 0 or not restart_command:
         return False
     if timeout <= 0 or poll_interval <= 0:
         raise ValueError("watcher timeout 和 poll_interval 必须大于 0")
+    if startup_grace_period <= 0:
+        raise ValueError("startup_grace_period 必须大于 0")
+    if type(startup_failure_threshold) is not int or startup_failure_threshold <= 0:
+        raise ValueError("startup_failure_threshold 必须是正整数")
 
     command = tuple(str(item) for item in restart_command)
     if not command or any(not item for item in command):
         return False
     stable_root = Path(stable_root).expanduser().resolve()
     watcher_dir = Path(watcher_dir).expanduser().resolve()
+    upgrade_root_path = (
+        None if upgrade_root is None else Path(upgrade_root).expanduser().resolve()
+    )
     record = watcher_dir / f"{old_pid}.json"
     timeout_log = watcher_dir.parent / f"watcher-timeout-{old_pid}.log"
     record_payload = {
@@ -2701,6 +3170,9 @@ def spawn_restart_watcher(
         "timeout": timeout,
         "poll_interval": poll_interval,
         "timeout_log": str(timeout_log),
+        "upgrade_root": str(upgrade_root_path) if upgrade_root_path else None,
+        "startup_grace_period": startup_grace_period,
+        "startup_failure_threshold": startup_failure_threshold,
         "created_at": datetime.now(UTC).isoformat(),
     }
 
@@ -2742,6 +3214,9 @@ def spawn_restart_watcher(
         command = {command_literal}
         stable_root = {stable_root_literal}
         timeout_log = Path({timeout_log_literal})
+        upgrade_root = {upgrade_root_literal}
+        startup_grace_period = {startup_grace_period_literal}
+        startup_failure_threshold = {startup_failure_threshold_literal}
         deadline = time.monotonic() + {timeout_literal}
 
         def _pid_exists(value):
@@ -2754,6 +3229,236 @@ def spawn_restart_watcher(
             except OSError:
                 return False
             return True
+
+        def _read_json(path):
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                return None
+            return value if isinstance(value, dict) else None
+
+        def _read_pointer(path):
+            value = _read_json(path)
+            if value is None:
+                return None
+            version = value.get("version")
+            pointer_path = value.get("path")
+            if not isinstance(version, str) or not isinstance(pointer_path, str):
+                return None
+            return version, Path(pointer_path).expanduser().resolve()
+
+        def _active_pointer():
+            if upgrade_root is None:
+                return None
+            return _read_pointer(Path(upgrade_root) / "active.json")
+
+        def _run_state_helper(operation, reason, attempts, target_version=""):
+            if upgrade_root is None:
+                return True
+            helper = (
+                "import sys\\n"
+                "from pathlib import Path\\n"
+                "from tenko.host.updater import (\\n"
+                "    record_automatic_rollback_failure,\\n"
+                "    record_automatic_startup_failure,\\n"
+                "    request_automatic_rollback,\\n"
+                ")\\n"
+                "root = Path(sys.argv[1])\\n"
+                "operation = sys.argv[2]\\n"
+                "reason = sys.argv[3]\\n"
+                "attempts = int(sys.argv[4])\\n"
+                "target = sys.argv[5] or None\\n"
+                "if operation == 'startup':\\n"
+                "    record_automatic_startup_failure(\\n"
+                "        root, target_version=target, reason=reason, "
+                "failed_attempts=attempts\\n"
+                "    )\\n"
+                "elif operation == 'request-rollback':\\n"
+                "    if not request_automatic_rollback(\\n"
+                "        root, reason=reason, failed_attempts=attempts\\n"
+                "    ):\\n"
+                "        raise SystemExit(2)\\n"
+                "elif operation == 'rollback-failure':\\n"
+                "    record_automatic_rollback_failure(\\n"
+                "        root, target_version=target, reason=reason, "
+                "failed_attempts=attempts\\n"
+                "    )\\n"
+            )
+            helper_environment = os.environ.copy()
+            existing_pythonpath = helper_environment.get("PYTHONPATH")
+            helper_environment["PYTHONPATH"] = os.pathsep.join(
+                value
+                for value in (str(stable_root), existing_pythonpath)
+                if value
+            )
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    helper,
+                    str(upgrade_root),
+                    operation,
+                    reason,
+                    str(attempts),
+                    target_version,
+                ],
+                cwd=stable_root,
+                env=helper_environment,
+                capture_output=True,
+                text=True,
+            )
+            if completed.returncode != 0:
+                detail = (completed.stderr or completed.stdout or "").strip()
+                print(
+                    "Tenko restart watcher state helper failed: "
+                    + (detail or str(completed.returncode)),
+                    file=sys.stderr,
+                )
+                return False
+            return True
+
+        def _launch():
+            try:
+                if os.name == "posix":
+                    return subprocess.Popen(
+                        command,
+                        cwd=stable_root,
+                        start_new_session=True,
+                    ), None
+                return subprocess.Popen(command, cwd=stable_root), None
+            except OSError as error:
+                return None, "无法启动进程: " + str(error)
+
+        def _stop_process(process):
+            if process is None or process.poll() is not None:
+                return
+            try:
+                process.terminate()
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    process.kill()
+                except OSError:
+                    return
+                process.wait(timeout=5)
+            except OSError:
+                return
+
+        def _wait_for_startup(process):
+            startup_deadline = time.monotonic() + startup_grace_period
+            while time.monotonic() < startup_deadline:
+                return_code = process.poll()
+                if return_code is not None:
+                    process.wait()
+                    return False, "进程在启动窗口内退出，returncode=" + str(return_code)
+                time.sleep({poll_interval_literal})
+            if process.poll() is None:
+                return True, ""
+            process.wait()
+            return False, "进程在启动窗口结束时退出"
+
+        initial_handoff = None
+        target_version = ""
+        target_path = None
+        if upgrade_root is not None:
+            initial_handoff = _read_json(Path(upgrade_root) / "handoff.json")
+            if (
+                initial_handoff is not None
+                and initial_handoff.get("action") == "activate"
+            ):
+                value = initial_handoff.get("version")
+                path_value = initial_handoff.get("path")
+                if isinstance(value, str):
+                    target_version = value
+                if isinstance(path_value, str):
+                    target_path = Path(path_value).expanduser().resolve()
+        monitor_upgrade = target_path is not None
+
+        def _run_upgrade_watchdog():
+            for attempt in range(1, startup_failure_threshold + 1):
+                process, launch_error = _launch()
+                if process is None:
+                    alive, failure_reason = False, launch_error
+                else:
+                    alive, failure_reason = _wait_for_startup(process)
+                if alive:
+                    active = _active_pointer()
+                    if (
+                        target_path is not None
+                        and active is not None
+                        and active[1] != target_path
+                    ):
+                        # 启动前健康检查失败时，launcher 已经把 active 恢复到旧版本；
+                        # 不要把这次已经完成的恢复再次当作候选版本崩溃。
+                        return
+                    if target_path is not None and (
+                        active is None or active[1] != target_path
+                    ):
+                        _stop_process(process)
+                        alive = False
+                        failure_reason = "启动后 active 指针未指向候选版本"
+                    else:
+                        return
+                # 启动前健康检查失败时，launcher 已经把 active 恢复到旧版本；
+                # 不要把这次已经完成的恢复再次当作候选版本崩溃。
+                active = _active_pointer()
+                if (
+                    target_path is not None
+                    and active is not None
+                    and active[1] != target_path
+                ):
+                    return
+                reason = failure_reason or "进程启动失败"
+                _run_state_helper(
+                    "startup",
+                    reason,
+                    attempt,
+                    target_version,
+                )
+            rollback_target = _read_pointer(Path(upgrade_root) / "previous.json")
+            rollback_reason = (
+                "候选版本在启动宽限期内连续 "
+                + str(startup_failure_threshold)
+                + " 次退出"
+            )
+            if not _run_state_helper(
+                "request-rollback",
+                rollback_reason,
+                startup_failure_threshold,
+                rollback_target[0] if rollback_target is not None else "",
+            ):
+                _run_state_helper(
+                    "rollback-failure",
+                    "无法写入自动回滚 handoff",
+                    startup_failure_threshold,
+                    rollback_target[0] if rollback_target is not None else "",
+                )
+                return
+            process, launch_error = _launch()
+            if process is None:
+                _run_state_helper(
+                    "rollback-failure",
+                    launch_error or "无法启动回滚版本",
+                    startup_failure_threshold,
+                    rollback_target[0] if rollback_target is not None else "",
+                )
+                return
+            alive, failure_reason = _wait_for_startup(process)
+            active = _active_pointer()
+            rollback_path = rollback_target[1] if rollback_target is not None else None
+            if alive:
+                if rollback_path is not None and active is not None:
+                    if active[1] == rollback_path:
+                        return
+                _stop_process(process)
+                alive = False
+                failure_reason = "回滚版本启动后 active 指针未切换"
+            _run_state_helper(
+                "rollback-failure",
+                failure_reason or "回滚版本在启动窗口内退出",
+                startup_failure_threshold,
+                rollback_target[0] if rollback_target is not None else "",
+            )
 
         try:
             while time.monotonic() < deadline and _pid_exists(pid):
@@ -2775,15 +3480,16 @@ def spawn_restart_watcher(
                         file=sys.stderr,
                     )
                 sys.exit(0)
-            if os.name == "posix":
-                subprocess.Popen(
-                    command,
-                    cwd=stable_root,
-                    start_new_session=True,
-                )
+            if monitor_upgrade:
+                _run_upgrade_watchdog()
             else:
-                # Tenko 生产环境是 POSIX；Windows detach 语义另立任务处理。
-                subprocess.Popen(command, cwd=stable_root)
+                process, launch_error = _launch()
+                if process is None:
+                    print(
+                        "Tenko restart watcher launch failed: "
+                        + (launch_error or "unknown error"),
+                        file=sys.stderr,
+                    )
         finally:
             record.unlink(missing_ok=True)
         """
@@ -2793,8 +3499,13 @@ def spawn_restart_watcher(
             command_literal=repr(list(command)),
             stable_root_literal=repr(str(stable_root)),
             timeout_log_literal=repr(str(timeout_log)),
+            upgrade_root_literal=repr(
+                str(upgrade_root_path) if upgrade_root_path else None
+            ),
             timeout_literal=repr(float(timeout)),
             poll_interval_literal=repr(float(poll_interval)),
+            startup_grace_period_literal=repr(float(startup_grace_period)),
+            startup_failure_threshold_literal=repr(startup_failure_threshold),
         )
     )
     watcher_command = [sys.executable, "-c", watcher, str(old_pid), str(record)]

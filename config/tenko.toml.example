@@ -66,6 +66,14 @@ satori_token = "tenko-satori-local"
 # group_mute = true
 # group_essence = false
 
+[webui]
+# 默认关闭；开启后复用上面的 OneBot/Satori 监听端口，不会新开端口。
+enabled = false
+# 必须配置独立于 [onebot] 的 token；不要复用 OneBot token，也不要暴露到公网。
+token = ""
+# 仅允许这些来源 IP 访问 WebUI；如无必要请保持本机白名单。
+allowed_ips = ["127.0.0.1"]
+
 [database]
 # 与旧 Graia 数据库同构，默认直接使用 Tenko 数据目录中的 SQLite 文件。
 url = "sqlite+aiosqlite:///./.tenko/tenko.db"

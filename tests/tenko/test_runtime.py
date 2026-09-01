@@ -19,6 +19,7 @@ from tenko.connection import OneBotConnection
 from tenko.db.runtime import RuntimeStateService
 from tenko.render import RenderService
 from tenko.runtime import TenkoRuntime
+from tenko.webui import WebUIService
 
 
 def test_runtime_shutdown_callback_stops_launart_lifecycle(monkeypatch) -> None:
@@ -262,6 +263,47 @@ async def test_run_async_registers_render_service(
     assert service.quality == 91
     assert service.device_scale_factor == 3
     plugin_runtime.load_all.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_run_async_registers_webui_only_when_enabled(monkeypatch) -> None:
+    connection = Mock()
+    connection.ready_service.id = "tenko.ready"
+    monkeypatch.setattr(
+        runtime_module, "OneBotConnection", Mock(return_value=connection)
+    )
+    config = TenkoConfig.from_mapping(
+        {"webui": {"enabled": True, "token": "web-secret"}}
+    )
+    runtime = TenkoRuntime(config)
+    runtime._configure_database_repositories = Mock()
+    manager = Mock()
+    app = Mock()
+    app.required = set()
+    app.connections = []
+    app.run_async = AsyncMock()
+    runtime.build_app = Mock(return_value=app)
+    runtime.connection.install = Mock()
+    plugin_runtime = Mock()
+    plugin_runtime.load_all = AsyncMock(return_value={})
+    monkeypatch.setattr(runtime_module, "it", Mock(return_value=manager))
+    monkeypatch.setattr(
+        runtime_module, "PluginRuntime", Mock(return_value=plugin_runtime)
+    )
+    monkeypatch.setattr(runtime_module, "load_database_plugin", Mock(return_value=None))
+
+    await runtime.run_async()
+
+    assert manager.add_component.call_count == 2
+    render_service, webui_service = (
+        call.args[0] for call in manager.add_component.call_args_list
+    )
+    assert isinstance(render_service, RenderService)
+    assert isinstance(webui_service, WebUIService)
+    assert runtime.webui_service is webui_service
+    connection.server.app.add_middleware.assert_called_once()
+    assert connection.server.asgi_route.call_count == 4
+    connection.server.mount.assert_called_once()
 
 
 @pytest.mark.asyncio

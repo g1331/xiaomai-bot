@@ -31,6 +31,7 @@ from .host.ratelimit import configure_rate_limiter
 from .host.startup import StartupHistory
 from .host.updater import UpgradeManager, configure_updater
 from .render import RenderService
+from .webui import WebUIService
 
 
 class TenkoRuntime:
@@ -85,6 +86,7 @@ class TenkoRuntime:
         self.plugin_runtime: PluginRuntime | None = None
         self._startup_notify_module: object | None = None
         self.database_service = None
+        self.webui_service: WebUIService | None = None
         self.runtime_state_service = RuntimeStateService(
             self._initialize_runtime_state,
             self._flush_runtime_state,
@@ -348,6 +350,23 @@ class TenkoRuntime:
             command_prefix=self.config.runtime.command_prefix,
             rate_limit_override_permission=self.config.ratelimit.override_permission,
         )
+        if self.config.webui.enabled:
+            feature_repository = None
+            if self.database_service is not None:
+                from .db.repositories import feature_state_repository
+
+                feature_repository = feature_state_repository
+
+            self.webui_service = WebUIService(
+                self.connection.server,
+                self.config.webui,
+                accounts=self.accounts,
+                metrics=self.message_metrics,
+                feature_service=self.feature_service,
+                feature_repository=feature_repository,
+                plugin_runtime=self.plugin_runtime,
+            )
+            manager.add_component(self.webui_service)
         # Satori client 必须在 server socket 开始接受连接后启动。否则其第一次
         # 连接尝试可能与 Uvicorn 发生竞争，该时间窗口内到达的事件也不会被
         # replay 给 client。

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tenko WebUI</title>
+    <style>
+      :root {
+        color: #2f2925;
+        background: #f4efe7;
+        font: 16px/1.5 ui-sans-serif, system-ui, sans-serif;
+      }
+      body {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 40px 24px 64px;
+      }
+      h1, h2 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 500;
+      }
+      h1 { margin: 0 0 8px; font-size: clamp(2.2rem, 6vw, 4.6rem); }
+      h2 { margin: 0 0 16px; font-size: 1.6rem; }
+      header { border-bottom: 2px solid #b7432c; margin-bottom: 32px; padding-bottom: 20px; }
+      .eyebrow { color: #b7432c; font: 700 0.75rem/1 monospace; letter-spacing: 0.14em; text-transform: uppercase; }
+      .auth { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+      input, button { border: 1px solid #b9aa98; border-radius: 3px; padding: 10px 12px; font: inherit; }
+      input { flex: 1 1 240px; background: #fffdf9; }
+      button { cursor: pointer; background: #2f2925; color: #fffdf9; }
+      button:hover { background: #b7432c; }
+      .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+      section { background: #fffdf9; border: 1px solid #d7cabb; padding: 20px; }
+      dl { display: grid; gap: 8px; grid-template-columns: 1fr auto; margin: 0; }
+      dt { color: #75685d; }
+      dd { margin: 0; font-family: monospace; text-align: right; }
+      .wide { grid-column: 1 / -1; overflow-x: auto; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border-bottom: 1px solid #e0d7cd; padding: 10px 8px; text-align: left; white-space: nowrap; }
+      th { color: #75685d; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+      .online { color: #26704e; }
+      .offline { color: #9c6558; }
+      #message { min-height: 1.5em; color: #b7432c; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="eyebrow">Tenko / read only</div>
+      <h1>运行一览</h1>
+      <div>批次 A 占位页 · 只读 API 链路验证</div>
+      <form class="auth" id="auth-form">
+        <label for="token" class="sr-only">WebUI token</label>
+        <input id="token" type="password" autocomplete="off" placeholder="输入 WebUI token" />
+        <button type="submit">刷新数据</button>
+      </form>
+      <div id="message" role="status" aria-live="polite"></div>
+    </header>
+    <main class="grid">
+      <section>
+        <h2>运行信息</h2>
+        <dl id="overview"><dt>等待加载</dt><dd>—</dd></dl>
+      </section>
+      <section>
+        <h2>账号</h2>
+        <div id="accounts">等待加载</div>
+      </section>
+      <section class="wide">
+        <h2>功能开关</h2>
+        <div id="features">等待加载</div>
+      </section>
+    </main>
+    <script>
+      const token = () => document.querySelector("#token").value.trim();
+      const message = document.querySelector("#message");
+      const text = (value) => document.createTextNode(value == null ? "—" : String(value));
+
+      async function read(path) {
+        const response = await fetch(path, {
+          headers: token() ? { Authorization: `Bearer ${token()}` } : {},
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error?.message || `HTTP ${response.status}`);
+        }
+        return payload.data;
+      }
+
+      function renderOverview(data) {
+        const values = [
+          ["版本", data.version],
+          ["运行时长（秒）", data.uptime_seconds],
+          ["在线账号", data.online_accounts],
+          ["活动群", data.active_groups],
+          ["收消息", data.messages.received_count],
+          ["发消息", data.messages.sent_count],
+        ];
+        const element = document.querySelector("#overview");
+        element.replaceChildren(...values.flatMap(([label, value]) => [
+          Object.assign(document.createElement("dt"), { textContent: label }),
+          Object.assign(document.createElement("dd"), { textContent: value }),
+        ]));
+      }
+
+      function renderAccounts(data) {
+        const table = document.createElement("table");
+        table.innerHTML = "<thead><tr><th>ID</th><th>平台</th><th>状态</th><th>绑定群数</th></tr></thead>";
+        const body = document.createElement("tbody");
+        for (const account of data.accounts) {
+          const row = document.createElement("tr");
+          for (const value of [account.id, account.platform, account.online ? "在线" : "离线", account.group_count]) {
+            const cell = document.createElement("td");
+            cell.appendChild(text(value));
+            row.appendChild(cell);
+          }
+          row.children[2].className = account.online ? "online" : "offline";
+          body.appendChild(row);
+        }
+        table.appendChild(body);
+        document.querySelector("#accounts").replaceChildren(table);
+      }
+
+      function renderFeatures(data) {
+        const table = document.createElement("table");
+        table.innerHTML = "<thead><tr><th>插件</th><th>范围</th><th>维护</th><th>群状态</th></tr></thead>";
+        const body = document.createElement("tbody");
+        for (const feature of data.features) {
+          const row = document.createElement("tr");
+          const groupStatus = Object.entries(feature.groups).map(([group, enabled]) => `${group}: ${enabled ? "开" : "关"}`).join(" · ") || "—";
+          for (const value of [feature.name, feature.scope, feature.maintenance ? "是" : "否", groupStatus]) {
+            const cell = document.createElement("td");
+            cell.appendChild(text(value));
+            row.appendChild(cell);
+          }
+          body.appendChild(row);
+        }
+        table.appendChild(body);
+        document.querySelector("#features").replaceChildren(table);
+      }
+
+      async function refresh() {
+        message.textContent = "加载中…";
+        try {
+          const [overview, accounts, features] = await Promise.all([
+            read("/webui/api/overview"),
+            read("/webui/api/accounts"),
+            read("/webui/api/features"),
+          ]);
+          renderOverview(overview);
+          renderAccounts(accounts);
+          renderFeatures(features);
+          message.textContent = "已更新";
+        } catch (error) {
+          message.textContent = error.message;
+        }
+      }
+
+      document.querySelector("#auth-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        refresh();
+      });
+    </script>
+  </body>
+</html>

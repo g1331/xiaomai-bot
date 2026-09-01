@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -214,6 +215,23 @@ def _string_sequence(
     return tuple(normalized)
 
 
+def _ip_sequence(
+    section: Mapping[str, Any], key: str, default: tuple[str, ...]
+) -> tuple[str, ...]:
+    value = section.get(key, default)
+    if not isinstance(value, list | tuple):
+        raise ValueError(f"配置项 {key!r} 必须是 IP 地址列表")
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item:
+            raise ValueError(f"配置项 {key!r} 的每项必须是非空 IP 地址")
+        try:
+            normalized.append(str(ipaddress.ip_address(item)))
+        except ValueError as error:
+            raise ValueError(f"配置项 {key!r} 包含非法 IP 地址: {item!r}") from error
+    return tuple(normalized)
+
+
 def _identifier_sequence(
     section: Mapping[str, Any], key: str, default: tuple[str, ...]
 ) -> tuple[str, ...]:
@@ -387,6 +405,39 @@ class OneBotConfig:
                 section, "satori_token", defaults.satori_token
             ),
             capability_overrides=_capability_overrides(section),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class WebUIConfig:
+    """内置 WebUI 的开关、独立令牌和来源地址白名单。"""
+
+    enabled: bool = False
+    token: str | None = field(default=None, repr=False)
+    allowed_ips: tuple[str, ...] = ("127.0.0.1",)
+
+    def __post_init__(self) -> None:
+        if type(self.enabled) is not bool:
+            raise ValueError("webui enabled 必须是布尔值")
+        if self.token is not None and not isinstance(self.token, str):
+            raise ValueError("webui token 必须是字符串或 null")
+        if self.token == "":
+            object.__setattr__(self, "token", None)
+        if self.enabled and self.token is None:
+            raise ValueError("webui enabled=true 时必须配置独立 token")
+        object.__setattr__(
+            self,
+            "allowed_ips",
+            _ip_sequence({"allowed_ips": self.allowed_ips}, "allowed_ips", ()),
+        )
+
+    @classmethod
+    def from_mapping(cls, section: Mapping[str, Any]) -> WebUIConfig:
+        defaults = cls()
+        return cls(
+            enabled=_boolean(section, "enabled", defaults.enabled),
+            token=_optional_string(section, "token", defaults.token),
+            allowed_ips=_ip_sequence(section, "allowed_ips", defaults.allowed_ips),
         )
 
 
@@ -817,6 +868,7 @@ class TenkoConfig:
         default=None, repr=False, compare=False
     )
     onebot: OneBotConfig = field(default_factory=OneBotConfig)
+    webui: WebUIConfig = field(default_factory=WebUIConfig)
     runtime: RuntimeConfig = field(default_factory=RuntimeConfig)
     upgrade: UpgradeConfig = field(default_factory=UpgradeConfig)
     debug: DebugConfig = field(default_factory=DebugConfig)
@@ -856,6 +908,7 @@ class TenkoConfig:
             basic=basic,
             entari_config=entari_config,
             onebot=OneBotConfig.from_mapping(_section(normalized, "onebot")),
+            webui=WebUIConfig.from_mapping(_section(normalized, "webui")),
             runtime=RuntimeConfig.from_basic(basic),
             debug=DebugConfig.from_mapping(
                 _section(normalized, "debug"), inherited_masters=superuser_ids

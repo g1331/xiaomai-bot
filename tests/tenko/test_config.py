@@ -6,7 +6,7 @@ import pytest
 from arclet.entari.config import EntariConfig as NativeEntariConfig
 from arclet.entari.config.model import BasicConfig, LogSaveInfo
 
-from tenko.config import TenkoConfig
+from tenko.config import TenkoConfig, WebUIConfig
 
 
 def test_default_config_is_local_and_does_not_send() -> None:
@@ -23,6 +23,9 @@ def test_default_config_is_local_and_does_not_send() -> None:
     assert config.exception.evidence_dir == ".tenko/exceptions"
     assert config.database.url == "sqlite+aiosqlite:///./.tenko/tenko.db"
     assert config.database.create_table_at == "preparing"
+    assert config.webui == WebUIConfig()
+    assert config.webui.token is None
+    assert "web-secret" not in repr(WebUIConfig(enabled=True, token="web-secret"))
     assert config.upgrade.restart_watch_timeout == 300
     assert config.notify_group is None
 
@@ -241,6 +244,28 @@ def test_exception_evidence_configuration_is_loaded_and_validated() -> None:
 def test_database_configuration_rejects_unknown_table_creation_stage() -> None:
     with pytest.raises(ValueError, match="create_table_at"):
         TenkoConfig.from_mapping({"database": {"create_table_at": "later"}})
+
+
+def test_webui_configuration_requires_independent_token_when_enabled() -> None:
+    config = TenkoConfig.from_mapping(
+        {
+            "onebot": {"access_token": "onebot-secret"},
+            "webui": {
+                "enabled": True,
+                "token": "web-secret",
+                "allowed_ips": ["127.0.0.1", "::1"],
+            },
+        }
+    )
+
+    assert config.onebot.access_token == "onebot-secret"
+    assert config.webui.enabled is True
+    assert config.webui.token == "web-secret"
+    assert config.webui.allowed_ips == ("127.0.0.1", "::1")
+    with pytest.raises(ValueError, match="独立 token"):
+        TenkoConfig.from_mapping({"webui": {"enabled": True}})
+    with pytest.raises(ValueError, match="非法 IP"):
+        TenkoConfig.from_mapping({"webui": {"allowed_ips": ["localhost"]}})
 
 
 def test_entari_superusers_are_inherited_by_debug_and_upgrade() -> None:

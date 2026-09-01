@@ -43,4 +43,4 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
-        run: uv run --no-sync pytest -q
+        run: uv run --no-sync python -m pytest -q

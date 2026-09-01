@@ -78,9 +78,7 @@ class WebUIAuthMiddleware(BaseHTTPMiddleware):
             and request.url.path == WEBUI_PATH
             and self.config.token is not None
             and request.query_params.get("token")
-            and secrets.compare_digest(
-                request.query_params["token"], self.config.token
-            )
+            and secrets.compare_digest(request.query_params["token"], self.config.token)
         )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

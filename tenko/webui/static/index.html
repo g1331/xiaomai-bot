@@ -1541,7 +1541,7 @@
           <div id="page-root"></div>
         </main>
 
-        <footer>TENKO WEBUI <b>·</b> 天子主题 <b>·</b> 杂志风 <b>·</b> 只读 API <b>·</b> 不写入数据</footer>
+        <footer id="page-footer"></footer>
       </section>
     </div>
 
@@ -1887,6 +1887,7 @@
         });
         Object.values(dataState).forEach((state) => { state.loading = false; });
         renderApp();
+        renderFooter(dataState.overview.data);
       }
 
       function takeQueryToken() {
@@ -1917,6 +1918,19 @@
         renderPage();
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
+
+      function renderFooter(overview) {
+        const footer = document.querySelector("#page-footer");
+        if (!footer) return;
+        if (!overview) {
+          footer.textContent = "";
+          return;
+        }
+        const parts = ["TENKO"];
+        if (overview.version) parts.push(`v${overview.version}`);
+        parts.push("PRERELEASE");
+        footer.textContent = parts.join(" · ");
+      }
 
       takeQueryToken();
       renderApp();

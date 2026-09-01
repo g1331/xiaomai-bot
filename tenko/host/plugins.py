@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +22,6 @@ from arclet.entari.plugin import (
 from ..context import MessageContext
 
 _DEFAULT_PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins"
-_DEFAULT_LEGACY_STATE = Path("core/models/saya_model/modules_data.json")
 _LEGACY_PLUGIN_NAMESPACES = (
     "modules.required",
     "modules.self_contained",
@@ -70,37 +68,17 @@ class PluginInfo:
 
 
 class PluginRuntime:
-    """把旧目录和状态格式适配到 Entari 原生插件机制。"""
+    """把 Tenko 插件目录适配到 Entari 原生插件机制。"""
 
     def __init__(
         self,
         plugin_dir: str | Path | None = None,
         *,
-        legacy_state_path: str | Path | None = _DEFAULT_LEGACY_STATE,
         namespace: str = "tenko.plugins",
     ) -> None:
         self.plugin_dir = Path(plugin_dir or _DEFAULT_PLUGIN_DIR)
         self.namespace = namespace
         self._discovered: dict[str, PluginInfo] = {}
-        self._legacy_state = self._load_legacy_state(legacy_state_path)
-
-    @staticmethod
-    def _load_legacy_state(path: str | Path | None) -> Mapping[str, Any]:
-        if path is None:
-            return MappingProxyType({})
-        state_path = Path(path)
-        if not state_path.is_file():
-            return MappingProxyType({})
-        try:
-            data = json.loads(state_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"旧插件状态不是有效 JSON: {state_path}") from exc
-        if not isinstance(data, dict):
-            raise ValueError(f"旧插件状态必须是 JSON object: {state_path}")
-        modules = data.get("modules", {})
-        if not isinstance(modules, dict):
-            raise ValueError(f"旧插件状态的 modules 必须是 JSON object: {state_path}")
-        return MappingProxyType({"modules": MappingProxyType(modules)})
 
     def discover(self) -> tuple[PluginInfo, ...]:
         """发现插件目录的直接子项，不导入插件。"""
@@ -138,55 +116,6 @@ class PluginRuntime:
                 return info
         raise KeyError(f"未发现插件: {plugin}")
 
-    def _legacy_module_state(self, info: PluginInfo) -> Mapping[str, Any]:
-        modules = self._legacy_state.get("modules", {})
-        for name in info.lookup_names:
-            value = modules.get(name)
-            if isinstance(value, Mapping):
-                return value
-        return {}
-
-    @staticmethod
-    def _legacy_bool(value: Any, field: str) -> bool | None:
-        if value is None:
-            return None
-        if type(value) is not bool:
-            raise ValueError(f"旧插件状态中的 {field} 必须是布尔值")
-        return value
-
-    def _legacy_global_enabled(self, info: PluginInfo) -> bool | None:
-        state = self._legacy_module_state(info)
-        available = self._legacy_bool(state.get("available"), "available")
-        if available is False:
-            return False
-        switch = self._legacy_bool(state.get("switch"), "switch")
-        return switch if switch is not None else available
-
-    @classmethod
-    def _legacy_group_switch(
-        cls, state: Mapping[str, Any], group_id: str | None
-    ) -> bool | None:
-        if group_id is None:
-            return None
-        groups = state.get("groups", state)
-        if not isinstance(groups, Mapping):
-            return None
-        group_state = groups.get(group_id)
-        if not isinstance(group_state, Mapping):
-            return None
-        return cls._legacy_bool(group_state.get("switch"), "switch")
-
-    @staticmethod
-    def _group_id(
-        context: MessageContext | str | int | None,
-        group_id: str | int | None,
-    ) -> str | None:
-        if group_id is not None:
-            return str(group_id)
-        if isinstance(context, MessageContext):
-            return context.channel_id if context.chat_type == "group" else None
-        return None if context is None else str(context)
-
     def is_enabled(
         self,
         plugin: str | PluginInfo,
@@ -194,22 +123,12 @@ class PluginRuntime:
         *,
         group_id: str | int | None = None,
     ) -> bool:
-        """查询原生全局状态，并兼容旧状态中的群级开关。"""
+        """查询当前插件是否仍被 Entari 注册并启用。"""
 
+        del context, group_id
         info = self._info(plugin)
-        state = self._legacy_module_state(info)
-        global_enabled = self._legacy_global_enabled(info)
-        group_enabled = self._legacy_group_switch(
-            state, self._group_id(context, group_id)
-        )
-        if global_enabled is False or group_enabled is False:
-            return False
         native_plugin = self._native_plugin(info)
-        if native_plugin is not None and not native_plugin.is_available:
-            return False
-        return (
-            group_enabled if group_enabled is not None else global_enabled is not False
-        )
+        return native_plugin is None or native_plugin.is_available
 
     @staticmethod
     def _native_plugin(info: PluginInfo) -> Plugin | None:
@@ -295,18 +214,13 @@ class PluginRuntime:
                     return info
         return None
 
-    async def _apply_legacy_state(self, info: PluginInfo, plugin: Plugin) -> None:
-        enabled = self._legacy_global_enabled(info)
-        if enabled is not None:
-            await (enable_plugin if enabled else disable_plugin)(plugin.id)
-
     async def load(
         self,
         plugin: str | PluginInfo,
         *,
         config: dict[str, Any] | None = None,
     ) -> Plugin | None:
-        """通过 Entari 加载插件，并应用旧状态中的全局开关。"""
+        """通过 Entari 加载插件。"""
 
         info = self._info(plugin)
         loaded = (
@@ -314,8 +228,6 @@ class PluginRuntime:
             if config is None
             else load_plugin(info.qualified_name, config)
         )
-        if loaded is not None:
-            await self._apply_legacy_state(info, loaded)
         return loaded
 
     async def load_all(

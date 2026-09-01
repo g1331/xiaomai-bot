@@ -655,36 +655,24 @@ class UpgradeConfig:
 
 @dataclass(frozen=True, slots=True)
 class AccountsConfig:
-    """账号路由状态持久化配置。"""
-
-    state_path: str = ".tenko/accounts.json"
-
-    def __post_init__(self) -> None:
-        if not self.state_path:
-            raise ValueError("accounts state_path 不能为空")
+    """账号路由配置占位；运行期状态统一由 database 管理。"""
 
     @classmethod
     def from_mapping(cls, section: Mapping[str, Any]) -> AccountsConfig:
-        defaults = cls()
-        return cls(state_path=_string(section, "state_path", defaults.state_path))
+        del section
+        return cls()
 
 
 @dataclass(frozen=True, slots=True)
 class FeaturesConfig:
     """群级插件开关配置。"""
 
-    state_path: str = ".tenko/features.json"
     default_enabled: bool = True
-
-    def __post_init__(self) -> None:
-        if not self.state_path:
-            raise ValueError("features state_path 不能为空")
 
     @classmethod
     def from_mapping(cls, section: Mapping[str, Any]) -> FeaturesConfig:
         defaults = cls()
         return cls(
-            state_path=_string(section, "state_path", defaults.state_path),
             default_enabled=_boolean(
                 section, "default_enabled", defaults.default_enabled
             ),
@@ -696,7 +684,6 @@ class RateLimitConfig:
     """统一命令限流配置。"""
 
     enabled: bool = True
-    state_path: str = ".tenko/ratelimit.json"
     window_seconds: float = 15.0
     max_weight: int = 24
     default_weight: int = 1
@@ -705,8 +692,6 @@ class RateLimitConfig:
     override_permission: int = 32
 
     def __post_init__(self) -> None:
-        if not self.state_path:
-            raise ValueError("ratelimit state_path 不能为空")
         if self.window_seconds <= 0:
             raise ValueError("ratelimit window_seconds 必须大于 0")
         if self.max_weight <= 0 or self.default_weight <= 0:
@@ -721,7 +706,6 @@ class RateLimitConfig:
         defaults = cls()
         return cls(
             enabled=_boolean(section, "enabled", defaults.enabled),
-            state_path=_string(section, "state_path", defaults.state_path),
             window_seconds=_number(section, "window_seconds", defaults.window_seconds),
             max_weight=_integer(section, "max_weight", defaults.max_weight),
             default_weight=_integer(section, "default_weight", defaults.default_weight),

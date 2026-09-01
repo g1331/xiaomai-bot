@@ -25,7 +25,9 @@ def _query_values(query: Any) -> dict[str, str | list[str]]:
     return normalized
 
 
-def _official_config(config: DatabaseConfig) -> dict[str, Any]:
+def _official_config(
+    config: DatabaseConfig, *, runtime_state_service: Any | None = None
+) -> dict[str, Any]:
     from sqlalchemy.engine import make_url
 
     url = make_url(config.url)
@@ -35,13 +37,25 @@ def _official_config(config: DatabaseConfig) -> dict[str, Any]:
     if not database_type or not url.database:
         raise DatabaseUnavailableError(f"数据库 URL 必须包含类型和名称: {config.url!r}")
 
+    create_table_at = config.create_table_at
+    if runtime_state_service is not None and create_table_at != "preparing":
+        # 官方 service 在 prepared/blocking 时会先发布对应阶段状态，再创建
+        # 表；Tenko 状态 service 依赖 prepared，因此必须让建表发生在
+        # preparing 阶段，避免首次读取与 create_all 并发。
+        logger.warning(
+            "Tenko runtime state requires database tables during preparing; "
+            "override create_table_at={!r} to 'preparing'",
+            create_table_at,
+        )
+        create_table_at = "preparing"
+
     result: dict[str, Any] = {
         "type": database_type,
         "name": url.database,
         "driver": driver,
         "query": _query_values(url.query),
         "options": {"echo": config.echo, "pool_pre_ping": True},
-        "create_table_at": config.create_table_at,
+        "create_table_at": create_table_at,
     }
     if database_type != "sqlite":
         result.update(
@@ -65,7 +79,11 @@ def _prepare_sqlite_path(config: DatabaseConfig, plugin_config: dict[str, Any]) 
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def load_database_plugin(config: DatabaseConfig):
+def load_database_plugin(
+    config: DatabaseConfig,
+    *,
+    runtime_state_service: Any | None = None,
+):
     """加载官方 database 插件并注册 Tenko 模型。
 
     ``load_plugin`` 必须在 ``EntariConfig`` 初始化后调用；该函数只负责启动
@@ -76,7 +94,9 @@ def load_database_plugin(config: DatabaseConfig):
     try:
         from arclet.entari.plugin import load_plugin
 
-        plugin_config = _official_config(config)
+        plugin_config = _official_config(
+            config, runtime_state_service=runtime_state_service
+        )
         _prepare_sqlite_path(config, plugin_config)
         plugin = load_plugin(_DATABASE_PLUGIN, plugin_config)
     except DatabaseUnavailableError:
@@ -95,6 +115,13 @@ def load_database_plugin(config: DatabaseConfig):
 
         service = plugin._services[_DATABASE_SERVICE]
         configure_database_service(service)
+        if runtime_state_service is not None:
+            register_service = getattr(plugin, "service", None)
+            if not callable(register_service):
+                raise DatabaseUnavailableError(
+                    "官方 database plugin 不支持注册 Tenko 运行期状态服务"
+                )
+            register_service(runtime_state_service)
     except (AttributeError, KeyError, ImportError) as error:
         raise DatabaseUnavailableError(
             "官方数据库插件未提供 database/sqlalchemy 服务"

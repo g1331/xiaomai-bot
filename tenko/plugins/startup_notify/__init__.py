@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from arclet.entari import Ready, plugin
 from arclet.entari.plugin import PluginRole, collect_disposes
 from loguru import logger
@@ -29,7 +27,7 @@ plugin.metadata(
 )
 # Entari 0.18.6 的构造函数没有 default_switch 字段。将兼容性标记保留在原生
 # metadata 上，供 host/plugins.py 和 inspectors 使用；启动通知是宿主级开关，
-# 但仍允许 feature_manager 通过 features.json 动态控制。
+# 但仍允许 feature_manager 通过 Tenko 功能状态动态控制。
 plugin.get_plugin().metadata.default_switch = True
 plugin.get_plugin().metadata.feature_scope = "global"
 
@@ -42,7 +40,7 @@ def configure_startup_notification(
     notify_group: str | int | None,
     *,
     started_at: float | None = None,
-    history_path: str | Path | None = None,
+    history: StartupHistory | None = None,
 ) -> StartupNotifier:
     """由 TenkoRuntime 注入启动起点和通知目标。"""
 
@@ -50,7 +48,7 @@ def configure_startup_notification(
     notifier = StartupNotifier(
         notify_group=notify_group,
         started_at=started_at,
-        history_path=history_path,
+        history=history,
         action_service=action_service,
         feature_service=feature_service,
         permission_checker=permission_checker,

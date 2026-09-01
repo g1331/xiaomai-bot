@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
+import pytest
 from satori.exception import ActionFailed
 
 import tenko.host.accounts as accounts_module
@@ -181,23 +182,56 @@ def test_group_send_action_failure_is_an_explicit_mute_source() -> None:
     assert not registry.observe_send_failure(account, 100, succeeded)
 
 
-def test_response_strategy_round_trip_restores_after_restart(tmp_path) -> None:
-    state_path = tmp_path / "accounts.json"
+@pytest.mark.asyncio
+async def test_response_strategy_round_trip_restores_after_restart(
+    repositories,
+) -> None:
+    repository = repositories["account"]
     first = FakeAccount("10001")
     second = FakeAccount("10002")
-    registry = AccountRegistry(state_path)
+    registry = AccountRegistry(repository)
+    await registry.initialize()
     registry.register(first, groups=[100])
     registry.register(second, groups=[100])
     registry.set_response_type(100, "deterministic")
     registry.set_deterministic_account(100, second)
+    await registry.flush_persistence()
 
-    restored = AccountRegistry(state_path)
-    restored.register(first, groups=[100])
-    restored.register(second, groups=[100])
+    restored = AccountRegistry(repository)
+    await restored.initialize()
+    restored.register(first)
+    restored.register(second)
 
     assert restored.response_type_for_group(100) == "deterministic"
     assert restored.deterministic_account_for_group(100) == "10002"
     assert restored.select_account(100) is second
+
+
+@pytest.mark.asyncio
+async def test_account_database_failure_disables_route_queries() -> None:
+    class FailingRepository:
+        async def load_state(self):
+            raise RuntimeError("database offline")
+
+    registry = AccountRegistry(FailingRepository())
+
+    with pytest.raises(RuntimeError, match="database offline"):
+        await registry.initialize()
+
+    assert not registry.ready
+    assert registry.group_ids == ()
+    assert registry.accounts_for_group("40001") == ()
+
+
+@pytest.mark.asyncio
+async def test_account_database_failure_does_not_silently_accept_writes() -> None:
+    from tenko.db.errors import DatabaseUnavailableError
+
+    registry = AccountRegistry()
+    registry.mark_unavailable()
+
+    with pytest.raises(DatabaseUnavailableError, match="数据库不可用"):
+        await registry.persist_state()
 
 
 def test_clear_deterministic_account_restores_group_default() -> None:

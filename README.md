@@ -245,31 +245,31 @@ config/tenko.toml 可以从示例复制后按需补充。下面的配置覆盖�
 `[runtime].log_level`、`[runtime].command_prefix` 和 `[entari].superusers` 会在读取时
 映射到 `basic`，新配置应直接使用官方节。
 
-### [database]、[accounts]、[features] 与 [exception]
+### [database]、[features] 与 [exception]
 
 | 配置 | 说明 |
 | --- | --- |
 | database.url | SQLAlchemy 数据库 URL，默认 sqlite+aiosqlite:///./.tenko/tenko.db |
 | database.echo | 是否输出 SQL，默认关闭 |
-| database.create_table_at | 建表时机，可选 preparing、prepared 或 blocking |
-| accounts.state_path | 多账号路由状态文件，默认 .tenko/accounts.json |
-| features.state_path | 群功能开关状态文件，默认 .tenko/features.json |
+| database.create_table_at | 建表时机，可选 preparing、prepared 或 blocking；Tenko 运行期状态接入时为保证状态读取晚于建表会使用 preparing |
+| accounts / response state | 多账号路由和响应策略保存在 database.url 指定的数据库中 |
+| features | 群功能开关保存在 database.url 指定的数据库中 |
 | features.default_enabled | 新群或未记录功能的默认开关，默认开启 |
 | exception.message_buffer_size | 异常报告保留的最近消息数量，默认 10 |
 | exception.evidence_dir | 报告无法投递时的本地证据目录，默认 .tenko/exceptions |
 
-Tenko 的 `/开启`、`/关闭` 使用 `.tenko/features.json` 保存“群 × 插件”的功能状态。
-它与 Entari builtin control 使用的 `local_data` 状态文件（包括全局插件/函数控制）
-是两套独立边界，不会互相读写；实际执行需要插件仍被 Entari 注册且没有被全局控制
-停用，同时通过 Tenko 当前群的开关检查。Entari 全局控制因此优先于 Tenko 群级开关，
-而 Tenko 群级开关在命令进入插件分发前生效。
+Tenko 的 `/开启`、`/关闭` 使用 `database.url` 指定的数据库保存“群 × 插件”的功能状态，
+多账号路由、响应策略、命令频控和启动耗时历史也使用同一数据库。它与 Entari builtin
+control 使用的 `local_data` 状态文件（包括全局插件/函数控制）是两套独立边界，不会
+互相读写；实际执行需要插件仍被 Entari 注册且没有被全局控制停用，同时通过 Tenko 当前
+群的开关检查。Entari 全局控制因此优先于 Tenko 群级开关，而 Tenko 群级开关在命令进入
+插件分发前生效。
 
 ### [ratelimit]
 
 | 字段 | 说明 |
 | --- | --- |
 | enabled | 是否启用命令限流，默认开启 |
-| state_path | 限流状态文件，默认 .tenko/ratelimit.json |
 | window_seconds | 滚动窗口长度，默认 15.0 秒 |
 | max_weight | 窗口允许的最大权重，默认 24 |
 | default_weight | 未单独指定命令的默认权重，默认 1 |
@@ -434,8 +434,7 @@ Tenko 自身 `.tenko` 应用数据的落点。
 | --- | --- | --- |
 | 部署根目录 | 稳定启动根、共享依赖和当前工作树 | 启动器确定的稳定根目录 |
 | `config/tenko.toml` | 用户配置 | 稳定 `cwd` |
-| `.tenko/tenko.db` | Tenko SQLite 数据库 | 稳定 `cwd` |
-| `.tenko/accounts.json`、`features.json`、`ratelimit.json` | 运行时 JSON 状态 | 稳定 `cwd` |
+| `.tenko/tenko.db` | Tenko 运行期状态和既有业务表 | 稳定 `cwd` |
 | `.tenko/exceptions/` | 异常取证文件 | 稳定 `cwd` |
 | `.tenko/upgrades/` | `active.json`、`previous.json`、`pending.json`、`handoff.json` 和版本目录 | 稳定 `cwd` |
 | `.tenko/upgrades/versions/<version>/` | 候选代码 | 升级状态目录下，作为代码源 |

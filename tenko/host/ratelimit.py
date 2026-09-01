@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import json
-import os
-import tempfile
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..db.repositories import RateLimitRepository
 
 
-_STATE_VERSION = 1
+_DATABASE_UNAVAILABLE_MESSAGE = "限流状态暂不可用，请稍后再试"
 
 
 def _key(value: object, label: str) -> str:
@@ -35,13 +35,13 @@ class RateLimitService:
     """按用户×群维护滚动窗口、冷却和临时黑名单。
 
     这是命令策略使用的纯宿主服务：不负责识别命令归属、不执行权限检查，
-    也不依赖 SQLAlchemy。状态采用 JSON 文件保存，``clock`` 注入后可对窗口
-    到期和重启恢复做确定性测试。
+    状态通过可选 repository 恢复和保存；``clock`` 注入后可对窗口到期和
+    重启恢复做确定性测试。
     """
 
     def __init__(
         self,
-        state_path: str | Path | None = None,
+        repository: RateLimitRepository | None = None,
         *,
         enabled: bool = True,
         window_seconds: float = 15.0,
@@ -60,7 +60,7 @@ class RateLimitService:
             raise ValueError("max_weight 必须是正整数")
         if type(default_weight) is not int or default_weight <= 0:
             raise ValueError("default_weight 必须是正整数")
-        self.state_path: Path | None = None
+        self._repository = repository
         self.enabled = enabled
         self.window_seconds = float(window_seconds)
         self.max_weight = max_weight
@@ -68,11 +68,10 @@ class RateLimitService:
         self.cooldown_seconds = float(cooldown_seconds)
         self.blacklist_seconds = float(blacklist_seconds)
         self.clock = clock
-        self._events: dict[str, list[tuple[float, int]]] = {}
-        self._cooldowns: dict[str, float] = {}
-        self._blacklist: dict[str, float] = {}
-        if state_path is not None:
-            self.configure(state_path)
+        self._events: dict[tuple[str, str], list[tuple[float, int]]] = {}
+        self._cooldowns: dict[tuple[str, str], float] = {}
+        self._blacklist: dict[tuple[str, str], float] = {}
+        self._ready = repository is None
 
     @staticmethod
     def _validate_positive(value: object, label: str, *, allow_zero: bool) -> None:
@@ -81,111 +80,124 @@ class RateLimitService:
         if value < 0 or (value == 0 and not allow_zero):
             raise ValueError(f"{label} 必须是{'非负' if allow_zero else '正'}数")
 
-    def configure(self, state_path: str | Path | None) -> None:
-        self.state_path = None if state_path is None else Path(state_path)
+    def configure(self, repository: RateLimitRepository | None = None) -> None:
+        """配置 repository；实际数据库读取由异步初始化完成。"""
+
+        self._repository = repository
         self._events = {}
         self._cooldowns = {}
         self._blacklist = {}
-        self._load()
 
-    @staticmethod
-    def _decode_events(value: object, key: str) -> list[tuple[float, int]]:
-        if not isinstance(value, list):
-            raise ValueError(f"限流状态 {key!r} 的 events 必须是 JSON array")
-        events: list[tuple[float, int]] = []
-        for item in value:
-            if not isinstance(item, Mapping):
-                raise ValueError(f"限流状态 {key!r} 的事件必须是 JSON object")
-            timestamp = item.get("at")
-            weight = item.get("weight")
-            if (
-                not isinstance(timestamp, int | float)
-                or isinstance(timestamp, bool)
-                or type(weight) is not int
-                or weight <= 0
-            ):
-                raise ValueError(f"限流状态 {key!r} 的事件字段非法")
-            events.append((float(timestamp), weight))
-        return events
+        self._ready = repository is None
 
-    def _load(self) -> None:
-        if self.state_path is None or not self.state_path.is_file():
+    @property
+    def ready(self) -> bool:
+        """返回限流数据库快照是否可安全使用。"""
+
+        return self._ready
+
+    def mark_unavailable(self) -> None:
+        """将数据库失败转换为拦截所有受限命令的状态。"""
+
+        self._ready = False
+
+    async def initialize(self, repository: RateLimitRepository | None = None) -> None:
+        """从 repository 恢复滚动窗口和到期状态。"""
+
+        if repository is not None:
+            self._repository = repository
+        if self._repository is None:
+            self._events = {}
+            self._cooldowns = {}
+            self._blacklist = {}
+            self._ready = True
             return
+
         try:
-            data = json.loads(self.state_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"限流状态不是有效 JSON: {self.state_path}") from exc
-        if not isinstance(data, Mapping):
-            raise ValueError(f"限流状态必须是 JSON object: {self.state_path}")
-        if data.get("version", _STATE_VERSION) != _STATE_VERSION:
-            raise ValueError(f"不支持的限流状态版本: {data.get('version')}")
-        events = data.get("events", {})
-        cooldowns = data.get("cooldowns", {})
-        blacklist = data.get("blacklist", {})
-        if not isinstance(events, Mapping) or not isinstance(cooldowns, Mapping):
-            raise ValueError(
-                f"限流状态的 events/cooldowns 必须是 JSON object: {self.state_path}"
+            snapshot = await self._repository.load_state()
+        except Exception:
+            self.mark_unavailable()
+            raise
+
+        events: dict[tuple[str, str], list[tuple[float, int]]] = {}
+        for row in snapshot.events:
+            events.setdefault((row.group_id, row.user_id), []).append(
+                (row.occurred_at, row.weight)
             )
-        if not isinstance(blacklist, Mapping):
-            raise ValueError(
-                f"限流状态的 blacklist 必须是 JSON object: {self.state_path}"
-            )
-        self._events = {
-            str(key): self._decode_events(value, str(key))
-            for key, value in events.items()
-        }
-        self._cooldowns = self._decode_expiries(cooldowns, "cooldowns")
-        self._blacklist = self._decode_expiries(blacklist, "blacklist")
+        self._events = events
+        self._cooldowns = {}
+        self._blacklist = {}
+        for row in snapshot.subjects:
+            key = (row.group_id, row.user_id)
+            if row.cooldown_until is not None:
+                self._cooldowns[key] = row.cooldown_until
+            if row.blacklist_until is not None:
+                self._blacklist[key] = row.blacklist_until
+        self._ready = True
 
     @staticmethod
-    def _decode_expiries(
-        value: Mapping[object, object], field: str
-    ) -> dict[str, float]:
-        decoded: dict[str, float] = {}
-        for key, expiry in value.items():
-            if not isinstance(expiry, int | float) or isinstance(expiry, bool):
-                raise ValueError(f"限流状态的 {field} 到期时间必须是数字")
-            decoded[str(key)] = float(expiry)
-        return decoded
+    def _state_key(group_id: str | int, user_id: str | int) -> tuple[str, str]:
+        return _key(group_id, "群 ID"), _key(user_id, "用户 ID")
 
-    def _persist(self) -> None:
-        if self.state_path is None:
+    def _state_records(self) -> tuple[tuple[object, ...], tuple[object, ...]]:
+        from ..db.repositories import RateLimitEventRecord, RateLimitSubjectRecord
+
+        events = tuple(
+            RateLimitEventRecord(
+                group_id=group_id,
+                user_id=user_id,
+                occurred_at=occurred_at,
+                weight=weight,
+            )
+            for (group_id, user_id), values in self._events.items()
+            for occurred_at, weight in values
+        )
+        subjects = tuple(
+            RateLimitSubjectRecord(
+                group_id=group_id,
+                user_id=user_id,
+                cooldown_until=self._cooldowns.get((group_id, user_id)),
+                blacklist_until=self._blacklist.get((group_id, user_id)),
+            )
+            for group_id, user_id in sorted(set(self._cooldowns) | set(self._blacklist))
+        )
+        return events, subjects
+
+    async def persist_state(self) -> None:
+        """将当前限流快照原子替换到状态表。"""
+
+        if self._repository is None:
+            if not self._ready:
+                from ..db.errors import DatabaseUnavailableError
+
+                raise DatabaseUnavailableError(_DATABASE_UNAVAILABLE_MESSAGE)
             return
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "version": _STATE_VERSION,
-            "events": {
-                key: [{"at": at, "weight": weight} for at, weight in events]
-                for key, events in self._events.items()
-            },
-            "cooldowns": self._cooldowns,
-            "blacklist": self._blacklist,
-        }
-        temporary_path: str | None = None
+        if not self._ready:
+            from ..db.errors import DatabaseUnavailableError
+
+            raise DatabaseUnavailableError(_DATABASE_UNAVAILABLE_MESSAGE)
+        events, subjects = self._state_records()
         try:
-            with tempfile.NamedTemporaryFile(
-                "w",
-                encoding="utf-8",
-                dir=self.state_path.parent,
-                prefix=f".{self.state_path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary:
-                json.dump(data, temporary, ensure_ascii=False, indent=2, sort_keys=True)
-                temporary.write("\n")
-                temporary.flush()
-                os.fsync(temporary.fileno())
-                temporary_path = temporary.name
-            os.replace(temporary_path, self.state_path)
-        finally:
-            if temporary_path is not None and os.path.exists(temporary_path):
-                os.unlink(temporary_path)
+            await self._repository.replace_state(events, subjects)
+        except Exception:
+            self.mark_unavailable()
+            raise
 
-    @staticmethod
-    def _state_key(group_id: str | int, user_id: str | int) -> str:
-        return f"{_key(group_id, '群 ID')}:{_key(user_id, '用户 ID')}"
+    async def check_and_persist(self, *args, **kwargs) -> RateLimitDecision:
+        """完成一次判定并确保限流状态写入数据库。"""
 
-    def _prune(self, key: str, now: float) -> bool:
+        if self._repository is not None and not self._ready:
+            return RateLimitDecision(False, _DATABASE_UNAVAILABLE_MESSAGE)
+        decision = self.check(*args, **kwargs)
+        if self._repository is None:
+            return decision
+        try:
+            await self.persist_state()
+        except Exception:
+            return RateLimitDecision(False, _DATABASE_UNAVAILABLE_MESSAGE)
+        return decision
+
+    def _prune(self, key: tuple[str, str], now: float) -> bool:
         changed = False
         events = self._events.get(key, [])
         retained = [
@@ -211,10 +223,10 @@ class RateLimitService:
         self, group_id: str | int, user_id: str | int, *, now: float | None = None
     ) -> bool:
         key = self._state_key(group_id, user_id)
+        if not self._ready:
+            return True
         current = self.clock() if now is None else float(now)
-        changed = self._prune(key, current)
-        if changed:
-            self._persist()
+        self._prune(key, current)
         return key in self._blacklist and self._blacklist[key] > current
 
     def clear(self, group_id: str | int, user_id: str | int) -> None:
@@ -224,7 +236,6 @@ class RateLimitService:
         self._events.pop(key, None)
         self._cooldowns.pop(key, None)
         self._blacklist.pop(key, None)
-        self._persist()
 
     reset = clear
 
@@ -246,16 +257,16 @@ class RateLimitService:
         actual_weight = self.default_weight if weight is None else weight
         if type(actual_weight) is not int or actual_weight <= 0:
             raise ValueError("weight 必须是正整数")
+        if not self._ready:
+            return RateLimitDecision(False, _DATABASE_UNAVAILABLE_MESSAGE)
         if not self.enabled or override:
             return RateLimitDecision(True)
 
         key = self._state_key(group_id, user_id)
         current = self.clock() if now is None else float(now)
-        changed = self._prune(key, current)
+        self._prune(key, current)
         blacklist_until = self._blacklist.get(key)
         if blacklist_until is not None and blacklist_until > current:
-            if changed:
-                self._persist()
             return RateLimitDecision(
                 False,
                 "检测到大量请求,加入黑名单5分钟!",
@@ -264,8 +275,6 @@ class RateLimitService:
             )
         cooldown_until = self._cooldowns.get(key)
         if cooldown_until is not None and cooldown_until > current:
-            if changed:
-                self._persist()
             return RateLimitDecision(
                 False,
                 "超过频率调用限制!请稍后再试~",
@@ -280,7 +289,6 @@ class RateLimitService:
                 self._cooldowns[key] = current + self.cooldown_seconds
             if self.blacklist_seconds > 0:
                 self._blacklist[key] = current + self.blacklist_seconds
-            self._persist()
             retry_after = max(
                 self._cooldowns.get(key, current) - current,
                 self._blacklist.get(key, current) - current,
@@ -297,7 +305,6 @@ class RateLimitService:
             )
 
         self._events.setdefault(key, []).append((current, actual_weight))
-        self._persist()
         return RateLimitDecision(True, current_weight=current_weight + actual_weight)
 
 
@@ -305,7 +312,7 @@ rate_limit_service = RateLimitService()
 
 
 def configure_rate_limiter(
-    state_path: str | Path | None,
+    repository: RateLimitRepository | None = None,
     *,
     enabled: bool = True,
     window_seconds: float = 15.0,
@@ -322,7 +329,7 @@ def configure_rate_limiter(
     rate_limit_service.default_weight = default_weight
     rate_limit_service.cooldown_seconds = float(cooldown_seconds)
     rate_limit_service.blacklist_seconds = float(blacklist_seconds)
-    rate_limit_service.configure(state_path)
+    rate_limit_service.configure(repository)
     return rate_limit_service
 
 

@@ -1,4 +1,4 @@
-"""与旧 ``core/orm/tables.py`` 同构的 Tenko SQLAlchemy 模型。"""
+"""Tenko SQLAlchemy 模型。"""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ except (AttributeError, ImportError, LookupError) as error:  # pragma: no cover
         "官方 entari-plugin-database 尚未加载，无法注册 Tenko 数据模型"
     ) from error
 
-from sqlalchemy import Boolean, Integer, String
+from sqlalchemy import Boolean, Float, Index, Integer, String, UniqueConstraint
 
 from .migration import LEGACY_SCHEMA_REVISION
 
@@ -73,15 +73,107 @@ class GroupSetting(BaseOrm):
     )
 
 
+class FeatureState(BaseOrm):
+    """Tenko 功能开关的全局或群级显式状态。"""
+
+    __tablename__ = "TenkoFeatureState"
+
+    plugin_name: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    group_id: Mapped[str] = mapped_column(
+        String(length=128), primary_key=True, default=""
+    )
+    enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    maintenance: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class AccountRoute(BaseOrm):
+    """账号与群的有序绑定关系。"""
+
+    __tablename__ = "TenkoAccountRoute"
+    __table_args__ = (
+        UniqueConstraint("group_id", "position", name="uq_tenko_route_position"),
+    )
+
+    group_id: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    account_id: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class AccountResponseState(BaseOrm):
+    """群级 random/deterministic 响应策略和指定账号。"""
+
+    __tablename__ = "TenkoAccountResponseState"
+
+    group_id: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    response_type: Mapped[str] = mapped_column(
+        String(length=32), nullable=False, default="random"
+    )
+    deterministic_account: Mapped[str | None] = mapped_column(
+        String(length=128), nullable=True
+    )
+
+
+class RateLimitEvent(BaseOrm):
+    """限流滚动窗口中的一次加权命令事件。"""
+
+    __tablename__ = "TenkoRateLimitEvent"
+    __table_args__ = (
+        Index(
+            "ix_tenko_rate_event_subject_time",
+            "group_id",
+            "user_id",
+            "occurred_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    group_id: Mapped[str] = mapped_column(String(length=128), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(length=128), nullable=False)
+    occurred_at: Mapped[float] = mapped_column(Float, nullable=False)
+    weight: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class RateLimitSubjectState(BaseOrm):
+    """用户×群的限流冷却和临时黑名单到期时间。"""
+
+    __tablename__ = "TenkoRateLimitSubjectState"
+
+    group_id: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(length=128), primary_key=True)
+    cooldown_until: Mapped[float | None] = mapped_column(Float, nullable=True)
+    blacklist_until: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class StartupTime(BaseOrm):
+    """一次启动完成所记录的耗时样本。"""
+
+    __tablename__ = "TenkoStartupTime"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    duration: Mapped[float] = mapped_column(Float, nullable=False)
+
+
 MODEL_CLASSES = (
     MemberPerm,
     GroupPerm,
     GroupSetting,
+    FeatureState,
+    AccountRoute,
+    AccountResponseState,
+    RateLimitEvent,
+    RateLimitSubjectState,
+    StartupTime,
 )
 
 __all__ = [
     "GroupPerm",
     "GroupSetting",
+    "FeatureState",
+    "AccountRoute",
+    "AccountResponseState",
+    "RateLimitEvent",
+    "RateLimitSubjectState",
+    "StartupTime",
     "MODEL_CLASSES",
     "MemberPerm",
 ]

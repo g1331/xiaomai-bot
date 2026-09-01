@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -33,7 +32,6 @@ class NotificationActions:
 
 
 def make_notifier(
-    tmp_path: Path,
     actions: NotificationActions,
     *,
     notify_group: str | None = "40002",
@@ -43,9 +41,9 @@ def make_notifier(
 ) -> StartupNotifier:
     return StartupNotifier(
         notify_group=notify_group,
-        history=StartupHistory(tmp_path / "startup_times.json"),
+        history=StartupHistory(),
         action_service=actions,
-        feature_service=FeatureService(tmp_path / "features.json"),
+        feature_service=FeatureService(),
         permission_checker=permission_checker,
         started_at=started_at,
         clock=lambda: now,
@@ -85,18 +83,18 @@ def test_startup_notify_is_a_global_feature_plugin(loaded_plugin) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["startup_notify"], indirect=True)
 async def test_startup_notify_plugin_ready_listener_uses_configured_notifier(
-    loaded_plugin, tmp_path: Path
+    loaded_plugin,
 ) -> None:
     actions = NotificationActions()
     loaded_plugin.action_service = actions
-    loaded_plugin.feature_service = FeatureService(tmp_path / "features.json")
+    loaded_plugin.feature_service = FeatureService()
     loaded_plugin.permission_checker = PermissionChecker(
         registry=PermissionRegistry(master_id="90001")
     )
     loaded_plugin.configure_startup_notification(
         None,
         started_at=10.0,
-        history_path=tmp_path / "startup_times.json",
+        history=StartupHistory(),
     )
     loaded_plugin.notifier.clock = lambda: 12.5
     loaded_plugin.notifier.version_provider = lambda: "4.0.0-pre6"
@@ -111,9 +109,9 @@ async def test_startup_notify_plugin_ready_listener_uses_configured_notifier(
 
 
 @pytest.mark.asyncio
-async def test_startup_notifier_waits_for_framework_and_account(tmp_path: Path) -> None:
+async def test_startup_notifier_waits_for_framework_and_account() -> None:
     actions = NotificationActions()
-    notifier = make_notifier(tmp_path, actions)
+    notifier = make_notifier(actions)
     account = SimpleNamespace(self_id="10001", platform="onebot")
 
     await notifier.mark_account_online(account)
@@ -126,19 +124,74 @@ async def test_startup_notifier_waits_for_framework_and_account(tmp_path: Path) 
     assert group_id == "40002"
     assert "启动耗时：2.50 秒" in notice
     assert "首次启动，暂无对比数据" in notice
-    assert StartupHistory(tmp_path / "startup_times.json").load() == (2.5,)
+    assert await notifier.history.load() == (2.5,)
 
 
 @pytest.mark.asyncio
-async def test_startup_notifier_skips_send_when_feature_is_disabled(
-    tmp_path: Path,
-) -> None:
+async def test_startup_notifier_persists_history_in_database(repositories) -> None:
     actions = NotificationActions()
-    features = FeatureService(tmp_path / "features.json")
+    features = FeatureService(repositories["feature"])
+    await features.initialize()
+    history = StartupHistory(repositories["startup"])
+    notifier = StartupNotifier(
+        notify_group="40002",
+        history=history,
+        action_service=actions,
+        feature_service=features,
+        started_at=10.0,
+        clock=lambda: 12.5,
+    )
+
+    await notifier.mark_framework_ready()
+    await notifier.mark_account_online(
+        SimpleNamespace(self_id="10001", platform="onebot")
+    )
+
+    assert "首次启动，暂无对比数据" in actions.group_messages[0][1]
+    assert await repositories["startup"].list_durations() == (2.5,)
+    restarted = StartupHistory(repositories["startup"])
+    assert await restarted.load() == (2.5,)
+
+
+@pytest.mark.asyncio
+async def test_startup_notifier_continues_when_history_database_is_unavailable() -> (
+    None
+):
+    class FailingRepository:
+        async def list_durations(self):
+            raise RuntimeError("database offline")
+
+        async def record(self, duration):
+            del duration
+            raise RuntimeError("database offline")
+
+    actions = NotificationActions()
+    notifier = StartupNotifier(
+        notify_group="40002",
+        history=StartupHistory(FailingRepository()),
+        action_service=actions,
+        feature_service=FeatureService(),
+        started_at=10.0,
+        clock=lambda: 12.5,
+    )
+
+    await notifier.mark_framework_ready()
+    await notifier.mark_account_online(
+        SimpleNamespace(self_id="10001", platform="onebot")
+    )
+
+    assert "首次启动，暂无对比数据" in actions.group_messages[0][1]
+    assert not notifier.history.ready
+
+
+@pytest.mark.asyncio
+async def test_startup_notifier_skips_send_when_feature_is_disabled() -> None:
+    actions = NotificationActions()
+    features = FeatureService()
     features.set_global_enabled("startup_notify", False)
     notifier = StartupNotifier(
         notify_group="40002",
-        history=StartupHistory(tmp_path / "startup_times.json"),
+        history=StartupHistory(),
         action_service=actions,
         feature_service=features,
         started_at=10.0,
@@ -151,17 +204,14 @@ async def test_startup_notifier_skips_send_when_feature_is_disabled(
     )
 
     assert actions.group_messages == []
-    assert not (tmp_path / "startup_times.json").exists()
+    assert await notifier.history.load() == ()
 
 
 @pytest.mark.asyncio
-async def test_startup_notifier_falls_back_to_master_private_message(
-    tmp_path: Path,
-) -> None:
+async def test_startup_notifier_falls_back_to_master_private_message() -> None:
     actions = NotificationActions()
     checker = PermissionChecker(registry=PermissionRegistry(master_id="90001"))
     notifier = make_notifier(
-        tmp_path,
         actions,
         notify_group=None,
         permission_checker=checker,
@@ -180,12 +230,10 @@ async def test_startup_notifier_falls_back_to_master_private_message(
 
 
 @pytest.mark.asyncio
-async def test_startup_notification_failure_does_not_escape_or_skip_history(
-    tmp_path: Path,
-) -> None:
+async def test_startup_notification_failure_does_not_escape_or_skip_history() -> None:
     actions = NotificationActions()
     actions.send_group_message = AsyncMock(side_effect=RuntimeError("offline"))
-    notifier = make_notifier(tmp_path, actions)
+    notifier = make_notifier(actions)
 
     await notifier.mark_framework_ready()
     await notifier.mark_account_online(
@@ -193,4 +241,4 @@ async def test_startup_notification_failure_does_not_escape_or_skip_history(
     )
 
     actions.send_group_message.assert_awaited_once()
-    assert StartupHistory(tmp_path / "startup_times.json").load() == (2.5,)
+    assert await notifier.history.load() == (2.5,)

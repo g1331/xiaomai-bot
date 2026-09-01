@@ -3,14 +3,11 @@ from __future__ import annotations
 import bisect
 import importlib.metadata
 import inspect
-import json
 import math
-import os
-import tempfile
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -26,9 +23,10 @@ except ModuleNotFoundError:  # pragma: no cover - Python 3.10 回退路径
 
 
 STARTUP_NOTIFY_FEATURE = "startup_notify"
-_HISTORY_VERSION = 1
-_DEFAULT_HISTORY_PATH = Path(".tenko/startup_times.json")
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if TYPE_CHECKING:
+    from ..db.repositories import StartupTimeRepository
 
 
 def _duration(value: object, label: str = "启动耗时") -> float:
@@ -48,74 +46,72 @@ def _normalize_id(value: object) -> str | None:
 
 
 class StartupHistory:
-    """读写版本化的启动耗时历史。"""
+    """读写数据库中的启动耗时历史。"""
 
-    def __init__(self, path: str | Path = _DEFAULT_HISTORY_PATH) -> None:
-        self.path = Path(path)
+    def __init__(self, repository: StartupTimeRepository | None = None) -> None:
+        self._repository = repository
+        self._durations: tuple[float, ...] = ()
+        self._ready = True
 
-    def load(self) -> tuple[float, ...]:
-        if not self.path.is_file():
-            return ()
+    @property
+    def ready(self) -> bool:
+        """返回启动耗时 repository 是否可用。"""
+
+        return self._ready
+
+    def mark_unavailable(self) -> None:
+        """记录数据库失败，但不阻止主生命周期继续启动。"""
+
+        self._ready = False
+
+    async def load(self) -> tuple[float, ...]:
+        if self._repository is None:
+            if not self._ready:
+                from ..db.errors import DatabaseUnavailableError
+
+                raise DatabaseUnavailableError("启动耗时数据库不可用")
+            return self._durations
+        if not self._ready:
+            from ..db.errors import DatabaseUnavailableError
+
+            raise DatabaseUnavailableError("启动耗时数据库尚未就绪")
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"启动耗时历史不是有效 JSON: {self.path}") from exc
-        if not isinstance(data, dict):
-            raise ValueError(f"启动耗时历史必须是 JSON object: {self.path}")
-        version = data.get("version", _HISTORY_VERSION)
-        if type(version) is not int or version != _HISTORY_VERSION:
-            raise ValueError(f"不支持的启动耗时历史版本: {version}")
-        durations = data.get("durations", [])
-        if not isinstance(durations, list):
-            raise ValueError(f"启动耗时历史的 durations 必须是 JSON array: {self.path}")
-        return tuple(_duration(value, "历史启动耗时") for value in durations)
+            durations = await self._repository.list_durations()
+        except Exception:
+            self.mark_unavailable()
+            raise
+        self._durations = tuple(_duration(value, "历史启动耗时") for value in durations)
+        return self._durations
 
-    def record(
+    async def record(
         self,
         duration: float,
         *,
         previous: Sequence[float] | None = None,
     ) -> tuple[float, ...]:
+        if not self._ready:
+            from ..db.errors import DatabaseUnavailableError
+
+            raise DatabaseUnavailableError("启动耗时数据库不可用")
         current = _duration(duration)
         samples = (
             tuple(_duration(value, "历史启动耗时") for value in previous)
             if previous is not None
-            else self.load()
+            else await self.load()
         )
-        updated = (*samples, current)
-        self._persist(updated)
-        return updated
+        if self._repository is not None:
+            if not self._ready:
+                from ..db.errors import DatabaseUnavailableError
 
-    def _persist(self, durations: Sequence[float]) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path: str | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                "w",
-                encoding="utf-8",
-                dir=self.path.parent,
-                prefix=f".{self.path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary:
-                json.dump(
-                    {
-                        "version": _HISTORY_VERSION,
-                        "durations": list(durations),
-                    },
-                    temporary,
-                    ensure_ascii=False,
-                    indent=2,
-                    sort_keys=True,
-                )
-                temporary.write("\n")
-                temporary.flush()
-                os.fsync(temporary.fileno())
-                temporary_path = temporary.name
-            os.replace(temporary_path, self.path)
-        finally:
-            if temporary_path is not None and os.path.exists(temporary_path):
-                os.unlink(temporary_path)
+                raise DatabaseUnavailableError("启动耗时数据库尚未就绪")
+            try:
+                await self._repository.record(current)
+            except Exception:
+                self.mark_unavailable()
+                raise
+        updated = (*samples, current)
+        self._durations = updated
+        return updated
 
 
 def calculate_beaten_percent(
@@ -216,7 +212,6 @@ class StartupNotifier:
         *,
         notify_group: str | int | None = None,
         history: StartupHistory | None = None,
-        history_path: str | Path | None = None,
         action_service: Any | None = None,
         feature_service: Any | None = None,
         permission_checker: Any | None = None,
@@ -225,7 +220,7 @@ class StartupNotifier:
         version_provider: Callable[[], str] | None = None,
     ) -> None:
         self.notify_group_id = _normalize_id(notify_group)
-        self.history = history or StartupHistory(history_path or _DEFAULT_HISTORY_PATH)
+        self.history = history or StartupHistory()
         self.action_service = (
             default_action_service if action_service is None else action_service
         )
@@ -277,12 +272,11 @@ class StartupNotifier:
 
             duration = max(float(self.clock()) - self.started_at, 0.0)
             try:
-                history = self.history.load()
+                history = await self.history.load()
             except Exception as error:
                 history = ()
                 logger.warning(
-                    "Could not load startup duration history {}: {}",
-                    self.history.path,
+                    "Could not load startup duration history: {}",
                     error,
                 )
             notice = build_startup_notice(
@@ -291,11 +285,10 @@ class StartupNotifier:
                 history,
             )
             try:
-                self.history.record(duration, previous=history)
+                await self.history.record(duration, previous=history)
             except Exception:
                 logger.exception(
-                    "Could not persist startup duration history {}",
-                    self.history.path,
+                    "Could not persist startup duration history",
                 )
             await self._send(notice)
         except Exception:

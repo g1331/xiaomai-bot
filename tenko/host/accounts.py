@@ -1,23 +1,23 @@
 from __future__ import annotations
 
-import json
-import os
+import asyncio
 import random
-import tempfile
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
-from pathlib import Path
 from types import MappingProxyType
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
+from loguru import logger
 from satori.client import Account
 from satori.exception import ActionFailed
 
 from ..context import MessageContext
 
+if TYPE_CHECKING:
+    from ..db.repositories import AccountStateRepository
+
 ResponseType = Literal["random", "deterministic"]
 _NO_MUTE = object()
-_STATE_VERSION = 1
 _MAX_EVENT_SELECTIONS = 4096
 _GROUP_PERMISSION_LEVELS = {
     "member": 16,
@@ -71,7 +71,7 @@ class AccountRegistry:
     :meth:`bind_group` 提供，注册表本身不主动调用协议 API。
     """
 
-    def __init__(self, state_path: str | Path | None = None) -> None:
+    def __init__(self, repository: AccountStateRepository | None = None) -> None:
         self._accounts: dict[str, Account] = {}
         self._availability: dict[str, bool] = {}
         self._groups: dict[str, list[str]] = {}
@@ -80,76 +80,164 @@ class AccountRegistry:
         self._muted_until: dict[tuple[str, str], datetime | None] = {}
         self._group_permissions: dict[tuple[str, str], int] = {}
         self._event_selections: dict[tuple[str, str], str] = {}
-        self.state_path: Path | None = None
-        if state_path is not None:
-            self.configure_persistence(state_path)
+        self._repository = repository
+        self._ready = repository is None
+        self._persist_task = None
+        self._persist_requested = False
+        self._persist_lock: asyncio.Lock | None = None
 
-    def configure_persistence(self, state_path: str | Path | None) -> None:
-        """配置响应策略状态文件并恢复已有群策略。"""
+    @property
+    def ready(self) -> bool:
+        """返回账号路由数据库快照是否可安全用于发送。"""
 
-        self.state_path = None if state_path is None else Path(state_path)
+        return self._ready
+
+    def configure(self, repository: AccountStateRepository | None = None) -> None:
+        """配置 repository 并清空本次运行的路由快照。"""
+
+        if self._persist_task is not None and not self._persist_task.done():
+            self._persist_task.cancel()
+        self._persist_task = None
+        self._repository = repository
+        self._groups = {}
         self._response_types = {}
         self._deterministic_accounts = {}
-        if self.state_path is None or not self.state_path.is_file():
-            return
-        try:
-            data = json.loads(self.state_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"账号响应状态不是有效 JSON: {self.state_path}") from exc
-        if not isinstance(data, Mapping):
-            raise ValueError(f"账号响应状态必须是 JSON object: {self.state_path}")
-        if data.get("version", _STATE_VERSION) != _STATE_VERSION:
-            raise ValueError(f"不支持的账号响应状态版本: {data.get('version')}")
-        groups = data.get("groups", {})
-        if not isinstance(groups, Mapping):
-            raise ValueError(
-                f"账号响应状态的 groups 必须是 JSON object: {self.state_path}"
-            )
-        for group_id, raw_state in groups.items():
-            if not isinstance(raw_state, Mapping):
-                raise ValueError(f"群 {group_id} 的响应状态必须是 JSON object")
-            normalized_group = _key(group_id)
-            response_type = raw_state.get("response_type", "random")
-            if response_type not in {"random", "deterministic"}:
-                raise ValueError(f"群 {normalized_group} 的响应类型非法")
-            self._response_types[normalized_group] = response_type
-            deterministic = raw_state.get("deterministic_account")
-            if deterministic is not None:
-                self._deterministic_accounts[normalized_group] = _key(deterministic)
+        self._persist_requested = False
+        self._persist_lock = None
+        self._ready = repository is None
 
-    def _persist_response_state(self) -> None:
-        if self.state_path is None:
+    def mark_unavailable(self) -> None:
+        """清空不可用数据库状态，阻止故障时继续使用账号路由。"""
+
+        self._groups = {}
+        self._response_types = {}
+        self._deterministic_accounts = {}
+        self._ready = False
+
+    async def initialize(
+        self, repository: AccountStateRepository | None = None
+    ) -> None:
+        """从 repository 恢复有序群路由和响应策略。"""
+
+        if repository is not None:
+            self._repository = repository
+        if self._repository is None:
+            self._ready = True
             return
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        data = {
-            "version": _STATE_VERSION,
-            "groups": {
-                group_id: {
-                    "response_type": self._response_types.get(group_id, "random"),
-                    "deterministic_account": self._deterministic_accounts.get(group_id),
-                }
-                for group_id in self._groups
-            },
-        }
-        temporary_path: str | None = None
+
         try:
-            with tempfile.NamedTemporaryFile(
-                "w",
-                encoding="utf-8",
-                dir=self.state_path.parent,
-                prefix=f".{self.state_path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as temporary:
-                json.dump(data, temporary, ensure_ascii=False, indent=2, sort_keys=True)
-                temporary.write("\n")
-                temporary.flush()
-                os.fsync(temporary.fileno())
-                temporary_path = temporary.name
-            os.replace(temporary_path, self.state_path)
-        finally:
-            if temporary_path is not None and os.path.exists(temporary_path):
-                os.unlink(temporary_path)
+            snapshot = await self._repository.load_state()
+        except Exception:
+            self.mark_unavailable()
+            raise
+
+        groups: dict[str, list[str]] = {}
+        for row in snapshot.routes:
+            members = groups.setdefault(row.group_id, [])
+            if row.account_id not in members:
+                members.append(row.account_id)
+
+        response_types: dict[str, ResponseType] = {}
+        deterministic_accounts: dict[str, str] = {}
+        try:
+            for row in snapshot.responses:
+                if row.response_type not in {"random", "deterministic"}:
+                    raise ValueError(f"群 {row.group_id} 的响应类型非法")
+                response_types[row.group_id] = row.response_type
+                if row.deterministic_account is not None:
+                    deterministic_accounts[row.group_id] = row.deterministic_account
+        except Exception:
+            self.mark_unavailable()
+            raise
+
+        self._groups = groups
+        self._response_types = {
+            group_id: response_types.get(group_id, "random") for group_id in groups
+        }
+        self._deterministic_accounts = {
+            group_id: account_id
+            for group_id, account_id in deterministic_accounts.items()
+            if account_id in groups.get(group_id, ())
+        }
+        self._ready = True
+
+    def _route_available(self) -> bool:
+        return self._ready
+
+    def _state_records(self) -> tuple[tuple[object, ...], tuple[object, ...]]:
+        from ..db.repositories import AccountResponseRecord, AccountRouteRecord
+
+        routes = tuple(
+            AccountRouteRecord(
+                group_id=group_id,
+                account_id=account_id,
+                position=position,
+            )
+            for group_id, members in self._groups.items()
+            for position, account_id in enumerate(members)
+        )
+        responses = tuple(
+            AccountResponseRecord(
+                group_id=group_id,
+                response_type=self._response_types.get(group_id, "random"),
+                deterministic_account=self._deterministic_accounts.get(group_id),
+            )
+            for group_id in self._groups
+        )
+        return routes, responses
+
+    async def persist_state(self) -> None:
+        """将当前账号路由快照原子替换到状态表。"""
+
+        if self._repository is None:
+            if not self._ready:
+                from ..db.errors import DatabaseUnavailableError
+
+                raise DatabaseUnavailableError("账号路由数据库不可用")
+            return
+        if not self._ready:
+            from ..db.errors import DatabaseUnavailableError
+
+            raise DatabaseUnavailableError("账号路由数据库尚未就绪")
+        if self._persist_lock is None:
+            self._persist_lock = asyncio.Lock()
+        async with self._persist_lock:
+            routes, responses = self._state_records()
+            try:
+                await self._repository.replace_state(routes, responses)
+            except Exception:
+                self.mark_unavailable()
+                raise
+
+    def _request_persist(self) -> None:
+        """在同步事件入口之后安排一次异步快照刷新。"""
+
+        if self._repository is None or not self._ready:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._persist_requested = True
+        if self._persist_task is None or self._persist_task.done():
+            self._persist_task = loop.create_task(self._drain_persistence())
+
+    async def _drain_persistence(self) -> None:
+        while self._persist_requested and self._ready:
+            self._persist_requested = False
+            try:
+                await self.persist_state()
+            except Exception as error:
+                logger.exception("账号路由状态保存失败: {}", error)
+                self._persist_requested = False
+        self._persist_task = None
+
+    async def flush_persistence(self) -> None:
+        """等待同步事件入口安排的账号状态写入完成。"""
+
+        task = self._persist_task
+        if task is not None:
+            await task
 
     @property
     def accounts(self) -> Mapping[str, Account]:
@@ -161,6 +249,8 @@ class AccountRegistry:
     def group_ids(self) -> tuple[str, ...]:
         """返回已建立路由的群 ID，顺序与首次绑定顺序一致。"""
 
+        if not self._route_available():
+            return ()
         return tuple(self._groups)
 
     def register(
@@ -209,7 +299,7 @@ class AccountRegistry:
                 self._deterministic_accounts.pop(group_id, None)
             elif self._deterministic_accounts.get(group_id) == account_id:
                 self._deterministic_accounts[group_id] = self._groups[group_id][0]
-        self._persist_response_state()
+        self._request_persist()
         return account
 
     def get(self, account_id: str | int) -> Account | None:
@@ -331,6 +421,8 @@ class AccountRegistry:
 
         normalized_group = _key(group_id)
         account_id = _account_id(account_or_id)
+        if not self._route_available():
+            return
         if account_id not in self._accounts:
             raise KeyError(f"账号未注册: {account_id}")
         members = self._groups.setdefault(normalized_group, [])
@@ -340,7 +432,7 @@ class AccountRegistry:
         self._deterministic_accounts.setdefault(normalized_group, account_id)
         self._response_types.setdefault(normalized_group, "random")
         if changed:
-            self._persist_response_state()
+            self._request_persist()
 
     def unbind_group(
         self, group_id: str | int, account_or_id: Account | str | int
@@ -349,6 +441,8 @@ class AccountRegistry:
 
         normalized_group = _key(group_id)
         account_id = _account_id(account_or_id)
+        if not self._route_available():
+            return False
         members = self._groups.get(normalized_group)
         if not members or account_id not in members:
             return False
@@ -362,12 +456,14 @@ class AccountRegistry:
             self._deterministic_accounts.pop(normalized_group, None)
         elif self._deterministic_accounts.get(normalized_group) == account_id:
             self._deterministic_accounts[normalized_group] = members[0]
-        self._persist_response_state()
+        self._request_persist()
         return True
 
     def bound_accounts_for_group(self, group_id: str | int) -> tuple[Account, ...]:
         """返回群已绑定的全部账号，包含离线或被禁言账号供状态查询。"""
 
+        if not self._route_available():
+            return ()
         normalized_group = _key(group_id)
         members = self._groups.get(normalized_group, ())
         return tuple(
@@ -388,6 +484,8 @@ class AccountRegistry:
     def groups_for_account(self, account_id: Account | str | int) -> tuple[str, ...]:
         """返回账号参与的群 ID，顺序与首次绑定顺序一致。"""
 
+        if not self._route_available():
+            return ()
         normalized_account = _account_id(account_id)
         return tuple(
             group_id
@@ -451,6 +549,8 @@ class AccountRegistry:
     def response_type_for_group(self, group_id: str | int) -> ResponseType | None:
         """返回群响应策略；未建立群路由时返回 ``None``。"""
 
+        if not self._route_available():
+            return None
         normalized_group = _key(group_id)
         if normalized_group not in self._groups:
             return None
@@ -459,6 +559,8 @@ class AccountRegistry:
     def deterministic_account_for_group(self, group_id: str | int) -> str | None:
         """返回群 deterministic 策略当前指定的账号 ID。"""
 
+        if not self._route_available():
+            return None
         normalized_group = _key(group_id)
         return self._deterministic_accounts.get(normalized_group)
 
@@ -467,6 +569,8 @@ class AccountRegistry:
     ) -> tuple[Account, ...]:
         """返回群对应的账号句柄，默认只返回可用账号。"""
 
+        if not self._route_available():
+            return ()
         normalized_group = _key(group_id)
         members = self._groups.get(normalized_group, ())
         return tuple(
@@ -488,7 +592,7 @@ class AccountRegistry:
         if normalized_group not in self._groups:
             raise KeyError(f"群未绑定账号: {normalized_group}")
         self._response_types[normalized_group] = response_type
-        self._persist_response_state()
+        self._request_persist()
 
     def set_deterministic_account(
         self, group_id: str | int, account_or_id: Account | str | int
@@ -500,7 +604,7 @@ class AccountRegistry:
         if account_id not in self._groups.get(normalized_group, ()):
             raise KeyError(f"账号未绑定到群 {normalized_group}: {account_id}")
         self._deterministic_accounts[normalized_group] = account_id
-        self._persist_response_state()
+        self._request_persist()
 
     def clear_deterministic_account(self, group_id: str | int) -> None:
         """清除显式 deterministic 账号并恢复群绑定顺序的默认账号。"""
@@ -510,7 +614,7 @@ class AccountRegistry:
         if not members:
             raise KeyError(f"群未绑定账号: {normalized_group}")
         self._deterministic_accounts[normalized_group] = members[0]
-        self._persist_response_state()
+        self._request_persist()
 
     def select_account(
         self,

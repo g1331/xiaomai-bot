@@ -104,18 +104,6 @@ def _server():
         time.sleep(1)
 
 
-def _update_json(path, field):
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise TypeError(f"{field} 状态必须是 object")
-    data["candidate_marker"] = SOURCE
-    data["candidate_write_count"] = int(data.get("candidate_write_count", 0)) + 1
-    path.write_text(
-        json.dumps(data, ensure_ascii=False, sort_keys=True) + "\\n",
-        encoding="utf-8",
-    )
-
-
 def _write_evidence(config):
     evidence_dir = _rooted(config.exception.evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -140,14 +128,6 @@ def _run_normal(arguments):
             "SELECT COUNT(*) FROM e2e_rows"
         ).fetchone()[0]
 
-    state_paths = {
-        "accounts": _rooted(config.accounts.state_path).resolve(),
-        "features": _rooted(config.features.state_path).resolve(),
-        "ratelimit": _rooted(config.ratelimit.state_path).resolve(),
-    }
-    for name, path in state_paths.items():
-        _update_json(path, name)
-
     evidence_path = _write_evidence(config)
     observation = {
         "source": SOURCE,
@@ -156,7 +136,6 @@ def _run_normal(arguments):
         "config_path": str(config_path.resolve()),
         "database_path": str(database_path),
         "database_row_count": row_count,
-        "state_paths": {name: str(path) for name, path in state_paths.items()},
         "evidence_path": str(evidence_path.resolve()),
         "arguments": arguments,
         "python": sys.executable,
@@ -188,7 +167,6 @@ class E2EFixture:
     config_path: Path
     data_dir: Path
     database_path: Path
-    state_paths: dict[str, Path]
     upgrade_root: Path
     launcher: Path
     fake_uv: Path
@@ -304,54 +282,6 @@ def _make_fixture(tmp_path: Path) -> E2EFixture:
         connection.execute("INSERT INTO e2e_rows(marker) VALUES (?)", ("preseed",))
         connection.commit()
 
-    state_paths = {
-        "accounts": tenko_dir / "accounts.json",
-        "features": tenko_dir / "features.json",
-        "ratelimit": tenko_dir / "ratelimit.json",
-    }
-    state_paths["accounts"].write_text(
-        json.dumps(
-            {
-                "version": 1,
-                "groups": {
-                    "preseed-group": {
-                        "response_type": "deterministic",
-                        "deterministic_account": "preseed-account",
-                    }
-                },
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    state_paths["features"].write_text(
-        json.dumps(
-            {
-                "version": 1,
-                "plugins": {
-                    "preseed-plugin": {
-                        "maintenance": False,
-                        "groups": {"preseed-group": True},
-                    }
-                },
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    state_paths["ratelimit"].write_text(
-        json.dumps(
-            {
-                "version": 1,
-                "events": {"preseed-user": [{"at": 0, "weight": 1}]},
-                "cooldowns": {},
-                "blacklist": {},
-            }
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
     fake_uv = tmp_path / "fake-uv"
     fake_uv.write_text(
         "#!/bin/sh\n"
@@ -373,7 +303,6 @@ def _make_fixture(tmp_path: Path) -> E2EFixture:
         config_path=stable_root / "config" / "tenko.toml",
         data_dir=data_dir,
         database_path=database_path,
-        state_paths=state_paths,
         upgrade_root=upgrade_root,
         launcher=launcher,
         fake_uv=fake_uv,
@@ -567,19 +496,6 @@ async def test_subprocess_upgrade_persists_data_and_runs_candidate(
         assert connection.execute("SELECT marker FROM e2e_rows").fetchone()[0] == (
             "preseed"
         )
-    for name, path in fixture.state_paths.items():
-        state = json.loads(path.read_text(encoding="utf-8"))
-        assert state["candidate_marker"] == CANDIDATE_MARKER, name
-        assert state["candidate_write_count"] == 1, name
-        assert observation["state_paths"][name] == str(path.resolve())
-        if name == "accounts":
-            assert state["groups"]["preseed-group"]["deterministic_account"] == (
-                "preseed-account"
-            )
-        elif name == "features":
-            assert state["plugins"]["preseed-plugin"]["groups"]["preseed-group"]
-        else:
-            assert state["events"]["preseed-user"] == [{"at": 0, "weight": 1}]
     evidence = Path(observation["evidence_path"])
     assert evidence.parent == fixture.stable_root / ".tenko" / "exceptions"
     assert evidence.is_file()

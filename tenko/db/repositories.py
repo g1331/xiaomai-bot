@@ -7,8 +7,9 @@ SQLAlchemy 查询对象暴露给宿主或插件调用方。
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Iterable
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -27,7 +28,17 @@ from .errors import (
     InvalidPermissionError,
 )
 from .ids import to_database_id
-from .models import GroupPerm, GroupSetting, MemberPerm
+from .models import (
+    AccountResponseState,
+    AccountRoute,
+    FeatureState,
+    GroupPerm,
+    GroupSetting,
+    MemberPerm,
+    RateLimitEvent,
+    RateLimitSubjectState,
+    StartupTime,
+)
 
 _SessionFactory = Callable[[], Any]
 _session_factory: _SessionFactory | None = None
@@ -385,9 +396,275 @@ class GroupSettingRepository(_Repository):
         await self.set(group_id, permission_type=permission_type)
 
 
+@dataclass(frozen=True, slots=True)
+class FeatureStateRecord:
+    """repository 返回的功能开关状态记录。"""
+
+    plugin_name: str
+    group_id: str | None
+    enabled: bool | None
+    maintenance: bool
+
+
+class FeatureStateRepository(_Repository):
+    """Tenko 功能开关状态 repository。"""
+
+    async def list_states(self) -> tuple[FeatureStateRecord, ...]:
+        async with self._session() as session:
+            result = await session.scalars(
+                select(FeatureState).order_by(
+                    FeatureState.plugin_name, FeatureState.group_id
+                )
+            )
+            return tuple(
+                FeatureStateRecord(
+                    plugin_name=row.plugin_name,
+                    group_id=row.group_id or None,
+                    enabled=row.enabled,
+                    maintenance=bool(row.maintenance),
+                )
+                for row in result.all()
+            )
+
+    async def replace_states(self, states: Iterable[FeatureStateRecord]) -> None:
+        rows = tuple(states)
+        async with self._session() as session:
+            await session.execute(delete(FeatureState))
+            session.add_all(
+                FeatureState(
+                    plugin_name=row.plugin_name,
+                    group_id=row.group_id or "",
+                    enabled=row.enabled,
+                    maintenance=row.maintenance,
+                )
+                for row in rows
+            )
+            await session.commit()
+
+    list = list_states
+    replace = replace_states
+
+
+@dataclass(frozen=True, slots=True)
+class AccountRouteRecord:
+    """repository 返回的有序账号路由记录。"""
+
+    group_id: str
+    account_id: str
+    position: int
+
+
+@dataclass(frozen=True, slots=True)
+class AccountResponseRecord:
+    """repository 返回的群响应策略记录。"""
+
+    group_id: str
+    response_type: str
+    deterministic_account: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountStateSnapshot:
+    """账号路由和响应策略的一致性快照。"""
+
+    routes: tuple[AccountRouteRecord, ...]
+    responses: tuple[AccountResponseRecord, ...]
+
+
+class AccountStateRepository(_Repository):
+    """Tenko 账号群路由及响应策略 repository。"""
+
+    async def load_state(self) -> AccountStateSnapshot:
+        async with self._session() as session:
+            route_result = await session.scalars(
+                select(AccountRoute).order_by(
+                    AccountRoute.group_id, AccountRoute.position
+                )
+            )
+            response_result = await session.scalars(
+                select(AccountResponseState).order_by(AccountResponseState.group_id)
+            )
+            return AccountStateSnapshot(
+                routes=tuple(
+                    AccountRouteRecord(
+                        group_id=row.group_id,
+                        account_id=row.account_id,
+                        position=row.position,
+                    )
+                    for row in route_result.all()
+                ),
+                responses=tuple(
+                    AccountResponseRecord(
+                        group_id=row.group_id,
+                        response_type=row.response_type,
+                        deterministic_account=row.deterministic_account,
+                    )
+                    for row in response_result.all()
+                ),
+            )
+
+    async def replace_state(
+        self,
+        routes: Iterable[AccountRouteRecord],
+        responses: Iterable[AccountResponseRecord],
+    ) -> None:
+        route_rows = tuple(routes)
+        response_rows = tuple(responses)
+        async with self._session() as session:
+            await session.execute(delete(AccountRoute))
+            await session.execute(delete(AccountResponseState))
+            session.add_all(
+                AccountRoute(
+                    group_id=row.group_id,
+                    account_id=row.account_id,
+                    position=row.position,
+                )
+                for row in route_rows
+            )
+            session.add_all(
+                AccountResponseState(
+                    group_id=row.group_id,
+                    response_type=row.response_type,
+                    deterministic_account=row.deterministic_account,
+                )
+                for row in response_rows
+            )
+            await session.commit()
+
+    load = load_state
+    replace = replace_state
+
+
+@dataclass(frozen=True, slots=True)
+class RateLimitEventRecord:
+    """repository 返回的限流窗口事件记录。"""
+
+    group_id: str
+    user_id: str
+    occurred_at: float
+    weight: int
+
+
+@dataclass(frozen=True, slots=True)
+class RateLimitSubjectRecord:
+    """repository 返回的限流用户状态记录。"""
+
+    group_id: str
+    user_id: str
+    cooldown_until: float | None
+    blacklist_until: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class RateLimitStateSnapshot:
+    """限流窗口和到期状态的一致性快照。"""
+
+    events: tuple[RateLimitEventRecord, ...]
+    subjects: tuple[RateLimitSubjectRecord, ...]
+
+
+class RateLimitRepository(_Repository):
+    """Tenko 命令限流状态 repository。"""
+
+    async def load_state(self) -> RateLimitStateSnapshot:
+        async with self._session() as session:
+            event_result = await session.scalars(
+                select(RateLimitEvent).order_by(RateLimitEvent.id)
+            )
+            subject_result = await session.scalars(
+                select(RateLimitSubjectState).order_by(
+                    RateLimitSubjectState.group_id,
+                    RateLimitSubjectState.user_id,
+                )
+            )
+            return RateLimitStateSnapshot(
+                events=tuple(
+                    RateLimitEventRecord(
+                        group_id=row.group_id,
+                        user_id=row.user_id,
+                        occurred_at=float(row.occurred_at),
+                        weight=int(row.weight),
+                    )
+                    for row in event_result.all()
+                ),
+                subjects=tuple(
+                    RateLimitSubjectRecord(
+                        group_id=row.group_id,
+                        user_id=row.user_id,
+                        cooldown_until=(
+                            None
+                            if row.cooldown_until is None
+                            else float(row.cooldown_until)
+                        ),
+                        blacklist_until=(
+                            None
+                            if row.blacklist_until is None
+                            else float(row.blacklist_until)
+                        ),
+                    )
+                    for row in subject_result.all()
+                ),
+            )
+
+    async def replace_state(
+        self,
+        events: Iterable[RateLimitEventRecord],
+        subjects: Iterable[RateLimitSubjectRecord],
+    ) -> None:
+        event_rows = tuple(events)
+        subject_rows = tuple(subjects)
+        async with self._session() as session:
+            await session.execute(delete(RateLimitEvent))
+            await session.execute(delete(RateLimitSubjectState))
+            session.add_all(
+                RateLimitEvent(
+                    group_id=row.group_id,
+                    user_id=row.user_id,
+                    occurred_at=row.occurred_at,
+                    weight=row.weight,
+                )
+                for row in event_rows
+            )
+            session.add_all(
+                RateLimitSubjectState(
+                    group_id=row.group_id,
+                    user_id=row.user_id,
+                    cooldown_until=row.cooldown_until,
+                    blacklist_until=row.blacklist_until,
+                )
+                for row in subject_rows
+            )
+            await session.commit()
+
+    load = load_state
+    replace = replace_state
+
+
+class StartupTimeRepository(_Repository):
+    """启动耗时样本 repository。"""
+
+    async def list_durations(self) -> tuple[float, ...]:
+        async with self._session() as session:
+            result = await session.scalars(
+                select(StartupTime.duration).order_by(StartupTime.id)
+            )
+            return tuple(float(value) for value in result.all())
+
+    async def record(self, duration: float) -> None:
+        async with self._session() as session:
+            session.add(StartupTime(duration=duration))
+            await session.commit()
+
+    list = list_durations
+
+
 member_perm_repository = MemberPermRepository()
 group_perm_repository = GroupPermRepository()
 group_setting_repository = GroupSettingRepository()
+feature_state_repository = FeatureStateRepository()
+account_state_repository = AccountStateRepository()
+rate_limit_repository = RateLimitRepository()
+startup_time_repository = StartupTimeRepository()
 
 
 async def get_member_permission(group_id: str | int, user_id: str | int) -> int | None:
@@ -406,12 +683,27 @@ __all__ = [
     "GroupPermRepository",
     "GroupSettingRepository",
     "MemberPermRepository",
+    "AccountResponseRecord",
+    "AccountRouteRecord",
+    "AccountStateRepository",
+    "AccountStateSnapshot",
+    "FeatureStateRecord",
+    "FeatureStateRepository",
+    "RateLimitEventRecord",
+    "RateLimitRepository",
+    "RateLimitStateSnapshot",
+    "RateLimitSubjectRecord",
+    "StartupTimeRepository",
+    "account_state_repository",
     "configure_database_service",
     "configure_session_factory",
+    "feature_state_repository",
     "get_bot_admin_ids",
     "get_group_permission",
     "get_member_permission",
     "group_perm_repository",
     "group_setting_repository",
     "member_perm_repository",
+    "rate_limit_repository",
+    "startup_time_repository",
 ]

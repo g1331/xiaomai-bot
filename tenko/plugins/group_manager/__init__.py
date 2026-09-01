@@ -20,6 +20,7 @@ from tenko.host.actions import (
     ActionServiceError,
     action_service,
 )
+from tenko.host.accounts import account_registry
 from tenko.context import MessageContext
 from tenko.host.perm import Permission, PermissionChecker
 from tenko.plugins._common import (
@@ -601,7 +602,7 @@ async def reset_capability(
 
 
 async def read_group_settings(group_id: str) -> dict[str, object]:
-    """只读查询群设置；数据库不可用时返回旧默认值。"""
+    """只读查询群设置；数据库不可用时返回默认值。"""
 
     from tenko.db.errors import DatabaseUnavailableError
 
@@ -627,13 +628,17 @@ async def read_group_settings(group_id: str) -> dict[str, object]:
             "active": True,
         }
 
+    response_type = account_registry.response_type_for_group(group_id)
+    if response_type is None:
+        response_type = (
+            "random" if setting_row is None else str(setting_row.response_type)
+        )
+
     return {
         "frequency_limitation": (
             True if setting_row is None else bool(setting_row.frequency_limitation)
         ),
-        "response_type": (
-            "random" if setting_row is None else str(setting_row.response_type)
-        ),
+        "response_type": response_type,
         "permission_type": (
             "default" if setting_row is None else str(setting_row.permission_type)
         ),

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, call
@@ -51,7 +50,7 @@ def test_discover_plugin_shapes_without_reading_plugin_metadata(
     (plugin_dir / "not_a_plugin").mkdir()
     (plugin_dir / "_private.py").write_text("", encoding="utf-8")
 
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    runtime = PluginRuntime(plugin_dir)
 
     infos = runtime.discover()
 
@@ -73,7 +72,7 @@ async def test_lifecycle_delegates_to_entari(monkeypatch, tmp_path: Path) -> Non
     monkeypatch.setattr(plugin_host, "enable_plugin", enable_plugin)
     monkeypatch.setattr(plugin_host, "disable_plugin", disable_plugin)
 
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    runtime = PluginRuntime(plugin_dir)
 
     assert await runtime.load("file_plugin") is loaded
     assert load_plugin.call_args.args == ("tenko.plugins.file_plugin",)
@@ -106,7 +105,7 @@ async def test_load_all_forwards_explicit_plugin_configs(
         lambda subplugged=False: list(native_plugins.values()),
     )
 
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    runtime = PluginRuntime(plugin_dir)
 
     await runtime.load_all({"file_plugin": {"enabled": True}})
 
@@ -135,7 +134,7 @@ async def test_load_all_loads_explicit_configs_before_default_plugins(
         lambda subplugged=False: list(native_plugins.values()),
     )
 
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    runtime = PluginRuntime(plugin_dir)
     await runtime.load_all({"package_plugin": {"enabled": True}})
 
     assert load_plugin_mock.call_args_list == [
@@ -154,71 +153,9 @@ async def test_reload_uses_native_unload_and_load(monkeypatch, tmp_path: Path) -
     monkeypatch.setattr(plugin_host, "load_plugin", load_plugin)
     monkeypatch.setattr(plugin_host, "unload_plugin", unload_plugin)
 
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=None)
+    runtime = PluginRuntime(plugin_dir)
 
     assert await runtime.load("file_plugin") is first
     assert await runtime.reload("file_plugin") is second
     assert unload_plugin.call_args.args == ("tenko.plugins.file_plugin",)
     assert load_plugin.call_args_list[-1].args == ("tenko.plugins.file_plugin",)
-
-
-@pytest.mark.asyncio
-async def test_legacy_state_maps_global_switches_and_is_read_only(
-    monkeypatch,
-    tmp_path: Path,
-) -> None:
-    plugin_dir = make_plugin_dir(tmp_path)
-    state_path = tmp_path / "modules_data.json"
-    state = {
-        "modules": {
-            "modules.self_contained.file_plugin": {"available": False},
-            "modules.required.package_plugin": {"available": True},
-        },
-        "groups": {},
-    }
-    state_path.write_text(json.dumps(state), encoding="utf-8")
-    before = state_path.read_bytes()
-    native_plugins = {
-        "file_plugin": FakePlugin("native.file_plugin"),
-        "package_plugin": FakePlugin("native.package_plugin"),
-    }
-    load_plugin = Mock(side_effect=lambda name: native_plugins[name.rsplit(".", 1)[-1]])
-    enable_plugin = AsyncMock(return_value=True)
-    disable_plugin = AsyncMock(return_value=True)
-    monkeypatch.setattr(plugin_host, "load_plugin", load_plugin)
-    monkeypatch.setattr(plugin_host, "enable_plugin", enable_plugin)
-    monkeypatch.setattr(plugin_host, "disable_plugin", disable_plugin)
-
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=state_path)
-
-    assert await runtime.load("file_plugin") is native_plugins["file_plugin"]
-    assert (
-        await runtime.load("modules.required.package_plugin")
-        is native_plugins["package_plugin"]
-    )
-    disable_plugin.assert_awaited_once_with("native.file_plugin")
-    enable_plugin.assert_awaited_once_with("native.package_plugin")
-    assert state_path.read_bytes() == before
-
-
-def test_legacy_group_switch_uses_compatible_name_without_global_toggle(
-    tmp_path: Path,
-) -> None:
-    plugin_dir = make_plugin_dir(tmp_path)
-    state_path = tmp_path / "modules_data.json"
-    state_path.write_text(
-        json.dumps(
-            {
-                "modules": {
-                    "modules.self_contained.file_plugin": {
-                        "groups": {"100": {"switch": False}}
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    runtime = PluginRuntime(plugin_dir, legacy_state_path=state_path)
-
-    assert not runtime.is_enabled("file_plugin", make_group_context("100"))
-    assert runtime.is_enabled("file_plugin", make_group_context("101"))

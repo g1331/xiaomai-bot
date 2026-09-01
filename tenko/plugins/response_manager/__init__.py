@@ -4,7 +4,6 @@ from arclet.alconna import Alconna, Args, CommandMeta
 from arclet.entari import MessageChain, Session, command, plugin
 from arclet.entari.command import Query
 from arclet.entari.plugin import PluginRole
-from loguru import logger
 from satori import Image
 
 from tenko.host.accounts import AccountRegistry, account_registry
@@ -374,22 +373,6 @@ async def online_bot(session: Session, *, render_service: RenderService):
     return image if image is not None else text_message(result)
 
 
-async def _persist_response_type(group_id: str, response_type: str) -> None:
-    """同步更新群设置表；数据库不可用时保留账号状态文件作为持久化源。"""
-
-    from tenko.db.errors import DatabaseUnavailableError
-    from tenko.db.repositories import group_setting_repository
-
-    try:
-        await group_setting_repository.set_response_type(group_id, response_type)
-    except DatabaseUnavailableError as error:
-        logger.warning(
-            "群 {} 的响应策略已写入账号状态，但群设置数据库不可用: {}",
-            group_id,
-            error,
-        )
-
-
 response_strategy_command = Alconna(
     "设定响应",
     Args["response_type?", "random|deterministic"],
@@ -425,7 +408,7 @@ async def set_response_strategy(
         return text_message("响应模式与当前相同!")
 
     account_registry.set_response_type(group_id, requested)
-    await _persist_response_type(group_id, requested)
+    await account_registry.persist_state()
     return text_message(f"已将当前群响应策略设为 {requested}")
 
 
@@ -459,6 +442,7 @@ async def choose_response_bot(
     requested = str(account_id.result).strip()
     if requested == "清除":
         account_registry.clear_deterministic_account(group_id)
+        await account_registry.persist_state()
         return text_message("已清除当前群指定响应BOT，恢复默认选路")
     if not requested.isdigit():
         return text_message("BOT账号必须为数字或“清除”")
@@ -472,5 +456,5 @@ async def choose_response_bot(
 
     account_registry.set_deterministic_account(group_id, requested)
     account_registry.set_response_type(group_id, "deterministic")
-    await _persist_response_type(group_id, "deterministic")
+    await account_registry.persist_state()
     return text_message(f"已成功设定群指定响应BOT为{requested}")

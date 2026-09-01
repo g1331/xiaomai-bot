@@ -36,10 +36,8 @@ from tenko.plugins._common import (
 
 """公告插件。
 
-公告的群功能开关通过 ``PluginRuntime`` 只读兼容旧
-``core/models/saya_model/modules_data.json`` 的 ``modules -> groups -> switch``
-结构；当前仓库没有把这个结构迁成独立 ORM 表，因此真实数据库契约仍需
-“待第⑧步真实数据库验证”。该实现不调用旧 ModulesController 的写入路径。
+公告的群功能开关通过 Tenko ``FeatureService`` 读取；插件是否仍被 Entari
+注册则由 ``PluginRuntime`` 提供只读判断。两者都不调用旧模块控制器的路径。
 
 发送动作统一进入宿主 ``ActionService``，并用账号×群的 ``is_muted`` 状态在
 发送前过滤。NapCat 的失败 retcode/message/wording 组合仍需
@@ -107,7 +105,7 @@ def resolve_feature(function_name: str) -> PluginInfo | None:
 
 
 def feature_enabled(feature: PluginInfo, group_id: str) -> bool:
-    """同时读取新宿主开关和旧状态兼容开关，不创建或更新任一状态。"""
+    """同时读取 Tenko 开关和 Entari 原生插件状态，不创建或更新任一状态。"""
 
     return feature_service.is_enabled(
         feature.name, group_id

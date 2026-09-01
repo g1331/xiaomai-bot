@@ -73,6 +73,8 @@ async def _change(session: Session, operation: str, feature: Match[str]):
     context = context_from_session(session)
     if context.chat_type != "group":
         return text_message("该指令只能在群聊中使用")
+    if not feature_service.ready:
+        return text_message("功能状态暂不可用，请稍后再试")
     if not await permission_checker.require_group_perm(context, Permission.ActiveGroup):
         return text_message("当前群不可用")
     if not await permission_checker.require_perm(context, Permission.GroupAdmin):
@@ -100,6 +102,7 @@ async def _change(session: Session, operation: str, feature: Match[str]):
         feature_service.set_global_enabled(info.name, requested_enabled)
     else:
         feature_service.set_enabled(info.name, context.channel_id, requested_enabled)
+    await feature_service.persist_state()
     return text_message(
         f"功能<{target_name}>{'已开启' if requested_enabled else '已关闭'}~"
     )

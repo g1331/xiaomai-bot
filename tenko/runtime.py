@@ -21,12 +21,14 @@ from .commands import configure_command_prefix
 from .connection import OneBotConnection
 from .db.bootstrap import load_database_plugin
 from .db.errors import DatabaseUnavailableError
+from .db.runtime import RuntimeStateService
 from .events import MessageEventHandler, configure_message_metrics
 from .host.accounts import account_registry
 from .host.actions import action_service
 from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
 from .host.ratelimit import configure_rate_limiter
+from .host.startup import StartupHistory
 from .host.updater import UpgradeManager, configure_updater
 from .render import RenderService
 
@@ -41,15 +43,13 @@ class TenkoRuntime:
             use_entari_prefix=True,
         )
         self.accounts = account_registry
-        self.accounts.configure_persistence(config.accounts.state_path)
+        self.accounts.configure(None)
         self.actions = action_service
         self.actions.configure_capability_overrides(config.onebot.capability_overrides)
         self.feature_service = configure_feature_service(
-            config.features.state_path,
             default_enabled=config.features.default_enabled,
         )
         self.rate_limiter = configure_rate_limiter(
-            config.ratelimit.state_path,
             enabled=config.ratelimit.enabled,
             window_seconds=config.ratelimit.window_seconds,
             max_weight=config.ratelimit.max_weight,
@@ -57,6 +57,7 @@ class TenkoRuntime:
             cooldown_seconds=config.ratelimit.cooldown_seconds,
             blacklist_seconds=config.ratelimit.blacklist_seconds,
         )
+        self.startup_history = StartupHistory()
         stable_root = Path.cwd().resolve()
         self.updater = UpgradeManager.from_config(
             config.upgrade, project_root=stable_root
@@ -82,6 +83,59 @@ class TenkoRuntime:
         self.plugin_runtime: PluginRuntime | None = None
         self._startup_notify_module: object | None = None
         self.database_service = None
+        self.runtime_state_service = RuntimeStateService(
+            self._initialize_runtime_state,
+            self._flush_runtime_state,
+        )
+
+    def _configure_database_repositories(self) -> None:
+        """将官方 database service 接入六类运行期状态。"""
+
+        from .db.repositories import (
+            account_state_repository,
+            feature_state_repository,
+            rate_limit_repository,
+            startup_time_repository,
+        )
+
+        self.accounts.configure(account_state_repository)
+        self.feature_service.configure(
+            feature_state_repository,
+            default_enabled=self.config.features.default_enabled,
+        )
+        self.rate_limiter.configure(rate_limit_repository)
+        self.startup_history = StartupHistory(startup_time_repository)
+
+    def _mark_runtime_state_unavailable(self) -> None:
+        """数据库 bootstrap 失败时让运行期状态统一进入保守状态。"""
+
+        self.accounts.mark_unavailable()
+        self.feature_service.mark_unavailable()
+        self.rate_limiter.mark_unavailable()
+        self.startup_history.mark_unavailable()
+
+    async def _initialize_runtime_state(self) -> None:
+        """在数据库服务就绪后加载快照；单类失败不阻止宿主启动。"""
+
+        state_loaders = (
+            ("account routes", self.accounts.initialize),
+            ("feature switches", self.feature_service.initialize),
+            ("rate limit", self.rate_limiter.initialize),
+            ("startup duration history", self.startup_history.load),
+        )
+        for label, loader in state_loaders:
+            try:
+                await loader()
+            except Exception as error:
+                logger.error("Could not load Tenko {} state: {}", label, error)
+
+    async def _flush_runtime_state(self) -> None:
+        """在数据库连接销毁前等待同步事件安排的状态写入。"""
+
+        try:
+            await self.accounts.flush_persistence()
+        except Exception as error:
+            logger.error("Could not flush Tenko account route state: {}", error)
 
     @staticmethod
     def _plugin_module(loaded_plugins: object, name: str) -> object | None:
@@ -223,11 +277,14 @@ class TenkoRuntime:
         )
         app = self.build_app()
         try:
-            self.database_service = load_database_plugin(self.config.database)
+            self.database_service = load_database_plugin(
+                self.config.database,
+                runtime_state_service=self.runtime_state_service,
+            )
+            self._configure_database_repositories()
         except DatabaseUnavailableError as error:
-            # PermissionChecker 和依赖数据库的插件都有明确的回退/错误路径。
-            # 保持宿主存活，使临时数据库故障不会阻止消息到达 Entari。
             self.database_service = None
+            self._mark_runtime_state_unavailable()
             logger.error("Tenko database is unavailable: {}", error)
         manager.add_component(
             RenderService(
@@ -260,6 +317,7 @@ class TenkoRuntime:
             configure_startup_notification(
                 self.config.notify_group,
                 started_at=_process_start_monotonic,
+                history=self.startup_history,
             )
         permission_manager = self._plugin_module(loaded_plugins, "perm_manager")
         configure_notify_group = getattr(
@@ -285,6 +343,8 @@ class TenkoRuntime:
         # 连接尝试可能与 Uvicorn 发生竞争，该时间窗口内到达的事件也不会被
         # replay 给 client。
         app.required = {*app.required, self.connection.ready_service.id}
+        if self.database_service is not None:
+            app.required = {*app.required, self.runtime_state_service.id}
         for connection in app.connections:
             connection.required = {
                 *connection.required,

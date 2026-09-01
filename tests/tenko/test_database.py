@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from arclet.entari.config import EntariConfig
+from graia.amnesia.builtins.sqla import SqlalchemyService
 from sqlalchemy import (
     Boolean,
     Column,
@@ -18,8 +19,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tenko.config import DatabaseConfig
-from tenko.db.bootstrap import load_database_plugin
+from tenko.config import TenkoConfig
+from tenko.db.bootstrap import _official_config
 from tenko.db.migration import LEGACY_SCHEMA_REVISION, run_database_migrations
 
 
@@ -86,6 +87,25 @@ async def _create_legacy_database(path: Path) -> MetaData:
     return metadata
 
 
+def test_runtime_state_bootstrap_creates_tables_before_state_load() -> None:
+    config = TenkoConfig.from_mapping(
+        {
+            "database": {
+                "url": "sqlite+aiosqlite:///tmp/tenko.db",
+                "create_table_at": "prepared",
+            }
+        }
+    )
+
+    assert _official_config(config.database)["create_table_at"] == "prepared"
+    assert (
+        _official_config(config.database, runtime_state_service=object())[
+            "create_table_at"
+        ]
+        == "preparing"
+    )
+
+
 @pytest.mark.asyncio
 async def test_official_database_plugin_preserves_legacy_schema_and_rows(
     tmp_path, monkeypatch
@@ -95,14 +115,21 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
 
     database_path = tmp_path / "legacy.db"
     legacy = await _create_legacy_database(database_path)
-    service = load_database_plugin(
-        DatabaseConfig(url=f"sqlite+aiosqlite:///{database_path}")
+    service = SqlalchemyService(
+        f"sqlite+aiosqlite:///{database_path}",
+        engine_options={"echo": False, "pool_pre_ping": True},
     )
     from tenko.db.models import (
         MODEL_CLASSES,
+        AccountResponseState,
+        AccountRoute,
+        FeatureState,
         GroupPerm,
         GroupSetting,
         MemberPerm,
+        RateLimitEvent,
+        RateLimitSubjectState,
+        StartupTime,
     )
 
     await service.initialize()
@@ -119,15 +146,14 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
     monkeypatch.setattr(official_migration, "_STATE_FILE", migration_state)
     await run_database_migrations(service)
     state = json.loads(migration_state.read_text(encoding="utf-8"))
-    assert {
+    legacy_tables = {
         "MemberPerm",
         "GroupPerm",
         "GroupSetting",
-    } <= set(state)
+    }
+    assert legacy_tables <= set(state)
     assert all(
-        state[table]["revision"] == LEGACY_SCHEMA_REVISION
-        for table in state
-        if table in {model.__tablename__ for model in MODEL_CLASSES}
+        state[table]["revision"] == LEGACY_SCHEMA_REVISION for table in legacy_tables
     )
 
     async with service.get_session() as session:
@@ -157,8 +183,18 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
         "MemberPerm": MemberPerm,
         "GroupPerm": GroupPerm,
         "GroupSetting": GroupSetting,
+        "TenkoFeatureState": FeatureState,
+        "TenkoAccountRoute": AccountRoute,
+        "TenkoAccountResponseState": AccountResponseState,
+        "TenkoRateLimitEvent": RateLimitEvent,
+        "TenkoRateLimitSubjectState": RateLimitSubjectState,
+        "TenkoStartupTime": StartupTime,
     }
     assert {model.__tablename__ for model in MODEL_CLASSES} == set(expected_models)
+    assert set(expected_models) <= set(state)
+    assert all(
+        state[table]["revision"] for table in set(expected_models) - legacy_tables
+    )
     async with service.engines[""].connect() as connection:
         table_names = await connection.run_sync(
             lambda sync_connection: set(inspect(sync_connection).get_table_names())
@@ -173,9 +209,10 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
             assert [column["name"] for column in columns] == [
                 column.name for column in model.__table__.columns
             ]
-            assert [column["name"] for column in columns] == [
-                column.name for column in legacy.tables[table_name].columns
-            ]
+            if table_name in legacy_tables:
+                assert [column["name"] for column in columns] == [
+                    column.name for column in legacy.tables[table_name].columns
+                ]
 
         member_pk = await connection.run_sync(
             lambda sync_connection: inspect(sync_connection).get_pk_constraint(
@@ -183,3 +220,4 @@ async def test_official_database_plugin_preserves_legacy_schema_and_rows(
             )["constrained_columns"]
         )
     assert set(member_pk) == {"group_id", "qq"}
+    await service.engines[""].dispose()

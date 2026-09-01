@@ -341,12 +341,12 @@ def test_format_results_counts_skipped_muted_groups_separately(loaded_plugin) ->
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["announcement"], indirect=True)
 async def test_announcement_preflight_honors_host_feature_switch(
-    loaded_plugin, tmp_path, monkeypatch
+    loaded_plugin, monkeypatch
 ) -> None:
     account = FakeAccount("10001")
     registry = AccountRegistry()
     registry.register(account, groups=["40001"])
-    service = FeatureService(tmp_path / "features.json")
+    service = FeatureService()
     service.disable("helper", "40001")
     monkeypatch.setattr(loaded_plugin, "feature_service", service)
 

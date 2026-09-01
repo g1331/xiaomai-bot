@@ -74,19 +74,14 @@ enabled = false
 # ID 建议写成字符串；省略时继承 [basic].superusers，显式填写（包括 []）会覆盖继承。
 # masters = ["10001"]
 
-[accounts]
-# 群响应策略（random/deterministic）和指定账号的持久化文件。
-state_path = ".tenko/accounts.json"
-
 [features]
-# 群×插件功能开关和全局维护状态的持久化文件。
-state_path = ".tenko/features.json"
+# 群×插件功能开关和全局维护状态保存在 database.url 指定的数据库中。
 default_enabled = true
 
 [ratelimit]
 # 命令按用户×群执行滚动窗口限流；群管理员达到 override_permission 时豁免。
 enabled = true
-state_path = ".tenko/ratelimit.json"
+# 频控窗口、冷却和黑名单状态保存在 database.url 指定的数据库中。
 window_seconds = 15.0
 max_weight = 24
 default_weight = 1

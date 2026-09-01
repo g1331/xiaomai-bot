@@ -16,6 +16,7 @@ from satori import EventType, LoginStatus
 from tenko import runtime as runtime_module
 from tenko.config import TenkoConfig
 from tenko.connection import OneBotConnection
+from tenko.db.runtime import RuntimeStateService
 from tenko.render import RenderService
 from tenko.runtime import TenkoRuntime
 
@@ -71,6 +72,56 @@ async def test_runtime_shutdown_callback_completes_launart_cleanup() -> None:
 
     await launch_task
     assert probe.cleaned is True
+
+
+@pytest.mark.asyncio
+async def test_runtime_state_service_loads_after_database_and_flushes_before_cleanup():
+    events: list[str] = []
+
+    class DatabaseProbe(Service):
+        id = "database/sqlalchemy"
+
+        @property
+        def required(self):
+            return set()
+
+        @property
+        def stages(self):
+            return {"preparing", "blocking", "cleanup"}
+
+        async def launch(self, manager):
+            async with self.stage("preparing"):
+                events.append("database-tables")
+            async with self.stage("blocking"):
+                await manager.status.wait_for_sigexit()
+            async with self.stage("cleanup"):
+                events.append("database-cleanup")
+
+    async def initialize() -> None:
+        events.append("runtime-state-load")
+
+    async def flush() -> None:
+        events.append("runtime-state-flush")
+
+    manager = Launart()
+    manager.add_component(DatabaseProbe())
+    manager.add_component(RuntimeStateService(initialize, flush))
+    launch_task = asyncio.create_task(manager.launch())
+
+    await manager.status.wait_for_blocking()
+    assert events == ["database-tables", "runtime-state-load"]
+
+    manager.status.exiting = True
+    manager.task_group.stop = True
+    manager.task_group.blocking_task.cancel()
+    await launch_task
+
+    assert events == [
+        "database-tables",
+        "runtime-state-load",
+        "runtime-state-flush",
+        "database-cleanup",
+    ]
 
 
 @pytest.mark.asyncio
@@ -143,12 +194,16 @@ async def test_run_async_loads_plugins_before_starting_entari(
     plugin_runtime.load_all.assert_awaited_once_with()
     assert runtime.plugin_runtime is plugin_runtime
     assert runtime._startup_notify_module is startup_notify
-    database_loader.assert_called_once_with(runtime.config.database)
+    database_loader.assert_called_once_with(
+        runtime.config.database,
+        runtime_state_service=runtime.runtime_state_service,
+    )
     assert runtime.database_service is database_loader.return_value
     group_manager.configure_notify_group.assert_called_once_with("40002")
     startup_notify.configure_startup_notification.assert_called_once_with(
         "40002",
         started_at=runtime_module._process_start_monotonic,
+        history=runtime.startup_history,
     )
     permission_manager.configure_notify_group.assert_called_once_with("40002")
     app.run_async.assert_awaited_once_with(
@@ -156,7 +211,7 @@ async def test_run_async_loads_plugins_before_starting_entari(
         stop_signal=(runtime_module.signal.SIGINT, runtime_module.signal.SIGTERM),
     )
     assert lifecycle == ["connection", "plugins", "app"]
-    assert app.required == {"tenko.ready"}
+    assert app.required == {"tenko.ready", "tenko/runtime-state"}
 
 
 @pytest.mark.asyncio
@@ -273,16 +328,13 @@ def test_entari_run_async_registration_keeps_connection_components(
     )
 
 
-def test_runtime_configures_account_response_state_path(tmp_path, monkeypatch) -> None:
+def test_runtime_configures_account_registry_without_file_state(monkeypatch) -> None:
     accounts = Mock()
     monkeypatch.setattr(runtime_module, "account_registry", accounts)
-    state_path = tmp_path / "accounts.json"
-    config = TenkoConfig.from_mapping({"accounts": {"state_path": str(state_path)}})
-
-    runtime = TenkoRuntime(config)
+    runtime = TenkoRuntime(TenkoConfig())
 
     assert runtime.accounts is accounts
-    accounts.configure_persistence.assert_called_once_with(str(state_path))
+    accounts.configure.assert_called_once_with(None)
 
 
 @pytest.mark.asyncio

@@ -181,7 +181,7 @@ async def test_response_strategy_handler_reads_and_persists_current_group_only(
     loaded_plugin.account_registry = registry
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     persist = AsyncMock()
-    monkeypatch.setattr(loaded_plugin, "_persist_response_type", persist)
+    monkeypatch.setattr(registry, "persist_state", persist)
 
     current = await loaded_plugin.set_response_strategy.callable_target(
         make_session("admin"), Query("response_type", None)
@@ -196,7 +196,7 @@ async def test_response_strategy_handler_reads_and_persists_current_group_only(
 
     assert str(changed) == "已将当前群响应策略设为 deterministic"
     assert registry.response_type_for_group("40001") == "deterministic"
-    persist.assert_awaited_once_with("40001", "deterministic")
+    persist.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ async def test_specified_bot_handler_validates_current_group_and_restores_defaul
     loaded_plugin.account_registry = registry
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     persist = AsyncMock()
-    monkeypatch.setattr(loaded_plugin, "_persist_response_type", persist)
+    monkeypatch.setattr(registry, "persist_state", persist)
 
     selected = await loaded_plugin.choose_response_bot.callable_target(
         make_session("admin"), make_query("account_id", "10002")
@@ -240,7 +240,7 @@ async def test_specified_bot_handler_validates_current_group_and_restores_defaul
     assert str(selected) == "已成功设定群指定响应BOT为10002"
     assert registry.response_type_for_group("40001") == "deterministic"
     assert registry.deterministic_account_for_group("40001") == "10002"
-    assert persist.await_args.args == ("40001", "deterministic")
+    persist.assert_awaited_once_with()
 
     cleared = await loaded_plugin.choose_response_bot.callable_target(
         make_session("admin"), make_query("account_id", "清除")
@@ -249,6 +249,7 @@ async def test_specified_bot_handler_validates_current_group_and_restores_defaul
     assert str(cleared) == "已清除当前群指定响应BOT，恢复默认选路"
     assert registry.deterministic_account_for_group("40001") == "10001"
     assert registry.select_account("40001") is first
+    assert persist.await_count == 2
 
 
 @pytest.mark.asyncio

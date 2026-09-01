@@ -47,9 +47,10 @@ def test_feature_commands_drop_legacy_dash_aliases(loaded_plugin) -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
 async def test_feature_commands_persist_group_switch_and_restore(
-    loaded_plugin, tmp_path, monkeypatch
+    loaded_plugin, repositories, monkeypatch
 ) -> None:
-    service = FeatureService(tmp_path / "features.json")
+    service = FeatureService(repositories["feature"])
+    await service.initialize()
     monkeypatch.setattr(loaded_plugin, "feature_service", service)
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
     session = make_session()
@@ -60,18 +61,17 @@ async def test_feature_commands_persist_group_switch_and_restore(
 
     assert disabled.extract_plain_text() == "功能<announcement>已关闭~"
     assert not service.is_enabled("announcement", "40001")
-    assert not FeatureService(tmp_path / "features.json").is_enabled(
-        "announcement", "40001"
-    )
+    restored = FeatureService(repositories["feature"])
+    await restored.initialize()
+    assert not restored.is_enabled("announcement", "40001")
 
     enabled = await loaded_plugin.enable.callable_target(
         session, Match("announcement", True)
     )
 
     assert enabled.extract_plain_text() == "功能<announcement>已开启~"
-    assert FeatureService(tmp_path / "features.json").is_enabled(
-        "announcement", "40001"
-    )
+    await restored.initialize()
+    assert restored.is_enabled("announcement", "40001")
 
 
 @pytest.mark.asyncio
@@ -89,7 +89,7 @@ async def test_feature_commands_cannot_disable_required_host_plugin(loaded_plugi
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
 async def test_feature_commands_can_disable_required_function_plugin(
-    loaded_plugin, tmp_path, monkeypatch
+    loaded_plugin, monkeypatch
 ) -> None:
     info = loaded_plugin.PluginInfo(
         name="announcement",
@@ -103,11 +103,9 @@ async def test_feature_commands_can_disable_required_function_plugin(
     )
     monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: (info,))
     monkeypatch.setattr(loaded_plugin, "get_plugins", lambda *, subplugged: (native,))
-    service = FeatureService(tmp_path / "features.json")
+    service = FeatureService()
     monkeypatch.setattr(loaded_plugin, "feature_service", service)
-    loaded_plugin.permission_checker = PermissionChecker(
-        registry=PermissionRegistry()
-    )
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
 
     result = await loaded_plugin.disable.callable_target(
         make_session(), Match("announcement", True)
@@ -119,9 +117,7 @@ async def test_feature_commands_can_disable_required_function_plugin(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
-async def test_feature_commands_toggle_global_feature(
-    loaded_plugin, tmp_path, monkeypatch
-):
+async def test_feature_commands_toggle_global_feature(loaded_plugin, monkeypatch):
     info = loaded_plugin.PluginInfo(
         name="startup_notify",
         path=Path("startup_notify"),
@@ -138,7 +134,7 @@ async def test_feature_commands_toggle_global_feature(
     )
     monkeypatch.setattr(loaded_plugin.plugin_runtime, "discover", lambda: (info,))
     monkeypatch.setattr(loaded_plugin, "get_plugins", lambda *, subplugged: (native,))
-    service = FeatureService(tmp_path / "features.json")
+    service = FeatureService()
     monkeypatch.setattr(loaded_plugin, "feature_service", service)
     loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
 
@@ -154,9 +150,7 @@ async def test_feature_commands_toggle_global_feature(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("loaded_plugin", ["feature_manager"], indirect=True)
 async def test_feature_commands_reject_non_admin_and_unknown_plugin(loaded_plugin):
-    loaded_plugin.permission_checker = PermissionChecker(
-        registry=PermissionRegistry()
-    )
+    loaded_plugin.permission_checker = PermissionChecker(registry=PermissionRegistry())
 
     member_result = await loaded_plugin.disable.callable_target(
         make_session(role="member"), Match("announcement", True)

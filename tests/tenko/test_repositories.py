@@ -1,15 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-import pytest_asyncio
-from arclet.entari.config import EntariConfig
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
-
-from tenko.config import DatabaseConfig
-from tenko.db.bootstrap import load_database_plugin
 from tenko.db.errors import (
     DatabaseIdentifierError,
     DatabaseUnavailableError,
@@ -17,41 +8,6 @@ from tenko.db.errors import (
     InvalidGroupSettingError,
     InvalidPermissionError,
 )
-
-
-@pytest_asyncio.fixture
-async def repositories():
-    if not EntariConfig._inited:
-        EntariConfig(Path("/tmp/tenko-repositories-test.yml"))
-    load_database_plugin(DatabaseConfig(url="sqlite+aiosqlite:///:memory:"))
-
-    from entari_plugin_database import BaseOrm
-    from tenko.db.models import GroupPerm, GroupSetting, MemberPerm
-    from tenko.db.repositories import (
-        GroupPermRepository,
-        GroupSettingRepository,
-        MemberPermRepository,
-        configure_session_factory,
-    )
-
-    engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    async with engine.begin() as connection:
-        await connection.run_sync(BaseOrm.metadata.create_all)
-
-    factory = async_sessionmaker(engine, expire_on_commit=False)
-    configure_session_factory(factory)
-    yield {
-        "member": MemberPermRepository(),
-        "group": GroupPermRepository(),
-        "setting": GroupSettingRepository(),
-        "models": (MemberPerm, GroupPerm, GroupSetting),
-    }
-    configure_session_factory(None)
-    await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -179,3 +135,81 @@ async def test_repository_without_session_factory_raises_explicit_error() -> Non
     repository = MemberPermRepository()
     with pytest.raises(DatabaseUnavailableError, match="session 工厂"):
         await repository.get_permission("10001", "20001")
+
+
+@pytest.mark.asyncio
+async def test_feature_state_repository_round_trip(repositories) -> None:
+    from tenko.db.repositories import FeatureStateRecord
+
+    repository = repositories["feature"]
+
+    assert await repository.list_states() == ()
+    await repository.replace_states(
+        (
+            FeatureStateRecord("demo", None, False, True),
+            FeatureStateRecord("demo", "40001", False, False),
+            FeatureStateRecord("other", "40001", True, False),
+        )
+    )
+
+    assert await repository.list_states() == (
+        FeatureStateRecord("demo", None, False, True),
+        FeatureStateRecord("demo", "40001", False, False),
+        FeatureStateRecord("other", "40001", True, False),
+    )
+
+
+@pytest.mark.asyncio
+async def test_account_state_repository_round_trip(repositories) -> None:
+    from tenko.db.repositories import (
+        AccountResponseRecord,
+        AccountRouteRecord,
+        AccountStateSnapshot,
+    )
+
+    repository = repositories["account"]
+
+    await repository.replace_state(
+        (
+            AccountRouteRecord("40001", "10001", 0),
+            AccountRouteRecord("40001", "10002", 1),
+        ),
+        (AccountResponseRecord("40001", "deterministic", "10002"),),
+    )
+
+    assert await repository.load_state() == AccountStateSnapshot(
+        routes=(
+            AccountRouteRecord("40001", "10001", 0),
+            AccountRouteRecord("40001", "10002", 1),
+        ),
+        responses=(AccountResponseRecord("40001", "deterministic", "10002"),),
+    )
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_repository_round_trip(repositories) -> None:
+    from tenko.db.repositories import RateLimitEventRecord, RateLimitSubjectRecord
+
+    repository = repositories["rate"]
+
+    await repository.replace_state(
+        (RateLimitEventRecord("40001", "20001", 100.0, 2),),
+        (RateLimitSubjectRecord("40001", "20001", 105.0, 200.0),),
+    )
+
+    snapshot = await repository.load_state()
+    assert snapshot.events == (RateLimitEventRecord("40001", "20001", 100.0, 2),)
+    assert snapshot.subjects == (
+        RateLimitSubjectRecord("40001", "20001", 105.0, 200.0),
+    )
+
+
+@pytest.mark.asyncio
+async def test_startup_time_repository_round_trip(repositories) -> None:
+    repository = repositories["startup"]
+
+    assert await repository.list_durations() == ()
+    await repository.record(2.5)
+    await repository.record(1.25)
+
+    assert await repository.list_durations() == (2.5, 1.25)

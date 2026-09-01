@@ -63,12 +63,24 @@ class WebUIAuthMiddleware(BaseHTTPMiddleware):
     def _authorized(self, request: Request) -> bool:
         authorization = request.headers.get("authorization", "")
         scheme, separator, token = authorization.partition(" ")
-        return bool(
+        if (
             separator
             and scheme.lower() == "bearer"
             and token
             and self.config.token is not None
-            and secrets.compare_digest(token, self.config.token)
+        ):
+            return secrets.compare_digest(token, self.config.token)
+
+        # 页面导航无法预先设置请求头，仅允许根页面用 query token 启动；
+        # API 仍然只接受 Bearer，避免令牌进入 API URL 和访问日志。
+        return bool(
+            request.method == "GET"
+            and request.url.path == WEBUI_PATH
+            and self.config.token is not None
+            and request.query_params.get("token")
+            and secrets.compare_digest(
+                request.query_params["token"], self.config.token
+            )
         )
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -207,12 +219,20 @@ class WebUIService(Service):
                 platform = getattr(
                     getattr(account, "self_info", None), "platform", None
                 )
+            groups = self.accounts.groups_for_account(account_id)
+            response_strategies = [
+                {"group_id": group_id, "strategy": strategy}
+                for group_id in groups
+                if (strategy := self.accounts.response_type_for_group(group_id))
+                is not None
+            ]
             accounts.append(
                 {
                     "id": str(account_id),
                     "platform": str(platform or "unknown"),
                     "online": bool(self.accounts.is_available(account_id)),
-                    "group_count": len(self.accounts.groups_for_account(account_id)),
+                    "group_count": len(groups),
+                    "response_strategies": response_strategies,
                 }
             )
         return {"accounts": accounts}

@@ -70,13 +70,18 @@ async def test_webui_auth_allows_configured_local_token_and_rejects_other_source
     )
     allowed = await _get(server.app, "/webui/api/accounts", token="web-secret")
     index = await _get(server.app, "/webui", token="web-secret")
+    query_index = await _get(server.app, "/webui?token=web-secret")
+    query_api = await _get(server.app, "/webui/api/accounts?token=web-secret")
 
     assert missing.status_code == 401
     assert wrong.status_code == 401
     assert remote.status_code == 401
     assert allowed.status_code == 200
     assert index.status_code == 200
+    assert query_index.status_code == 200
+    assert query_api.status_code == 401
     assert "Tenko WebUI" in index.text
+    assert "Tenko WebUI" in query_index.text
     assert allowed.json() == {"ok": True, "data": {"accounts": []}}
     assert missing.json() == {
         "ok": False,
@@ -154,12 +159,19 @@ async def test_webui_read_only_apis_expose_safe_account_and_feature_data():
                     "platform": "onebot",
                     "online": True,
                     "group_count": 2,
+                    "response_strategies": [
+                        {"group_id": "40001", "strategy": "random"},
+                        {"group_id": "40002", "strategy": "random"},
+                    ],
                 },
                 {
                     "id": "10002",
                     "platform": "satori",
                     "online": False,
                     "group_count": 1,
+                    "response_strategies": [
+                        {"group_id": "40002", "strategy": "random"},
+                    ],
                 },
             ]
         },

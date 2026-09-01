@@ -3,160 +3,1997 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tenko WebUI</title>
+    <meta name="color-scheme" content="dark" />
+    <title>Tenko WebUI · 管理面板</title>
     <style>
       :root {
-        color: #2f2925;
-        background: #f4efe7;
-        font: 16px/1.5 ui-sans-serif, system-ui, sans-serif;
+        /* 与 README v3 视觉稿同源的 token，布局之外不另起一套颜色。 */
+        --c-ink: #2D4A6B;
+        --c-navy: #1E3A52;
+        --c-paper: #F5F1E8;
+        --c-coral: #D96B5B;
+        --c-gold: #C7A45B;
+        --c-dark: #1A1A1E;
+        --c-sky: #4A94D8;
+        --c-text: #3A4A5A;
+        --c-off: #8B95A1;
+        --c-card: #FFFFFF;
+        --c-ok: #2E8B57;
+        --c-shadow: rgba(26, 26, 30, 0.3);
       }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        min-width: 320px;
+        background: var(--c-dark);
+      }
+
       body {
-        max-width: 1080px;
+        min-height: 100vh;
+        padding: 18px;
+        background: var(--c-dark);
+        color: var(--c-text);
+        font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--c-gold);
+        outline-offset: 3px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .app-frame {
+        display: grid;
+        grid-template-columns: 232px minmax(0, 1fr);
+        max-width: 1680px;
+        min-height: calc(100vh - 36px);
         margin: 0 auto;
-        padding: 40px 24px 64px;
+        overflow: hidden;
+        border: 1px solid rgba(245, 241, 232, 0.08);
+        border-radius: 6px;
+        background: var(--c-dark);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
       }
-      h1, h2 {
+
+      /* ============ 桌面侧边栏 ============ */
+      .sidebar {
+        display: flex;
+        min-height: 100%;
+        flex-direction: column;
+        padding: 22px 14px 18px;
+        background: var(--c-navy);
+        color: var(--c-paper);
+      }
+
+      .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 2px 10px 20px;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 1px solid rgba(245, 241, 232, 0.46);
+        color: var(--c-gold);
+        font-size: 12px;
+        transform: rotate(45deg);
+      }
+
+      .brand-mark span {
+        transform: rotate(-45deg);
+      }
+
+      .brand-name {
+        color: var(--c-paper);
+        font-size: 19px;
+        font-weight: 900;
+        letter-spacing: 5px;
+        line-height: 1;
+      }
+
+      .brand-caption {
+        margin-top: 5px;
+        color: rgba(245, 241, 232, 0.56);
+        font-size: 9px;
+        letter-spacing: 2px;
+      }
+
+      .sidebar-portrait {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin: 0 8px 24px;
+        padding: 11px 10px;
+        border: 1px solid rgba(245, 241, 232, 0.13);
+        background: rgba(245, 241, 232, 0.06);
+      }
+
+      .mini-portrait {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        overflow: hidden;
+        border: 2px solid rgba(245, 241, 232, 0.72);
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 50% 35%, rgba(245, 241, 232, 0.75) 0 8px, transparent 9px),
+          linear-gradient(145deg, #bfe0f5 0%, #7fb8e0 52%, #4a94d8 100%);
+      }
+
+      .mini-portrait::before,
+      .mini-portrait::after {
+        position: absolute;
+        content: "";
+      }
+
+      .mini-portrait::before {
+        top: 17px;
+        left: 9px;
+        width: 20px;
+        height: 18px;
+        border: 1px solid rgba(30, 58, 82, 0.42);
+        border-radius: 50% 50% 42% 42%;
+      }
+
+      .mini-portrait::after {
+        bottom: -8px;
+        left: 3px;
+        width: 32px;
+        height: 18px;
+        border-radius: 50% 50% 0 0;
+        background: rgba(30, 58, 82, 0.54);
+      }
+
+      .portrait-copy strong,
+      .portrait-copy span {
+        display: block;
+      }
+
+      .portrait-copy strong {
+        font-size: 12px;
+        letter-spacing: 2px;
+      }
+
+      .portrait-copy span {
+        margin-top: 3px;
+        color: rgba(245, 241, 232, 0.56);
+        font-size: 9px;
+        letter-spacing: 1px;
+      }
+
+      .nav-caption {
+        padding: 0 10px 7px;
+        color: rgba(245, 241, 232, 0.42);
+        font-size: 9px;
+        font-style: italic;
+        letter-spacing: 2px;
+      }
+
+      .nav-caption.later {
+        margin-top: 22px;
+      }
+
+      .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 46px;
+        gap: 10px;
+        padding: 8px 10px;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        background: transparent;
+        color: rgba(245, 241, 232, 0.7);
+        cursor: pointer;
+        text-align: left;
+        transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+      }
+
+      .nav-item:hover {
+        background: rgba(245, 241, 232, 0.08);
+        color: var(--c-paper);
+        transform: translateX(2px);
+      }
+
+      .nav-item[aria-current="page"] {
+        border-color: rgba(245, 241, 232, 0.34);
+        background: var(--c-paper);
+        color: var(--c-navy);
+        box-shadow: 4px 4px 0 rgba(26, 26, 30, 0.16);
+      }
+
+      .nav-number {
+        width: 22px;
+        color: var(--c-gold);
         font-family: Georgia, "Times New Roman", serif;
-        font-weight: 500;
+        font-size: 12px;
+        font-weight: 700;
       }
-      h1 { margin: 0 0 8px; font-size: clamp(2.2rem, 6vw, 4.6rem); }
-      h2 { margin: 0 0 16px; font-size: 1.6rem; }
-      header { border-bottom: 2px solid #b7432c; margin-bottom: 32px; padding-bottom: 20px; }
-      .eyebrow { color: #b7432c; font: 700 0.75rem/1 monospace; letter-spacing: 0.14em; text-transform: uppercase; }
-      .auth { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-      input, button { border: 1px solid #b9aa98; border-radius: 3px; padding: 10px 12px; font: inherit; }
-      input { flex: 1 1 240px; background: #fffdf9; }
-      button { cursor: pointer; background: #2f2925; color: #fffdf9; }
-      button:hover { background: #b7432c; }
-      .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
-      section { background: #fffdf9; border: 1px solid #d7cabb; padding: 20px; }
-      dl { display: grid; gap: 8px; grid-template-columns: 1fr auto; margin: 0; }
-      dt { color: #75685d; }
-      dd { margin: 0; font-family: monospace; text-align: right; }
-      .wide { grid-column: 1 / -1; overflow-x: auto; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border-bottom: 1px solid #e0d7cd; padding: 10px 8px; text-align: left; white-space: nowrap; }
-      th { color: #75685d; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
-      .online { color: #26704e; }
-      .offline { color: #9c6558; }
-      #message { min-height: 1.5em; color: #b7432c; }
+
+      .nav-item[aria-current="page"] .nav-number {
+        color: var(--c-coral);
+      }
+
+      .nav-copy {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
+
+      .nav-en {
+        display: block;
+        margin-top: 1px;
+        color: inherit;
+        font-size: 8px;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: 1.5px;
+        opacity: 0.58;
+      }
+
+      .nav-state {
+        color: inherit;
+        font-size: 8px;
+        letter-spacing: 1px;
+        opacity: 0.5;
+      }
+
+      .nav-item.is-disabled,
+      .nav-item.is-disabled:hover {
+        cursor: not-allowed;
+        color: rgba(245, 241, 232, 0.32);
+        transform: none;
+      }
+
+      .sidebar-foot {
+        margin-top: auto;
+        padding: 18px 10px 0;
+        border-top: 1px solid rgba(245, 241, 232, 0.12);
+        color: rgba(245, 241, 232, 0.42);
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        line-height: 1.8;
+      }
+
+      .sidebar-foot strong {
+        color: var(--c-gold);
+        font-weight: 600;
+      }
+
+      /* ============ 主工作区 ============ */
+      .workspace {
+        min-width: 0;
+        background: var(--c-dark);
+      }
+
+      main {
+        min-width: 0;
+        padding: 20px 24px 30px;
+      }
+
+      .mobile-topbar,
+      .mobile-nav {
+        display: none;
+      }
+
+      /* ============ 压缩版 HERO ============ */
+      .hero {
+        position: relative;
+        display: grid;
+        min-height: 232px;
+        grid-template-columns: minmax(0, 1fr) 265px;
+        overflow: hidden;
+        border-radius: 6px;
+        background:
+          repeating-linear-gradient(0deg, transparent 0 31px, rgba(45, 74, 107, 0.045) 31px 32px),
+          repeating-linear-gradient(90deg, transparent 0 31px, rgba(45, 74, 107, 0.045) 31px 32px),
+          var(--c-paper);
+      }
+
+      .cross {
+        position: absolute;
+        z-index: 2;
+        width: 18px;
+        height: 18px;
+        opacity: 0.5;
+      }
+
+      .cross::before,
+      .cross::after {
+        position: absolute;
+        background: var(--c-navy);
+        content: "";
+      }
+
+      .cross::before {
+        top: 0;
+        left: 8px;
+        width: 2px;
+        height: 18px;
+      }
+
+      .cross::after {
+        top: 8px;
+        left: 0;
+        width: 18px;
+        height: 2px;
+      }
+
+      .cross.tl {
+        top: 16px;
+        left: 18px;
+      }
+
+      .cross.br {
+        right: 18px;
+        bottom: 16px;
+      }
+
+      .hero-left {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+        padding: 28px 36px 28px 42px;
+      }
+
+      .hero-eyebrow {
+        color: var(--c-coral);
+        font-size: 9px;
+        font-style: italic;
+        font-weight: 700;
+        letter-spacing: 3px;
+      }
+
+      .hero-title {
+        margin-top: 4px;
+        color: var(--c-ink);
+        font-family: "Arial Black", "PingFang SC", sans-serif;
+        font-size: clamp(3.2rem, 7vw, 4.9rem);
+        font-weight: 900;
+        letter-spacing: 10px;
+        line-height: 0.96;
+      }
+
+      .hero-sub {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 10px;
+      }
+
+      .ribbon {
+        padding: 7px 21px 7px 15px;
+        background: var(--c-navy);
+        color: var(--c-paper);
+        font-size: 11px;
+        letter-spacing: 3px;
+        clip-path: polygon(0 0, 100% 0, calc(100% - 13px) 100%, 0 100%);
+      }
+
+      .ribbon .en {
+        margin-right: 9px;
+        color: var(--c-coral);
+        font-size: 10px;
+        font-style: italic;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 15px;
+      }
+
+      .badge {
+        padding: 3px 10px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+      }
+
+      .badge.navy {
+        background: var(--c-navy);
+        color: var(--c-paper);
+      }
+
+      .badge.coral {
+        background: var(--c-coral);
+        color: #ffffff;
+      }
+
+      .badge.gold {
+        background: var(--c-gold);
+        color: #3a2e14;
+      }
+
+      .badge.line {
+        border: 1px solid var(--c-navy);
+        background: transparent;
+        color: var(--c-navy);
+      }
+
+      .hero-meta {
+        min-height: 18px;
+        margin-top: 13px;
+        color: var(--c-off);
+        font-size: 10.5px;
+        letter-spacing: 1.2px;
+      }
+
+      .hero-meta b {
+        color: var(--c-ink);
+      }
+
+      .hero-right {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 36px 20px 8px;
+      }
+
+      .polaroid {
+        position: relative;
+        z-index: 1;
+        width: 188px;
+        padding: 8px 8px 23px;
+        background: #ffffff;
+        box-shadow: -10px 10px 0 var(--c-navy), 0 14px 27px rgba(26, 26, 30, 0.18);
+        transform: rotate(3deg);
+      }
+
+      .portrait-placeholder {
+        display: flex;
+        width: 172px;
+        height: 132px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        background:
+          radial-gradient(circle at 50% 46%, rgba(245, 241, 232, 0.5) 0 18px, transparent 19px),
+          linear-gradient(135deg, #bfe0f5 0%, #7fb8e0 55%, #4a94d8 100%);
+        color: rgba(30, 58, 82, 0.72);
+        text-align: center;
+      }
+
+      .portrait-placeholder span:first-child {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
+
+      .portrait-placeholder span:last-child {
+        font-size: 8px;
+        letter-spacing: 1.2px;
+      }
+
+      .polaroid .cap {
+        margin-top: 7px;
+        color: var(--c-off);
+        font-size: 9px;
+        letter-spacing: 2px;
+        text-align: center;
+      }
+
+      .vertical-note {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        color: var(--c-navy);
+        font-size: 9px;
+        letter-spacing: 4px;
+        opacity: 0.55;
+        transform: translateY(-50%);
+        writing-mode: vertical-rl;
+      }
+
+      /* ============ 连接工具条 ============ */
+      .connection-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 57px;
+        padding: 13px 2px 10px;
+        border-bottom: 1px solid rgba(245, 241, 232, 0.09);
+      }
+
+      .connection-copy {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .connection-dot {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 7px;
+        border-radius: 50%;
+        background: var(--c-gold);
+        box-shadow: 0 0 0 3px rgba(199, 164, 91, 0.13);
+      }
+
+      .connection-dot.ok {
+        background: var(--c-ok);
+        box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.13);
+      }
+
+      .connection-dot.error {
+        background: var(--c-coral);
+        box-shadow: 0 0 0 3px rgba(217, 107, 91, 0.13);
+      }
+
+      .connection-copy strong,
+      .connection-copy small {
+        display: block;
+      }
+
+      .connection-copy strong {
+        color: var(--c-paper);
+        font-size: 11px;
+        letter-spacing: 1.5px;
+      }
+
+      .connection-copy small {
+        overflow: hidden;
+        margin-top: 1px;
+        color: var(--c-off);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .auth-form {
+        display: flex;
+        flex: 0 1 360px;
+        gap: 6px;
+      }
+
+      .auth-form input {
+        min-width: 0;
+        flex: 1 1 auto;
+        padding: 7px 10px;
+        border: 1px solid rgba(245, 241, 232, 0.22);
+        border-radius: 3px;
+        outline: none;
+        background: rgba(245, 241, 232, 0.06);
+        color: var(--c-paper);
+        font-size: 11px;
+      }
+
+      .auth-form input::placeholder {
+        color: rgba(245, 241, 232, 0.44);
+      }
+
+      .auth-form input:focus {
+        border-color: var(--c-gold);
+      }
+
+      .auth-form button {
+        padding: 7px 13px;
+        border: 1px solid var(--c-coral);
+        border-radius: 3px;
+        background: var(--c-coral);
+        color: #ffffff;
+        cursor: pointer;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        transition: background 160ms ease, border-color 160ms ease;
+      }
+
+      .auth-form button:hover {
+        border-color: var(--c-gold);
+        background: var(--c-gold);
+        color: #3a2e14;
+      }
+
+      /* ============ 分区条与页内容 ============ */
+      .page-view {
+        animation: page-in 280ms ease both;
+      }
+
+      .section-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 22px 0 12px;
+        padding: 3px 0;
+      }
+
+      .section-bar .no {
+        padding: 4px 10px;
+        background: var(--c-navy);
+        color: var(--c-paper);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 2px;
+      }
+
+      .section-bar .no.coral {
+        background: var(--c-coral);
+      }
+
+      .section-bar h2 {
+        color: var(--c-ink);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 3px;
+      }
+
+      .section-bar .en {
+        margin-top: 1px;
+        color: var(--c-off);
+        font-size: 9px;
+        font-style: italic;
+        letter-spacing: 2.5px;
+      }
+
+      .section-bar .rule {
+        height: 2px;
+        flex: 1;
+        background: linear-gradient(90deg, var(--c-navy) 0 60px, rgba(45, 74, 107, 0.15) 60px);
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        border-top: 3px solid var(--c-navy);
+        border-radius: 4px;
+        background: var(--c-card);
+        box-shadow: 0 2px 10px var(--c-shadow);
+      }
+
+      .card.coral-top {
+        border-top-color: var(--c-coral);
+      }
+
+      .card.gold-top {
+        border-top-color: var(--c-gold);
+      }
+
+      .metric {
+        min-height: 112px;
+        padding: 15px 16px;
+      }
+
+      .metric .num {
+        color: var(--c-ink);
+        font-size: 27px;
+        font-variant-numeric: tabular-nums;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .metric .num small {
+        color: var(--c-off);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .metric .lbl {
+        margin-top: 6px;
+        color: var(--c-off);
+        font-size: 10px;
+        letter-spacing: 2px;
+      }
+
+      .metric .delta {
+        margin-top: 3px;
+        color: var(--c-off);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+      }
+
+      .metric .delta.up {
+        color: var(--c-ok);
+      }
+
+      .source-note {
+        margin-top: 10px;
+        color: rgba(245, 241, 232, 0.38);
+        font-size: 9px;
+        letter-spacing: 1px;
+      }
+
+      .source-note code,
+      code {
+        color: var(--c-gold);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .state-panel {
+        display: flex;
+        min-height: 120px;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 4px;
+        padding: 20px;
+        border: 1px dashed rgba(245, 241, 232, 0.2);
+        background: rgba(245, 241, 232, 0.035);
+        color: var(--c-off);
+      }
+
+      .state-panel strong {
+        color: var(--c-paper);
+        font-size: 13px;
+        letter-spacing: 1px;
+      }
+
+      .state-panel small {
+        color: var(--c-off);
+        font-size: 10px;
+      }
+
+      .state-panel .state-mark {
+        color: var(--c-coral);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 17px;
+      }
+
+      .white-panel {
+        padding: 16px 18px;
+        border-top: 3px solid var(--c-navy);
+        border-radius: 4px;
+        background: var(--c-card);
+        box-shadow: 0 2px 10px var(--c-shadow);
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        white-space: nowrap;
+      }
+
+      .pill.on {
+        background: rgba(46, 139, 87, 0.13);
+        color: var(--c-ok);
+      }
+
+      .pill.off {
+        background: rgba(139, 149, 161, 0.16);
+        color: var(--c-off);
+      }
+
+      .pill.prot {
+        background: rgba(30, 58, 82, 0.1);
+        color: var(--c-navy);
+      }
+
+      .pill.pending {
+        background: rgba(199, 164, 91, 0.18);
+        color: #806528;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      th {
+        padding: 7px 8px;
+        border-bottom: 2px solid var(--c-navy);
+        color: var(--c-off);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      td {
+        padding: 10px 8px;
+        border-bottom: 1px dashed rgba(45, 74, 107, 0.2);
+        vertical-align: middle;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .table-scroll {
+        overflow-x: auto;
+      }
+
+      .account-id,
+      .plugin-key {
+        color: var(--c-ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+      }
+
+      .account-id {
+        font-weight: 700;
+      }
+
+      .platform-label {
+        color: var(--c-text);
+        white-space: nowrap;
+      }
+
+      .strategy-list {
+        display: flex;
+        max-width: 280px;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .strategy-chip {
+        padding: 2px 6px;
+        border: 1px solid rgba(45, 74, 107, 0.18);
+        color: var(--c-navy);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .account-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(190px, 0.8fr);
+        gap: 12px;
+      }
+
+      .account-table-card {
+        border-top-color: var(--c-coral);
+      }
+
+      .panel-kicker {
+        color: var(--c-coral);
+        font-size: 9px;
+        font-style: italic;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
+
+      .panel-title {
+        margin-top: 3px;
+        color: var(--c-ink);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 2px;
+      }
+
+      .strategy-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .strategy-total {
+        padding: 10px;
+        background: var(--c-paper);
+      }
+
+      .strategy-total b,
+      .strategy-total span {
+        display: block;
+      }
+
+      .strategy-total b {
+        color: var(--c-ink);
+        font-size: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .strategy-total span {
+        margin-top: 1px;
+        color: var(--c-off);
+        font-size: 9px;
+        letter-spacing: 1px;
+      }
+
+      .panel-note {
+        margin-top: 13px;
+        color: var(--c-off);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+
+      /* ============ 插件卡 ============ */
+      .plugin-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 11px;
+      }
+
+      .plugin-card {
+        min-width: 0;
+        padding: 13px 14px 12px;
+        border: 1px solid rgba(45, 74, 107, 0.14);
+        border-top: 3px solid var(--c-navy);
+        border-radius: 4px;
+        background: var(--c-paper);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+      }
+
+      .plugin-card:hover {
+        box-shadow: 5px 5px 0 rgba(30, 58, 82, 0.12);
+        transform: translateY(-2px);
+      }
+
+      .plugin-card.is-off {
+        border-top-color: var(--c-off);
+      }
+
+      .plugin-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .plugin-name {
+        min-width: 0;
+        color: var(--c-ink);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .plugin-key {
+        display: block;
+        overflow: hidden;
+        margin-top: 4px;
+        color: var(--c-off);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .plugin-desc {
+        min-height: 36px;
+        margin: 9px 0 10px;
+        color: var(--c-off);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+
+      .plugin-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        color: var(--c-navy);
+        font-size: 10px;
+        letter-spacing: 0.5px;
+      }
+
+      .plugin-stats b {
+        font-size: 13px;
+      }
+
+      /* ============ 开关矩阵 ============ */
+      .matrix-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 11px;
+      }
+
+      .matrix-count {
+        color: var(--c-off);
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-align: right;
+      }
+
+      .matrix-wrap {
+        overflow: auto;
+        border-top: 3px solid var(--c-coral);
+        background: var(--c-card);
+        box-shadow: 0 2px 10px var(--c-shadow);
+      }
+
+      .matrix {
+        min-width: 610px;
+      }
+
+      .matrix th,
+      .matrix td {
+        text-align: center;
+      }
+
+      .matrix th:first-child,
+      .matrix td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        min-width: 190px;
+        background: var(--c-card);
+        text-align: left;
+      }
+
+      .matrix th:first-child {
+        z-index: 2;
+      }
+
+      .matrix th {
+        padding: 9px 7px;
+        color: var(--c-off);
+        font-size: 10px;
+      }
+
+      .matrix td {
+        padding: 8px 7px;
+      }
+
+      .matrix-plugin-name {
+        display: block;
+        overflow: hidden;
+        color: var(--c-ink);
+        font-size: 11px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .matrix-plugin-key {
+        display: block;
+        overflow: hidden;
+        margin-top: 2px;
+        color: var(--c-off);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .matrix-cell {
+        display: inline-flex;
+        width: 27px;
+        height: 27px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 2px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .matrix-cell.on {
+        background: rgba(46, 139, 87, 0.13);
+        color: var(--c-ok);
+      }
+
+      .matrix-cell.off {
+        background: rgba(139, 149, 161, 0.14);
+        color: var(--c-off);
+      }
+
+      .matrix-empty {
+        padding: 26px 18px;
+        color: var(--c-off);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      footer {
+        padding: 18px 0 3px;
+        color: rgba(245, 241, 232, 0.35);
+        font-size: 9px;
+        letter-spacing: 3px;
+        text-align: center;
+      }
+
+      footer b {
+        color: var(--c-gold);
+      }
+
+      @keyframes page-in {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      @media (max-width: 1120px) {
+        .app-frame {
+          grid-template-columns: 204px minmax(0, 1fr);
+        }
+
+        main {
+          padding-inline: 18px;
+        }
+
+        .hero {
+          grid-template-columns: minmax(0, 1fr) 218px;
+        }
+
+        .hero-left {
+          padding-left: 30px;
+        }
+
+        .hero-right {
+          padding-right: 26px;
+        }
+
+        .polaroid {
+          width: 166px;
+        }
+
+        .portrait-placeholder {
+          width: 150px;
+          height: 116px;
+        }
+      }
+
+      @media (max-width: 820px) {
+        body {
+          padding: 10px;
+        }
+
+        .app-frame {
+          display: block;
+          min-height: calc(100vh - 20px);
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .mobile-topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 13px 15px 10px;
+          background: var(--c-navy);
+          color: var(--c-paper);
+        }
+
+        .mobile-brand {
+          color: var(--c-paper);
+          font-size: 17px;
+          font-weight: 900;
+          letter-spacing: 4px;
+        }
+
+        .mobile-access {
+          color: var(--c-gold);
+          font-size: 9px;
+          letter-spacing: 1.5px;
+        }
+
+        .mobile-nav {
+          display: flex;
+          overflow-x: auto;
+          gap: 3px;
+          padding: 8px 6px 10px;
+          background: var(--c-navy);
+          scrollbar-width: none;
+        }
+
+        .mobile-nav::-webkit-scrollbar {
+          display: none;
+        }
+
+        .mobile-nav .nav-item {
+          width: auto;
+          min-width: max-content;
+          min-height: 36px;
+          flex: 0 0 auto;
+          gap: 3px;
+          padding: 6px 4px;
+        }
+
+        .mobile-nav .nav-number {
+          width: 14px;
+        }
+
+        .mobile-nav .nav-copy {
+          font-size: 11px;
+          letter-spacing: 1px;
+        }
+
+        .mobile-nav .nav-en,
+        .mobile-nav .nav-state {
+          display: none;
+        }
+
+        main {
+          padding: 12px 12px 22px;
+        }
+
+        .hero {
+          grid-template-columns: minmax(0, 1fr) 142px;
+          min-height: 194px;
+        }
+
+        .hero-left {
+          padding: 24px 15px 21px 23px;
+        }
+
+        .hero-title {
+          font-size: clamp(2.65rem, 12vw, 4rem);
+          letter-spacing: 6px;
+        }
+
+        .hero-sub {
+          margin-top: 8px;
+        }
+
+        .ribbon {
+          padding: 6px 15px 6px 11px;
+          font-size: 9px;
+          letter-spacing: 1.3px;
+        }
+
+        .ribbon .en {
+          margin-right: 5px;
+          font-size: 8px;
+          letter-spacing: 1px;
+        }
+
+        .hero-tags {
+          gap: 5px;
+          margin-top: 12px;
+        }
+
+        .badge {
+          padding: 3px 7px;
+          font-size: 8px;
+          letter-spacing: 0.7px;
+        }
+
+        .hero-meta {
+          margin-top: 9px;
+          font-size: 9px;
+          letter-spacing: 0.5px;
+        }
+
+        .hero-right {
+          padding: 18px 18px 18px 0;
+        }
+
+        .polaroid {
+          width: 112px;
+          padding: 5px 5px 16px;
+          box-shadow: -6px 6px 0 var(--c-navy), 0 8px 18px rgba(26, 26, 30, 0.17);
+        }
+
+        .portrait-placeholder {
+          width: 102px;
+          height: 84px;
+          gap: 3px;
+        }
+
+        .portrait-placeholder span:first-child {
+          font-size: 10px;
+          letter-spacing: 1px;
+        }
+
+        .portrait-placeholder span:last-child {
+          font-size: 6px;
+          letter-spacing: 0.5px;
+        }
+
+        .polaroid .cap {
+          margin-top: 4px;
+          font-size: 6px;
+          letter-spacing: 0.7px;
+        }
+
+        .vertical-note {
+          right: 4px;
+          font-size: 7px;
+          letter-spacing: 2px;
+        }
+
+        .connection-bar {
+          align-items: stretch;
+          flex-direction: column;
+          gap: 8px;
+          padding: 11px 0 9px;
+        }
+
+        .auth-form {
+          flex-basis: auto;
+          width: 100%;
+        }
+
+        .metric-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .account-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .plugin-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 520px) {
+        .hero {
+          grid-template-columns: minmax(0, 1fr) 118px;
+        }
+
+        .hero-left {
+          padding-left: 17px;
+        }
+
+        .hero-eyebrow {
+          font-size: 7px;
+          letter-spacing: 1.8px;
+        }
+
+        .hero-title {
+          font-size: clamp(2.35rem, 14vw, 3.2rem);
+          letter-spacing: 4px;
+        }
+
+        .hero-sub {
+          align-items: flex-start;
+        }
+
+        .ribbon {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .hero-right {
+          padding-right: 13px;
+        }
+
+        .polaroid {
+          width: 94px;
+        }
+
+        .portrait-placeholder {
+          width: 84px;
+          height: 74px;
+        }
+
+        .vertical-note {
+          display: none;
+        }
+
+        .section-bar {
+          gap: 8px;
+          margin-top: 18px;
+        }
+
+        .section-bar .no {
+          padding-inline: 8px;
+          font-size: 10px;
+        }
+
+        .section-bar h2 {
+          font-size: 12px;
+          letter-spacing: 2px;
+        }
+
+        .section-bar .en {
+          font-size: 7px;
+          letter-spacing: 1.5px;
+        }
+
+        .metric {
+          min-height: 102px;
+          padding: 13px 12px;
+        }
+
+        .metric .num {
+          font-size: 23px;
+        }
+
+        .metric .lbl {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+
+        .metric .delta {
+          overflow: hidden;
+          font-size: 9px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .white-panel {
+          padding: 13px 12px;
+        }
+
+        .plugin-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .plugin-desc {
+          min-height: auto;
+        }
+
+        .matrix-plugin-name {
+          max-width: 145px;
+        }
+
+        footer {
+          font-size: 8px;
+          letter-spacing: 1.5px;
+        }
+      }
     </style>
   </head>
   <body>
-    <header>
-      <div class="eyebrow">Tenko / read only</div>
-      <h1>运行一览</h1>
-      <div>批次 A 占位页 · 只读 API 链路验证</div>
-      <form class="auth" id="auth-form">
-        <label for="token" class="sr-only">WebUI token</label>
-        <input id="token" type="password" autocomplete="off" placeholder="输入 WebUI token" />
-        <button type="submit">刷新数据</button>
-      </form>
-      <div id="message" role="status" aria-live="polite"></div>
-    </header>
-    <main class="grid">
-      <section>
-        <h2>运行信息</h2>
-        <dl id="overview"><dt>等待加载</dt><dd>—</dd></dl>
+    <div class="app-frame" id="app">
+      <aside class="sidebar" aria-label="Tenko 功能导航">
+        <div class="sidebar-brand">
+          <div class="brand-mark" aria-hidden="true"><span>◆</span></div>
+          <div>
+            <div class="brand-name">TENKO</div>
+            <div class="brand-caption">GROUP CONTROL / WEBUI</div>
+          </div>
+        </div>
+
+        <div class="sidebar-portrait">
+          <div class="mini-portrait" aria-hidden="true"></div>
+          <div class="portrait-copy">
+            <strong>天子</strong>
+            <span>立绘占位 · 待替换</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="功能分类">
+          <div class="nav-caption">CONTROL DECK</div>
+          <a class="nav-item" data-route="overview" href="#/overview">
+            <span class="nav-number">01</span>
+            <span class="nav-copy">总览<span class="nav-en">OVERVIEW</span></span>
+            <span class="nav-state">VIEW</span>
+          </a>
+          <a class="nav-item" data-route="accounts" href="#/accounts">
+            <span class="nav-number">02</span>
+            <span class="nav-copy">账户<span class="nav-en">ACCOUNTS</span></span>
+            <span class="nav-state">VIEW</span>
+          </a>
+          <a class="nav-item" data-route="plugins" href="#/plugins">
+            <span class="nav-number">03</span>
+            <span class="nav-copy">插件<span class="nav-en">PLUGINS</span></span>
+            <span class="nav-state">VIEW</span>
+          </a>
+          <a class="nav-item" data-route="switches" href="#/switches">
+            <span class="nav-number">04</span>
+            <span class="nav-copy">开关<span class="nav-en">FEATURE FLAGS</span></span>
+            <span class="nav-state">VIEW</span>
+          </a>
+
+          <div class="nav-caption later">IN PREPARATION</div>
+          <button class="nav-item is-disabled" type="button" disabled>
+            <span class="nav-number">05</span>
+            <span class="nav-copy">日志<span class="nav-en">LOGS</span></span>
+            <span class="nav-state">SOON</span>
+          </button>
+          <button class="nav-item is-disabled" type="button" disabled>
+            <span class="nav-number">06</span>
+            <span class="nav-copy">设置<span class="nav-en">SETTINGS</span></span>
+            <span class="nav-state">SOON</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-foot">
+          TENKO WEBUI<br />
+          <strong id="sidebar-status">API PENDING</strong><br />
+          READ ONLY · IP ALLOWLIST
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <header class="mobile-topbar">
+          <div class="mobile-brand">TENKO</div>
+          <div class="mobile-access">READ ONLY / IP ALLOWLIST</div>
+        </header>
+        <nav class="mobile-nav" aria-label="移动端功能分类">
+          <a class="nav-item" data-route="overview" href="#/overview">
+            <span class="nav-number">01</span><span class="nav-copy">总览</span>
+          </a>
+          <a class="nav-item" data-route="accounts" href="#/accounts">
+            <span class="nav-number">02</span><span class="nav-copy">账户</span>
+          </a>
+          <a class="nav-item" data-route="plugins" href="#/plugins">
+            <span class="nav-number">03</span><span class="nav-copy">插件</span>
+          </a>
+          <a class="nav-item" data-route="switches" href="#/switches">
+            <span class="nav-number">04</span><span class="nav-copy">开关</span>
+          </a>
+          <button class="nav-item is-disabled" type="button" disabled>
+            <span class="nav-number">05</span><span class="nav-copy">日志</span>
+          </button>
+          <button class="nav-item is-disabled" type="button" disabled>
+            <span class="nav-number">06</span><span class="nav-copy">设置</span>
+          </button>
+        </nav>
+
+        <main>
+          <section class="hero" aria-labelledby="hero-title">
+            <div class="cross tl" aria-hidden="true"></div>
+            <div class="cross br" aria-hidden="true"></div>
+            <div class="hero-left">
+              <div class="hero-eyebrow">TENKO / READ ONLY / SNAPSHOT</div>
+              <h1 class="hero-title" id="hero-title">TENKO</h1>
+              <div class="hero-sub">
+                <div class="ribbon"><span class="en">ADMIN PANEL</span>群组管理 · 控制台</div>
+              </div>
+              <div class="hero-tags" id="hero-tags" aria-live="polite"></div>
+              <div class="hero-meta" id="hero-meta"></div>
+            </div>
+            <div class="hero-right">
+              <div class="polaroid">
+                <div class="portrait-placeholder" role="img" aria-label="天子立绘占位">
+                  <span>天子立绘</span>
+                  <span>PORTRAIT PLACEHOLDER</span>
+                </div>
+                <div class="cap">比那名居天子 · HINANAWI TENSHI</div>
+              </div>
+              <div class="vertical-note">群管已就绪 · 待命中</div>
+            </div>
+          </section>
+
+          <div class="connection-bar">
+            <div class="connection-copy">
+              <span class="connection-dot" id="connection-dot" aria-hidden="true"></span>
+              <div>
+                <strong>只读数据连接</strong>
+                <small id="connection-message" role="status" aria-live="polite">准备读取 overview / accounts / features</small>
+              </div>
+            </div>
+            <form class="auth-form" id="auth-form">
+              <label class="sr-only" for="token">WebUI token</label>
+              <input id="token" type="password" autocomplete="off" placeholder="输入 WebUI token · 仅存于当前页面内存" />
+              <button type="submit">重新同步</button>
+            </form>
+          </div>
+
+          <div id="page-root"></div>
+        </main>
+
+        <footer>TENKO WEBUI <b>·</b> 天子主题 <b>·</b> 杂志风 <b>·</b> 只读 API <b>·</b> 不写入数据</footer>
       </section>
-      <section>
-        <h2>账号</h2>
-        <div id="accounts">等待加载</div>
-      </section>
-      <section class="wide">
-        <h2>功能开关</h2>
-        <div id="features">等待加载</div>
-      </section>
-    </main>
+    </div>
+
+    <noscript>Tenko WebUI 需要启用 JavaScript 才能读取只读 API。</noscript>
+
     <script>
-      const token = () => document.querySelector("#token").value.trim();
-      const message = document.querySelector("#message");
-      const text = (value) => document.createTextNode(value == null ? "—" : String(value));
+      const API_PATHS = {
+        overview: "/webui/api/overview",
+        accounts: "/webui/api/accounts",
+        features: "/webui/api/features",
+      };
+
+      const ROUTES = {
+        overview: { title: "运行总览", en: "RUNTIME OVERVIEW", number: "01", accent: "navy" },
+        accounts: { title: "账户与响应", en: "ACCOUNTS & RESPONSE", number: "02", accent: "coral" },
+        plugins: { title: "插件详情", en: "PLUGIN DETAILS", number: "03", accent: "navy" },
+        switches: { title: "功能开关", en: "FEATURE FLAGS", number: "04", accent: "coral" },
+      };
+
+      const dataState = {
+        overview: { loading: true, data: null, error: null },
+        accounts: { loading: true, data: null, error: null },
+        features: { loading: true, data: null, error: null },
+      };
+
+      const pageRoot = document.querySelector("#page-root");
+      const heroTags = document.querySelector("#hero-tags");
+      const heroMeta = document.querySelector("#hero-meta");
+      const connectionDot = document.querySelector("#connection-dot");
+      const connectionMessage = document.querySelector("#connection-message");
+      const sidebarStatus = document.querySelector("#sidebar-status");
+      const tokenInput = document.querySelector("#token");
+      let authToken = "";
+      let loadSequence = 0;
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function isNumber(value) {
+        return typeof value === "number" && Number.isFinite(value);
+      }
+
+      function numberText(value) {
+        return isNumber(value) ? new Intl.NumberFormat("zh-CN").format(value) : "—";
+      }
+
+      function durationText(value) {
+        if (!isNumber(value)) return "—";
+        const total = Math.max(Math.floor(value), 0);
+        const days = Math.floor(total / 86400);
+        const hours = Math.floor((total % 86400) / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        if (days) return `${days}d ${hours}h`;
+        if (hours) return `${hours}h ${minutes}m`;
+        if (minutes) return `${minutes}m ${seconds}s`;
+        return `${seconds}s`;
+      }
+
+      function routeName() {
+        const value = window.location.hash.replace(/^#\/?/, "").split("?")[0];
+        return Object.prototype.hasOwnProperty.call(ROUTES, value) ? value : "overview";
+      }
+
+      function statePanel(key, emptyMessage) {
+        const state = dataState[key];
+        if (state.loading) {
+          return `<div class="state-panel"><span class="state-mark">···</span><strong>正在读取 ${escapeHtml(key)} API</strong><small>保留页面结构，数据返回后自动更新</small></div>`;
+        }
+        if (state.error) {
+          return `<div class="state-panel"><span class="state-mark">!</span><strong>数据暂不可用</strong><small>${escapeHtml(state.error.message)}</small></div>`;
+        }
+        return `<div class="state-panel"><span class="state-mark">—</span><strong>${escapeHtml(emptyMessage || "暂无数据")}</strong><small>当前 API 返回空结果</small></div>`;
+      }
+
+      function sectionBar(route) {
+        const meta = ROUTES[route];
+        return `<div class="section-bar"><span class="no ${meta.accent === "coral" ? "coral" : ""}">${meta.number}</span><div><h2>${meta.title}</h2><div class="en">${meta.en}</div></div><div class="rule"></div></div>`;
+      }
+
+      function statusPill(status) {
+        const classes = { on: "on", off: "off", prot: "prot", pending: "pending" };
+        const labels = { on: "运行中", off: "已关闭", prot: "受保护", pending: "待同步" };
+        const kind = classes[status] ? status : "pending";
+        return `<span class="pill ${classes[kind]}">${labels[kind]}</span>`;
+      }
+
+      function platformText(value) {
+        const known = { onebot: "OneBot 11", satori: "Satori" };
+        return known[String(value).toLowerCase()] || String(value || "unknown");
+      }
+
+      function strategyText(value) {
+        return value === "deterministic" ? "定向" : value === "random" ? "随机" : String(value || "未知");
+      }
+
+      function strategyChips(account) {
+        const strategies = Array.isArray(account.response_strategies) ? account.response_strategies : [];
+        if (!strategies.length) return "<span class=\"pill pending\">暂无策略</span>";
+        return `<div class="strategy-list">${strategies.map((item) => `<span class="strategy-chip">${escapeHtml(strategyText(item.strategy))} · ${escapeHtml(item.group_id)}</span>`).join("")}</div>`;
+      }
+
+      function featureStatus(feature) {
+        const groups = Object.values(feature.groups || {});
+        if (feature.maintenance || feature.global_enabled === false) {
+          return { kind: "off", label: "已关闭" };
+        }
+        if (feature.scope === "global") {
+          return { kind: "prot", label: "受保护" };
+        }
+        if (!groups.length) {
+          return { kind: "pending", label: "暂无" };
+        }
+        if (groups.some(Boolean)) return { kind: "on", label: "运行中" };
+        return { kind: "off", label: "已关闭" };
+      }
+
+      function featurePill(feature) {
+        const status = featureStatus(feature);
+        const className = status.kind === "on" ? "on" : status.kind === "prot" ? "prot" : status.kind === "pending" ? "pending" : "off";
+        return `<span class="pill ${className}">${status.label}</span>`;
+      }
+
+      function renderHero() {
+        const overview = dataState.overview.data;
+        const accounts = dataState.accounts.data;
+        const accountList = Array.isArray(accounts?.accounts) ? accounts.accounts : [];
+        const platforms = [...new Set(accountList.map((item) => platformText(item.platform)))];
+        const version = overview?.version != null ? `v${overview.version}` : "VERSION —";
+        const online = overview && isNumber(overview.online_accounts) ? `${numberText(overview.online_accounts)} ONLINE` : "WAITING DATA";
+        const platform = platforms.length ? platforms.join(" · ") : "PLATFORM —";
+        heroTags.innerHTML = [
+          `<span class="badge navy">${escapeHtml(version)}</span>`,
+          `<span class="badge coral">${escapeHtml(online)}</span>`,
+          "<span class=\"badge gold\">READ ONLY</span>",
+          `<span class="badge line">${escapeHtml(platform)}</span>`,
+        ].join("");
+
+        const meta = [];
+        if (overview) {
+          meta.push(`运行 <b>${escapeHtml(durationText(overview.uptime_seconds))}</b>`);
+          meta.push(`群组 <b>${escapeHtml(numberText(overview.active_groups))}</b>`);
+        } else {
+          meta.push("等待 overview API");
+        }
+        if (dataState.accounts.data) meta.push(`账户 <b>${escapeHtml(numberText(accountList.length))}</b>`);
+        meta.push("Bearer token · IP allowlist");
+        heroMeta.innerHTML = meta.join(" <span aria-hidden=\"true\">·</span> ");
+      }
+
+      function renderOverview() {
+        const state = dataState.overview;
+        if (state.loading || state.error || !state.data) return `${sectionBar("overview")}${statePanel("overview", "暂无运行数据")}`;
+        const data = state.data;
+        const messages = data.messages || {};
+        const totalMessages = isNumber(messages.received_count) && isNumber(messages.sent_count)
+          ? messages.received_count + messages.sent_count
+          : null;
+        const accounts = dataState.accounts.data;
+        const accountTotal = Array.isArray(accounts?.accounts) ? accounts.accounts.length : null;
+        const onlineValue = isNumber(data.online_accounts) && accountTotal !== null
+          ? `${numberText(data.online_accounts)}<small> / ${numberText(accountTotal)}</small>`
+          : numberText(data.online_accounts);
+        return `${sectionBar("overview")}
+          <div class="metric-grid">
+            <div class="card metric"><div class="num">${escapeHtml(durationText(data.uptime_seconds))}</div><div class="lbl">本次运行时长</div><div class="delta">overview · uptime_seconds</div></div>
+            <div class="card metric"><div class="num">${onlineValue}</div><div class="lbl">在线账号</div><div class="delta up">overview · online_accounts</div></div>
+            <div class="card metric"><div class="num">${escapeHtml(numberText(data.active_groups))}</div><div class="lbl">活动群组</div><div class="delta">overview · active_groups</div></div>
+            <div class="card metric gold-top"><div class="num">${escapeHtml(numberText(totalMessages))}</div><div class="lbl">收发消息合计</div><div class="delta up">收 ${escapeHtml(numberText(messages.received_count))} · 发 ${escapeHtml(numberText(messages.sent_count))}</div></div>
+          </div>
+          <div class="source-note">数据来源：<code>/webui/api/overview</code> · 当前 API 未提供历史速率采样，消息趋势分区按任务约定隐藏。</div>`;
+      }
+
+      function renderAccounts() {
+        const state = dataState.accounts;
+        if (state.loading || state.error || !state.data) return `${sectionBar("accounts")}${statePanel("accounts", "暂无账户数据")}`;
+        const accounts = Array.isArray(state.data.accounts) ? state.data.accounts : [];
+        if (!accounts.length) return `${sectionBar("accounts")}${statePanel("accounts", "暂无账户")}`;
+        const strategyTotals = { random: 0, deterministic: 0 };
+        const strategyByGroup = new Map();
+        accounts.forEach((account) => {
+          (account.response_strategies || []).forEach((item) => {
+            const groupId = String(item.group_id);
+            if (!strategyByGroup.has(groupId)) strategyByGroup.set(groupId, item.strategy);
+          });
+        });
+        strategyByGroup.forEach((strategy) => {
+          if (Object.prototype.hasOwnProperty.call(strategyTotals, strategy)) strategyTotals[strategy] += 1;
+        });
+        const rows = accounts.map((account) => `<tr>
+          <td><span class="account-id">${escapeHtml(account.id)}</span></td>
+          <td><span class="platform-label">${escapeHtml(platformText(account.platform))}</span></td>
+          <td>${account.online ? statusPill("on") : statusPill("off")}</td>
+          <td>${escapeHtml(numberText(account.group_count))}</td>
+          <td>${strategyChips(account)}</td>
+        </tr>`).join("");
+        return `${sectionBar("accounts")}
+          <div class="account-layout">
+            <div class="white-panel account-table-card table-scroll">
+              <table>
+                <thead><tr><th>账号</th><th>平台</th><th>状态</th><th>绑定群</th><th>响应策略 · 群级</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+            <aside class="white-panel">
+              <div class="panel-kicker">RESPONSE POLICY</div>
+              <div class="panel-title">响应策略信息</div>
+              <div class="strategy-summary">
+                <div class="strategy-total"><b>${strategyTotals.random}</b><span>随机群</span></div>
+                <div class="strategy-total"><b>${strategyTotals.deterministic}</b><span>定向群</span></div>
+              </div>
+              <p class="panel-note">策略按群生效；同一群由多个账号服务时只计一次。数字来自账户 API 返回的 <code>response_strategies</code>。</p>
+            </aside>
+          </div>
+          <div class="source-note">数据来源：<code>/webui/api/accounts</code> · 账号表为只读快照，不提供写操作。</div>`;
+      }
+
+      function renderPlugins() {
+        const state = dataState.features;
+        if (state.loading || state.error || !state.data) return `${sectionBar("plugins")}${statePanel("features", "暂无插件数据")}`;
+        const features = Array.isArray(state.data.features) ? state.data.features : [];
+        if (!features.length) return `${sectionBar("plugins")}${statePanel("features", "暂无插件")}`;
+        const cards = features.map((feature) => {
+          const groups = Object.values(feature.groups || {});
+          const enabled = groups.filter(Boolean).length;
+          const status = featureStatus(feature);
+          const scopeText = feature.scope === "global" ? "全局功能 · 统一策略" : groups.length ? `群级功能 · ${enabled}/${groups.length} 个群启用` : "群级功能 · 暂无群组";
+          return `<article class="plugin-card ${status.kind === "off" ? "is-off" : ""}">
+            <div class="plugin-head"><div class="plugin-name">${escapeHtml(feature.name || feature.plugin)}<code class="plugin-key">${escapeHtml(feature.plugin)}</code></div>${featurePill(feature)}</div>
+            <div class="plugin-desc">${escapeHtml(scopeText)}${feature.maintenance ? " · 维护状态" : ""}</div>
+            <div class="plugin-stats"><span>范围 <b>${escapeHtml(feature.scope || "—")}</b></span><span>启用 <b>${groups.length ? `${enabled}/${groups.length}` : "—"}</b></span></div>
+          </article>`;
+        }).join("");
+        return `${sectionBar("plugins")}
+          <div class="plugin-grid">${cards}</div>
+          <div class="source-note">数据来源：<code>/webui/api/features</code> · 共 ${escapeHtml(numberText(features.length))} 个插件项 · 卡片内容仅使用 API 返回的名称、范围和状态。</div>`;
+      }
+
+      function renderSwitches() {
+        const state = dataState.features;
+        if (state.loading || state.error || !state.data) return `${sectionBar("switches")}${statePanel("features", "暂无开关数据")}`;
+        const features = Array.isArray(state.data.features) ? state.data.features : [];
+        if (!features.length) return `${sectionBar("switches")}${statePanel("features", "暂无功能开关")}`;
+        const groups = [];
+        features.forEach((feature) => {
+          Object.keys(feature.groups || {}).forEach((groupId) => {
+            if (!groups.includes(groupId)) groups.push(groupId);
+          });
+        });
+        const head = groups.map((groupId) => `<th scope="col">${escapeHtml(groupId)}</th>`).join("");
+        const rows = features.map((feature) => {
+          const cells = groups.map((groupId) => {
+            const enabled = feature.groups && feature.groups[groupId] === true;
+            return `<td><span class="matrix-cell ${enabled ? "on" : "off"}" aria-label="${escapeHtml(`${feature.name || feature.plugin} / ${groupId} / ${enabled ? "运行中" : "已关闭"}`)}">${enabled ? "✓" : "—"}</span></td>`;
+          }).join("");
+          return `<tr><td><span class="matrix-plugin-name">${escapeHtml(feature.name || feature.plugin)}</span><span class="matrix-plugin-key">${escapeHtml(feature.plugin)}</span></td>${cells}</tr>`;
+        }).join("");
+        const matrix = groups.length
+          ? `<div class="matrix-wrap"><table class="matrix"><thead><tr><th scope="col">插件 / 群组</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
+          : `<div class="matrix-wrap"><div class="matrix-empty">暂无群组，API 尚未返回群级开关列。</div></div>`;
+        return `${sectionBar("switches")}
+          <div class="matrix-head"><div><div class="panel-kicker">GROUP × PLUGIN</div><div class="panel-title">只读功能开关矩阵</div></div><div class="matrix-count">${escapeHtml(numberText(features.length))} 个插件 × ${escapeHtml(numberText(groups.length))} 个群组</div></div>
+          ${matrix}
+          <div class="source-note">数据来源：<code>/webui/api/features</code> · 单元格显示 API 汇总后的有效状态，矩阵不可编辑。</div>`;
+      }
+
+      function renderPage() {
+        const route = routeName();
+        const renderers = { overview: renderOverview, accounts: renderAccounts, plugins: renderPlugins, switches: renderSwitches };
+        pageRoot.innerHTML = `<div class="page-view" data-route-view="${route}">${renderers[route]()}</div>`;
+        document.querySelectorAll("[data-route]").forEach((item) => {
+          const active = item.dataset.route === route;
+          if (active) item.setAttribute("aria-current", "page");
+          else item.removeAttribute("aria-current");
+        });
+      }
+
+      function renderConnection() {
+        const states = Object.values(dataState);
+        const loading = states.some((state) => state.loading);
+        const failures = states.filter((state) => state.error);
+        const ready = states.filter((state) => state.data).length;
+        connectionDot.className = `connection-dot ${failures.length === states.length ? "error" : ready === states.length && !loading ? "ok" : ""}`;
+        if (loading) {
+          connectionMessage.textContent = "正在读取 overview / accounts / features";
+          sidebarStatus.textContent = "API SYNCING";
+        } else if (failures.length) {
+          connectionMessage.textContent = `${ready}/3 个 API 已返回 · ${failures.length} 个数据源不可用`;
+          sidebarStatus.textContent = "API PARTIAL";
+        } else {
+          connectionMessage.textContent = "已同步 · 只读快照 · 令牌仅保留在当前页面内存";
+          sidebarStatus.textContent = "API SYNCED";
+        }
+      }
+
+      function renderApp() {
+        renderHero();
+        renderConnection();
+        renderPage();
+      }
 
       async function read(path) {
         const response = await fetch(path, {
-          headers: token() ? { Authorization: `Bearer ${token()}` } : {},
+          cache: "no-store",
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
         });
-        const payload = await response.json();
+        let payload;
+        try {
+          payload = await response.json();
+        } catch (_error) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         if (!response.ok || !payload.ok) {
           throw new Error(payload.error?.message || `HTTP ${response.status}`);
         }
         return payload.data;
       }
 
-      function renderOverview(data) {
-        const values = [
-          ["版本", data.version],
-          ["运行时长（秒）", data.uptime_seconds],
-          ["在线账号", data.online_accounts],
-          ["活动群", data.active_groups],
-          ["收消息", data.messages.received_count],
-          ["发消息", data.messages.sent_count],
-        ];
-        const element = document.querySelector("#overview");
-        element.replaceChildren(...values.flatMap(([label, value]) => [
-          Object.assign(document.createElement("dt"), { textContent: label }),
-          Object.assign(document.createElement("dd"), { textContent: value }),
-        ]));
-      }
-
-      function renderAccounts(data) {
-        const table = document.createElement("table");
-        table.innerHTML = "<thead><tr><th>ID</th><th>平台</th><th>状态</th><th>绑定群数</th></tr></thead>";
-        const body = document.createElement("tbody");
-        for (const account of data.accounts) {
-          const row = document.createElement("tr");
-          for (const value of [account.id, account.platform, account.online ? "在线" : "离线", account.group_count]) {
-            const cell = document.createElement("td");
-            cell.appendChild(text(value));
-            row.appendChild(cell);
+      async function loadData() {
+        const sequence = ++loadSequence;
+        Object.values(dataState).forEach((state) => {
+          state.loading = true;
+          state.data = null;
+          state.error = null;
+        });
+        renderApp();
+        const results = await Promise.allSettled(Object.entries(API_PATHS).map(async ([key, path]) => [key, await read(path)]));
+        if (sequence !== loadSequence) return;
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const [key, data] = result.value;
+            dataState[key].data = data;
+          } else {
+            const key = Object.keys(API_PATHS)[results.indexOf(result)];
+            dataState[key].error = result.reason instanceof Error ? result.reason : new Error("读取失败");
           }
-          row.children[2].className = account.online ? "online" : "offline";
-          body.appendChild(row);
-        }
-        table.appendChild(body);
-        document.querySelector("#accounts").replaceChildren(table);
+        });
+        Object.values(dataState).forEach((state) => { state.loading = false; });
+        renderApp();
       }
 
-      function renderFeatures(data) {
-        const table = document.createElement("table");
-        table.innerHTML = "<thead><tr><th>插件</th><th>范围</th><th>维护</th><th>群状态</th></tr></thead>";
-        const body = document.createElement("tbody");
-        for (const feature of data.features) {
-          const row = document.createElement("tr");
-          const groupStatus = Object.entries(feature.groups).map(([group, enabled]) => `${group}: ${enabled ? "开" : "关"}`).join(" · ") || "—";
-          for (const value of [feature.name, feature.scope, feature.maintenance ? "是" : "否", groupStatus]) {
-            const cell = document.createElement("td");
-            cell.appendChild(text(value));
-            row.appendChild(cell);
-          }
-          body.appendChild(row);
-        }
-        table.appendChild(body);
-        document.querySelector("#features").replaceChildren(table);
-      }
-
-      async function refresh() {
-        message.textContent = "加载中…";
-        try {
-          const [overview, accounts, features] = await Promise.all([
-            read("/webui/api/overview"),
-            read("/webui/api/accounts"),
-            read("/webui/api/features"),
-          ]);
-          renderOverview(overview);
-          renderAccounts(accounts);
-          renderFeatures(features);
-          message.textContent = "已更新";
-        } catch (error) {
-          message.textContent = error.message;
-        }
+      function takeQueryToken() {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("token")) return;
+        const value = params.get("token");
+        if (value) authToken = value.trim();
+        params.delete("token");
+        const query = params.toString();
+        const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+        window.history.replaceState(null, "", cleanUrl);
+        tokenInput.placeholder = authToken ? "令牌已从 URL 载入 · 可输入新 token 替换" : "输入 WebUI token · 仅存于当前页面内存";
       }
 
       document.querySelector("#auth-form").addEventListener("submit", (event) => {
         event.preventDefault();
-        refresh();
+        if (tokenInput.value.trim()) authToken = tokenInput.value.trim();
+        loadData();
       });
+
+      window.addEventListener("hashchange", () => {
+        renderPage();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+
+      takeQueryToken();
+      renderApp();
+      loadData();
     </script>
   </body>
 </html>

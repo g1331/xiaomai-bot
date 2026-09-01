@@ -224,6 +224,8 @@ def _pre_release_valid(pre: str) -> bool:
     if not all(_PRE_SEGMENT_PATTERN.fullmatch(s) for s in segments):
         return False
     return any(_PRE_HAS_ALPHA.search(s) for s in segments)
+
+
 _HEX_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40,64}$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 _GIT_SCP_LIKE_PATTERN = re.compile(r"^(?:[^/@\s:]+@)?[^/@\s:]+:.+$")

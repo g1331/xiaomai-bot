@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -95,7 +95,7 @@ def make_resources(loaded_plugin):
 
 def make_process(loaded_plugin):
     return loaded_plugin.ProcessInfo(
-        start_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        start_time=datetime(2026, 1, 1, tzinfo=UTC),
         uptime_seconds=3661,
         rss=64 * 1024**2,
     )
@@ -414,7 +414,7 @@ def test_build_status_reports_legacy_resources_and_current_group_mute(
             net_received=5 * 1024**2,
         ),
         process=loaded_plugin.ProcessInfo(
-            start_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            start_time=datetime(2026, 1, 1, tzinfo=UTC),
             uptime_seconds=3661,
             rss=64 * 1024**2,
         ),

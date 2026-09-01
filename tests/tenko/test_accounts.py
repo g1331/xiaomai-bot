@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from typing import Literal
 
 import pytest
@@ -161,7 +161,7 @@ def test_expired_mute_is_lazily_removed_and_routing_recovers() -> None:
     registry = AccountRegistry()
     account = FakeAccount("10001")
     registry.register(account, groups=[100])
-    expired = datetime.now(timezone.utc) - timedelta(seconds=1)
+    expired = datetime.now(UTC) - timedelta(seconds=1)
 
     registry.set_muted(account, 100, True, until=expired)
 

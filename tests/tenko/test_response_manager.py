@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -41,7 +41,7 @@ def make_registry() -> AccountRegistry:
         first,
         40001,
         True,
-        until=datetime.now(timezone.utc) + timedelta(minutes=5),
+        until=datetime.now(UTC) + timedelta(minutes=5),
     )
     return registry
 

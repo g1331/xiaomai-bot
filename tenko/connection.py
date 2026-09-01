@@ -75,7 +75,7 @@ class ServerReadyService(Service):
                                 "Satori server readiness probe was rejected"
                             )
                         return
-                except (aiohttp.ClientError, OSError, asyncio.TimeoutError):
+                except (TimeoutError, aiohttp.ClientError, OSError):
                     if asyncio.get_running_loop().time() >= deadline:
                         raise RuntimeError(
                             "Satori server did not accept an internal WebSocket "

@@ -283,7 +283,7 @@ class RenderService(Service):
             )
         except asyncio.CancelledError:
             raise
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             raise RenderTimeoutError(
                 f"渲染超时（限制 {self.timeout:g} 秒）：{template_name}"
             ) from error
@@ -308,7 +308,7 @@ class RenderService(Service):
             )
         except asyncio.CancelledError:
             raise
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             raise RenderTimeoutError(
                 f"Markdown 渲染超时（限制 {self.timeout:g} 秒）"
             ) from error

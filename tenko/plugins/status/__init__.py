@@ -5,7 +5,7 @@ import os
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -212,7 +212,7 @@ def collect_process_info() -> ProcessInfo:
             pass
     now = time.time()
     return ProcessInfo(
-        start_time=datetime.fromtimestamp(start_timestamp, tz=timezone.utc),
+        start_time=datetime.fromtimestamp(start_timestamp, tz=UTC),
         uptime_seconds=max(now - start_timestamp, 0.0),
         rss=rss,
     )

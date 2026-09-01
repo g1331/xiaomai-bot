@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%E2%80%933.12-1E3A52?style=flat-square&labelColor=102D47" alt="Python 3.10 to 3.12">
+  <img src="https://img.shields.io/badge/Python-3.11%E2%80%933.13-1E3A52?style=flat-square&labelColor=102D47" alt="Python 3.11 to 3.13">
   <img src="https://img.shields.io/badge/License-GPL--3.0-1E3A52?style=flat-square&labelColor=102D47" alt="GPL 3.0 license">
   <img src="https://img.shields.io/badge/Release%20channel-prerelease-D97D72?style=flat-square&labelColor=102D47" alt="Prerelease channel">
   <img src="https://img.shields.io/badge/Stack-Entari%20%7C%20Satori%20%7C%20OneBot%2011-C7A45B?style=flat-square&labelColor=102D47" alt="Entari Satori OneBot 11 stack">
@@ -68,7 +68,7 @@ RenderService 是由 Tenko runtime 直接注册的内置宿主服务，不属于
 
 ### 环境要求
 
-- Python >=3.10,<3.13；
+- Python >=3.11,<3.14；
 - 可连接到 OneBot 11 端点的协议端（例如 NapCat）及网络环境；
 - 图片输出需要 Chromium 浏览器运行时；浏览器不可用时会回退文本。
 

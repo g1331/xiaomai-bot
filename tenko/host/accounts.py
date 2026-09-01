@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 from collections.abc import Iterable, Mapping
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Literal
 
@@ -325,7 +325,7 @@ class AccountRegistry:
 
     @staticmethod
     def _mute_expired(until: datetime) -> bool:
-        now = datetime.now(timezone.utc) if until.tzinfo else datetime.now()
+        now = datetime.now(UTC) if until.tzinfo else datetime.now()
         return until <= now
 
     def set_muted(

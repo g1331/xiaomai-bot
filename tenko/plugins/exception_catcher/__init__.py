@@ -4,7 +4,7 @@ import hashlib
 import time
 import traceback
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -147,9 +147,9 @@ def _context_details(origin: Any) -> tuple[str, ...]:
 
 def _report_time(value: datetime | None) -> datetime:
     if value is None:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)
     return value
 
 
@@ -228,7 +228,7 @@ def _write_local_evidence(
     evidence_dir: str | Path | None = None,
 ) -> Path | None:
     directory = Path(EVIDENCE_DIR if evidence_dir is None else evidence_dir)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
     path = directory / f"{stamp}-{time.time_ns()}-{get_error_hash(exception)[:12]}.log"
     try:
         directory.mkdir(parents=True, exist_ok=True)

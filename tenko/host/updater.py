@@ -27,7 +27,7 @@ import uuid
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum
 from functools import total_ordering
 from pathlib import Path, PurePosixPath
@@ -1684,7 +1684,7 @@ class UpgradeLayout:
         if not self.handoff_file.is_file():
             return None
         self.failed_handoffs_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         target = (
             self.failed_handoffs_dir / f"handoff-{timestamp}-{uuid.uuid4().hex}.json"
         )
@@ -1710,7 +1710,7 @@ class AuditLogger:
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.path = Path(path).expanduser().resolve()
-        self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.clock = clock or (lambda: datetime.now(UTC))
 
     def record(
         self,
@@ -1723,9 +1723,9 @@ class AuditLogger:
     ) -> Mapping[str, Any]:
         timestamp = self.clock()
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         payload: dict[str, Any] = {
-            "timestamp": timestamp.astimezone(timezone.utc).isoformat(),
+            "timestamp": timestamp.astimezone(UTC).isoformat(),
             "action": action,
             "current_version": (
                 str(parse_version(current_version))
@@ -2040,7 +2040,7 @@ class UpgradeManager:
                     "version": str(release.version),
                     "path": str(final_path),
                     "release": release.as_dict(),
-                    "prepared_at": datetime.now(timezone.utc).isoformat(),
+                    "prepared_at": datetime.now(UTC).isoformat(),
                     "config_path": str(self.config_path) if self.config_path else None,
                     "data_dir": str(self.data_dir) if self.data_dir else None,
                     "compatibility": {
@@ -2095,7 +2095,7 @@ class UpgradeManager:
                 "action": "activate",
                 "version": str(version),
                 "path": str(target),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "config_path": str(self.config_path) if self.config_path else None,
                 "data_dir": str(self.data_dir) if self.data_dir else None,
             }
@@ -2139,7 +2139,7 @@ class UpgradeManager:
                         "path": str(previous.path),
                         "from_version": str(current.version),
                         "from_path": str(current.path),
-                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "created_at": datetime.now(UTC).isoformat(),
                     }
                 )
                 self.audit.record(
@@ -2749,7 +2749,7 @@ def spawn_restart_watcher(
         "timeout": timeout,
         "poll_interval": poll_interval,
         "timeout_log": str(timeout_log),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     try:

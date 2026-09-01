@@ -3,7 +3,7 @@ name = "tenko"
 version = "4.0.0-pre7"
 description = "Chat group management bot built on Entari and Satori protocol abstraction"
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "arclet-entari==0.18.6",
     "arclet-alconna==1.8.44",

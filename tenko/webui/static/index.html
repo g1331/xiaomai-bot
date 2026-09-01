@@ -35,7 +35,7 @@
 
       body {
         min-height: 100vh;
-        padding: 18px;
+        padding: 0;
         background: var(--c-dark);
         color: var(--c-text);
         font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
@@ -79,14 +79,10 @@
       .app-frame {
         display: grid;
         grid-template-columns: 232px minmax(0, 1fr);
-        max-width: 1680px;
-        min-height: calc(100vh - 36px);
-        margin: 0 auto;
+        width: 100%;
+        min-height: 100vh;
         overflow: hidden;
-        border: 1px solid rgba(245, 241, 232, 0.08);
-        border-radius: 6px;
         background: var(--c-dark);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
       }
 
       /* ============ 桌面侧边栏 ============ */
@@ -1209,9 +1205,7 @@
       }
 
       @media (max-width: 820px) {
-        body {
-          padding: 10px;
-        }
+        
 
         .app-frame {
           display: block;

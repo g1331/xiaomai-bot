@@ -343,8 +343,13 @@ class TenkoRuntime:
         # 连接尝试可能与 Uvicorn 发生竞争，该时间窗口内到达的事件也不会被
         # replay 给 client。
         app.required = {*app.required, self.connection.ready_service.id}
-        if self.database_service is not None:
-            app.required = {*app.required, self.runtime_state_service.id}
+        # 注意（pre8 生产事故根因）：RuntimeStateService 与官方
+        # SqlalchemyService 都经插件机制注册，由 PluginManagerService 在其
+        # launch 阶段统一 resolve_requirements 后装载。两者都不可加入
+        # app.required，也不可在此提前 add_component——Launart 顶层解析发生在
+        # 插件服务装载之前，任何一者提前进入组件表都会让解析因依赖缺失而
+        # 整体崩溃（RequirementResolveFailed）。启动时序由 RuntimeStateService
+        # 自身的 required={"database/sqlalchemy"} 与 wait_for_required 保证。
         for connection in app.connections:
             connection.required = {
                 *connection.required,

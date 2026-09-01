@@ -188,6 +188,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
     app.ensure_manager.assert_not_called()
     manager_provider.assert_called_once_with(runtime_module.Launart)
     connection.install.assert_called_once_with(manager)
+    # RenderService 显式注册；RuntimeStateService 交给插件服务统一装载，
+    # 不允许提前 add_component（pre8 事故根因，见 runtime.py 注释）。
     manager.add_component.assert_called_once()
     registered = manager.add_component.call_args.args[0]
     assert registered.id == "tenko.render"
@@ -211,7 +213,8 @@ async def test_run_async_loads_plugins_before_starting_entari(
         stop_signal=(runtime_module.signal.SIGINT, runtime_module.signal.SIGTERM),
     )
     assert lifecycle == ["connection", "plugins", "app"]
-    assert app.required == {"tenko.ready", "tenko/runtime-state"}
+    # runtime-state 服务不得进入 app.required（pre8 事故根因，见 runtime.py 注释）
+    assert app.required == {"tenko.ready"}
 
 
 @pytest.mark.asyncio

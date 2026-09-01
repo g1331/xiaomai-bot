@@ -1513,7 +1513,7 @@
             <div class="cross tl" aria-hidden="true"></div>
             <div class="cross br" aria-hidden="true"></div>
             <div class="hero-left">
-              <div class="hero-eyebrow">TENKO / READ ONLY / SNAPSHOT</div>
+              <div class="hero-eyebrow">TENKO · GROUP CONTROL PANEL</div>
               <h1 class="hero-title" id="hero-title">TENKO</h1>
               <div class="hero-sub">
                 <div class="ribbon"><span class="en">ADMIN PANEL</span>群组管理 · 控制台</div>
@@ -1644,10 +1644,20 @@
         return value === "deterministic" ? "定向" : value === "random" ? "随机" : String(value || "未知");
       }
 
-      function strategyChips(account) {
+      function strategySummary(account) {
         const strategies = Array.isArray(account.response_strategies) ? account.response_strategies : [];
-        if (!strategies.length) return "<span class=\"pill pending\">暂无策略</span>";
-        return `<div class="strategy-list">${strategies.map((item) => `<span class="strategy-chip">${escapeHtml(strategyText(item.strategy))} · ${escapeHtml(item.group_id)}</span>`).join("")}</div>`;
+        if (!strategies.length) return "<span class=\"pill pending\">未设置</span>";
+        const counts = {};
+        strategies.forEach((item) => {
+          const key = item.strategy === "deterministic" ? "deterministic" : "random";
+          counts[key] = (counts[key] || 0) + 1;
+        });
+        const parts = [];
+        if (counts.random) parts.push(`随机 ${counts.random} 群`);
+        if (counts.deterministic) parts.push(`定向 ${counts.deterministic} 群`);
+        const rest = strategies.length - (counts.random || 0) - (counts.deterministic || 0);
+        if (rest) parts.push(`其他 ${rest} 群`);
+        return escapeHtml(parts.join(" · "));
       }
 
       function featureStatus(feature) {
@@ -1718,7 +1728,7 @@
             <div class="card metric"><div class="num">${escapeHtml(numberText(data.active_groups))}</div><div class="lbl">活动群组</div><div class="delta">overview · active_groups</div></div>
             <div class="card metric gold-top"><div class="num">${escapeHtml(numberText(totalMessages))}</div><div class="lbl">收发消息合计</div><div class="delta up">收 ${escapeHtml(numberText(messages.received_count))} · 发 ${escapeHtml(numberText(messages.sent_count))}</div></div>
           </div>
-          <div class="source-note">数据来源：<code>/webui/api/overview</code> · 当前 API 未提供历史速率采样，消息趋势分区按任务约定隐藏。</div>`;
+          `;
       }
 
       function renderAccounts() {
@@ -1742,13 +1752,13 @@
           <td><span class="platform-label">${escapeHtml(platformText(account.platform))}</span></td>
           <td>${account.online ? statusPill("on") : statusPill("off")}</td>
           <td>${escapeHtml(numberText(account.group_count))}</td>
-          <td>${strategyChips(account)}</td>
+          <td>${strategySummary(account)}</td>
         </tr>`).join("");
         return `${sectionBar("accounts")}
           <div class="account-layout">
             <div class="white-panel account-table-card table-scroll">
               <table>
-                <thead><tr><th>账号</th><th>平台</th><th>状态</th><th>绑定群</th><th>响应策略 · 群级</th></tr></thead>
+                <thead><tr><th>账号</th><th>平台</th><th>状态</th><th>绑定群</th><th>响应策略</th></tr></thead>
                 <tbody>${rows}</tbody>
               </table>
             </div>
@@ -1759,10 +1769,9 @@
                 <div class="strategy-total"><b>${strategyTotals.random}</b><span>随机群</span></div>
                 <div class="strategy-total"><b>${strategyTotals.deterministic}</b><span>定向群</span></div>
               </div>
-              <p class="panel-note">策略按群生效；同一群由多个账号服务时只计一次。数字来自账户 API 返回的 <code>response_strategies</code>。</p>
+              <p class="panel-note">每个群独立设置响应策略；多账号共同服务的群只统计一次。</p>
             </aside>
-          </div>
-          <div class="source-note">数据来源：<code>/webui/api/accounts</code> · 账号表为只读快照，不提供写操作。</div>`;
+          </div>`;
       }
 
       function renderPlugins() {
@@ -1783,7 +1792,7 @@
         }).join("");
         return `${sectionBar("plugins")}
           <div class="plugin-grid">${cards}</div>
-          <div class="source-note">数据来源：<code>/webui/api/features</code> · 共 ${escapeHtml(numberText(features.length))} 个插件项 · 卡片内容仅使用 API 返回的名称、范围和状态。</div>`;
+          `;
       }
 
       function renderSwitches() {
@@ -1811,7 +1820,7 @@
         return `${sectionBar("switches")}
           <div class="matrix-head"><div><div class="panel-kicker">GROUP × PLUGIN</div><div class="panel-title">只读功能开关矩阵</div></div><div class="matrix-count">${escapeHtml(numberText(features.length))} 个插件 × ${escapeHtml(numberText(groups.length))} 个群组</div></div>
           ${matrix}
-          <div class="source-note">数据来源：<code>/webui/api/features</code> · 单元格显示 API 汇总后的有效状态，矩阵不可编辑。</div>`;
+          `;
       }
 
       function renderPage() {

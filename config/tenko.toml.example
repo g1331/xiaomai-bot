@@ -90,7 +90,9 @@ blacklist_seconds = 300.0
 override_permission = 32
 
 [render]
-# 需要先执行 `python -m playwright install chromium`。
+# 图片渲染由内置 RenderService 提供（Playwright + Chromium，必装，无开关）。
+# 需要先执行 `python -m playwright install chromium`；浏览器不可用时状态和
+# 异常报告自动回退文本。
 timeout = 10.0
 width = 800
 quality = 85
@@ -108,12 +110,14 @@ evidence_dir = ".tenko/exceptions"
 enabled = true
 # 可选：git_tag、github_release 或 manifest。
 source = "git_tag"
-repository = "."
+# git_tag 源填写 git remote 名（如 origin）或 URL；"." 只查本地 refs。
+repository = "origin"
 github_repository = ""
 manifest_url = ""
 github_token = ""
 asset_name = ""
 tag_prefix = "v"
+# stable 只认正式版本；prerelease 额外包含 pre 版本。
 channel = "stable"
 # check = 只检查并记录；download = 自动准备制品；install = 自动生成外部安装接管记录。
 policy = "check"

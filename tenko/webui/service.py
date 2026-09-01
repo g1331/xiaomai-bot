@@ -86,7 +86,13 @@ class WebUIAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if not self.config.enabled:
             return _error_response("not_found", "Not Found", 404)
-        if not self._allowed_ip(request) or not self._authorized(request):
+        if not self._allowed_ip(request):
+            return _error_response("unauthorized", "Unauthorized", 401)
+        # 根页面是纯静态壳，允许无 token 加载后由页面内的 API 鉴权显示输入态；
+        # API 和其他 WebUI 路径仍必须通过 Bearer 鉴权。
+        if request.method == "GET" and request.url.path == WEBUI_PATH:
+            return await call_next(request)
+        if not self._authorized(request):
             return _error_response("unauthorized", "Unauthorized", 401)
         return await call_next(request)
 

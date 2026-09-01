@@ -68,6 +68,13 @@ async def test_webui_auth_allows_configured_local_token_and_rejects_other_source
         token="web-secret",
         client_host="192.0.2.10",
     )
+    page = await _get(server.app, "/webui")
+    wrong_page = await _get(server.app, "/webui", token="onebot-secret")
+    remote_page = await _get(
+        server.app,
+        "/webui",
+        client_host="192.0.2.10",
+    )
     allowed = await _get(server.app, "/webui/api/accounts", token="web-secret")
     index = await _get(server.app, "/webui", token="web-secret")
     query_index = await _get(server.app, "/webui?token=web-secret")
@@ -76,10 +83,15 @@ async def test_webui_auth_allows_configured_local_token_and_rejects_other_source
     assert missing.status_code == 401
     assert wrong.status_code == 401
     assert remote.status_code == 401
+    assert page.status_code == 200
+    assert wrong_page.status_code == 200
+    assert remote_page.status_code == 401
     assert allowed.status_code == 200
     assert index.status_code == 200
     assert query_index.status_code == 200
     assert query_api.status_code == 401
+    assert "<input id=\"token\"" in page.text
+    assert "application/json" not in page.headers["content-type"]
     assert "Tenko WebUI" in index.text
     assert "Tenko WebUI" in query_index.text
     assert allowed.json() == {"ok": True, "data": {"accounts": []}}

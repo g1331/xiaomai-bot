@@ -104,17 +104,15 @@
 
       .brand-mark {
         display: grid;
-        width: 30px;
-        height: 30px;
+        width: 32px;
+        height: 32px;
         place-items: center;
-        border: 1px solid rgba(245, 241, 232, 0.46);
-        color: var(--c-gold);
-        font-size: 12px;
-        transform: rotate(45deg);
+        border: 1px solid rgba(245, 241, 232, 0.32);
       }
 
-      .brand-mark span {
-        transform: rotate(-45deg);
+      .brand-mark-svg {
+        width: 26px;
+        height: 26px;
       }
 
       .brand-name {
@@ -1503,7 +1501,13 @@
     <div class="app-frame" id="app">
       <aside class="sidebar" aria-label="Tenko 功能导航">
         <div class="sidebar-brand">
-          <div class="brand-mark" aria-hidden="true"><span>◆</span></div>
+          <svg class="brand-mark-svg" viewBox="0 0 32 32" aria-hidden="true">
+                <!-- 天子裙摆纹样: 三层叠压裙褶 -->
+                <path d="M6 8 L16 14 L26 8 L26 11 L16 17 L6 11 Z" fill="#F5F1E8" opacity="0.9"/>
+                <path d="M6 13 L16 19 L26 13 L26 16 L16 22 L6 16 Z" fill="#F5F1E8" opacity="0.55"/>
+                <path d="M6 18 L16 24 L26 18 L26 20.5 L16 26.5 L6 20.5 Z" fill="#C7A45B" opacity="0.85"/>
+                <circle cx="16" cy="4.5" r="2.2" fill="#D96B5B"/>
+              </svg>
           <div>
             <div class="brand-name">TENKO</div>
             <div class="brand-caption">GROUP CONTROL / WEBUI</div>

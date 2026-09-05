@@ -1219,7 +1219,7 @@ wheels = [
 
 [[package]]
 name = "tenko"
-version = "4.0.0rc14"
+version = "4.0.0rc15"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },

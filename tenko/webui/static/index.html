@@ -197,13 +197,12 @@
         color: rgba(245, 241, 232, 0.7);
         cursor: pointer;
         text-align: left;
-        transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+        transition: background 160ms ease, color 160ms ease;
       }
 
       .nav-item:hover {
         background: rgba(245, 241, 232, 0.08);
         color: var(--c-paper);
-        transform: translateX(2px);
       }
 
       .nav-item[aria-current="page"] {
@@ -268,11 +267,14 @@
       }
 
       .sidebar-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-      .theme-select { min-width: 0; padding: 7px; border: 1px solid #71859a; border-radius: 4px; background: #1e3a52; color: #f5f1e8; font: inherit; }
+      .theme-control { display: flex; gap: 2px; padding: 3px; border: 1px solid #536c80; border-radius: 8px; }
+      .theme-button { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: #becdd9; cursor: pointer; }
+      .theme-button:hover { background: #304f67; color: #fff; }
+      .theme-button[aria-pressed="true"] { background: #f5f1e8; color: #1e3a52; }
       .github-link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; color: #f5f1e8; }
       .github-link:hover { color: var(--c-gold); }
       .sidebar > * { flex-shrink: 0; }
-      .sidebar .sidebar-nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+      .sidebar .sidebar-nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
       .sidebar-nav > * { flex-shrink: 0; }
       @media (max-height: 650px) { .sidebar-portrait { display: none; } }
 
@@ -283,6 +285,9 @@
 
       /* ============ 主工作区 ============ */
       .workspace {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
         min-width: 0;
         background: var(--c-dark);
       }
@@ -1090,6 +1095,7 @@
       }
 
       footer {
+        margin-top: auto;
         padding: 18px 0 3px;
         color: rgba(245, 241, 232, 0.35);
         font-size: 9px;
@@ -1539,7 +1545,7 @@
         </nav>
 
         <div class="sidebar-foot">
-          <div class="sidebar-tools"><select class="theme-select" aria-label="主题"><option value="light">浅色 · 天光</option><option value="dark">深色 · 夜空</option><option value="system">跟随系统</option></select><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
+          <div class="sidebar-tools"><div class="theme-control" role="group" aria-label="主题"><button class="theme-button" type="button" data-theme-choice="light" aria-label="浅色主题" title="浅色主题" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg></button><button class="theme-button" type="button" data-theme-choice="dark" aria-label="深色主题" title="深色主题" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg></button><button class="theme-button" type="button" data-theme-choice="system" aria-label="跟随系统" title="跟随系统" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button></div><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
           TENKO WEBUI<br />
           <strong id="sidebar-status">API PENDING</strong><br />
           AUTHENTICATED · IP ALLOWLIST
@@ -1549,7 +1555,7 @@
       <section class="workspace">
         <header class="mobile-topbar">
           <div class="mobile-brand">TENKO</div>
-          <div class="sidebar-tools" style="margin-bottom:0"><select class="theme-select" aria-label="主题"><option value="light">浅色 · 天光</option><option value="dark">深色 · 夜空</option><option value="system">跟随系统</option></select><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
+          <div class="sidebar-tools" style="margin-bottom:0"><div class="theme-control" role="group" aria-label="主题"><button class="theme-button" type="button" data-theme-choice="light" aria-label="浅色主题" title="浅色主题" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg></button><button class="theme-button" type="button" data-theme-choice="dark" aria-label="深色主题" title="深色主题" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 13A9 9 0 0 1 11 3.2 9 9 0 1 0 20.8 13Z"/></svg></button><button class="theme-button" type="button" data-theme-choice="system" aria-label="跟随系统" title="跟随系统" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4m-4 0h8"/></svg></button></div><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
         </header>
         <nav class="mobile-nav" aria-label="移动端功能分类">
           <a class="nav-item" data-route="overview" href="#/overview">
@@ -1661,7 +1667,7 @@
       let themePreference = localStorage.getItem("tenko-webui-theme") || "light";
 
       function applyTheme() {
-        document.querySelectorAll(".theme-select").forEach(select => { select.value = themePreference; });
+        document.querySelectorAll("[data-theme-choice]").forEach(button => { button.setAttribute("aria-pressed", String(button.dataset.themeChoice === themePreference)); });
         document.documentElement.dataset.theme = themePreference === "system"
           ? (themeMedia.matches ? "dark" : "light") : themePreference;
       }
@@ -1829,11 +1835,13 @@
 
       document.addEventListener('change', (event) => {
         if (event.target.id === 'log-file') document.querySelector('[name=level]').disabled = !!event.target.value;
-        if (event.target.matches('.theme-select')) {
-          themePreference = event.target.value;
-          localStorage.setItem('tenko-webui-theme', themePreference);
-          applyTheme();
-        }
+      });
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-theme-choice]');
+        if (!button) return;
+        themePreference = button.dataset.themeChoice;
+        localStorage.setItem('tenko-webui-theme', themePreference);
+        applyTheme();
       });
       pageRoot.addEventListener('submit', (event) => {
         if (event.target.id === 'log-search') {

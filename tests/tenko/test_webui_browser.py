@@ -55,28 +55,52 @@ def test_webui_navigation_and_form_stability(tmp_path):
         )
         assert len(requests) > count
 
+        for item in page.locator(".sidebar-nav .nav-item").all():
+            item.hover()
+            page.wait_for_timeout(180)
+            assert page.locator(".sidebar-nav").evaluate(
+                "nav => nav.scrollWidth === nav.clientWidth"
+            )
+
+        page.set_viewport_size({"width": 1280, "height": 1200})
+        page.evaluate("window.scrollTo(0, 0)")
+        footer = page.locator("#page-footer")
+        box = footer.bounding_box()
+        assert abs(box["y"] + box["height"] - 1200) <= 1
+        page.set_viewport_size({"width": 1280, "height": 720})
         page.evaluate("document.querySelector('#page-root').style.minHeight = '2400px'")
+        assert footer.bounding_box()["y"] >= page.locator("main").evaluate(
+            "main => main.getBoundingClientRect().bottom"
+        )
         page.evaluate("window.scrollTo(0, 1200)")
         page.wait_for_timeout(350)
         sidebar = page.locator(".sidebar").bounding_box()
         assert sidebar["y"] == 0
         assert sidebar["height"] == 720
-        theme = page.locator(".sidebar .theme-select")
-        theme.select_option("dark")
+        theme = page.locator('.sidebar [data-theme-choice="dark"]')
+        theme.click()
         assert page.locator("html").get_attribute("data-theme") == "dark"
         assert page.evaluate("localStorage.getItem('tenko-webui-theme')") == "dark"
         link = page.locator(".sidebar .github-link")
         assert link.get_attribute("href") == "https://github.com/g1331/tenko"
         assert link.locator("svg").count() == 1
         assert link.bounding_box()["y"] + link.bounding_box()["height"] <= 720
+        page.evaluate("document.querySelector('#page-root').style.minHeight = ''")
+        page.evaluate("window.scrollTo(0, 0)")
         page.screenshot(path=str(tmp_path / "desktop.png"))
+        system = page.locator('.sidebar [data-theme-choice="system"]')
+        system.click()
+        page.emulate_media(color_scheme="light")
+        page.wait_for_function("document.documentElement.dataset.theme === 'light'")
+        page.emulate_media(color_scheme="dark")
+        page.wait_for_function("document.documentElement.dataset.theme === 'dark'")
 
         page.set_viewport_size({"width": 390, "height": 844})
         page.evaluate("window.scrollTo(0, 0)")
-        mobile_theme = page.locator(".mobile-topbar .theme-select")
+        mobile_theme = page.locator('.mobile-topbar [data-theme-choice="light"]')
         assert mobile_theme.is_visible()
-        mobile_theme.select_option("light")
-        assert theme.input_value() == "light"
+        mobile_theme.click()
+        assert theme.get_attribute("aria-pressed") == "false"
         assert page.locator("html").get_attribute("data-theme") == "light"
         assert page.evaluate(
             "document.documentElement.scrollWidth <= window.innerWidth"

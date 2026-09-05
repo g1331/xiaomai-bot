@@ -12,7 +12,7 @@ from loguru import logger
 from satori.client import Account
 
 from ..context import MessageContext
-from .accounts import AccountRegistry, account_registry
+from .accounts import AccountRegistry, account_registry, account_key, account_reference
 from .perm import Permission, PermissionChecker
 
 """宿主侧平台动作服务。
@@ -348,7 +348,7 @@ class ActionService:
         return True
 
     def _account(self, account_or_id: Account | str | int) -> tuple[str, Account]:
-        account_id = _key(getattr(account_or_id, "self_id", account_or_id), "账号 ID")
+        account_id = account_reference(account_key(account_or_id))
         account = self.registry.get(account_id)
         if account is None or not self.registry.is_available(account_id):
             raise ActionAccountUnavailable(f"账号不可用: {account_id}")
@@ -644,7 +644,9 @@ class ActionService:
         if group_id is None:
             return candidates
         for account in self.registry.online_accounts_for_group(group_id):
-            account_id = _key(account.self_id, "账号 ID")
+            if account_key(account)[0] != account_key(primary)[0]:
+                continue
+            account_id = account_reference(account_key(account))
             if account_id == primary_id:
                 continue
             level = await self._discover_group_permission(account, group_id)

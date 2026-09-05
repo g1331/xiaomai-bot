@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <title>Tenko WebUI · 管理面板</title>
     <style>
       :root {
@@ -1413,6 +1413,65 @@
           letter-spacing: 1.5px;
         }
       }
+      /* 管理操作沿用现有纸面与绀青配色，不改变人物资产。 */
+      html { color-scheme: light; }
+      .action-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .action-button { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 7px 12px; border: 1px solid #c9d3dc; border-radius: 5px; background: var(--c-card); color: var(--c-ink); font: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
+      .action-button:hover { border-color: var(--c-ink); background: var(--c-paper); }
+      .action-button.primary { background: var(--c-ink); color: white; border-color: var(--c-ink); }
+      .action-button.danger { color: #ae473c; }
+      button:disabled { cursor: not-allowed; opacity: .48; }
+      .page-actions { margin-bottom: 18px; }
+      .field { display: grid; gap: 8px; margin: 18px 0; color: var(--c-ink); font-weight: 600; }
+      .field input, .field select, .capability-field select { width: 100%; min-height: 42px; padding: 9px 12px; font: inherit; font-weight: 400; color: var(--c-text); background: var(--c-card); border: 1px solid #bcc9d3; border-radius: 5px; }
+      select:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 2px solid var(--c-gold); outline-offset: 3px; }
+      .field-hint { color: var(--c-text); font-size: 12px; line-height: 1.7; margin: 12px 0; }
+      .access-note { padding: 16px 0; margin-bottom: 18px; border-bottom: 1px solid #cbd5df; color: var(--c-ink); }
+      .operation-notice { position: sticky; top: 12px; z-index: 8; padding: 12px 18px; margin: 0 0 16px; color: var(--c-navy); background: #e6eee6; border-left: 3px solid #43835b; box-shadow: 0 3px 12px #0001; }
+      .operation-notice[data-error="true"] { color: #842e29; background: #fff0ea; border-left-color: #ae473c; }
+      .operation-notice[hidden] { display: none; }
+      .pairing-panel { border-top: 2px solid var(--c-gold); border-bottom: 1px solid #c5d0db; margin-bottom: 24px; background: var(--c-card); }
+      .pairing-panel summary { cursor: pointer; padding: 17px 20px; font-weight: 700; color: var(--c-ink); }
+      .pairing-content { padding: 0 20px 18px; max-width: 800px; }
+      .empty-row { padding: 40px 24px; text-align: center; color: var(--c-text); }
+      .settings-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+      .settings-layout .white-panel { padding: 24px; }
+      .log-toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+      .log-toolbar .field { margin: 0; flex: 1; min-width: 150px; }
+      .log-toolbar .action-button { min-height: 42px; }
+      .log-output { height: min(58vh, 640px); min-height: 260px; overflow: auto; background: #182b3d; color: #dce5ed; padding: 20px; font: 12px/1.8 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; border-top: 3px solid var(--c-gold); }
+      #account-dialog { margin: auto; padding: 28px; width: min(580px, calc(100vw - 28px)); max-height: 88vh; overflow: auto; border: 0; border-top: 4px solid var(--c-gold); border-radius: 6px; background: var(--c-card); color: var(--c-text); box-shadow: 0 20px 80px #0005; }
+      #account-dialog::backdrop { background: #10283b99; }
+      #account-dialog[open] { animation: dialog-enter .16s ease-out; }
+      .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--c-ink); }
+      .capability-list { margin-top: 12px; }
+      .capability-field { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 8px 0; border-bottom: 1px solid #d6dee4; }
+      .capability-field select { width: 140px; }
+      #dialog-error { color: #ae473c; margin: 14px 0; }
+      .matrix-cell { font: inherit; cursor: pointer; border: 0; }
+      .matrix-cell:disabled { opacity: .65; }
+      .matrix-cell:not(:disabled):hover { outline: 2px solid var(--c-gold); outline-offset: 2px; }
+      @keyframes dialog-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      [data-theme="dark"] { color-scheme: dark; --c-paper: #182b3c; --c-card: #21394e; --c-ink: #c0d5e7; --c-navy: #bdd4e7; --c-text: #c5d1dc; --c-off: #a1afbd; }
+      [data-theme="dark"] .workspace, [data-theme="dark"] .hero { background: var(--c-paper); }
+      [data-theme="dark"] .white-panel, [data-theme="dark"] .plugin-card, [data-theme="dark"] .matrix-wrap, [data-theme="dark"] .connection-bar, [data-theme="dark"] .stat-card { background: var(--c-card); color: var(--c-text); }
+      [data-theme="dark"] th, [data-theme="dark"] td { color: var(--c-text); border-color: #43596b; }
+      [data-theme="dark"] .action-button.primary { color: #152c40; }
+      [data-theme="dark"] .action-button.danger { color: #f3a18f; }
+      [data-theme="dark"] .pill.off { color: #cbd4dc; background: #3b4c5b; }
+      [data-theme="dark"] .operation-notice { color: #dbe8d9; background: #294735; }
+      [data-theme="dark"] .operation-notice[data-error="true"] { color: #ffccc0; background: #633b37; }
+      .workspace { background: var(--c-paper); }
+      .connection-copy strong { color: var(--c-ink); }
+      .auth-form input { background: var(--c-card); color: var(--c-text); border-color: #8b9ead; }
+      .auth-form input::placeholder { color: var(--c-text); opacity: .7; }
+      .sidebar, .mobile-topbar, .mobile-nav { background: #1e3a52; color: #f5f1e8; }
+      .sidebar .brand-name, .mobile-brand { color: #f5f1e8; }
+      .sidebar .nav-item { color: #c5d5e4; }
+      .sidebar .nav-item[aria-current="page"] { background: #f5f1e8; color: #2d4a6b; }
+      [data-theme="dark"] .connection-copy strong { color: var(--c-ink); }
+      @media (max-width: 700px) { .settings-layout { grid-template-columns: 1fr; } .action-button { min-height: 42px; } .log-toolbar .field { min-width: 120px; } .pairing-content { padding: 0 14px 14px; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
     </style>
   </head>
   <body>
@@ -1462,30 +1521,22 @@
             <span class="nav-state">VIEW</span>
           </a>
 
-          <div class="nav-caption later">IN PREPARATION</div>
-          <button class="nav-item is-disabled" type="button" disabled>
-            <span class="nav-number">05</span>
-            <span class="nav-copy">日志<span class="nav-en">LOGS</span></span>
-            <span class="nav-state">SOON</span>
-          </button>
-          <button class="nav-item is-disabled" type="button" disabled>
-            <span class="nav-number">06</span>
-            <span class="nav-copy">设置<span class="nav-en">SETTINGS</span></span>
-            <span class="nav-state">SOON</span>
-          </button>
+          <div class="nav-caption later">WORKSPACE</div>
+          <a class="nav-item" data-route="logs" href="#/logs"><span class="nav-number">05</span><span class="nav-copy">日志<span class="nav-en">LOGS</span></span></a>
+          <a class="nav-item" data-route="settings" href="#/settings"><span class="nav-number">06</span><span class="nav-copy">设置<span class="nav-en">SETTINGS</span></span></a>
         </nav>
 
         <div class="sidebar-foot">
           TENKO WEBUI<br />
           <strong id="sidebar-status">API PENDING</strong><br />
-          READ ONLY · IP ALLOWLIST
+          AUTHENTICATED · IP ALLOWLIST
         </div>
       </aside>
 
       <section class="workspace">
         <header class="mobile-topbar">
           <div class="mobile-brand">TENKO</div>
-          <div class="mobile-access">READ ONLY / IP ALLOWLIST</div>
+          <div class="mobile-access">TENKO / WEBUI</div>
         </header>
         <nav class="mobile-nav" aria-label="移动端功能分类">
           <a class="nav-item" data-route="overview" href="#/overview">
@@ -1500,12 +1551,8 @@
           <a class="nav-item" data-route="switches" href="#/switches">
             <span class="nav-number">04</span><span class="nav-copy">开关</span>
           </a>
-          <button class="nav-item is-disabled" type="button" disabled>
-            <span class="nav-number">05</span><span class="nav-copy">日志</span>
-          </button>
-          <button class="nav-item is-disabled" type="button" disabled>
-            <span class="nav-number">06</span><span class="nav-copy">设置</span>
-          </button>
+          <a class="nav-item" data-route="logs" href="#/logs"><span class="nav-number">05</span><span class="nav-copy">日志<span class="nav-en">LOGS</span></span></a>
+          <a class="nav-item" data-route="settings" href="#/settings"><span class="nav-number">06</span><span class="nav-copy">设置<span class="nav-en">SETTINGS</span></span></a>
         </nav>
 
         <main>
@@ -1527,25 +1574,27 @@
             <div class="connection-copy">
               <span class="connection-dot" id="connection-dot" aria-hidden="true"></span>
               <div>
-                <strong>只读数据连接</strong>
+                <strong>面板连接</strong>
                 <small id="connection-message" role="status" aria-live="polite">准备读取 overview / accounts / features</small>
               </div>
             </div>
             <form class="auth-form" id="auth-form">
               <label class="sr-only" for="token">WebUI token</label>
-              <input id="token" type="password" autocomplete="off" placeholder="输入 WebUI token · 仅存于当前页面内存" />
-              <button type="submit">重新同步</button>
+              <input id="token" type="password" autocomplete="off" placeholder="输入只读或管理令牌" />
+              <button type="submit">连接 / 同步</button><button type="button" id="logout">退出</button>
             </form>
           </div>
 
+          <div id="operation-notice" class="operation-notice" role="status" hidden></div>
           <div id="page-root"></div>
+          <dialog id="account-dialog"></dialog>
         </main>
 
         <footer id="page-footer"></footer>
       </section>
     </div>
 
-    <noscript>Tenko WebUI 需要启用 JavaScript 才能读取只读 API。</noscript>
+    <noscript>Tenko WebUI 需要启用 JavaScript 才能使用管理面板。</noscript>
 
     <script>
       const API_PATHS = {
@@ -1559,6 +1608,9 @@
         accounts: { title: "账户与响应", en: "ACCOUNTS & RESPONSE", number: "02", accent: "coral" },
         plugins: { title: "插件详情", en: "PLUGIN DETAILS", number: "03", accent: "navy" },
         switches: { title: "功能开关", en: "FEATURE FLAGS", number: "04", accent: "coral" },
+        logs: { title: "运行日志", en: "LOGS", number: "05", accent: "navy" },
+        settings: { title: "设置", en: "SETTINGS", number: "06", accent: "navy" },
+        market: { title: "插件市场", en: "PLUGIN MARKET", number: "07", accent: "navy" },
       };
 
       const dataState = {
@@ -1576,6 +1628,273 @@
       const tokenInput = document.querySelector("#token");
       let authToken = window.localStorage.getItem("tenko-webui-token") || "";
       let loadSequence = 0;
+      let authRole = "reader";
+      let managementConfigured = false;
+      let managedData = null;
+      let pairingData = null;
+      let settingsData = null;
+      let manageError = "";
+      let operationPending = false;
+      let logCursor = 0;
+      let logLines = [];
+      let logBusy = false;
+      let logFiles = [];
+      let logQuery = "";
+      let logFile = "";
+      let logLevel = "";
+      let logsPaused = false;
+      let revealedToken = null;
+      const themeMedia = matchMedia("(prefers-color-scheme: dark)");
+      let themePreference = localStorage.getItem("tenko-webui-theme") || "light";
+
+      function applyTheme() {
+        document.documentElement.dataset.theme = themePreference === "system"
+          ? (themeMedia.matches ? "dark" : "light") : themePreference;
+      }
+      applyTheme();
+      themeMedia.addEventListener("change", applyTheme);
+
+      function notice(message, error = false) {
+        const target = document.querySelector("#operation-notice");
+        target.textContent = message;
+        target.dataset.error = String(error);
+        target.hidden = !message;
+      }
+
+      function adminNote() {
+        return `<div class="access-note">${managementConfigured
+          ? "当前为只读访问。输入独立管理令牌后可执行操作。"
+          : "管理功能尚未配置。请在宿主的 [webui] 中设置独立 admin_token 并重启。"}</div>`;
+      }
+
+      async function write(path, body) {
+        return await read(path, { method: "POST", body: JSON.stringify(body),
+                                 headers: { "Content-Type": "application/json" } });
+      }
+
+      async function operate(button, callback) {
+        if (operationPending) return;
+        operationPending = true;
+        button.disabled = true;
+        notice("正在执行，请稍候…");
+        try {
+          await callback();
+          notice("操作已完成");
+          await loadData({ quiet: true });
+        } catch (error) {
+          notice(error.message, true);
+        } finally {
+          operationPending = false;
+          button.disabled = false;
+        }
+      }
+
+      function renderPairing() {
+        if (!pairingData) return "";
+        return `<details class="pairing-panel" id="pairing-panel">
+          <summary>添加账户 · 配对接入</summary>
+          <div class="pairing-content">
+            <p>在协议端添加 WebSocket 客户端，填入下方地址和令牌。连接成功后，账户会自动出现在列表中。</p>
+            <label class="field">连接地址<input id="pairing-url" type="url" value="${escapeHtml(pairingData.requires_host ? "" : pairingData.url)}" placeholder="ws://协议端可达的主机:端口${escapeHtml(pairingData.path)}" autocomplete="off" /></label>
+            ${pairingData.requires_host ? '<p class="field-hint">当前监听所有地址，请填写协议端实际可达的地址；不要填写 0.0.0.0 或 ::。</p>' : ''}
+            <div class="action-row"><button class="action-button" data-action="reveal-token">显示连接凭据</button><button class="action-button danger" data-action="rotate-token" ${pairingData.can_rotate ? '' : 'disabled'}>轮换连接令牌</button></div>
+            <div id="pairing-secret" hidden><label class="field">OneBot Token<input id="onebot-token" type="password" readonly autocomplete="off" /></label><div class="action-row"><button class="action-button" data-action="copy-pairing">复制连接字段</button><button class="action-button" data-action="toggle-secret">显示明文</button><button class="action-button" data-action="hide-token">隐藏凭据</button></div></div>
+            <p class="field-hint">轮换影响使用该令牌的全部协议端；新连接立即使用新令牌，已有连接保持。请同步更新各协议端配置。</p>
+          </div>
+        </details>`;
+      }
+
+      function renderManagedAccounts() {
+        if (!managedData) return `${sectionBar("accounts")}<div class="access-note">${escapeHtml(manageError || "正在读取账户…")}</div>`;
+        const rows = managedData.accounts.map((account, index) => `<tr>
+          <td><strong>${escapeHtml(account.alias || account.name || account.id)}</strong><span class="matrix-plugin-key">${escapeHtml(account.id)}</span></td>
+          <td>${escapeHtml(platformText(account.platform))}</td>
+          <td><span class="pill ${!account.enabled ? 'off' : account.online ? 'on' : 'pending'}">${!account.enabled ? '已停用' : account.online ? '在线' : '离线'}</span></td>
+          <td>${escapeHtml(account.group_count)}</td>
+          <td><div class="action-row">${account.manageable ? `<button class="action-button" data-action="account-details" data-index="${index}">偏好</button>
+          <button class="action-button ${account.enabled ? 'danger' : ''}" data-action="${account.enabled ? 'disable' : 'enable'}" data-index="${index}">${account.enabled ? '停用' : '启用'}</button>
+          <button class="action-button" data-action="kick" data-index="${index}" ${account.connected ? '' : 'disabled'}>踢下线</button>
+          <button class="action-button danger" data-action="forget" data-index="${index}" ${account.connected || account.online ? 'disabled' : ''}>移除记录</button>` : '<span class="field-hint">适配器暂不支持管理</span>'}</div></td>
+        </tr>`).join("");
+        return `${sectionBar("accounts")}${renderPairing()}
+          <div class="white-panel table-scroll"><table><thead><tr><th>账号</th><th>平台</th><th>状态</th><th>绑定群</th><th>操作</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="empty-row">尚无账户。展开上方“配对接入”连接第一个账户。</td></tr>'}</tbody></table></div>
+          <p class="panel-note">停用会阻止响应和重新接入，重启后仍生效。“踢下线”只断开本次连接，协议端可能自动重连。</p>`;
+      }
+
+      function accountPath(account, action) {
+        return `/webui/api/manage/accounts/${encodeURIComponent(account.platform)}/${encodeURIComponent(account.id)}/${action}`;
+      }
+
+      function showAccountDetails(account) {
+        const dialog = document.querySelector("#account-dialog");
+        const labels = {send_group_message: "群消息", send_private_message: "私聊消息", member_mute: "成员禁言", group_mute: "全群禁言", message_delete: "撤回消息", member_kick: "移除成员", group_essence: "消息加精", group_leave: "退出群组", group_invite_approval: "邀请审批", group_list: "读取群列表"};
+        dialog.innerHTML = `<form id="account-preferences"><div class="dialog-heading"><h2>账户偏好</h2><button class="action-button" type="button" data-close-dialog>关闭</button></div>
+          <p class="panel-note">${escapeHtml(platformText(account.platform))} · ${escapeHtml(account.id)}</p>
+          <label class="field">别名<input name="alias" maxlength="128" value="${escapeHtml(account.alias)}" /></label>
+          <h3>能力覆盖</h3><p class="field-hint">自动探测沿用协议回执；强制允许不会授予平台权限。</p>
+          <div class="capability-list">${managedData.capabilities.map((capability) => `<label class="capability-field">${escapeHtml(labels[capability] || capability)}<select name="${escapeHtml(capability)}"><option value="auto">自动探测</option><option value="true" ${account.capabilities[capability] === true ? 'selected' : ''}>允许</option><option value="false" ${account.capabilities[capability] === false ? 'selected' : ''}>禁用</option></select></label>`).join('')}</div>
+          <p class="field-hint">绑定群：${escapeHtml(account.groups.join('、') || '无')}</p>
+          <p id="dialog-error" role="alert"></p><button class="action-button primary" type="submit">保存偏好</button></form>`;
+        dialog.querySelector("[data-close-dialog]").onclick = () => dialog.close();
+        dialog.querySelector("form").onsubmit = async (event) => {
+          event.preventDefault();
+          if (operationPending) return;
+          operationPending = true;
+          const button = event.submitter;
+          button.disabled = true;
+          try {
+            const form = new FormData(event.target);
+            const capabilities = {};
+            managedData.capabilities.forEach((name) => { if (form.get(name) !== "auto") capabilities[name] = form.get(name) === "true"; });
+            await write(accountPath(account, "preferences"), { alias: form.get("alias"), capabilities });
+            dialog.close();
+            notice("账户偏好已保存");
+            await loadData({ quiet: true });
+          } catch (error) { dialog.querySelector("#dialog-error").textContent = error.message; }
+          finally { operationPending = false; button.disabled = false; }
+        };
+        dialog.showModal();
+      }
+
+      function renderSettings() {
+        return `${sectionBar("settings")}<div class="settings-layout"><section class="white-panel">
+          <h3>外观</h3><p class="panel-note">仅保存在当前浏览器，不影响其他管理员。</p>
+          <label class="field">主题<select id="theme-select"><option value="light" ${themePreference === 'light' ? 'selected' : ''}>浅色 · 天光</option><option value="dark" ${themePreference === 'dark' ? 'selected' : ''}>深色 · 夜空</option><option value="system" ${themePreference === 'system' ? 'selected' : ''}>跟随系统</option></select></label>
+          </section><section class="white-panel"><h3>功能默认策略</h3><p class="panel-note">影响没有显式开关的群功能，已有群级或全局设置继续优先。</p>
+          ${authRole !== 'admin' ? adminNote() : settingsData ? `<form id="runtime-settings"><label class="field">未设置的功能<select name="default_enabled"><option value="true" ${settingsData.default_enabled ? 'selected' : ''}>默认启用</option><option value="false" ${!settingsData.default_enabled ? 'selected' : ''}>默认关闭</option></select></label><button class="action-button primary" type="submit">保存运行期设置</button></form><p class="field-hint">${settingsData.stored ? '已保存到数据库，重启后恢复。' : '当前沿用宿主配置；保存后由数据库管理。'}</p>` : `<p>${escapeHtml(manageError || '正在读取设置…')}</p>`}
+          </section></div>`;
+      }
+
+      function renderMarket() {
+        return `${sectionBar("market")}<div class="white-panel"><h3>插件市场筹备中</h3><p class="panel-note">外部插件仓库与兼容性规范仍在设计。当前已安装插件可在“插件”页管理。</p><a class="action-button" href="#/plugins">查看已安装插件</a></div>`;
+      }
+
+      function renderLogs() {
+        if (authRole !== 'admin') return `${sectionBar('logs')}${adminNote()}`;
+        return `${sectionBar('logs')}<form id="log-search" class="log-toolbar">
+          <label class="field">来源<select name="file" id="log-file"><option value="">实时日志</option>${logFiles.map((file) => `<option value="${escapeHtml(file)}" ${file === logFile ? 'selected' : ''}>${escapeHtml(file)}</option>`).join('')}</select></label>
+          <label class="field">搜索<input name="q" maxlength="200" placeholder="输入关键字" value="${escapeHtml(logQuery)}" /></label>
+          <label class="field">级别（实时）<select name="level" ${logFile ? 'disabled' : ''}>${['','INFO','SUCCESS','WARNING','ERROR','CRITICAL'].map((level) => `<option value="${level}" ${level === logLevel ? 'selected' : ''}>${level || '全部'}</option>`).join('')}</select></label>
+          <button class="action-button primary" type="submit">查询</button><button class="action-button" type="button" data-action="pause-logs">${logsPaused ? '继续刷新' : '暂停刷新'}</button></form>
+          <p id="log-status" class="field-hint" role="status">实时日志每 3 秒刷新，最多保留 1000 条；历史检索每文件最多扫描 8 MiB。</p><pre id="log-output" class="log-output" tabindex="0" aria-label="日志内容"></pre>`;
+      }
+
+      async function refreshLogs(reset = false) {
+        if (logBusy || authRole !== 'admin' || routeName() !== 'logs') return;
+        if (reset) { logCursor = 0; logLines = []; }
+        logBusy = true;
+        const token = authToken;
+        try {
+          const params = new URLSearchParams({ after: String(logCursor), q: logQuery, level: logLevel });
+          if (logFile) params.set('file', logFile);
+          const result = await read(`/webui/api/manage/logs?${params}`);
+          if (token !== authToken || routeName() !== 'logs') return;
+          logFiles = result.files;
+          if (result.lines) logLines = result.lines;
+          else {
+            if (result.reset) { logLines = []; logCursor = 0; }
+            logLines.push(...result.records.map((row) => `${row.time}  ${row.level.padEnd(8)} ${row.message}`));
+            logLines = logLines.slice(-1000);
+            logCursor = result.cursor;
+          }
+          const select = document.querySelector('#log-file');
+          if (select && JSON.stringify([...select.options].slice(1).map(option => option.value)) !== JSON.stringify(logFiles)) select.innerHTML = `<option value="">实时日志</option>${logFiles.map((file) => `<option ${file === logFile ? 'selected' : ''} value="${escapeHtml(file)}">${escapeHtml(file)}</option>`).join('')}`;
+          const output = document.querySelector('#log-output');
+          if (output) {
+            const nearBottom = output.scrollTop + output.clientHeight >= output.scrollHeight - 40;
+            output.textContent = logLines.join('\n') || '暂无匹配日志';
+            if (nearBottom && !logFile) output.scrollTop = output.scrollHeight;
+          }
+          document.querySelector('#log-status').textContent = result.truncated
+            ? '结果已截断：超出保留条数或 8 MiB 扫描上限。请缩小搜索范围或选择轮转文件。'
+            : logFile ? `已读取 ${logFile} · ${result.matched} 条匹配`
+            : `每 3 秒刷新 · ${logLines.length} 条${result.history_enabled ? '' : ' · 宿主未开启日志落盘，暂无线下历史记录'}`;
+        } catch (error) {
+          const status = document.querySelector('#log-status');
+          if (status) status.textContent = `读取失败：${error.message}`;
+        } finally { logBusy = false; }
+      }
+
+      pageRoot.addEventListener('change', (event) => {
+        if (event.target.id === 'log-file') document.querySelector('[name=level]').disabled = !!event.target.value;
+        if (event.target.id === 'theme-select') {
+          themePreference = event.target.value;
+          localStorage.setItem('tenko-webui-theme', themePreference);
+          applyTheme();
+        }
+      });
+      pageRoot.addEventListener('submit', (event) => {
+        if (event.target.id === 'log-search') {
+          event.preventDefault();
+          if (logBusy) return;
+          const form = new FormData(event.target);
+          logQuery = form.get('q'); logFile = form.get('file'); logLevel = form.get('level') || '';
+          refreshLogs(true);
+        }
+        if (event.target.id === 'runtime-settings') {
+          event.preventDefault();
+          const enabled = new FormData(event.target).get('default_enabled') === 'true';
+          if (confirm('将保存默认功能策略，重启后仍生效。继续？')) operate(event.submitter, () => write('/webui/api/manage/settings', { default_enabled: enabled }));
+        }
+      });
+      pageRoot.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-action]');
+        if (!button || button.disabled) return;
+        const action = button.dataset.action;
+        if (action === 'pause-logs') { logsPaused = !logsPaused; button.textContent = logsPaused ? '继续刷新' : '暂停刷新'; return; }
+        if (action === 'toggle-secret') { const input = document.querySelector('#onebot-token'); input.type = input.type === 'password' ? 'text' : 'password'; button.textContent = input.type === 'password' ? '显示明文' : '隐藏明文'; return; }
+        if (action === 'hide-token') { revealedToken = null; document.querySelector('#onebot-token').value = ''; document.querySelector('#pairing-secret').hidden = true; return; }
+        if (action === 'copy-pairing') {
+          try {
+            const url = new URL(document.querySelector('#pairing-url').value);
+            if (!['ws:', 'wss:'].includes(url.protocol) || ['0.0.0.0', '[::]'].includes(url.hostname) || url.username || url.password) throw new Error('请填写有效且可达的 ws:// 或 wss:// 地址');
+            if (!navigator.clipboard) throw new Error("当前地址不支持自动复制，请显示明文后手动复制，或使用 HTTPS/本机访问。");
+            await navigator.clipboard.writeText(JSON.stringify({url: url.href, token: revealedToken}, null, 2));
+            notice('连接字段已复制，请粘贴到可信协议端');
+          } catch (error) { notice(error.message, true); }
+          return;
+        }
+        if (action === 'reveal-token' || action === 'rotate-token') {
+          if (action === 'rotate-token' && !confirm('将轮换所有协议端共用的 OneBot token，并重写 TOML 配置（不保留注释）。新连接立即使用新 token；现有连接保持。请准备同步更新各协议端。继续？')) return;
+          button.disabled = true;
+          operationPending = true;
+          const requestToken = authToken;
+          try {
+            const data = await write('/webui/api/manage/pairing', action === 'rotate-token' ? {action:'rotate',confirm:true} : {action:'reveal'});
+            if (requestToken !== authToken || routeName() !== "accounts") return;
+            revealedToken = data.access_token;
+            const secret = document.querySelector('#pairing-secret');
+            if (secret) { secret.hidden = false; document.querySelector('#onebot-token').value = revealedToken; }
+            notice(action === 'rotate-token' ? '新令牌已保存。请复制并更新协议端。' : '凭据已载入，仅保留在本页内存');
+          } catch (error) { notice(error.message, true); }
+          finally { operationPending = false; button.disabled = false; }
+          return;
+        }
+        if (['global-feature', 'reset-global', 'maintenance'].includes(action)) {
+          const plugin = button.dataset.plugin;
+          if (!confirm(`${button.textContent}：${plugin}？`)) return;
+          const body = action === 'maintenance' ? {maintenance: button.dataset.enabled === 'true'}
+            : {group_id: null, enabled: action === 'reset-global' ? null : button.dataset.enabled === 'true'};
+          await operate(button, () => write(`/webui/api/manage/features/${encodeURIComponent(plugin)}`, body));
+          return;
+        }
+        if (action === 'plugin-toggle' || action === 'feature-toggle') {
+          const plugin = button.dataset.plugin;
+          const enabled = button.dataset.enabled === 'true';
+          const label = `${enabled ? '启用' : '停用'} ${plugin}${button.dataset.group ? ' / ' + button.dataset.group : ''}`;
+          if (!confirm(`${label}？`)) return;
+          await operate(button, () => write(`/webui/api/manage/${action === 'plugin-toggle' ? 'plugins' : 'features'}/${encodeURIComponent(plugin)}`,
+            action === 'plugin-toggle' ? {enabled,confirm:true} : {enabled,group_id:button.dataset.group}));
+          return;
+        }
+        const account = managedData?.accounts[Number(button.dataset.index)];
+        if (!account) return;
+        if (action === 'account-details') { showAccountDetails(account); return; }
+        const descriptions = { disable:'停用账户：停止响应并拒绝重连，重启后仍生效', enable:'启用账户：允许协议端重新连接', kick:'踢下线：只断开当前连接，协议端可能自动重连', forget:'移除账户的路由和偏好记录；不会删除协议端账户，之后仍可重新接入' };
+        if (!descriptions[action] || !confirm(`${descriptions[action]}。\n${account.platform} / ${account.id}\n继续？`)) return;
+        await operate(button, () => write(accountPath(account, action), {confirm:true}));
+      });
+
 
       function escapeHtml(value) {
         return String(value == null ? "" : value)
@@ -1662,7 +1981,9 @@
 
       function featureStatus(feature) {
         const groups = Object.values(feature.groups || {});
-        if (feature.maintenance || feature.global_enabled === false) {
+        if (feature.protected) return { kind: "prot", label: "受保护" };
+        if (!feature.loaded) return { kind: "pending", label: "未加载" };
+        if (!feature.enabled || feature.maintenance || feature.global_enabled === false) {
           return { kind: "off", label: "已关闭" };
         }
         if (feature.scope === "global") {
@@ -1692,7 +2013,7 @@
         heroTags.innerHTML = [
           `<span class="badge navy">${escapeHtml(version)}</span>`,
           `<span class="badge coral">${escapeHtml(online)}</span>`,
-          "<span class=\"badge gold\">READ ONLY</span>",
+          `<span class="badge gold">${authRole === "admin" ? "ADMIN" : "READ ONLY"}</span>`,
           `<span class="badge line">${escapeHtml(platform)}</span>`,
         ].join("");
 
@@ -1732,6 +2053,7 @@
       }
 
       function renderAccounts() {
+        if (authRole === "admin") return renderManagedAccounts();
         const state = dataState.accounts;
         if (state.loading || state.error || !state.data) return `${sectionBar("accounts")}${statePanel("accounts", "暂无账户数据")}`;
         const accounts = Array.isArray(state.data.accounts) ? state.data.accounts : [];
@@ -1786,12 +2108,16 @@
           const scopeText = feature.scope === "global" ? "全局功能 · 统一策略" : groups.length ? `群级功能 · ${enabled}/${groups.length} 个群启用` : "群级功能 · 暂无群组";
           return `<article class="plugin-card ${status.kind === "off" ? "is-off" : ""}">
             <div class="plugin-head"><div class="plugin-name">${escapeHtml(feature.name || feature.plugin)}<code class="plugin-key">${escapeHtml(feature.plugin)}</code></div>${featurePill(feature)}</div>
+            ${authRole === "admin" ? `<div class="action-row"><button class="action-button" data-action="plugin-toggle" data-plugin="${escapeHtml(feature.plugin)}" data-enabled="${!feature.enabled}" ${feature.protected || !feature.loaded ? 'disabled' : ''}>${feature.enabled ? '停用插件' : '启用插件'}</button>
+              ${feature.scope === 'global' ? `<button class="action-button" data-action="global-feature" data-plugin="${escapeHtml(feature.plugin)}" data-enabled="${feature.global_enabled === false}" ${feature.protected ? 'disabled' : ''}>${feature.global_enabled === false ? '开启全局功能' : '关闭全局功能'}</button>` : feature.global_enabled != null ? `<button class="action-button" data-action="reset-global" data-plugin="${escapeHtml(feature.plugin)}" ${feature.protected ? 'disabled' : ''}>恢复群级开关</button>` : ''}
+              <button class="action-button" data-action="maintenance" data-plugin="${escapeHtml(feature.plugin)}" data-enabled="${!feature.maintenance}" ${feature.protected || !feature.loaded ? 'disabled' : ''}>${feature.maintenance ? '解除维护' : '进入维护'}</button></div>` : ''}
             <div class="plugin-desc">${escapeHtml(scopeText)}${feature.maintenance ? " · 维护状态" : ""}</div>
             <div class="plugin-stats"><span>范围 <b>${escapeHtml(feature.scope || "—")}</b></span><span>启用 <b>${groups.length ? `${enabled}/${groups.length}` : "—"}</b></span></div>
           </article>`;
         }).join("");
         return `${sectionBar("plugins")}
-          <div class="plugin-grid">${cards}</div>
+          <div class="action-row page-actions"><a class="action-button" href="#/market">插件市场</a></div>
+          ${authRole !== "admin" ? adminNote() : ""}<div class="plugin-grid">${cards}</div>
           `;
       }
 
@@ -1810,7 +2136,7 @@
         const rows = features.map((feature) => {
           const cells = groups.map((groupId) => {
             const enabled = feature.groups && feature.groups[groupId] === true;
-            return `<td><span class="matrix-cell ${enabled ? "on" : "off"}" aria-label="${escapeHtml(`${feature.name || feature.plugin} / ${groupId} / ${enabled ? "运行中" : "已关闭"}`)}">${enabled ? "✓" : "—"}</span></td>`;
+            return `<td><button class="matrix-cell ${enabled ? "on" : "off"}" data-action="feature-toggle" data-plugin="${escapeHtml(feature.plugin)}" data-group="${escapeHtml(groupId)}" data-enabled="${!enabled}" ${authRole !== 'admin' || feature.protected || feature.scope === 'global' || feature.maintenance || feature.global_enabled != null ? 'disabled' : ''} aria-label="${escapeHtml(`${feature.name || feature.plugin} / ${groupId} / ${enabled ? "运行中" : "已关闭"}`)}">${enabled ? "✓" : "—"}</button></td>`;
           }).join("");
           return `<tr><td><span class="matrix-plugin-name">${escapeHtml(feature.name || feature.plugin)}</span><span class="matrix-plugin-key">${escapeHtml(feature.plugin)}</span></td>${cells}</tr>`;
         }).join("");
@@ -1818,14 +2144,15 @@
           ? `<div class="matrix-wrap"><table class="matrix"><thead><tr><th scope="col">插件 / 群组</th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`
           : `<div class="matrix-wrap"><div class="matrix-empty">暂无群组，API 尚未返回群级开关列。</div></div>`;
         return `${sectionBar("switches")}
-          <div class="matrix-head"><div><div class="panel-kicker">GROUP × PLUGIN</div><div class="panel-title">只读功能开关矩阵</div></div><div class="matrix-count">${escapeHtml(numberText(features.length))} 个插件 × ${escapeHtml(numberText(groups.length))} 个群组</div></div>
+          <div class="matrix-head"><div><div class="panel-kicker">GROUP × PLUGIN</div><div class="panel-title">群级功能开关</div></div><div class="matrix-count">${escapeHtml(numberText(features.length))} 个插件 × ${escapeHtml(numberText(groups.length))} 个群组</div></div>
           ${matrix}
           `;
       }
 
       function renderPage() {
         const route = routeName();
-        const renderers = { overview: renderOverview, accounts: renderAccounts, plugins: renderPlugins, switches: renderSwitches };
+        const renderers = { overview: renderOverview, accounts: renderAccounts, plugins: renderPlugins, switches: renderSwitches, logs: renderLogs, settings: renderSettings, market: renderMarket };
+        revealedToken = null;
         pageRoot.innerHTML = `<div class="page-view" data-route-view="${route}">${renderers[route]()}</div>`;
         document.querySelectorAll("[data-route]").forEach((item) => {
           const active = item.dataset.route === route;
@@ -1847,7 +2174,7 @@
           connectionMessage.textContent = `${ready}/3 个 API 已返回 · ${failures.length} 个数据源不可用`;
           sidebarStatus.textContent = "API PARTIAL";
         } else {
-          connectionMessage.textContent = "已同步 · 只读快照 · 令牌仅保留在当前页面内存";
+          connectionMessage.textContent = authRole === "admin" ? "已连接 · 管理权限 · 令牌仅存本页内存" : "已连接 · 只读权限 · 令牌保存在此浏览器";
           sidebarStatus.textContent = "API SYNCED";
         }
       }
@@ -1858,10 +2185,12 @@
         renderPage();
       }
 
-      async function read(path) {
+      async function read(path, options = {}) {
         const response = await fetch(path, {
           cache: "no-store",
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+          ...options,
+          signal: AbortSignal.timeout(10000),
+          headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}), ...options.headers },
         });
         let payload;
         try {
@@ -1875,56 +2204,69 @@
         return payload.data;
       }
 
-      async function loadData() {
+      async function loadData({ quiet = false } = {}) {
         const sequence = ++loadSequence;
-        Object.values(dataState).forEach((state) => {
-          state.loading = true;
-          state.data = null;
-          state.error = null;
-        });
-        renderApp();
+        if (!quiet) {
+          Object.values(dataState).forEach((state) => { state.loading = true; state.data = null; state.error = null; });
+          renderApp();
+        }
+        try {
+          const session = await read('/webui/api/session');
+          if (sequence !== loadSequence) return;
+          authRole = session.role;
+          managementConfigured = session.management_configured;
+          if (authRole === 'admin') localStorage.removeItem('tenko-webui-token');
+          else localStorage.setItem('tenko-webui-token', authToken);
+        } catch (error) {
+          if (sequence !== loadSequence) return;
+          authRole = 'reader'; managedData = null; pairingData = null; settingsData = null;
+          Object.values(dataState).forEach((state) => { state.loading = false; state.data = null; state.error = error; });
+          renderApp(); return;
+        }
         const results = await Promise.allSettled(Object.entries(API_PATHS).map(async ([key, path]) => [key, await read(path)]));
         if (sequence !== loadSequence) return;
-        results.forEach((result) => {
-          if (result.status === "fulfilled") {
-            const [key, data] = result.value;
-            dataState[key].data = data;
-          } else {
-            const key = Object.keys(API_PATHS)[results.indexOf(result)];
-            dataState[key].error = result.reason instanceof Error ? result.reason : new Error("读取失败");
-          }
+        results.forEach((result, index) => {
+          const key = Object.keys(API_PATHS)[index];
+          dataState[key] = result.status === 'fulfilled' ? {loading:false, data:result.value[1], error:null}
+            : {loading:false, data:null, error:result.reason};
         });
-        Object.values(dataState).forEach((state) => { state.loading = false; });
-        renderApp();
+        manageError = '';
+        if (authRole === 'admin') {
+          const paths = ['/webui/api/manage/accounts', '/webui/api/manage/pairing', '/webui/api/manage/settings'];
+          const states = await Promise.allSettled(paths.map(path => read(path)));
+          if (sequence !== loadSequence) return;
+          [managedData, pairingData, settingsData] = states.map(state => state.status === 'fulfilled' ? state.value : null);
+          manageError = states.filter(state => state.status === 'rejected').map(state => state.reason.message).join('；');
+        }
+        if (!quiet || routeName() !== 'logs') renderApp();
+        else { renderHero(); renderConnection(); }
         renderFooter(dataState.overview.data);
+        if (routeName() === 'logs') refreshLogs();
       }
 
       function takeQueryToken() {
         const params = new URLSearchParams(window.location.search);
         if (!params.has("token")) return;
-        const value = params.get("token");
-        if (value) {
-          authToken = value.trim();
-          window.localStorage.setItem("tenko-webui-token", authToken);
-        }
         params.delete("token");
         const query = params.toString();
-        const cleanUrl = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
-        window.history.replaceState(null, "", cleanUrl);
-        tokenInput.placeholder = authToken ? "令牌已从 URL 载入 · 可输入新 token 替换" : "输入 WebUI token · 仅存于当前页面内存";
+        window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+        notice("请通过输入框登录。地址中的令牌不会用于认证。");
       }
 
       document.querySelector("#auth-form").addEventListener("submit", (event) => {
         event.preventDefault();
         if (tokenInput.value.trim()) {
           authToken = tokenInput.value.trim();
-          window.localStorage.setItem("tenko-webui-token", authToken);
+
         }
+        tokenInput.value = "";
         loadData();
       });
 
       window.addEventListener("hashchange", () => {
+        notice("");
         renderPage();
+        if (routeName() === "logs") refreshLogs();
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
 
@@ -1941,6 +2283,20 @@
         footer.textContent = parts.join(" · ");
       }
 
+      document.querySelector('#logout').addEventListener('click', () => {
+        authToken = ''; authRole = 'reader'; revealedToken = null;
+        managedData = null; pairingData = null; settingsData = null;
+        logLines = []; logCursor = 0;
+        localStorage.removeItem('tenko-webui-token');
+        document.querySelector('#account-dialog').close();
+        document.querySelector('#account-dialog').replaceChildren();
+        notice('已退出'); loadData();
+      });
+      setInterval(() => {
+        if (document.hidden || operationPending || document.querySelector('dialog[open]') || pageRoot.contains(document.activeElement) || document.querySelector('#pairing-panel[open]')) return;
+        if (authToken && routeName() !== 'logs') loadData({ quiet: true });
+      }, 5000);
+      setInterval(() => { if (!document.hidden && !logsPaused && !logFile) refreshLogs(); }, 3000);
       takeQueryToken();
       renderApp();
       loadData();

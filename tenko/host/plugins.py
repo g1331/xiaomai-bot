@@ -17,6 +17,7 @@ from arclet.entari.plugin import (
     get_plugins,
     load_plugin,
     unload_plugin,
+    plugin_service,
 )
 
 from ..context import MessageContext
@@ -148,6 +149,32 @@ class PluginRuntime:
             if (plugin := self._native_plugin(info)) is not None
         }
         return MappingProxyType(loaded)
+
+    def is_protected(self, plugin: str | PluginInfo) -> bool:
+        """同时检查原生启停会级联影响的插件，防止间接关闭控制平面。"""
+
+        info = self._info(plugin)
+        if info.name == "feature_manager":
+            return True
+        native = self._native_plugin(info)
+        pending = [native] if native is not None else []
+        seen: set[str] = set()
+        while pending:
+            current = pending.pop()
+            if current.id in seen:
+                continue
+            seen.add(current.id)
+            if "host" in getattr(current.metadata, "classifier", ()):
+                return True
+            related = set(current.subplugins) | set(
+                plugin_service.referents.get(current.path, ())
+            )
+            pending.extend(
+                plugin_service.plugins[name]
+                for name in related
+                if name in plugin_service.plugins and name not in seen
+            )
+        return False
 
     def is_loaded(self, plugin: str | PluginInfo) -> bool:
         return self._native_plugin(self._info(plugin)) is not None

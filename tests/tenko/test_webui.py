@@ -194,6 +194,9 @@ async def test_webui_read_only_apis_expose_safe_account_and_feature_data():
             "plugin": "demo",
             "name": "演示插件",
             "scope": "group",
+            "protected": False,
+            "loaded": False,
+            "enabled": False,
             "maintenance": False,
             "global_enabled": None,
             "groups": {"40001": False, "40002": True},
@@ -202,6 +205,9 @@ async def test_webui_read_only_apis_expose_safe_account_and_feature_data():
             "plugin": "global",
             "name": "global",
             "scope": "group",
+            "protected": False,
+            "loaded": False,
+            "enabled": False,
             "maintenance": False,
             "global_enabled": False,
             "groups": {"40001": False, "40002": False},
@@ -210,6 +216,9 @@ async def test_webui_read_only_apis_expose_safe_account_and_feature_data():
             "plugin": "maintenance",
             "name": "maintenance",
             "scope": "group",
+            "protected": False,
+            "loaded": False,
+            "enabled": False,
             "maintenance": True,
             "global_enabled": None,
             "groups": {"40001": False, "40002": False},
@@ -279,3 +288,346 @@ async def test_webui_overview_uses_status_data_metrics_and_counts(
             },
         },
     }
+
+
+@pytest.mark.asyncio
+async def test_management_auth_persistence_and_failure_boundaries(
+    tenko_database, tmp_path, monkeypatch
+):
+    from tenko.config import TenkoConfig
+    from tenko.connection import OneBotConnection
+    from tenko.db.repositories import ManagementRepository, AccountStateRepository
+    from tenko.host.account_management import AccountManagement
+    from tenko.host.actions import ActionService
+
+    config = TenkoConfig.from_mapping(
+        {
+            "webui": {
+                "enabled": True,
+                "token": "reader-secret",
+                "admin_token": "admin-secret",
+            },
+            "onebot": {"access_token": "onebot-secret"},
+        }
+    )
+    accounts = AccountRegistry(AccountStateRepository())
+    await accounts.initialize()
+    management = AccountManagement(accounts, ActionService(registry=accounts))
+    management.repository = ManagementRepository()
+    await management.initialize({})
+    first = SimpleNamespace(self_id="10001", platform="onebot")
+    second = SimpleNamespace(self_id="10001", platform="telegram")
+    accounts.register(first, available=True, groups=("40001",))
+    accounts.register(second, available=True)
+    # 内存 SQLite 共用连接，先完成路由任务，避免测试事务相互回滚。
+    await accounts.flush_persistence()
+    connection = OneBotConnection(config.onebot)
+    service = WebUIService(
+        connection.server,
+        config.webui,
+        accounts=accounts,
+        management=management,
+        connection=connection,
+        tenko_config=config,
+        feature_service=FeatureService(),
+    )
+    transport = httpx.ASGITransport(
+        app=connection.server.app, client=("127.0.0.1", 12345)
+    )
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
+        path = "/webui/api/manage/accounts/onebot/10001/disable"
+        for headers, code in [
+            ({}, 401),
+            ({"Authorization": "Bearer reader-secret"}, 403),
+            (
+                {
+                    "Authorization": "Bearer admin-secret",
+                    "Origin": "https://evil.invalid",
+                },
+                403,
+            ),
+        ]:
+            response = await client.post(path, headers=headers, json={"confirm": True})
+            assert response.status_code == code
+        client.headers["Authorization"] = "Bearer admin-secret"
+        assert (await client.post(path, json={"confirm": 1})).status_code == 400
+        assert (
+            await client.post(
+                path, content="x" * 17000, headers={"Content-Type": "application/json"}
+            )
+        ).status_code == 400
+        original = management.repository.save_account
+
+        async def fail(_value):
+            raise OSError("secret must not appear in API errors")
+
+        monkeypatch.setattr(management.repository, "save_account", fail)
+        failed = await client.post(path, json={"confirm": True})
+        assert failed.status_code == 503
+        assert "secret must" not in failed.text
+        assert accounts.is_available(first)
+        monkeypatch.setattr(management.repository, "save_account", original)
+        assert (await client.post(path, json={"confirm": True})).status_code == 200
+        assert not accounts.is_available(first)
+        assert accounts.is_available(second)
+        accounts.register(first, available=True)
+        assert not accounts.is_available(first)
+        assert not management.can_connect("onebot", "10001")
+        assert accounts.get(("telegram", "10001")) is second
+        rows = (await client.get("/webui/api/manage/accounts")).json()["data"][
+            "accounts"
+        ]
+        assert len(rows) == 2
+        assert all("access_token" not in row for row in rows)
+        pairing = await client.get("/webui/api/manage/pairing")
+        assert "onebot-secret" not in pairing.text
+        reveal = await client.post(
+            "/webui/api/manage/pairing", json={"action": "reveal"}
+        )
+        assert reveal.json()["data"]["access_token"] == "onebot-secret"
+        assert reveal.headers["cache-control"] == "no-store"
+        assert (
+            await client.post(
+                "/webui/api/manage/settings", json={"default_enabled": False}
+            )
+        ).status_code == 200
+        assert not service.feature_service.default_enabled
+
+    restored = AccountManagement(AccountRegistry(), ActionService())
+    restored.repository = ManagementRepository()
+    await restored.initialize({})
+    restored.accounts.register(first, available=True)
+    assert not restored.accounts.is_available(first)
+    feature = FeatureService(default_enabled=True)
+    await restored.restore_settings(feature, None)
+    assert not feature.default_enabled
+    await accounts.flush_persistence()
+
+
+@pytest.mark.asyncio
+async def test_pairing_rotation_is_atomic_and_detects_external_config_changes(
+    tmp_path, monkeypatch
+):
+    import tomllib
+    from tenko.config import TenkoConfig
+    from tenko.connection import OneBotConnection
+
+    path = tmp_path / "tenko.toml"
+    original = '[onebot]\naccess_token = "old-secret"\n[webui]\nenabled = true\ntoken = "reader"\nadmin_token = "admin"\n'
+    path.write_text(original)
+    config = TenkoConfig.load(path)
+    connection = OneBotConnection(config.onebot)
+    service = WebUIService(
+        connection.server, config.webui, connection=connection, tenko_config=config
+    )
+    transport = httpx.ASGITransport(
+        app=connection.server.app, client=("127.0.0.1", 12345)
+    )
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"Authorization": "Bearer admin"},
+    ) as client:
+        url = "/webui/api/manage/pairing"
+        body = {"action": "rotate", "confirm": True}
+        path.write_text(original + "# external change\n")
+        assert (await client.post(url, json=body)).status_code == 409
+        assert connection.adapter.access_token == "old-secret"
+        path.write_text(original)
+        import tenko.webui.service as webui_module
+
+        replace = webui_module.os.replace
+
+        def fail_replace(*args):
+            raise OSError("disk failure")
+
+        monkeypatch.setattr(webui_module.os, "replace", fail_replace)
+        assert (await client.post(url, json=body)).status_code == 503
+        assert path.read_text() == original
+        assert connection.adapter.access_token == "old-secret"
+        monkeypatch.setattr(webui_module.os, "replace", replace)
+        response = await client.post(url, json=body)
+        assert response.status_code == 200, response.text
+        token = response.json()["data"]["access_token"]
+        assert token != "old-secret" and len(token) >= 32
+        assert tomllib.loads(path.read_text())["onebot"]["access_token"] == token
+        assert connection.adapter.access_token == token
+        assert service.logs.redact(f"old-secret {token}") == "[REDACTED] [REDACTED]"
+        assert not list(tmp_path.glob(".tenko-config-*"))
+
+
+def test_management_logs_redact_credentials_and_restrict_history(tmp_path):
+    import gzip
+    from tenko.webui.logs import LogReader
+
+    logs = LogReader(lambda: ("private-secret",))
+    message = SimpleNamespace(
+        record={
+            "time": datetime.now(UTC),
+            "level": SimpleNamespace(name="INFO"),
+            "message": 'private-secret Authorization: Bearer abc token="xyz"',
+        }
+    )
+    logs.sink(message)
+    result = logs.live(0, "", "")
+    assert result["cursor"] == 1
+    assert (
+        "private-secret" not in str(result)
+        and "abc" not in str(result)
+        and "xyz" not in str(result)
+    )
+    assert not logs.live(1, "", "")["records"]
+    (tmp_path / "latest.log").write_text("old\nprivate-secret newest\n")
+    (tmp_path / "symlink.log").symlink_to(tmp_path / "latest.log")
+    with gzip.open(tmp_path / "rotated.log.gz", "wt") as file:
+        file.write('token="xyz"\n')
+    assert "symlink.log" not in logs.files(tmp_path)
+    assert logs.history(tmp_path, "latest.log", "newest")["lines"] == [
+        "[REDACTED] newest"
+    ]
+    assert "xyz" not in str(logs.history(tmp_path, "rotated.log.gz", ""))
+    with pytest.raises(ValueError):
+        logs.history(tmp_path, "../latest.log", "")
+
+
+@pytest.mark.asyncio
+async def test_plugin_and_group_switches_use_host_state_and_protect_control_plane(
+    repositories, monkeypatch
+):
+    from unittest.mock import AsyncMock
+    from tenko.config import TenkoConfig
+    from tenko.connection import OneBotConnection
+    from tenko.db.repositories import ManagementRepository
+    from tenko.host.account_management import AccountManagement
+    from tenko.host.actions import ActionService
+    from tenko.host.plugins import PluginRuntime
+
+    config = TenkoConfig.from_mapping(
+        {"webui": {"enabled": True, "token": "reader", "admin_token": "admin"}}
+    )
+    accounts = AccountRegistry()
+    accounts.register(
+        SimpleNamespace(self_id="10001", platform="onebot"), groups=("40001",)
+    )
+    features = FeatureService(repositories["feature"])
+    await features.initialize()
+    management = AccountManagement(accounts, ActionService(registry=accounts))
+    management.repository = ManagementRepository()
+    await management.initialize({})
+    runtime = PluginRuntime()
+    state = {"status": True, "updater": True}
+    monkeypatch.setattr(runtime, "is_protected", lambda info: info.name == "updater")
+    monkeypatch.setattr(runtime, "is_enabled", lambda info: state[info.name])
+
+    async def set_enabled(info, enabled):
+        state[info.name] = enabled
+        return True
+
+    monkeypatch.setattr(runtime, "set_enabled", set_enabled)
+    connection = OneBotConnection(config.onebot)
+    service = WebUIService(
+        connection.server,
+        config.webui,
+        accounts=accounts,
+        feature_service=features,
+        management=management,
+        connection=connection,
+        plugin_runtime=runtime,
+        tenko_config=config,
+    )
+    transport = httpx.ASGITransport(
+        app=connection.server.app, client=("127.0.0.1", 12345)
+    )
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"Authorization": "Bearer admin"},
+    ) as client:
+        plugin = "/webui/api/manage/plugins/"
+        feature = "/webui/api/manage/features/"
+        assert (
+            await client.post(
+                plugin + "updater", json={"enabled": False, "confirm": True}
+            )
+        ).status_code == 403
+        assert (
+            await client.post(
+                plugin + "missing", json={"enabled": False, "confirm": True}
+            )
+        ).status_code == 404
+        assert (
+            await client.post(
+                plugin + "status", json={"enabled": False, "confirm": True}
+            )
+        ).status_code == 200
+        assert not state["status"]
+        assert await management.repository.setting("disabled-plugins") == ["status"]
+        original = management.repository.save_setting
+        monkeypatch.setattr(
+            management.repository,
+            "save_setting",
+            AsyncMock(side_effect=OSError("disk full")),
+        )
+        assert (
+            await client.post(
+                plugin + "status", json={"enabled": True, "confirm": True}
+            )
+        ).status_code == 503
+        assert not state["status"]
+        monkeypatch.setattr(management.repository, "save_setting", original)
+        assert (
+            await client.post(
+                feature + "status", json={"group_id": "unknown", "enabled": False}
+            )
+        ).status_code == 400
+        assert (
+            await client.post(
+                feature + "status", json={"group_id": "40001", "enabled": False}
+            )
+        ).status_code == 200
+        restored = FeatureService(repositories["feature"])
+        await restored.initialize()
+        assert not restored.is_enabled("status", "40001")
+        assert (
+            await client.post(feature + "status", json={"maintenance": True})
+        ).status_code == 200
+        assert (
+            await client.post(
+                feature + "status", json={"group_id": "40001", "enabled": True}
+            )
+        ).status_code == 409
+        assert (
+            await client.post(feature + "status", json={"maintenance": False})
+        ).status_code == 200
+        assert (
+            await client.post(
+                feature + "status", json={"group_id": None, "enabled": True}
+            )
+        ).status_code == 200
+        assert (
+            await client.post(
+                feature + "status", json={"group_id": None, "enabled": None}
+            )
+        ).status_code == 200
+        assert not features.is_enabled("status", "40001")
+        assert service is not None
+
+
+@pytest.mark.asyncio
+async def test_capability_import_is_once_even_after_forgetting_account(tenko_database):
+    from tenko.db.repositories import ManagementRepository
+    from tenko.host.account_management import AccountManagement
+    from tenko.host.actions import ActionService
+
+    preferences = AccountManagement(AccountRegistry(), ActionService())
+    preferences.repository = ManagementRepository()
+    old = {"10001": {"set_group_ban": False}}
+    await preferences.initialize(old)
+    assert preferences.preferences[("onebot", "10001")]["capabilities"] == {
+        "member_mute": False
+    }
+    await preferences.forget(("onebot", "10001"))
+    await preferences.initialize(old)
+    assert not preferences.preferences

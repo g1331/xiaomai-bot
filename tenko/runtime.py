@@ -24,6 +24,7 @@ from .db.errors import DatabaseUnavailableError
 from .db.runtime import RuntimeStateService
 from .events import MessageEventHandler, configure_message_metrics
 from .host.accounts import account_registry
+from .host.account_management import AccountManagement
 from .host.actions import action_service
 from .host.features import CommandPolicy, configure_feature_service
 from .host.plugins import PluginRuntime
@@ -70,7 +71,9 @@ class TenkoRuntime:
             superuser_ids=config.upgrade.superuser_ids,
             shutdown_callback=self.request_graceful_shutdown,
         )
+        self.account_management = AccountManagement(self.accounts, self.actions)
         self.connection = OneBotConnection(config.onebot)
+        self.connection.adapter.admission = self.account_management.can_connect
         self.message_metrics = configure_message_metrics(
             config.exception.message_buffer_size
         )
@@ -97,11 +100,13 @@ class TenkoRuntime:
 
         from .db.repositories import (
             account_state_repository,
+            ManagementRepository,
             feature_state_repository,
             rate_limit_repository,
             startup_time_repository,
         )
 
+        self.account_management.repository = ManagementRepository()
         self.accounts.configure(account_state_repository)
         self.feature_service.configure(
             feature_state_repository,
@@ -123,6 +128,12 @@ class TenkoRuntime:
 
         state_loaders = (
             ("account routes", self.accounts.initialize),
+            (
+                "account preferences",
+                lambda: self.account_management.initialize(
+                    self.config.onebot.capability_overrides
+                ),
+            ),
             ("feature switches", self.feature_service.initialize),
             ("rate limit", self.rate_limiter.initialize),
             ("startup duration history", self.startup_history.load),
@@ -132,6 +143,19 @@ class TenkoRuntime:
                 await loader()
             except Exception as error:
                 logger.error("Could not load Tenko {} state: {}", label, error)
+
+        if self.account_management.ready:
+            self.account_management.ready = False
+            try:
+                await self.account_management.restore_settings(
+                    self.feature_service, self.plugin_runtime
+                )
+            except Exception as error:
+                logger.error(
+                    "Could not restore management settings: {}", type(error).__name__
+                )
+            else:
+                self.account_management.ready = True
 
     async def _flush_runtime_state(self) -> None:
         """在数据库连接销毁前等待同步事件安排的状态写入。"""
@@ -234,7 +258,7 @@ class TenkoRuntime:
                         account.self_id,
                     )
         elif state in (LoginStatus.DISCONNECT, LoginStatus.OFFLINE):
-            if self.accounts.get(account.self_id) is not None:
+            if self.accounts.get(account) is not None:
                 self.accounts.set_available(account, False)
 
         if state == LoginStatus.ONLINE:
@@ -365,6 +389,9 @@ class TenkoRuntime:
                 feature_service=self.feature_service,
                 feature_repository=feature_repository,
                 plugin_runtime=self.plugin_runtime,
+                management=self.account_management,
+                connection=self.connection,
+                tenko_config=self.config,
             )
             manager.add_component(self.webui_service)
         # Satori client 必须在 server socket 开始接受连接后启动。否则其第一次

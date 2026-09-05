@@ -302,7 +302,13 @@ async def test_run_async_registers_webui_only_when_enabled(monkeypatch) -> None:
     assert isinstance(webui_service, WebUIService)
     assert runtime.webui_service is webui_service
     connection.server.app.add_middleware.assert_called_once()
-    assert connection.server.asgi_route.call_count == 4
+    paths = {call.args[0] for call in connection.server.asgi_route.call_args_list}
+    assert {
+        "/webui",
+        "/webui/api/session",
+        "/webui/api/manage/settings",
+        "/webui/api/manage/accounts/{platform}/{account_id}/{action}",
+    } <= paths
     connection.server.mount.assert_called_once()
 
 

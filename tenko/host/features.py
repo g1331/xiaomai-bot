@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -44,6 +46,7 @@ class FeatureService:
         self.default_enabled = default_enabled
         self._plugins: dict[str, dict[str, Any]] = {}
         self._ready = repository is None
+        self._persist_lock = asyncio.Lock()
 
     def configure(
         self,
@@ -60,6 +63,7 @@ class FeatureService:
             self.default_enabled = default_enabled
         self._plugins = {}
         self._ready = repository is None
+        self._persist_lock = asyncio.Lock()
 
     @property
     def ready(self) -> bool:
@@ -145,7 +149,8 @@ class FeatureService:
 
             raise DatabaseUnavailableError("功能状态数据库尚未就绪")
         try:
-            await self._repository.replace_states(self._state_records())
+            async with self._persist_lock:
+                await self._repository.replace_states(self._state_records())
         except Exception:
             self.mark_unavailable()
             raise
@@ -203,6 +208,11 @@ class FeatureService:
             raise TypeError("enabled 必须是布尔值")
         self._plugin_state(plugin)["global_enabled"] = enabled
         return enabled
+
+    def reset_global(self, plugin: str) -> None:
+        """清除全局覆盖，恢复群级策略与默认值。"""
+
+        self._plugin_state(plugin).pop("global_enabled", None)
 
     def set_maintenance(self, plugin: str, maintenance: bool) -> bool:
         """设置全局维护状态；维护中等价于所有群关闭。"""

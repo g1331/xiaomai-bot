@@ -298,3 +298,21 @@ def test_explicit_debug_and_upgrade_superusers_override_inheritance() -> None:
     assert config.runtime.superusers == config.entari.superusers
     assert config.debug.masters == ("20001",)
     assert config.upgrade.superuser_ids == ("30001",)
+
+
+def test_webui_management_credentials_are_independent():
+    with pytest.raises(ValueError):
+        TenkoConfig.from_mapping(
+            {"webui": {"enabled": True, "token": "same", "admin_token": "same"}}
+        )
+    with pytest.raises(ValueError):
+        TenkoConfig.from_mapping(
+            {
+                "onebot": {"access_token": "protocol"},
+                "webui": {
+                    "enabled": True,
+                    "token": "reader",
+                    "admin_token": "protocol",
+                },
+            }
+        )

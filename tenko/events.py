@@ -16,7 +16,7 @@ from satori.model import Event
 
 from .config import DebugConfig
 from .context import MessageContext, is_message_created
-from .host.accounts import AccountRegistry
+from .host.accounts import AccountRegistry, account_key
 
 
 def _event_group_id(event: Event) -> str | None:
@@ -392,6 +392,11 @@ class MessageEventHandler:
     def should_skip(self, account: Account, event: Event) -> bool:
         """判断事件是否应在进入消息和插件处理前被跳过。"""
 
+        if self.account_registry is not None and not self.account_registry.is_enabled(
+            account
+        ):
+            return True
+
         # 群成员减少和 bot 邀请都是账号状态来源，不能被调试白名单或账号×群
         # 选路过滤；否则解绑监听器收不到事件，或者邀请恰好由非选中账号收到时
         # 会被丢弃。
@@ -419,16 +424,16 @@ class MessageEventHandler:
         # 消息事件可能是启动时群列表发现之前抵达的第一条消息。事件本身
         # 证明账号当前在线，因此先登记账号并加入当前群路由，再执行统一
         # 选路；这样群列表拉取失败时仍保留消息触发绑定的兜底路径。
-        if self.account_registry.get(account.self_id) is None:
+        if self.account_registry.get(account) is None:
             self.account_registry.register(account, available=True)
         self.account_registry.bind_group(group_id, account)
 
-        if not self.account_registry.is_muted(account.self_id, group_id):
+        if not self.account_registry.is_muted(account, group_id):
             selected = self.account_registry.select_for_event(
                 group_id,
                 source_id=_event_message_id(event),
             )
-            if selected is not None and selected.self_id == account.self_id:
+            if selected is not None and account_key(selected) == account_key(account):
                 return False
             if selected is not None:
                 logger.debug(
@@ -523,7 +528,7 @@ class MessageEventHandler:
         if (
             context.chat_type == "group"
             and self.account_registry is not None
-            and self.account_registry.get(account.self_id) is not None
+            and self.account_registry.get(account) is not None
         ):
             self.account_registry.bind_group(context.channel_id, account)
 
@@ -543,7 +548,7 @@ class MessageEventHandler:
         if (
             context.chat_type == "group"
             and self.account_registry is not None
-            and self.account_registry.get(account.self_id) is not None
+            and self.account_registry.get(account) is not None
             and self.account_registry.is_muted(account, context.channel_id)
         ):
             self.account_registry.set_muted(account, context.channel_id, False)

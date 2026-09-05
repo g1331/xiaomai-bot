@@ -414,6 +414,7 @@ class WebUIConfig:
 
     enabled: bool = False
     token: str | None = field(default=None, repr=False)
+    admin_token: str | None = field(default=None, repr=False)
     allowed_ips: tuple[str, ...] = ("127.0.0.1",)
 
     def __post_init__(self) -> None:
@@ -423,6 +424,11 @@ class WebUIConfig:
             raise ValueError("webui token 必须是字符串或 null")
         if self.token == "":
             object.__setattr__(self, "token", None)
+        if self.admin_token is not None:
+            if not isinstance(self.admin_token, str) or not self.admin_token.strip():
+                raise ValueError("webui admin_token 必须是非空字符串")
+            if self.admin_token == self.token:
+                raise ValueError("webui admin_token 必须与只读 token 不同")
         if self.enabled and self.token is None:
             raise ValueError("webui enabled=true 时必须配置独立 token")
         object.__setattr__(
@@ -437,6 +443,7 @@ class WebUIConfig:
         return cls(
             enabled=_boolean(section, "enabled", defaults.enabled),
             token=_optional_string(section, "token", defaults.token),
+            admin_token=_optional_string(section, "admin_token", defaults.admin_token),
             allowed_ips=_ip_sequence(section, "allowed_ips", defaults.allowed_ips),
         )
 
@@ -879,6 +886,17 @@ class TenkoConfig:
     exception: ExceptionConfig = field(default_factory=ExceptionConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     notify_group: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.webui.enabled:
+            protocol_tokens = {self.onebot.access_token, self.onebot.satori_token} - {
+                None
+            }
+            if (
+                self.webui.token in protocol_tokens
+                or self.webui.admin_token in protocol_tokens
+            ):
+                raise ValueError("WebUI 令牌必须独立于 OneBot 和 Satori 凭据")
 
     @property
     def entari(self) -> LegacyEntariConfig:

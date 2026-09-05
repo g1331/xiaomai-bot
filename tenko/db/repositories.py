@@ -707,3 +707,68 @@ __all__ = [
     "rate_limit_repository",
     "startup_time_repository",
 ]
+
+
+class ManagementRepository(_Repository):
+    """账户偏好及管理面板运行期设置的持久化边界。"""
+
+    async def accounts(self) -> tuple[dict[str, Any], ...]:
+        import json
+        from .models import AccountPreference
+
+        async with self._session() as session:
+            rows = await session.scalars(select(AccountPreference))
+            return tuple(
+                {
+                    "platform": row.platform,
+                    "id": row.account_id,
+                    "alias": row.alias,
+                    "enabled": row.enabled,
+                    "capabilities": json.loads(row.capabilities),
+                }
+                for row in rows
+            )
+
+    async def save_account(self, value: dict[str, Any]) -> None:
+        import json
+        from .models import AccountPreference
+
+        async with self._session() as session:
+            await session.merge(
+                AccountPreference(
+                    platform=value["platform"],
+                    account_id=value["id"],
+                    alias=value["alias"],
+                    enabled=value["enabled"],
+                    capabilities=json.dumps(value["capabilities"]),
+                )
+            )
+            await session.commit()
+
+    async def forget_account(self, platform: str, account_id: str) -> None:
+        from .models import AccountPreference
+
+        async with self._session() as session:
+            await session.execute(
+                delete(AccountPreference).where(
+                    AccountPreference.platform == platform,
+                    AccountPreference.account_id == account_id,
+                )
+            )
+            await session.commit()
+
+    async def setting(self, name: str) -> Any:
+        import json
+        from .models import WebUISetting
+
+        async with self._session() as session:
+            row = await session.get(WebUISetting, name)
+            return json.loads(row.value) if row is not None else None
+
+    async def save_setting(self, name: str, value: Any) -> None:
+        import json
+        from .models import WebUISetting
+
+        async with self._session() as session:
+            await session.merge(WebUISetting(name=name, value=json.dumps(value)))
+            await session.commit()

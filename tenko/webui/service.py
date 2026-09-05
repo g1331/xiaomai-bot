@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import copy
 import inspect
+import json
+import os
+import tempfile
 import ipaddress
 import secrets
 from collections.abc import Callable, Iterable, Mapping
@@ -15,7 +20,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse, Response
 
-from ..config import WebUIConfig
+from ..config import WebUIConfig, TenkoConfig
+from ..db.errors import DatabaseError
+from ..host.account_management import AccountManagement
+from .logs import LogReader
 from ..events import MessageMetrics, message_metrics
 from ..host.accounts import AccountRegistry, account_registry
 from ..host.features import FeatureService, feature_service as default_feature_service
@@ -32,11 +40,14 @@ def _error_response(code: str, message: str, status_code: int) -> JSONResponse:
             "error": {"code": code, "message": message},
         },
         status_code=status_code,
+        headers={"Cache-Control": "no-store"},
     )
 
 
 def _success_response(data: object) -> JSONResponse:
-    return JSONResponse({"ok": True, "data": data})
+    return JSONResponse(
+        {"ok": True, "data": data}, headers={"Cache-Control": "no-store"}
+    )
 
 
 def _is_webui_path(path: str) -> bool:
@@ -60,45 +71,70 @@ class WebUIAuthMiddleware(BaseHTTPMiddleware):
             return False
         return client_ip in self.config.allowed_ips
 
-    def _authorized(self, request: Request) -> bool:
-        authorization = request.headers.get("authorization", "")
-        scheme, separator, token = authorization.partition(" ")
-        if (
-            separator
-            and scheme.lower() == "bearer"
-            and token
-            and self.config.token is not None
-        ):
-            return secrets.compare_digest(token, self.config.token)
-
-        # 页面导航无法预先设置请求头，仅允许根页面用 query token 启动；
-        # API 仍然只接受 Bearer，避免令牌进入 API URL 和访问日志。
-        return bool(
-            request.method == "GET"
-            and request.url.path == WEBUI_PATH
-            and self.config.token is not None
-            and request.query_params.get("token")
-            and secrets.compare_digest(request.query_params["token"], self.config.token)
+    def _role(self, request: Request) -> str | None:
+        scheme, separator, token = request.headers.get("authorization", "").partition(
+            " "
         )
+        if not separator or scheme.lower() != "bearer" or not token:
+            return None
+        for role, expected in (
+            ("admin", self.config.admin_token),
+            ("reader", self.config.token),
+        ):
+            if expected and secrets.compare_digest(token.encode(), expected.encode()):
+                return role
+        return None
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if not _is_webui_path(request.url.path):
+        response = await self._dispatch(request, call_next)
+        if _is_webui_path(request.url.path) and request.method not in {"GET", "HEAD"}:
+            logger.info(
+                "WebUI audit: method={} target={} action={} source={} status={}",
+                request.method,
+                json.dumps(request.url.path[:300], ensure_ascii=False),
+                getattr(request.state, "webui_action", "request"),
+                request.client.host if request.client else "unknown",
+                response.status_code,
+            )
+        return response
+
+    async def _dispatch(self, request: Request, call_next: Callable) -> Response:
+        path = request.url.path
+        if not _is_webui_path(path):
             return await call_next(request)
         if not self.config.enabled:
             return _error_response("not_found", "Not Found", 404)
         if not self._allowed_ip(request):
             return _error_response("unauthorized", "Unauthorized", 401)
-        # 根页面是纯静态壳，允许无 token 加载后由页面内的 API 鉴权显示输入态；
-        # API 和其他 WebUI 路径仍必须通过 Bearer 鉴权。
-        if request.method == "GET" and request.url.path == WEBUI_PATH:
+        if request.method == "GET" and path in {WEBUI_PATH, f"{WEBUI_PATH}/"}:
             return await call_next(request)
-        if not self._authorized(request):
+        role = self._role(request)
+        if role is None:
             return _error_response("unauthorized", "Unauthorized", 401)
-        return await call_next(request)
+        request.state.webui_role = role
+        administrative = path.startswith(f"{WEBUI_PATH}/api/manage/")
+        if administrative and role != "admin":
+            return _error_response("forbidden", "需要独立管理令牌", 403)
+        if request.method not in {"GET", "HEAD"}:
+            if role != "admin":
+                return _error_response("forbidden", "需要独立管理令牌", 403)
+            origin = request.headers.get("origin")
+            expected = f"{request.url.scheme}://{request.url.netloc}"
+            if origin is not None and origin != expected:
+                return _error_response("forbidden", "不允许跨来源管理操作", 403)
+            if (
+                request.headers.get("content-type", "").split(";")[0].strip()
+                != "application/json"
+            ):
+                return _error_response("invalid_request", "请使用 JSON 请求体", 415)
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
 
 
 class WebUIService(Service):
-    """复用 Satori Server app 的 WebUI 路由和只读数据服务。"""
+    """复用 Satori Server app 的管理面板；写操作独立授权。"""
 
     id = "tenko.webui"
     required = {"satori-python.server"}
@@ -114,6 +150,9 @@ class WebUIService(Service):
         feature_service: FeatureService = default_feature_service,
         feature_repository: Any | None = None,
         plugin_runtime: PluginRuntime | None = None,
+        management: AccountManagement | None = None,
+        connection: Any | None = None,
+        tenko_config: TenkoConfig | None = None,
     ) -> None:
         super().__init__()
         self.server = server
@@ -123,6 +162,16 @@ class WebUIService(Service):
         self.feature_service = feature_service
         self.feature_repository = feature_repository
         self.plugin_runtime = plugin_runtime
+        self.management = management
+        self.connection = connection
+        self.tenko_config = tenko_config
+        self._write_lock = management.lock if management is not None else asyncio.Lock()
+        self.logs = LogReader(self._secrets)
+        self._log_sink: int | None = None
+        self._retired_tokens: list[str] = []
+        native = tenko_config.entari_config if tenko_config else None
+        self._config_path = Path(native.path) if native is not None else None
+        self._config_stamp = self._stamp()
         self._register_routes()
 
     def _register_routes(self) -> None:
@@ -147,6 +196,22 @@ class WebUIService(Service):
             methods=["GET"],
             name="webui-index",
         )(self.index)
+        routes = (
+            ("/api/session", ["GET"], self.session),
+            ("/api/manage/accounts", ["GET"], self.managed_accounts),
+            (
+                "/api/manage/accounts/{platform}/{account_id}/{action}",
+                ["POST"],
+                self.manage_account,
+            ),
+            ("/api/manage/pairing", ["GET", "POST"], self.pairing),
+            ("/api/manage/plugins/{plugin}", ["POST"], self.manage_plugin),
+            ("/api/manage/features/{plugin}", ["POST"], self.manage_feature),
+            ("/api/manage/settings", ["GET", "POST"], self.settings),
+            ("/api/manage/logs", ["GET"], self.log_view),
+        )
+        for path, methods, handler in routes:
+            self.server.asgi_route(f"{WEBUI_PATH}{path}", methods=methods)(handler)
         if self.config.enabled:
             self.server.mount(WEBUI_PATH, _STATIC_INDEX)
 
@@ -232,7 +297,7 @@ class WebUIService(Service):
             ]
             accounts.append(
                 {
-                    "id": str(account_id),
+                    "id": str(account.self_id),
                     "platform": str(platform or "unknown"),
                     "online": bool(self.accounts.is_available(account_id)),
                     "group_count": len(groups),
@@ -328,6 +393,27 @@ class WebUIService(Service):
                     "plugin": plugin_name,
                     "name": metadata_name,
                     "scope": scope,
+                    "protected": bool(
+                        info is not None
+                        and self.plugin_runtime is not None
+                        and getattr(
+                            self.plugin_runtime, "is_protected", lambda _: False
+                        )(info)
+                    ),
+                    "loaded": bool(
+                        info is not None
+                        and self.plugin_runtime is not None
+                        and getattr(self.plugin_runtime, "is_loaded", lambda _: False)(
+                            info
+                        )
+                    ),
+                    "enabled": bool(
+                        info is not None
+                        and self.plugin_runtime is not None
+                        and getattr(self.plugin_runtime, "is_enabled", lambda _: False)(
+                            info
+                        )
+                    ),
                     "maintenance": bool(state["maintenance"]),
                     "global_enabled": state.get("global_enabled"),
                     "groups": groups,
@@ -370,17 +456,403 @@ class WebUIService(Service):
         del request
         return await self._read("features", self._features_data)
 
+    def _stamp(self):
+        if self._config_path is None or not self._config_path.is_file():
+            return None
+        import hashlib
+
+        return hashlib.sha256(self._config_path.read_bytes()).digest()
+
+    def _secrets(self) -> tuple[str, ...]:
+        values = [self.config.token, self.config.admin_token, *self._retired_tokens]
+        if self.tenko_config is not None:
+            values.extend(
+                (
+                    self.tenko_config.onebot.access_token,
+                    self.tenko_config.onebot.satori_token,
+                )
+            )
+        if self.connection is not None:
+            values.append(self.connection.adapter.access_token)
+        return tuple(value for value in values if isinstance(value, str) and value)
+
+    async def session(self, request: Request) -> JSONResponse:
+        return _success_response(
+            {
+                "role": request.state.webui_role,
+                "management_configured": bool(self.config.admin_token),
+            }
+        )
+
+    async def _body(self, request: Request) -> dict[str, Any]:
+        data = bytearray()
+        async for chunk in request.stream():
+            if len(data) + len(chunk) > 16384:
+                raise ValueError("请求体不能超过 16 KiB")
+            data.extend(chunk)
+        try:
+            value = json.loads(data)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError("请求体必须是有效 JSON") from error
+        if not isinstance(value, dict):
+            raise ValueError("请求体必须是 JSON 对象")
+        return value
+
+    async def _manage(self, request: Request, operation: Callable) -> JSONResponse:
+        try:
+            async with self._write_lock:
+                value = await operation()
+        except ValueError as error:
+            return _error_response("invalid_request", str(error), 400)
+        except KeyError:
+            return _error_response("not_found", "操作目标不存在", 404)
+        except PermissionError as error:
+            return _error_response("forbidden", str(error), 403)
+        except DatabaseError:
+            logger.error("WebUI database operation failed: {}", request.url.path)
+            return _error_response(
+                "database_unavailable", "数据库暂不可用，未确认保存成功", 503
+            )
+        except RuntimeError as error:
+            return _error_response("conflict", str(error), 409)
+        except Exception as error:
+            # 凭据读写边界禁止记录请求体或异常 locals。
+            logger.error(
+                "WebUI operation failed: {} ({})",
+                request.url.path,
+                type(error).__name__,
+            )
+            return _error_response(
+                "operation_failed", "操作失败，请检查宿主日志；未确认保存成功", 503
+            )
+        return _success_response(value)
+
+    def _management(self) -> AccountManagement:
+        if (
+            self.management is None
+            or not self.management.ready
+            or self.management.repository is None
+        ):
+            raise RuntimeError("管理数据库尚未就绪")
+        return self.management
+
+    async def managed_accounts(self, request: Request) -> JSONResponse:
+        async def read():
+            management = self._management()
+            rows = management.list_accounts()
+            for row in rows:
+                key = (row["platform"], row["id"])
+                account = self.accounts.get(key)
+                row.update(
+                    online=self.accounts.is_online(key),
+                    available=self.accounts.is_available(key),
+                    group_count=len(self.accounts.groups_for_account(key)),
+                    groups=list(self.accounts.groups_for_account(key)),
+                    connected=bool(
+                        self.connection
+                        and key[0] == "onebot"
+                        and key[1] in self.connection.adapter.connections
+                    ),
+                    name=str(
+                        getattr(getattr(account, "self_info", None), "user", None).name
+                        or row["id"]
+                    )
+                    if getattr(getattr(account, "self_info", None), "user", None)
+                    else row["id"],
+                    manageable=key[0] == "onebot",
+                )
+            from ..host.actions import ActionCapability
+
+            return {
+                "accounts": rows,
+                "capabilities": [item.value for item in ActionCapability],
+            }
+
+        return await self._manage(request, read)
+
+    async def manage_account(self, request: Request) -> JSONResponse:
+        async def change():
+            management = self._management()
+            platform, identifier, action = (
+                request.path_params[name]
+                for name in ("platform", "account_id", "action")
+            )
+            if any(
+                not value or len(value) > 128 or any(ord(c) < 32 for c in value)
+                for value in (platform, identifier)
+            ):
+                raise ValueError("平台和账户 ID 必须是 1–128 字的有效标识")
+            key = (platform, identifier)
+            if not management.contains(key):
+                raise KeyError(key)
+            if platform != "onebot" or self.connection is None:
+                raise RuntimeError("当前协议适配器尚未提供账户管理能力")
+            body = await self._body(request)
+            if action == "preferences":
+                if set(body) - {"alias", "capabilities"}:
+                    raise ValueError("仅支持别名和能力覆盖")
+                await management.update(key, body)
+            elif action in {"enable", "disable", "kick", "forget"}:
+                if set(body) != {"confirm"} or body["confirm"] is not True:
+                    raise ValueError("请确认账户操作")
+                if action == "forget":
+                    if (
+                        identifier in self.connection.adapter.connections
+                        or self.accounts.is_online(key)
+                    ):
+                        raise RuntimeError(
+                            "账户仍连接中，请先停用或在协议端断开，再移除记录"
+                        )
+                    await management.forget(key)
+                elif action == "kick":
+                    if not await self.connection.adapter.disconnect(identifier):
+                        raise RuntimeError("账户当前没有连接")
+                else:
+                    await management.update(key, {"enabled": action == "enable"})
+                    if action == "disable":
+                        await self.connection.adapter.disconnect(identifier)
+            else:
+                raise ValueError("未知账户操作")
+            return {"action": action, "platform": platform, "id": identifier}
+
+        return await self._manage(request, change)
+
+    def _pairing_data(self) -> dict[str, Any]:
+        if self.connection is None or self.tenko_config is None:
+            raise RuntimeError("协议连接未配置")
+        config = self.tenko_config.onebot
+        return {
+            "url": config.reverse_ws_url,
+            "path": config.reverse_ws_path_value,
+            "requires_host": config.listen_host in {"0.0.0.0", "::"},
+            "token_configured": bool(self.connection.adapter.access_token),
+            "can_rotate": self._config_stamp is not None,
+        }
+
+    def _rotate_token(self) -> str:
+        import tomllib
+
+        if self._config_path is None or self._config_stamp is None:
+            raise RuntimeError("没有可写回的配置文件")
+        if self._config_path.suffix != ".toml":
+            raise RuntimeError("令牌轮换仅支持当前项目的 TOML 配置")
+        if self._stamp() != self._config_stamp:
+            raise RuntimeError("配置文件已被外部修改，请重启加载后再轮换")
+        raw = tomllib.loads(self._config_path.read_text())
+        value = raw.get("onebot", {}).get("access_token", "")
+        if isinstance(value, str) and "${" in value:
+            raise RuntimeError("OneBot token 由环境变量提供，请在配置来源中轮换")
+        token = secrets.token_urlsafe(32)
+        native = copy.deepcopy(self.tenko_config.entari_config)
+        native.data.setdefault("onebot", {})["access_token"] = token
+        descriptor, name = tempfile.mkstemp(
+            prefix=".tenko-config-", suffix=".toml", dir=self._config_path.parent
+        )
+        os.close(descriptor)
+        temporary = Path(name)
+        try:
+            native.save(temporary)
+            parsed = tomllib.loads(temporary.read_text())
+            if parsed.get("onebot", {}).get("access_token") != token:
+                raise RuntimeError("配置保存未生成预期令牌")
+            TenkoConfig.from_mapping(parsed)
+            with temporary.open("rb") as stream:
+                os.fsync(stream.fileno())
+            if self._stamp() != self._config_stamp:
+                raise RuntimeError("配置文件发生并发修改，请重试")
+            os.replace(temporary, self._config_path)
+        finally:
+            temporary.unlink(missing_ok=True)
+        self._config_stamp = self._stamp()
+        self.tenko_config.entari_config.data.setdefault("onebot", {})[
+            "access_token"
+        ] = token
+        self.tenko_config.entari_config.save_flag = True
+        previous = self.connection.adapter.access_token
+        if previous:
+            self._retired_tokens.append(previous)
+        self.connection.adapter.access_token = token
+        return token
+
+    async def pairing(self, request: Request) -> JSONResponse:
+        async def action():
+            data = self._pairing_data()
+            if request.method == "GET":
+                return data
+            body = await self._body(request)
+            if body == {"action": "reveal"}:
+                request.state.webui_action = "reveal"
+                data["access_token"] = self.connection.adapter.access_token or ""
+            elif (
+                set(body) == {"action", "confirm"}
+                and body["action"] == "rotate"
+                and body["confirm"] is True
+            ):
+                request.state.webui_action = "rotate"
+                data["access_token"] = self._rotate_token()
+                data["token_configured"] = True
+            else:
+                raise ValueError("请选择显示凭据，或确认轮换令牌")
+            return data
+
+        return await self._manage(request, action)
+
+    def _plugin(self, name: str):
+        if self.plugin_runtime is None:
+            raise RuntimeError("插件运行时尚未就绪")
+        info = next(
+            (info for info in self.plugin_runtime.discover() if info.name == name), None
+        )
+        if info is None:
+            raise KeyError(name)
+        if self.plugin_runtime.is_protected(info):
+            raise PermissionError("控制平面插件不能通过面板停用或修改开关")
+        return info
+
+    async def manage_plugin(self, request: Request) -> JSONResponse:
+        async def change():
+            repository = self._management().repository
+            info = self._plugin(request.path_params["plugin"])
+            body = await self._body(request)
+            if (
+                set(body) != {"enabled", "confirm"}
+                or type(body["enabled"]) is not bool
+                or body["confirm"] is not True
+            ):
+                raise ValueError("请确认插件启停操作")
+            before = self.plugin_runtime.is_enabled(info)
+            enabled = body["enabled"]
+            request.state.webui_action = "enable" if enabled else "disable"
+            disabled = set(await repository.setting("disabled-plugins") or [])
+            if enabled:
+                disabled.discard(info.name)
+            else:
+                disabled.add(info.name)
+            if not await self.plugin_runtime.set_enabled(info, enabled):
+                raise RuntimeError("插件当前未加载，无法切换状态")
+            try:
+                await repository.save_setting("disabled-plugins", sorted(disabled))
+            except Exception:
+                await self.plugin_runtime.set_enabled(info, before)
+                raise
+            return {"plugin": info.name, "enabled": enabled}
+
+        return await self._manage(request, change)
+
+    async def manage_feature(self, request: Request) -> JSONResponse:
+        async def change():
+            self._management()
+            if not self.feature_service.ready:
+                raise RuntimeError("功能状态尚未就绪")
+            info = self._plugin(request.path_params["plugin"])
+            body = await self._body(request)
+            if set(body) == {"maintenance"} and type(body["maintenance"]) is bool:
+                self.feature_service.set_maintenance(info.name, body["maintenance"])
+            elif set(body) == {"group_id", "enabled"} and body["group_id"] is None:
+                if body["enabled"] is None:
+                    self.feature_service.reset_global(info.name)
+                elif type(body["enabled"]) is bool:
+                    self.feature_service.set_global_enabled(info.name, body["enabled"])
+                else:
+                    raise ValueError("全局开关必须为布尔值或 null")
+            else:
+                if (
+                    set(body) != {"group_id", "enabled"}
+                    or type(body["enabled"]) is not bool
+                ):
+                    raise ValueError("必须指定群 ID 与布尔开关值")
+                if self._plugin_scope(info) == "global":
+                    raise ValueError("此插件使用全局开关")
+                group_id = body["group_id"]
+                if (
+                    not isinstance(group_id, str)
+                    or group_id not in self.accounts.group_ids
+                ):
+                    raise ValueError("群 ID 不在已知路由中")
+                state = self.feature_service.state.get(info.name, {})
+                if state.get("maintenance") or "global_enabled" in state:
+                    raise RuntimeError("请先在插件页解除维护或全局覆盖，再修改群级开关")
+                self.feature_service.set_enabled(info.name, group_id, body["enabled"])
+            await self.feature_service.persist_state()
+            return {
+                "plugin": info.name,
+                "state": dict(self.feature_service.state.get(info.name, {})),
+            }
+
+        return await self._manage(request, change)
+
+    async def settings(self, request: Request) -> JSONResponse:
+        async def action():
+            repository = self._management().repository
+            if request.method == "POST":
+                body = await self._body(request)
+                if (
+                    set(body) != {"default_enabled"}
+                    or type(body["default_enabled"]) is not bool
+                ):
+                    raise ValueError("default_enabled 必须是布尔值")
+                await repository.save_setting(
+                    "feature-default", body["default_enabled"]
+                )
+                self.feature_service.default_enabled = body["default_enabled"]
+            return {
+                "default_enabled": self.feature_service.default_enabled,
+                "stored": await repository.setting("feature-default") is not None,
+            }
+
+        return await self._manage(request, action)
+
+    def _log_directory(self) -> Path | None:
+        if self.tenko_config is None or self.tenko_config.basic.log.save is None:
+            return None
+        from arclet.entari.localdata import local_data
+
+        return local_data._get_base_log_dir()
+
+    async def log_view(self, request: Request) -> JSONResponse:
+        async def read():
+            params = request.query_params
+            query = params.get("q", "")
+            if len(query) > 200:
+                raise ValueError("搜索词不能超过 200 字")
+            directory = self._log_directory()
+            name = params.get("file")
+            if name:
+                data = await asyncio.to_thread(
+                    self.logs.history, directory, name, query
+                )
+            else:
+                after = int(params.get("after", "0"))
+                if after < 0:
+                    raise ValueError("日志游标不能为负数")
+                data = self.logs.live(after, query, params.get("level", ""))
+            data["files"] = await asyncio.to_thread(self.logs.files, directory)
+            data["history_enabled"] = directory is not None
+            return data
+
+        # 高频只读日志不产生审计日志，避免轮询形成递归日志流。
+        return await self._manage(request, read)
+
     async def index(self, request: Request) -> FileResponse:
         del request
-        return FileResponse(_STATIC_INDEX, media_type="text/html")
+        return FileResponse(
+            _STATIC_INDEX,
+            media_type="text/html",
+            headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+        )
 
     async def launch(self, manager: Launart) -> None:
         async with self.stage("preparing"):
             await self.wait_for_required()
+            self._log_sink = logger.add(
+                self.logs.sink, level="INFO", format="{message}"
+            )
         async with self.stage("blocking"):
             await manager.status.wait_for_sigexit()
         async with self.stage("cleanup"):
-            pass
+            if self._log_sink is not None:
+                logger.remove(self._log_sink)
+                self._log_sink = None
 
 
 __all__ = [

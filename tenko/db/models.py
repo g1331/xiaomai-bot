@@ -153,6 +153,27 @@ class StartupTime(BaseOrm):
     duration: Mapped[float] = mapped_column(Float, nullable=False)
 
 
+class AccountPreference(BaseOrm):
+    """平台限定的账户管理偏好；不存协议凭据。"""
+
+    __tablename__ = "TenkoAccountPreference"
+
+    platform: Mapped[str] = mapped_column(String(128), primary_key=True)
+    account_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    alias: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    capabilities: Mapped[str] = mapped_column(String, nullable=False, default="{}")
+
+
+class WebUISetting(BaseOrm):
+    """管理面板写入的运行期设置，与连接配置分开保存。"""
+
+    __tablename__ = "TenkoWebUISetting"
+
+    name: Mapped[str] = mapped_column(String(128), primary_key=True)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+
+
 MODEL_CLASSES = (
     MemberPerm,
     GroupPerm,
@@ -163,6 +184,8 @@ MODEL_CLASSES = (
     RateLimitEvent,
     RateLimitSubjectState,
     StartupTime,
+    AccountPreference,
+    WebUISetting,
 )
 
 __all__ = [
@@ -175,5 +198,7 @@ __all__ = [
     "RateLimitSubjectState",
     "StartupTime",
     "MODEL_CLASSES",
+    "AccountPreference",
+    "WebUISetting",
     "MemberPerm",
 ]

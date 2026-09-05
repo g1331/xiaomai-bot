@@ -71,6 +71,8 @@ satori_token = "tenko-satori-local"
 enabled = false
 # 必须配置独立于 [onebot] 的 token；不要复用 OneBot token，也不要暴露到公网。
 token = ""
+# 可选的独立管理令牌，必须与只读 token 不同；未配置时不开放任何管理操作。
+# admin_token = "替换为独立随机管理令牌"
 # 仅允许这些来源 IP 访问 WebUI；如无必要请保持本机白名单。
 allowed_ips = ["127.0.0.1"]
 

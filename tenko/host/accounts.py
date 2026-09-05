@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from collections.abc import Iterable, Mapping
 from datetime import datetime, UTC
@@ -37,10 +38,33 @@ def _key(value: object) -> str:
     return str(value)
 
 
-def _account_id(account_or_id: Account | object) -> str:
+AccountKey = tuple[str, str]
+AccountInput = Account | str | int | AccountKey
+
+
+def account_key(account_or_id: object) -> AccountKey:
+    """账号内部使用平台限定键；旧命令和路由中的裸 ID 属于 OneBot。"""
+
+    if isinstance(account_or_id, tuple) and len(account_or_id) == 2:
+        return (_key(account_or_id[0]), _key(account_or_id[1]))
     if isinstance(account_or_id, str | int):
-        return _key(account_or_id)
-    return _key(getattr(account_or_id, "self_id", None))
+        value = str(account_or_id)
+        if value.startswith("["):
+            pair = json.loads(value)
+            if not isinstance(pair, list) or len(pair) != 2:
+                raise ValueError("账号键必须包含平台和账号 ID")
+            return (_key(pair[0]), _key(pair[1]))
+        return ("onebot", value)
+    platform = getattr(account_or_id, "platform", None) or getattr(
+        getattr(account_or_id, "self_info", None), "platform", "onebot"
+    )
+    return (_key(platform or "onebot"), _key(getattr(account_or_id, "self_id", None)))
+
+
+def account_reference(key: AccountKey) -> str:
+    """保留既有 OneBot 路由格式；其他平台编码为无歧义的二元 JSON。"""
+
+    return key[1] if key[0] == "onebot" else json.dumps(key, ensure_ascii=False)
 
 
 def _account_default_availability(account: Account) -> bool:
@@ -72,14 +96,15 @@ class AccountRegistry:
     """
 
     def __init__(self, repository: AccountStateRepository | None = None) -> None:
-        self._accounts: dict[str, Account] = {}
-        self._availability: dict[str, bool] = {}
-        self._groups: dict[str, list[str]] = {}
+        self._accounts: dict[AccountKey, Account] = {}
+        self._availability: dict[AccountKey, bool] = {}
+        self._disabled: set[AccountKey] = set()
+        self._groups: dict[str, list[AccountKey]] = {}
         self._response_types: dict[str, ResponseType] = {}
-        self._deterministic_accounts: dict[str, str] = {}
-        self._muted_until: dict[tuple[str, str], datetime | None] = {}
-        self._group_permissions: dict[tuple[str, str], int] = {}
-        self._event_selections: dict[tuple[str, str], str] = {}
+        self._deterministic_accounts: dict[str, AccountKey] = {}
+        self._muted_until: dict[tuple[AccountKey, str], datetime | None] = {}
+        self._group_permissions: dict[tuple[AccountKey, str], int] = {}
+        self._event_selections: dict[tuple[str, str], AccountKey] = {}
         self._repository = repository
         self._ready = repository is None
         self._persist_task = None
@@ -99,6 +124,7 @@ class AccountRegistry:
             self._persist_task.cancel()
         self._persist_task = None
         self._repository = repository
+        self._disabled = set()
         self._groups = {}
         self._response_types = {}
         self._deterministic_accounts = {}
@@ -131,21 +157,23 @@ class AccountRegistry:
             self.mark_unavailable()
             raise
 
-        groups: dict[str, list[str]] = {}
+        groups: dict[str, list[AccountKey]] = {}
         for row in snapshot.routes:
             members = groups.setdefault(row.group_id, [])
-            if row.account_id not in members:
-                members.append(row.account_id)
+            if account_key(row.account_id) not in members:
+                members.append(account_key(row.account_id))
 
         response_types: dict[str, ResponseType] = {}
-        deterministic_accounts: dict[str, str] = {}
+        deterministic_accounts: dict[str, AccountKey] = {}
         try:
             for row in snapshot.responses:
                 if row.response_type not in {"random", "deterministic"}:
                     raise ValueError(f"群 {row.group_id} 的响应类型非法")
                 response_types[row.group_id] = row.response_type
                 if row.deterministic_account is not None:
-                    deterministic_accounts[row.group_id] = row.deterministic_account
+                    deterministic_accounts[row.group_id] = account_key(
+                        row.deterministic_account
+                    )
         except Exception:
             self.mark_unavailable()
             raise
@@ -170,7 +198,7 @@ class AccountRegistry:
         routes = tuple(
             AccountRouteRecord(
                 group_id=group_id,
-                account_id=account_id,
+                account_id=account_reference(account_id),
                 position=position,
             )
             for group_id, members in self._groups.items()
@@ -180,7 +208,7 @@ class AccountRegistry:
             AccountResponseRecord(
                 group_id=group_id,
                 response_type=self._response_types.get(group_id, "random"),
-                deterministic_account=self._deterministic_accounts.get(group_id),
+                deterministic_account=self.deterministic_account_for_group(group_id),
             )
             for group_id in self._groups
         )
@@ -241,9 +269,11 @@ class AccountRegistry:
 
     @property
     def accounts(self) -> Mapping[str, Account]:
-        """返回只读的 self_id 到 Satori 账号句柄映射。"""
+        """返回只读账号引用映射；OneBot 保留裸 ID，其他平台带平台限定。"""
 
-        return MappingProxyType(self._accounts)
+        return MappingProxyType(
+            {account_reference(key): value for key, value in self._accounts.items()}
+        )
 
     @property
     def group_ids(self) -> tuple[str, ...]:
@@ -262,24 +292,24 @@ class AccountRegistry:
     ) -> str:
         """注册或更新一个 Satori 账号，并可同时绑定群。
 
-        同一 `self_id` 的重新注册用于覆盖重连后产生的新句柄；已有群绑定
+        同一平台和 `self_id` 的重新注册用于覆盖重连后产生的新句柄；已有群绑定
         会保留，除非调用方显式解绑。`available=None` 时读取 Satori 登录
         状态作为初始值，生命周期事件应使用 :meth:`set_available` 明确更新。
         """
 
-        account_id = _account_id(account)
+        account_id = account_key(account)
         self._accounts[account_id] = account
         self._availability[account_id] = (
             _account_default_availability(account) if available is None else available
         )
         for group_id in groups:
             self.bind_group(group_id, account_id)
-        return account_id
+        return account_reference(account_id)
 
-    def unregister(self, account_or_id: Account | str | int) -> Account | None:
+    def unregister(self, account_or_id: AccountInput) -> Account | None:
         """注销账号并移除它参与的所有群路由。"""
 
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         account = self._accounts.pop(account_id, None)
         self._availability.pop(account_id, None)
         for mute_key in tuple(self._muted_until):
@@ -302,26 +332,41 @@ class AccountRegistry:
         self._request_persist()
         return account
 
-    def get(self, account_id: str | int) -> Account | None:
-        """按 `self_id` 获取账号句柄。"""
+    def get(self, account_id: AccountInput) -> Account | None:
+        """按平台限定键、账户对象或旧 OneBot ID 获取账号句柄。"""
 
-        return self._accounts.get(_key(account_id))
+        return self._accounts.get(account_key(account_id))
 
-    def set_available(
-        self, account_or_id: Account | str | int, available: bool
-    ) -> None:
+    def set_available(self, account_or_id: AccountInput, available: bool) -> None:
         """更新账号是否参与路由；未注册账号不能单独创建状态。"""
 
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         if account_id not in self._accounts:
             raise KeyError(f"账号未注册: {account_id}")
         self._availability[account_id] = available
 
-    def is_available(self, account_or_id: Account | str | int) -> bool:
+    def is_available(self, account_or_id: AccountInput) -> bool:
         """返回账号是否已注册且当前可用。"""
 
-        account_id = _account_id(account_or_id)
-        return self._availability.get(account_id, False)
+        account_id = account_key(account_or_id)
+        return self.is_online(account_id) and account_id not in self._disabled
+
+    def is_online(self, account_or_id: object) -> bool:
+        """连接状态独立于管理停用状态。"""
+
+        return self._availability.get(account_key(account_or_id), False)
+
+    def set_enabled(self, account_or_id: object, enabled: bool) -> None:
+        if type(enabled) is not bool:
+            raise TypeError("enabled 必须是布尔值")
+        key = account_key(account_or_id)
+        if enabled:
+            self._disabled.discard(key)
+        else:
+            self._disabled.add(key)
+
+    def is_enabled(self, account_or_id: object) -> bool:
+        return account_key(account_or_id) not in self._disabled
 
     @staticmethod
     def _mute_expired(until: datetime) -> bool:
@@ -330,7 +375,7 @@ class AccountRegistry:
 
     def set_muted(
         self,
-        account_id: Account | str | int,
+        account_id: AccountInput,
         group_id: str | int,
         muted: bool,
         *,
@@ -338,7 +383,7 @@ class AccountRegistry:
     ) -> None:
         """设置账号在指定群的禁言状态，过期时间由查询时惰性清理。"""
 
-        normalized_account = _account_id(account_id)
+        normalized_account = account_key(account_id)
         normalized_group = _key(group_id)
         if normalized_account not in self._accounts:
             raise KeyError(f"账号未注册: {normalized_account}")
@@ -353,10 +398,10 @@ class AccountRegistry:
         else:
             self._muted_until.pop(mute_key, None)
 
-    def is_muted(self, account_id: Account | str | int, group_id: str | int) -> bool:
+    def is_muted(self, account_id: AccountInput, group_id: str | int) -> bool:
         """查询账号在指定群是否仍被禁言，并惰性恢复已到期状态。"""
 
-        mute_key = (_account_id(account_id), _key(group_id))
+        mute_key = (account_key(account_id), _key(group_id))
         until = self._muted_until.get(mute_key, _NO_MUTE)
         if until is _NO_MUTE:
             return False
@@ -366,13 +411,13 @@ class AccountRegistry:
         return True
 
     def mute_until(
-        self, account_id: Account | str | int, group_id: str | int
+        self, account_id: AccountInput, group_id: str | int
     ) -> datetime | None:
         """返回当前禁言到期时间；永久禁言和未禁言都返回 ``None``。"""
 
         if not self.is_muted(account_id, group_id):
             return None
-        return self._muted_until.get((_account_id(account_id), _key(group_id)))
+        return self._muted_until.get((account_key(account_id), _key(group_id)))
 
     @staticmethod
     def _is_group_send_failure(failure: BaseException | Mapping[str, object]) -> bool:
@@ -398,7 +443,7 @@ class AccountRegistry:
 
     def observe_send_failure(
         self,
-        account_id: Account | str | int,
+        account_id: AccountInput,
         group_id: str | int,
         failure: BaseException | Mapping[str, object],
     ) -> bool:
@@ -414,13 +459,11 @@ class AccountRegistry:
         self.set_muted(account_id, group_id, True)
         return True
 
-    def bind_group(
-        self, group_id: str | int, account_or_id: Account | str | int
-    ) -> None:
+    def bind_group(self, group_id: str | int, account_or_id: AccountInput) -> None:
         """把已注册账号加入群路由，并保持注册顺序。"""
 
         normalized_group = _key(group_id)
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         if not self._route_available():
             return
         if account_id not in self._accounts:
@@ -434,13 +477,11 @@ class AccountRegistry:
         if changed:
             self._request_persist()
 
-    def unbind_group(
-        self, group_id: str | int, account_or_id: Account | str | int
-    ) -> bool:
+    def unbind_group(self, group_id: str | int, account_or_id: AccountInput) -> bool:
         """移除一个账号的群路由；返回是否确实移除了绑定。"""
 
         normalized_group = _key(group_id)
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         if not self._route_available():
             return False
         members = self._groups.get(normalized_group)
@@ -481,12 +522,12 @@ class AccountRegistry:
             if self.is_available(account)
         )
 
-    def groups_for_account(self, account_id: Account | str | int) -> tuple[str, ...]:
+    def groups_for_account(self, account_id: AccountInput) -> tuple[str, ...]:
         """返回账号参与的群 ID，顺序与首次绑定顺序一致。"""
 
         if not self._route_available():
             return ()
-        normalized_account = _account_id(account_id)
+        normalized_account = account_key(account_id)
         return tuple(
             group_id
             for group_id, members in self._groups.items()
@@ -509,13 +550,13 @@ class AccountRegistry:
 
     def set_group_permission(
         self,
-        account_or_id: Account | str | int,
+        account_or_id: AccountInput,
         group_id: str | int,
         permission: int | str,
     ) -> None:
         """记录账号在群内的管理权限，供管理动作选择执行账号。"""
 
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         normalized_group = _key(group_id)
         if account_id not in self._accounts:
             raise KeyError(f"账号未注册: {account_id}")
@@ -527,9 +568,9 @@ class AccountRegistry:
     set_account_group_permission = set_group_permission
 
     def group_permission(
-        self, account_or_id: Account | str | int, group_id: str | int
+        self, account_or_id: AccountInput, group_id: str | int
     ) -> int | None:
-        return self._group_permissions.get((_account_id(account_or_id), _key(group_id)))
+        return self._group_permissions.get((account_key(account_or_id), _key(group_id)))
 
     account_group_permission = group_permission
 
@@ -562,7 +603,8 @@ class AccountRegistry:
         if not self._route_available():
             return None
         normalized_group = _key(group_id)
-        return self._deterministic_accounts.get(normalized_group)
+        key = self._deterministic_accounts.get(normalized_group)
+        return account_reference(key) if key is not None else None
 
     def accounts_for_group(
         self, group_id: str | int, *, available_only: bool = True
@@ -578,7 +620,7 @@ class AccountRegistry:
             for account_id in members
             if (account := self._accounts.get(account_id)) is not None
             and not self.is_muted(account_id, normalized_group)
-            and (not available_only or self._availability.get(account_id, False))
+            and (not available_only or self.is_available(account_id))
         )
 
     def set_response_type(
@@ -595,12 +637,12 @@ class AccountRegistry:
         self._request_persist()
 
     def set_deterministic_account(
-        self, group_id: str | int, account_or_id: Account | str | int
+        self, group_id: str | int, account_or_id: AccountInput
     ) -> None:
         """设置 deterministic 策略指定的账号。"""
 
         normalized_group = _key(group_id)
-        account_id = _account_id(account_or_id)
+        account_id = account_key(account_or_id)
         if account_id not in self._groups.get(normalized_group, ()):
             raise KeyError(f"账号未绑定到群 {normalized_group}: {account_id}")
         self._deterministic_accounts[normalized_group] = account_id
@@ -673,7 +715,7 @@ class AccountRegistry:
             # 迟到的重复事件可能会被第二个账号处理。
             return None
         selected = random.choice(available)
-        self._event_selections[selection_key] = _account_id(selected)
+        self._event_selections[selection_key] = account_key(selected)
         if len(self._event_selections) > _MAX_EVENT_SELECTIONS:
             oldest_key = next(iter(self._event_selections))
             del self._event_selections[oldest_key]
@@ -686,8 +728,9 @@ class AccountRegistry:
 
         if context.chat_type == "group":
             return self.select_account(context.channel_id, source_id=source_id)
-        if self.is_available(context.account_id):
-            return self.get(context.account_id)
+        key = (context.platform, context.account_id)
+        if self.is_available(key):
+            return self.get(key)
         return None
 
 

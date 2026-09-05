@@ -81,14 +81,17 @@
         grid-template-columns: 232px minmax(0, 1fr);
         width: 100%;
         min-height: 100vh;
-        overflow: hidden;
         background: var(--c-dark);
       }
 
       /* ============ 桌面侧边栏 ============ */
       .sidebar {
         display: flex;
-        min-height: 100%;
+        position: sticky;
+        top: 0;
+        height: 100dvh;
+        overflow: hidden;
+        align-self: start;
         flex-direction: column;
         padding: 22px 14px 18px;
         background: var(--c-navy);
@@ -263,6 +266,15 @@
         letter-spacing: 1.5px;
         line-height: 1.8;
       }
+
+      .sidebar-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+      .theme-select { min-width: 0; padding: 7px; border: 1px solid #71859a; border-radius: 4px; background: #1e3a52; color: #f5f1e8; font: inherit; }
+      .github-link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; color: #f5f1e8; }
+      .github-link:hover { color: var(--c-gold); }
+      .sidebar > * { flex-shrink: 0; }
+      .sidebar .sidebar-nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+      .sidebar-nav > * { flex-shrink: 0; }
+      @media (max-height: 650px) { .sidebar-portrait { display: none; } }
 
       .sidebar-foot strong {
         color: var(--c-gold);
@@ -1527,6 +1539,7 @@
         </nav>
 
         <div class="sidebar-foot">
+          <div class="sidebar-tools"><select class="theme-select" aria-label="主题"><option value="light">浅色 · 天光</option><option value="dark">深色 · 夜空</option><option value="system">跟随系统</option></select><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
           TENKO WEBUI<br />
           <strong id="sidebar-status">API PENDING</strong><br />
           AUTHENTICATED · IP ALLOWLIST
@@ -1536,7 +1549,7 @@
       <section class="workspace">
         <header class="mobile-topbar">
           <div class="mobile-brand">TENKO</div>
-          <div class="mobile-access">TENKO / WEBUI</div>
+          <div class="sidebar-tools" style="margin-bottom:0"><select class="theme-select" aria-label="主题"><option value="light">浅色 · 天光</option><option value="dark">深色 · 夜空</option><option value="system">跟随系统</option></select><a class="github-link" href="https://github.com/g1331/tenko" target="_blank" rel="noopener noreferrer" aria-label="Tenko GitHub 仓库" title="GitHub 仓库"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.113.82-.258.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.762-1.605-2.665-.305-5.467-1.334-5.467-5.931 0-1.31.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.323 3.301 1.23A11.52 11.52 0 0 1 12 6.098c1.02.005 2.047.138 3.006.404 2.291-1.553 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.694.825.576A12.001 12.001 0 0 0 12 .297Z"/></svg></a></div>
         </header>
         <nav class="mobile-nav" aria-label="移动端功能分类">
           <a class="nav-item" data-route="overview" href="#/overview">
@@ -1581,7 +1594,7 @@
             <form class="auth-form" id="auth-form">
               <label class="sr-only" for="token">WebUI token</label>
               <input id="token" type="password" autocomplete="off" placeholder="输入只读或管理令牌" />
-              <button type="submit">连接 / 同步</button><button type="button" id="logout">退出</button>
+              <button type="submit">连接 / 刷新</button><button type="button" id="logout">退出</button>
             </form>
           </div>
 
@@ -1648,6 +1661,7 @@
       let themePreference = localStorage.getItem("tenko-webui-theme") || "light";
 
       function applyTheme() {
+        document.querySelectorAll(".theme-select").forEach(select => { select.value = themePreference; });
         document.documentElement.dataset.theme = themePreference === "system"
           ? (themeMedia.matches ? "dark" : "light") : themePreference;
       }
@@ -1758,9 +1772,7 @@
 
       function renderSettings() {
         return `${sectionBar("settings")}<div class="settings-layout"><section class="white-panel">
-          <h3>外观</h3><p class="panel-note">仅保存在当前浏览器，不影响其他管理员。</p>
-          <label class="field">主题<select id="theme-select"><option value="light" ${themePreference === 'light' ? 'selected' : ''}>浅色 · 天光</option><option value="dark" ${themePreference === 'dark' ? 'selected' : ''}>深色 · 夜空</option><option value="system" ${themePreference === 'system' ? 'selected' : ''}>跟随系统</option></select></label>
-          </section><section class="white-panel"><h3>功能默认策略</h3><p class="panel-note">影响没有显式开关的群功能，已有群级或全局设置继续优先。</p>
+          <h3>功能默认策略</h3><p class="panel-note">影响没有显式开关的群功能，已有群级或全局设置继续优先。</p>
           ${authRole !== 'admin' ? adminNote() : settingsData ? `<form id="runtime-settings"><label class="field">未设置的功能<select name="default_enabled"><option value="true" ${settingsData.default_enabled ? 'selected' : ''}>默认启用</option><option value="false" ${!settingsData.default_enabled ? 'selected' : ''}>默认关闭</option></select></label><button class="action-button primary" type="submit">保存运行期设置</button></form><p class="field-hint">${settingsData.stored ? '已保存到数据库，重启后恢复。' : '当前沿用宿主配置；保存后由数据库管理。'}</p>` : `<p>${escapeHtml(manageError || '正在读取设置…')}</p>`}
           </section></div>`;
       }
@@ -1815,9 +1827,9 @@
         } finally { logBusy = false; }
       }
 
-      pageRoot.addEventListener('change', (event) => {
+      document.addEventListener('change', (event) => {
         if (event.target.id === 'log-file') document.querySelector('[name=level]').disabled = !!event.target.value;
-        if (event.target.id === 'theme-select') {
+        if (event.target.matches('.theme-select')) {
           themePreference = event.target.value;
           localStorage.setItem('tenko-webui-theme', themePreference);
           applyTheme();
@@ -2292,10 +2304,6 @@
         document.querySelector('#account-dialog').replaceChildren();
         notice('已退出'); loadData();
       });
-      setInterval(() => {
-        if (document.hidden || operationPending || document.querySelector('dialog[open]') || pageRoot.contains(document.activeElement) || document.querySelector('#pairing-panel[open]')) return;
-        if (authToken && routeName() !== 'logs') loadData({ quiet: true });
-      }, 5000);
       setInterval(() => { if (!document.hidden && !logsPaused && !logFile) refreshLogs(); }, 3000);
       takeQueryToken();
       renderApp();
